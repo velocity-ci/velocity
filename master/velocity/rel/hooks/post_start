@@ -1,0 +1,5 @@
+set -e
+
+echo "# Running migrations"
+bin/velocity command Elixir.Velocity.ReleaseTasks migrations
+echo "# Migrations ran successfully"
