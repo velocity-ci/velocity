@@ -1,4 +1,5 @@
 defmodule VelocityWeb.ErrorView do
+  @moduledoc "provides views for errors"
   use VelocityWeb, :view
 
   def render("404.html", _assigns) do

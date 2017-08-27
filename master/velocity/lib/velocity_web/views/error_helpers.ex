@@ -1,22 +1,17 @@
 defmodule VelocityWeb.ErrorHelpers do
-  @moduledoc """
-  Conveniences for translating and building error messages.
-  """
+  @moduledoc "Conveniences for translating and building error messages.\n"
 
   use Phoenix.HTML
 
-  @doc """
-  Generates tag for inlined form input errors.
-  """
+  @doc "Generates tag for inlined form input errors.\n"
   def error_tag(form, field) do
-    Enum.map(Keyword.get_values(form.errors, field), fn (error) ->
-      content_tag :span, translate_error(error), class: "help-block"
-    end)
+    Enum.map Keyword.get_values(form.errors, field),
+             fn error ->
+               content_tag(:span, translate_error(error), class: "help-block")
+             end
   end
 
-  @doc """
-  Translates an error message using gettext.
-  """
+  @doc "Translates an error message using gettext.\n"
   def translate_error({msg, opts}) do
     # Because error messages were defined within Ecto, we must
     # call the Gettext module passing our Gettext backend. We
@@ -32,9 +27,9 @@ defmodule VelocityWeb.ErrorHelpers do
     #     dgettext "errors", "is invalid"
     #
     if count = opts[:count] do
-      Gettext.dngettext(VelocityWeb.Gettext, "errors", msg, msg, count, opts)
+      Gettext.dngettext VelocityWeb.Gettext, "errors", msg, msg, count, opts
     else
-      Gettext.dgettext(VelocityWeb.Gettext, "errors", msg, opts)
+      Gettext.dgettext VelocityWeb.Gettext, "errors", msg, opts
     end
   end
 end

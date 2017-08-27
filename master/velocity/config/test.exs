@@ -12,8 +12,12 @@ config :logger, level: :warn
 # Configure your database
 config :velocity, Velocity.Repo,
   adapter: Ecto.Adapters.Postgres,
-  username: "postgres",
-  password: "postgres",
-  database: "velocity_test",
-  hostname: "localhost",
+  username: System.get_env("DATABASE_USERNAME") || "velocity_test",
+  password: System.get_env("DATABASE_PASSWORD") || "velocity_test",
+  database: System.get_env("DATABASE_NAME") || "velocity_test",
+  hostname: System.get_env("DATABASE_HOSTNAME") || "localhost",
+  port: System.get_env("DATABASE_PORT") || 5432,
   pool: Ecto.Adapters.SQL.Sandbox
+
+  # Use less encryption rounds in test environment
+config :comeonin, :bcrypt_log_rounds, 4

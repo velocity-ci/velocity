@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+
+  database:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: velocity_test
+      POSTGRES_PASSWORD: velocity_test
+      POSTGRES_DB: velocity_test
+
+  velocity_test:
+    build:
+      context: ./
+      dockerfile: dev.Dockerfile
+    command: /app/docker/run_tests.sh
+    environment:
+      SECRET_KEY_BASE: G9XBaZMFhtWDxAaowHCBrrDVq8xVB3sfro8xiGnFXfidldnvf
+      GUARDIAN_SECRET_KEY: cQCWxKpcuixeB4ZAxCs04nrBGdKeJiHcmmCHbZPI6esGcLcfZVz1qw2796p3gWGA
+      DATABASE_HOSTNAME: postgres
+      DATABASE_USERNAME: velocity_test
+      DATABASE_PASSWORD: velocity_test
+      DATABASE_NAME: velocity_test
+      DATABASE_PORT: 5432
+      PORT: 4000
+      MIX_ENV: test
+    working_dir: /app/velocity
+    volumes:
+      - "./:/app"
+    ports:
+      - 4000:4000
+    links:
+      - database:postgres
+    depends_on:
+      - database

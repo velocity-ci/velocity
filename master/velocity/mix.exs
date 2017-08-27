@@ -10,7 +10,9 @@ defmodule Velocity.Mixfile do
       compilers: [:phoenix, :gettext] ++ Mix.compilers,
       start_permanent: Mix.env == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: ["coveralls": :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test],
     ]
   end
 
@@ -23,6 +25,9 @@ defmodule Velocity.Mixfile do
       extra_applications: [
         :logger, 
         :runtime_tools,
+        :jose,
+        :guardian,
+        :comeonin,
         :libcluster,
         :distillery
       ]
@@ -46,8 +51,14 @@ defmodule Velocity.Mixfile do
       {:phoenix_live_reload, "~> 1.0", only: :dev},
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
+      {:credo, "~> 0.5", only: [:dev, :test]},
+      {:dogma, "~> 0.1", only: [:dev, :test]},
+      {:excoveralls, "~> 0.5", only: :test},
       {:distillery, "~> 1.5.1"},
-      {:libcluster, "~> 2.2.2"}
+      {:libcluster, "~> 2.2.2"},
+      {:guardian, "~> 0.14"},
+      {:jose, "~> 1.8"},
+      {:comeonin, "~> 3.0"},
     ]
   end
 

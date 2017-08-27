@@ -2,6 +2,7 @@
 
 # App artifacts
 velocity/_build
+velocity/cover
 velocity/db
 velocity/deps
 velocity/*.ez

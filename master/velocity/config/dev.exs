@@ -34,9 +34,9 @@ config :phoenix, :stacktrace_depth, 20
 # Configure your database
 config :velocity, Velocity.Repo,
   adapter: Ecto.Adapters.Postgres,
-  username: System.get_env("DATABASE_USERNAME") || "chit_chat_dev",
-  password: System.get_env("DATABASE_PASSWORD") || "chit_chat_dev",
-  database: System.get_env("DATABASE_NAME") || "chit_chat_dev",
+  username: System.get_env("DATABASE_USERNAME") || "velocity_dev",
+  password: System.get_env("DATABASE_PASSWORD") || "velocity_dev",
+  database: System.get_env("DATABASE_NAME") || "velocity_dev",
   hostname: System.get_env("DATABASE_HOSTNAME") || "localhost",
   port: System.get_env("DATABASE_PORT") || 5432,
   pool_size: 10
