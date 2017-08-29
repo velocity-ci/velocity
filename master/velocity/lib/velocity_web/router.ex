@@ -26,6 +26,7 @@ defmodule VelocityWeb.Router do
   scope "/api/v1", VelocityWeb do
     pipe_through :api
     resources "/users", UserController, only: [:create]
+    resources "/projects", ProjectController, only: [:create]
     resources "/auth", AuthController, only: [:create]
   end
 end

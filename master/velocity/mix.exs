@@ -59,6 +59,7 @@ defmodule Velocity.Mixfile do
       {:guardian, "~> 0.14"},
       {:jose, "~> 1.8"},
       {:comeonin, "~> 3.0"},
+      {:cors_plug, "~> 1.2"},
     ]
   end
 

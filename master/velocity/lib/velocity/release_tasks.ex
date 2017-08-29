@@ -1,5 +1,5 @@
 defmodule Velocity.ReleaseTasks do
-  @moduledoc "provides init tasks for releases.\n"
+  @moduledoc "provides init tasks for releases."
 
   alias Ecto.Migrator
 
@@ -20,14 +20,15 @@ defmodule Velocity.ReleaseTasks do
     IO.puts " Done."
     # Run migrations
     Enum.each @repos, &run_migrations_for/1
-    # Run the seed script if it exists
-    seed_script = Path.join([priv_dir(), "repo", "seeds.exs"])
-    if File.exists?(seed_script) do
-      IO.write "> Running seed script..."
-      Code.eval_file seed_script
-      IO.puts " Done."
-    end
     :init.stop
+  end
+
+  def create_admin do
+    # Create admin user if neccessary
+    unless Velocity.UserRepository.find_by_username("admin") do
+      Velocity.Repo.insert!(%Velocity.User{username: "admin", password: "password"})
+      IO.puts "Created username: admin, password: password"
+    end
   end
 
   def priv_dir do

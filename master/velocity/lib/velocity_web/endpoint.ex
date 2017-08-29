@@ -4,6 +4,8 @@ defmodule VelocityWeb.Endpoint do
 
   socket "/socket", VelocityWeb.UserSocket
 
+  plug CORSPlug, [origin: "*"]
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phoenix.digest

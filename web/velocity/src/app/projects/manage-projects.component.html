@@ -1,0 +1,39 @@
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <h4 class="card-header">Add Project</h4>
+      <div class="card-body">
+            <form [formGroup]="projectForm" (ngSubmit)="submit()" novalidate>
+              <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="username" aria-describedby="nameHelp" placeholder="Name" formControlName="name" [(ngModel)]="project.name"
+                  required [ngClass]="{
+                    'is-valid': projectForm.controls.name.valid && projectForm.controls.name.dirty,
+                    'is-invalid': projectForm.controls.name.invalid && projectForm.controls.name.dirty
+                  }">
+              </div>
+              <div class="form-group">
+                <label for="repository">Repository address</label>
+                <input type="text" class="form-control" id="repository" placeholder="repository" formControlName="repository" required [(ngModel)]="project.repository"
+                [ngClass]="{
+                  'is-valid': projectForm.controls.repository.valid && projectForm.controls.repository.dirty,
+                  'is-invalid': projectForm.controls.repository.invalid && projectForm.controls.repository.dirty
+                }">
+              </div>
+              <div class="form-group">
+                    <label for="key">Private key</label>
+                    <textarea rows="3" class="form-control" id="key" placeholder="key" formControlName="key" required [(ngModel)]="project.key"
+                    [ngClass]="{
+                      'is-valid': projectForm.controls.key.valid && projectForm.controls.key.dirty,
+                      'is-invalid': projectForm.controls.key.invalid && projectForm.controls.key.dirty
+                    }"></textarea>
+                  </div>
+              <button type="submit" class="btn btn-primary" [disabled]="!projectForm.valid || submitting">Submit</button>
+                <span *ngIf="submitting"><i class="fa fa-circle-o-notch fa-spin fa-fw"></i>
+                  <span class="sr-only">Loading...</span>
+                </span>
+            </form>
+          </div>
+    </div>
+  </div>
+</div>

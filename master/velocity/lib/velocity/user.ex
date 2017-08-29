@@ -20,7 +20,6 @@ defmodule Velocity.User do
   def changeset(%User{} = user, attrs) do
     user
     |> cast(attrs, [:username, :email, :password])
-    |> validate_required([:username, :password])
   end
 
   @spec register(Ecto.Changeset) :: struct
