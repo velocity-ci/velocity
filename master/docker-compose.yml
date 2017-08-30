@@ -2,33 +2,40 @@ version: '3'
 
 services:
 
-  database:
-    image: postgres:latest
+  mysql:
+    image: mysql:latest
     environment:
-      POSTGRES_USER: velocity_dev
-      POSTGRES_PASSWORD: velocity_dev
-      POSTGRES_DB: velocity_dev
+      MYSQL_USER: velocity_dev
+      MYSQL_PASSWORD: velocity_dev
+      MYSQL_DATABASE: velocity_dev
+      MYSQL_ROOT_PASSWORD: velocity_dev
+    ports:
+     - "3306:3306"
 
-  velocity_backend:
+  # Golang API
+  api:
     build:
-      context: ./
+      context: .
       dockerfile: dev.Dockerfile
-    command: /bin/sh -c "mix deps.get && /bin/wait-for-it.sh -t 120 postgres:5432 && mix ecto.create && mix ecto.migrate && mix create_admin && mix phx.server"
+    command: fresh
+    restart: unless-stopped
+    volumes:
+      - "./:/go/src/github.com/VJftw/velocity/master/"
+    working_dir: /go/src/github.com/VJftw/velocity/master/velocity
     environment:
-      SECRET_KEY_BASE: G9XBaZMFhtWDxAaowHCBrrDVq8xVB3sfro8xiGnFXfidldnvf
-      GUARDIAN_SECRET_KEY: cQCWxKpcuixeB4ZAxCs04nrBGdKeJiHcmmCHbZPI6esGcLcfZVz1qw2796p3gWGA
-      DATABASE_HOSTNAME: postgres
+      TYPE: API
+      JWT_SECRET: development
+      DATABASE_TYPE: MYSQL
+      DATABASE_HOST: database
+      DATABASE_PORT: 3306
+      DATABASE_NAME: velocity_dev
       DATABASE_USERNAME: velocity_dev
       DATABASE_PASSWORD: velocity_dev
-      DATABASE_NAME: velocity_dev
-      DATABASE_PORT: 5432
-      PORT: 4000
-      MIX_ENV: dev
-    volumes:
-      - "./velocity:/app"
+      GORM_DEBUG: "true"
+      PORT: 80
     ports:
-      - 4000:4000
+      - "80:80"
     links:
-      - database:postgres
+      - mysql:database
     depends_on:
-      - database
+      - mysql

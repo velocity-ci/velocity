@@ -1,23 +1,53 @@
 GIT_VERSION = $(shell git describe --always)
 
-build_dev:
-	docker build -f dev.Dockerfile -t velocity-dev .
+update:
+	docker run --rm \
+	--volume ${CURDIR}:/go/src/github.com/VJftw/velocity/master/ \
+	--workdir /go/src/github.com/VJftw/velocity/master/velocity \
+ 	--env CGO_ENABLED=0 \
+ 	--env GOOS=linux \
+	golang \
+	/bin/sh -c "curl https://glide.sh/get | sh && glide update"
 
-build: build_dev
+install:
+	docker run --rm \
+	--volume ${CURDIR}:/go/src/github.com/VJftw/velocity/master/ \
+	--workdir /go/src/github.com/VJftw/velocity/master/velocity \
+ 	--env CGO_ENABLED=0 \
+ 	--env GOOS=linux \
+	golang \
+	/bin/sh -c "curl https://glide.sh/get | sh && glide install"
+
+build: install
+	docker run --rm \
+	--volume ${CURDIR}:/go/src/github.com/VJftw/velocity/master/ \
+	--workdir /go/src/github.com/VJftw/velocity/master/velocity \
+ 	--env CGO_ENABLED=0 \
+ 	--env GOOS=linux \
+	golang \
+	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity"
+
+	docker build -t vjftw/velocity:master-${GIT_VERSION} .
+	docker tag vjftw/velocity:master-${GIT_VERSION} vjftw/velocity:master-latest
+
+build-dev:
+	docker build -t vjftw/velocity:master-dev -f dev.Dockerfile .
+
+test: build-dev install
+	$(eval NOVENDOR=$(shell docker run --rm \
+	--volume ${CURDIR}:/go/src/github.com/VJftw/velocity/master/ \
+	--workdir /go/src/github.com/VJftw/velocity/master/velocity \
+	vjftw/velocity:master-dev \
+	glide novendor))
 
 	docker run --rm \
-	--volume ${CURDIR}:/app \
-	--workdir /app/velocity \
-	--env TERM=xterm \
-	--env MIX_ENV=prod \
-	velocity-dev \
-	/bin/sh -c "mix deps.get && mix deps.compile && mix release --env=prod --verbose"
+	--volume ${CURDIR}:/go/src/github.com/VJftw/velocity/master/ \
+	--workdir /go/src/github.com/VJftw/velocity/master/velocity \
+	vjftw/velocity:master-dev \
+	go test -v -cover ${NOVENDOR}
 
-	docker build -f app.Dockerfile -t vjftw/velocity:master-${GIT_VERSION} -t vjftw/velocity:master .
-
-test:
-
-	docker-compose -f docker-compose.test.yml stop
-	docker-compose -f docker-compose.test.yml rm --force
-	docker-compose -f docker-compose.test.yml up --abort-on-container-exit
-	docker-compose -f docker-compose.test.yml rm --force
+	docker run --rm \
+    	--volume ${CURDIR}:/go/src/github.com/VJftw/velocity/master/ \
+    	--workdir /go/src/github.com/VJftw/velocity/master/velocity \
+    	vjftw/velocity:master-dev \
+    	golint -set_exit_status ${NOVENDOR}

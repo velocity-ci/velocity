@@ -1,20 +1,9 @@
-FROM elixir
+FROM golang
 
-ENV TERM=xterm
+ENV JWT_SECRET changeme
+ENV PORT 80
 
-RUN apt-get update -y && \
-    apt-get install -y inotify-tools && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN curl https://glide.sh/get | sh
 
-
-ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /bin/wait-for-it.sh
-RUN chmod +x /bin/wait-for-it.sh
-
-RUN mix local.hex --force && \
-    mix local.rebar --force
-
-RUN mkdir /app
-
-WORKDIR /app
-
-VOLUME /app
+RUN go get github.com/pilu/fresh
+RUN go get github.com/golang/lint/golint

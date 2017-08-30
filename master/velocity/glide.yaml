@@ -1,0 +1,17 @@
+package: github.com/VJftw/velocity/master/velocity
+import:
+- package: github.com/jinzhu/gorm
+  version: master
+- package: github.com/dgrijalva/jwt-go
+  version: ^3.0.0
+- package: github.com/gorilla/mux
+  version: ^1.4.0
+- package: github.com/unrolled/render
+- package: github.com/urfave/negroni
+  version: ^0.2.0
+- package: github.com/rs/cors
+  version: 8dd4211afb5d08dbb39a533b9bb9e4b486351df6
+- package: github.com/gorilla/websocket
+  version: ^1.1.0
+- package: github.com/satori/go.uuid
+  version: ^1.1.0

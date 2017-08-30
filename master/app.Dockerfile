@@ -1,29 +1,19 @@
-FROM erlang:slim
+FROM alpine
 
-# HTTP
-EXPOSE 80
-# EPMD
-EXPOSE 4369
-EXPOSE 9100-9155
-EXPOSE 45892/udp
+RUN apk --no-cache --update add ca-certificates
 
-ENV PORT=80
-ENV MIX_ENV=prod
-ENV REPLACE_OS_VARS=true
-ENV SHELL=/bin/bash
+# API only
+ENV JWT_SECRET changeme
+ENV PORT 80
 
-WORKDIR /opt/app
+# Worker only
+ENV POSTGRES_HOST changeme
+ENV POSTGRES_USER changeme
+ENV POSTGRES_DBNAME changeme
+ENV POSTGRES_PASSWORD changeme
+ENV FACEBOOK_APP_ID changeme
+ENV FACEBOOK_APP_SECRET changeme
 
-ADD velocity/_build/prod/rel/velocity/releases/0.0.1/velocity.tar.gz ./
+ADD velocity/dist/velocity /velocity
 
-# Add wait-for-it
-ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /bin/wait-for-it.sh
-RUN chmod +x /bin/wait-for-it.sh
-
-# Add entrypoint
-COPY velocity/rel/entrypoint.sh /opt/app/entrypoint.sh
-RUN chmod +x /opt/app/entrypoint.sh
-
-ENTRYPOINT ["/opt/app/entrypoint.sh"]
-
-CMD foreground
+CMD ["/velocity"]

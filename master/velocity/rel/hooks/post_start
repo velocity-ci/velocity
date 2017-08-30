@@ -1,9 +1,0 @@
-set -e
-
-echo "# Running migrations"
-bin/velocity command Elixir.Velocity.ReleaseTasks migrations
-echo "# Migrations ran successfully"
-
-echo "# Checking admin user"
-bin/velocity command Elixir.Velocity.ReleaseTasks create_admin
-echo "# Checked admin user successfully"
