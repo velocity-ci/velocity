@@ -1,17 +1,24 @@
 import { Injectable } from '@angular/core';
 import 'rxjs/add/operator/toPromise';
-import { Router } from '@angular/router';
+import { Router, CanActivate } from '@angular/router';
 import {reject, resolve} from 'q';
 import { APIService } from "../api.service";
 
 @Injectable()
-export class AuthService {
+export class AuthService implements CanActivate {
 
   constructor(
     private apiService: APIService,
-    private router: Router,
-
+    private router: Router
   ) {}
+
+  public canActivate(): boolean {
+    if (this.apiService.isAuthenticated()) {
+      return true;
+    }
+    this.router.navigate(['/']);
+    return false;
+  }
 
   public authenticate(user): Promise<any> {
     return this.apiService.post(
@@ -19,9 +26,9 @@ export class AuthService {
         user
       ).then(
         authResponse => {
-          this.apiService.setAuthorization(authResponse.json().data.authToken);
+          this.apiService.setAuthorization(authResponse.json().authToken);
           this.router.navigate(['']);
-        } 
+        }
       );
   }
 }

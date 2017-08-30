@@ -4,15 +4,16 @@ import { Validators, FormControl, FormGroup } from "@angular/forms";
 import { ProjectRepository } from "./project.repository";
 
 @Component({
-    selector: 'app-manage-projects',
-    templateUrl: './manage-projects.component.html'
+    selector: 'app-projects',
+    templateUrl: './projects.component.html'
 })
-export class ManageProjectsComponent implements OnInit {
+export class ProjectsComponent implements OnInit {
 
     projectForm: FormGroup;
     project = new Project();
 
     submitting = false;
+    createProjectCollapsed = true;
 
     constructor(private projectRepository: ProjectRepository) {}
 
@@ -30,28 +31,16 @@ export class ManageProjectsComponent implements OnInit {
                 Validators.required,
                 Validators.minLength(8)
             ])
-        })
+        });
+        this.projectRepository.refreshProjects();
     }
 
     submit() {
         this.submitting = true;
-        this.projectRepository.createProject(this.project).then((res) => {
-          console.log(res);
+        this.projectRepository.createProject(this.project).then(res => {
+          this.submitting = false;
+          this.projectForm.reset();
+          this.createProjectCollapsed = true;
         });
-        // this.authService.authenticate(this.loginUser).then(() => {
-
-        // }).catch((response) => {
-        //     console.log(response);
-        //     switch(response.status) {
-        //         case 401:
-        //             this.loginForm.controls.username.setErrors({
-        //                 'username': "invalid"
-        //             });
-        //             this.loginForm.controls.password.setErrors({
-        //                 'password': "invalid"
-        //             });
-        //     }
-        //     this.submitting = false;
-        // });
     }
 }

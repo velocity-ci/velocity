@@ -12,8 +12,9 @@ import { SignInComponent } from "./authentication/sign-in.component";
 import { APIService } from "./api.service";
 import { AuthService } from "./authentication/authentication.service";
 import { HttpModule } from "@angular/http";
-import { ManageProjectsComponent } from "./projects/manage-projects.component";
+import { ProjectsComponent } from "./projects/projects.component";
 import { ProjectRepository } from "./projects/project.repository";
+import { ProjectComponent } from "./projects/project.component";
 
 
 @NgModule({
@@ -21,7 +22,8 @@ import { ProjectRepository } from "./projects/project.repository";
     AppComponent,
     IndexComponent,
     SignInComponent,
-    ManageProjectsComponent
+    ProjectsComponent,
+    ProjectComponent
   ],
   imports: [
     BrowserModule,
@@ -32,7 +34,8 @@ import { ProjectRepository } from "./projects/project.repository";
     RouterModule.forRoot([
       { path: '', component: IndexComponent},
       { path: 'sign-in', component: SignInComponent},
-      { path: 'manage-projects', component: ManageProjectsComponent}
+      { path: 'projects', component: ProjectsComponent, canActivate: [AuthService]},
+      { path: 'projects/:id', component: ProjectComponent, canActivate: [AuthService]},
     ], { useHash: true })
   ],
   providers: [

@@ -14,16 +14,31 @@ export class ProjectRepository {
         this.projects = new Map();
     }
 
-    public getAllProjects(): Project[] {
-        return Array.from(this.projects.values())
+    public refreshProjects() {
+      this.apiService.get('/v1/projects')
+        .then(res => {
+          const projects = res.json() as Project[];
+          for (const p of projects) {
+            this.projects.set(p.id, p);
+          }
+        });
     }
 
-    public createProject(p: Project) {
+    public getAllProjects(): Project[] {
+        return Array.from(this.projects.values());
+    }
+
+    public getProjectById(id: string): Project {
+      if (this.projects.has(id)) {
+        return this.projects.get(id);
+      }
+      return null;
+    }
+
+    public createProject(p: Project): Promise<Project> {
         return this.apiService.post('/v1/projects', p)
-            .then(res => {
-                const p = res.data.json() as Project;
-                this.projects.set(p.id, p);
-            })
+            .then(res => res.json() as Project)
+            .then(project => {this.projects.set(project.id, project); return project})
         ;
     }
 
