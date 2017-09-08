@@ -4,8 +4,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/VJftw/velocity/master/velocity/domain"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 type velocityClaims struct {

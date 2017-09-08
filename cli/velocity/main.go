@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/VJftw/velocity/master/velocity/domain"
-	"github.com/VJftw/velocity/master/velocity/domain/project/task"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain/project/task"
 )
 
 func main() {

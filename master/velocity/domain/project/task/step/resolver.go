@@ -1,7 +1,7 @@
 package step
 
 import (
-	"github.com/VJftw/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
 	yaml "gopkg.in/yaml.v2"
 )
 

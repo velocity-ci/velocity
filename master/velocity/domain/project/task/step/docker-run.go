@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/VJftw/velocity/master/velocity/domain"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 type DockerRun struct {

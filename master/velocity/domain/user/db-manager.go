@@ -3,9 +3,9 @@ package user
 import (
 	"log"
 
-	"github.com/VJftw/velocity/master/velocity/domain"
-	"github.com/VJftw/velocity/master/velocity/utils"
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/utils"
 )
 
 // DBManager - Manages User entities on the Database.

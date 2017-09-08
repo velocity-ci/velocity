@@ -18,7 +18,7 @@ services:
       - /var/run/docker.sock:/tmp/docker.sock:ro
 
   velocity_backend:
-    image: vjftw/velocity:master
+    image: velocity-ci/velocity:master
     command: foreground
     environment:
       SECRET_KEY_BASE: G9XBaZMFhtWDxAaowHCBrrDVq8xVB3sfro8xiGnFXfidldnvf

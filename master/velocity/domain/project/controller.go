@@ -4,10 +4,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/VJftw/velocity/master/velocity/middlewares"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
 	"github.com/urfave/negroni"
+	"github.com/velocity-ci/velocity/master/velocity/middlewares"
 )
 
 // Controller - Handles Projects.

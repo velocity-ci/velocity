@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/VJftw/velocity/master/velocity/domain/user"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
+	"github.com/velocity-ci/velocity/master/velocity/domain/user"
 )
 
 // Controller - Handles authentication

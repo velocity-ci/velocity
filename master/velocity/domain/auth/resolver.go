@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/VJftw/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 // FromRequest - Validates and Transforms raw request data into a User struct.

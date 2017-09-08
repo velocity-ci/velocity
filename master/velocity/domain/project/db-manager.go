@@ -3,8 +3,8 @@ package project
 import (
 	"log"
 
-	"github.com/VJftw/velocity/master/velocity/domain"
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 // DBManager - Manages Project entities on the Database.

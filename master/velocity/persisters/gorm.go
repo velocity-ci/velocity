@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/VJftw/velocity/master/velocity/utils"
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/master/velocity/utils"
 	// databases
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	// _ "github.com/jinzhu/gorm/dialects/postgres"

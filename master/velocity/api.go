@@ -7,14 +7,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/VJftw/velocity/master/velocity/domain"
-	"github.com/VJftw/velocity/master/velocity/domain/auth"
-	"github.com/VJftw/velocity/master/velocity/domain/project"
-	"github.com/VJftw/velocity/master/velocity/domain/user"
-	"github.com/VJftw/velocity/master/velocity/persisters"
-	"github.com/VJftw/velocity/master/velocity/routers"
 	"github.com/jinzhu/gorm"
 	"github.com/unrolled/render"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain/auth"
+	"github.com/velocity-ci/velocity/master/velocity/domain/project"
+	"github.com/velocity-ci/velocity/master/velocity/domain/user"
+	"github.com/velocity-ci/velocity/master/velocity/persisters"
+	"github.com/velocity-ci/velocity/master/velocity/routers"
 )
 
 // VelocityAPI - The Velocity API app

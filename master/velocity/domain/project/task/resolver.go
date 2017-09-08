@@ -1,8 +1,8 @@
 package task
 
 import (
-	"github.com/VJftw/velocity/master/velocity/domain"
-	"github.com/VJftw/velocity/master/velocity/domain/project/task/step"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain/project/task/step"
 	yaml "gopkg.in/yaml.v2"
 )
 

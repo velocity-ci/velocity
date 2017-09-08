@@ -1,4 +1,4 @@
-package: github.com/VJftw/velocity/master/velocity
+package: github.com/velocity-ci/velocity/master/velocity
 import:
 - package: github.com/jinzhu/gorm
   version: master

@@ -20,8 +20,8 @@ services:
     command: fresh
     restart: unless-stopped
     volumes:
-      - "./:/go/src/github.com/VJftw/velocity/master/"
-    working_dir: /go/src/github.com/VJftw/velocity/master/velocity
+      - "./:/go/src/github.com/velocity-ci/velocity/master/"
+    working_dir: /go/src/github.com/velocity-ci/velocity/master/velocity
     environment:
       TYPE: API
       JWT_SECRET: development
