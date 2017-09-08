@@ -1,0 +1,11 @@
+package: github.com/VJftw/velocity/cli/velocity
+import:
+- package: github.com/VJftw/velocity
+  subpackages:
+  - master/velocity/domain
+  - master/velocity/domain/project/task
+- package: github.com/docker/docker
+  version: ^17.5.0-ce-rc3
+  subpackages:
+  - client
+  - pkg/tlsconfig

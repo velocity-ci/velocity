@@ -1,8 +1,6 @@
-hash: 2cd1704b765367372746873f40c049a5df27e90a87ae0c0500c52daf58164503
-updated: 2017-09-08T15:54:59.922313395+01:00
+hash: 813a368627425b957a735e85fd8d5ecf55dd55c3f39f5c7b71613458e0ab3b3f
+updated: 2017-09-08T14:57:42.419203501+01:00
 imports:
-- name: github.com/dgrijalva/jwt-go
-  version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
 - name: github.com/docker/distribution
   version: 5db89f0ca68677abc5eefce8f2a0a772c98ba52d
   subpackages:
@@ -41,36 +39,14 @@ imports:
   version: 0dadbb0345b35ec7ef35e228dabb8de89a65bf52
 - name: github.com/docker/libtrust
   version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
-- name: github.com/go-sql-driver/mysql
-  version: 26471af196a17ee75a22e6481b5a5897fb16b081
-- name: github.com/gorilla/context
-  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
-- name: github.com/gorilla/mux
-  version: bcd8bc72b08df0f70df986b97f95590779502d31
-- name: github.com/gorilla/websocket
-  version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
-- name: github.com/jinzhu/gorm
-  version: b1885a643b4977c9089d77eb07c0fd96591f94b8
-  subpackages:
-  - dialects/mysql
-- name: github.com/jinzhu/inflection
-  version: 1c35d901db3da928c72a72d8458480cc9ade058f
 - name: github.com/Microsoft/go-winio
   version: 78439966b38d69bf38227fbf57ac8a6fee70f69a
 - name: github.com/opencontainers/go-digest
   version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
 - name: github.com/pkg/errors
   version: c605e284fe17294bda444b34710735b29d1a9d90
-- name: github.com/rs/cors
-  version: 8dd4211afb5d08dbb39a533b9bb9e4b486351df6
-- name: github.com/satori/go.uuid
-  version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/Sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
-- name: github.com/unrolled/render
-  version: a0ec58421ddf111bd7efd3b7087399ca7d5da2f1
-- name: github.com/urfave/negroni
-  version: fde5e16d32adc7ad637e9cd9ad21d4ebc6192535
 - name: golang.org/x/crypto
   version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:

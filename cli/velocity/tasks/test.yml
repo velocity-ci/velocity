@@ -1,20 +1,47 @@
-name: Deploy
-description: Deploys application
-
-parameters:
-  - name: e
+description: "Deploys application"
+name: deploy
+parameters: 
+  - name: environment
     default: testing
-
-steps:
-  - type: run
-    description: Initialise Terraform
+    other_options:
+      - production
+  - name: AWS_ACCESS_KEY_ID
+    secure: true
+    
+steps: 
+  - 
+    command: 
+      - terraform
+      - "--version"
+    description: "Terraform Version"
+    environment: 
+      TFVAR_ENVIRONMENT: "${environment}"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
     image: hashicorp/terraform
-    command: terraform init
-    environment:
-      TFVAR_ENVIRONMENT: ${e}
-  - type: run
-    description: Plan Terraform
+    type: run
+  - 
+    command: 
+      - terraform
+      - "--help"
+    description: "Terraform Help"
+    environment: 
+      TFVAR_ENVIRONMENT: "${environment}"
     image: hashicorp/terraform
-    command: terraform plan
-    environment:
-      TFVAR_ENVIRONMENT: ${e}
+    type: run
+  - 
+    command: 
+      - ls
+      - "-al"
+    description: "List directory"
+    image: library/alpine
+    type: run
+    working_dir: ./tasks
+  - 
+    command: 
+      - env
+    description: "Show environment"
+    environment: 
+      WOO: "${environment}"
+      ${environment}: AAAA
+    image: library/alpine
+    type: run

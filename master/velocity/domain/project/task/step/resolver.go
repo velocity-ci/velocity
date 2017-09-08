@@ -21,7 +21,7 @@ func ResolveStepFromYAML(y string) domain.Step {
 }
 
 func resolveRunStep(y string) domain.Step {
-	step := DockerRun{}
+	step := &DockerRun{}
 	err := yaml.Unmarshal([]byte(y), &step)
 	if err != nil {
 		panic(err)
