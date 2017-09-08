@@ -27,7 +27,7 @@ build: install
 	golang \
 	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity"
 
-	docker build -t velocity-ci/velocity:master-${GIT_VERSION} .
+	docker build -t velocity-ci/velocity:master-${GIT_VERSION} -f app.Dockerfile .
 	docker tag velocity-ci/velocity:master-${GIT_VERSION} velocity-ci/velocity:master-latest
 
 build-dev:
