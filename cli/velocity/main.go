@@ -82,10 +82,10 @@ func run(taskName string) {
 	fmt.Printf("Running task: %s (from: %s)\n", task.Name, taskName)
 
 	// Resolve parameters
-	for _, p := range task.Parameters {
-		// get real value for parameter (ask or from env)
+	// for _, p := range task.Parameters {
+	// get real value for parameter (ask or from env)
 
-	}
+	// }
 	task.UpdateParams()
 
 	// Run each step unless they fail (optional)

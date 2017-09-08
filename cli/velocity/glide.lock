@@ -1,26 +1,75 @@
 hash: f4b17f5aa98eae2c917df450992b73579d0204093bded6826e3c906f02d92a4c
-updated: 2017-09-09T00:24:32.449392117+01:00
+updated: 2017-09-09T00:31:23.549061177+01:00
 imports:
+- name: github.com/docker/distribution
+  version: 5db89f0ca68677abc5eefce8f2a0a772c98ba52d
+  subpackages:
+  - digestset
+  - reference
 - name: github.com/docker/docker
   version: 90d35abf7b3535c1c319c872900fbd76374e521c
   subpackages:
+  - api
+  - api/types
+  - api/types/blkiodev
+  - api/types/container
+  - api/types/events
+  - api/types/filters
+  - api/types/image
+  - api/types/mount
+  - api/types/network
+  - api/types/registry
+  - api/types/strslice
+  - api/types/swarm
+  - api/types/time
+  - api/types/versions
+  - api/types/volume
   - client
+  - pkg/ioutils
+  - pkg/longpath
+  - pkg/system
   - pkg/tlsconfig
+- name: github.com/docker/go-connections
+  version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
+  subpackages:
+  - nat
+  - sockets
+  - tlsconfig
+- name: github.com/docker/go-units
+  version: 0dadbb0345b35ec7ef35e228dabb8de89a65bf52
+- name: github.com/docker/libtrust
+  version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
+- name: github.com/Microsoft/go-winio
+  version: 78439966b38d69bf38227fbf57ac8a6fee70f69a
+- name: github.com/opencontainers/go-digest
+  version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
+- name: github.com/pkg/errors
+  version: c605e284fe17294bda444b34710735b29d1a9d90
+- name: github.com/Sirupsen/logrus
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/velocity-ci/velocity
-  version: 91a5b1815df93272b97eb8fb634b09b39a9dbd16
+  version: 1dca46b8f0a7a46d79bd1c2adf3cadc3dcc22421
   subpackages:
   - master/velocity/domain
   - master/velocity/domain/project/task
-- name: github.com/VJftw/velocity
-  version: c42b010deb3f2ef9cb174a3bff6975f15ac48b7b
-  subpackages:
-  - master/velocity/domain
   - master/velocity/domain/project/task/step
 - name: golang.org/x/crypto
   version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:
   - bcrypt
   - blowfish
+  - ssh/terminal
+- name: golang.org/x/net
+  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
+  subpackages:
+  - context
+  - context/ctxhttp
+  - proxy
+- name: golang.org/x/sys
+  version: 5513e650ab47a692d3a036d49be8fa52ddd09b65
+  subpackages:
+  - unix
+  - windows
 - name: gopkg.in/yaml.v2
   version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
 testImports: []
