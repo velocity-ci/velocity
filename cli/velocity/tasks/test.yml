@@ -1,0 +1,20 @@
+name: Deploy
+description: Deploys application
+
+parameters:
+  - name: e
+    default: testing
+
+steps:
+  - type: run
+    description: Initialise Terraform
+    image: hashicorp/terraform
+    command: terraform init
+    environment:
+      TFVAR_ENVIRONMENT: ${e}
+  - type: run
+    description: Plan Terraform
+    image: hashicorp/terraform
+    command: terraform plan
+    environment:
+      TFVAR_ENVIRONMENT: ${e}
