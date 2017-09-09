@@ -16,12 +16,16 @@ import (
 )
 
 type DockerRun struct {
-	BaseStep
+	domain.BaseStep
 	Description string            `json:"description" yaml:"description"`
 	Image       string            `json:"image" yaml:"image"`
 	Command     []string          `json:"command" yaml:"command"`
 	Environment map[string]string `json:"environment" yaml:"environment"`
 	WorkingDir  string            `json:"workingDir" yaml:"working_dir"`
+}
+
+func (dB *DockerRun) SetEmitter(e func(string)) {
+	dB.Emit = e
 }
 
 func (dB DockerRun) GetType() string {
@@ -36,7 +40,7 @@ func (dB DockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dB.Image, dB.Command)
 }
 
-func (dB DockerRun) Execute() error {
+func (dB *DockerRun) Execute() error {
 	cli, err := client.NewEnvClient()
 	ctx := context.Background()
 	if err != nil {
@@ -51,7 +55,7 @@ func (dB DockerRun) Execute() error {
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
+		dB.Emit(scanner.Text())
 	}
 
 	// Create and run container
@@ -88,7 +92,13 @@ func (dB DockerRun) Execute() error {
 	scanner = bufio.NewScanner(out)
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
-		fmt.Println(string(allBytes[8:]))
+		o := string(allBytes[8:])
+		for _, p := range dB.Parameters {
+			if p.Secret {
+				o = strings.Replace(o, p.Value, "***", -1)
+			}
+		}
+		dB.Emit(o)
 	}
 
 	if _, err = cli.ContainerWait(ctx, resp.ID); err != nil {
@@ -133,7 +143,8 @@ func (dR DockerRun) Validate(params []domain.Parameter) error {
 }
 
 func (dR *DockerRun) SetParams(params []domain.Parameter) error {
-	for _, param := range params {
+	dR.Parameters = params
+	for _, param := range dR.Parameters {
 		dR.Image = strings.Replace(dR.Image, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
 		dR.WorkingDir = strings.Replace(dR.WorkingDir, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
 

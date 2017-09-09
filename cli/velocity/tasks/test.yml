@@ -6,7 +6,7 @@ parameters:
     other_options:
       - production
   - name: AWS_ACCESS_KEY_ID
-    secure: true
+    secret: true
     
 steps: 
   - 

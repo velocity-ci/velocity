@@ -1,9 +1,9 @@
 package: github.com/velocity-ci/velocity/cli/velocity
-import:
-- package: github.com/velocity-ci/velocity
-  subpackages:
-  - master/velocity/domain
-  - master/velocity/domain/project/task
+# import:
+# - package: github.com/velocity-ci/velocity
+#   subpackages:
+#   - master/velocity/domain
+#   - master/velocity/domain/project/task
 - package: github.com/docker/docker
   version: ^17.5.0-ce-rc3
   subpackages:

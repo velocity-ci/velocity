@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -82,11 +83,21 @@ func run(taskName string) {
 	fmt.Printf("Running task: %s (from: %s)\n", task.Name, taskName)
 
 	// Resolve parameters
-	// for _, p := range task.Parameters {
-	// get real value for parameter (ask or from env)
-
-	// }
+	reader := bufio.NewReader(os.Stdin)
+	resolvedParams := []domain.Parameter{}
+	for _, p := range task.Parameters {
+		// get real value for parameter (ask or from env)
+		inputText := ""
+		for len(strings.TrimSpace(inputText)) < 1 {
+			fmt.Printf("Enter a value for %s (default: %s): ", p.Name, p.Value)
+			inputText, _ = reader.ReadString('\n')
+		}
+		p.Value = strings.TrimSpace(inputText)
+		resolvedParams = append(resolvedParams, p)
+	}
+	task.Parameters = resolvedParams
 	task.UpdateParams()
+	task.SetEmitter(func(s string) { fmt.Printf("    %s\n", s) })
 
 	// Run each step unless they fail (optional)
 	for _, step := range task.Steps {

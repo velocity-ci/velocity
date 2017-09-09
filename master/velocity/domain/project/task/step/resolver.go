@@ -6,7 +6,7 @@ import (
 )
 
 func ResolveStepFromYAML(y string) domain.Step {
-	bStep := BaseStep{}
+	bStep := domain.BaseStep{}
 	err := yaml.Unmarshal([]byte(y), &bStep)
 	if err != nil {
 		panic(err)

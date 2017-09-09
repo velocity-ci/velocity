@@ -18,18 +18,8 @@ func (t *Task) UpdateParams() {
 	}
 }
 
-type Parameter struct {
-	Name         string   `json:"name" yaml:"name"`
-	Value        string   `json:"default" yaml:"default"`
-	OtherOptions []string `json:"otherOptions" yaml:"other_options"`
-	Secret       bool     `json:"secret" yaml:"secret"`
-}
-
-type Step interface {
-	Execute() error
-	GetType() string
-	GetDescription() string
-	GetDetails() string
-	Validate([]Parameter) error
-	SetParams([]Parameter) error
+func (t *Task) SetEmitter(e func(string)) {
+	for _, s := range t.Steps {
+		s.SetEmitter(e)
+	}
 }
