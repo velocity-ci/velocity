@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
@@ -46,20 +47,16 @@ func main() {
 }
 
 func getTasksFromDirectory(dir string) []domain.Task {
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		panic(err)
-	}
-
 	tasks := []domain.Task{}
 
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".yml") || strings.HasSuffix(file.Name(), ".yaml") {
-			taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s%s", dir, file.Name()))
+	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
+			taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s%s", dir, f.Name()))
 			task := task.ResolveTaskFromYAML(string(taskYml))
 			tasks = append(tasks, task)
 		}
-	}
+		return nil
+	})
 
 	return tasks
 }
