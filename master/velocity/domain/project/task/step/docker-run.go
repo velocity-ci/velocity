@@ -72,7 +72,7 @@ func (dB *DockerRun) Execute() error {
 		Image: dB.Image,
 		Cmd:   dB.Command,
 		Volumes: map[string]struct{}{
-			"/velocity_ci": struct{}{},
+			dB.MountPoint: struct{}{},
 		},
 		WorkingDir: fmt.Sprintf("%s/%s", dB.MountPoint, dB.WorkingDir),
 		Env:        env,
