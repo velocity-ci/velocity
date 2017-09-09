@@ -21,15 +21,6 @@ steps:
     type: run
   - 
     command: 
-      - terraform
-      - "--help"
-    description: "Terraform Help"
-    environment: 
-      TFVAR_ENVIRONMENT: "${environment}"
-    image: hashicorp/terraform
-    type: run
-  - 
-    command: 
       - ls
       - "-al"
     description: "List directory"
@@ -45,3 +36,10 @@ steps:
       ${environment}: AAAA
     image: library/alpine
     type: run
+  - 
+    command: 
+      - pwd
+    description: "Show pwd"
+    image: library/alpine
+    type: run
+    mount_point: /app

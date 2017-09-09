@@ -22,6 +22,7 @@ type DockerRun struct {
 	Command     []string          `json:"command" yaml:"command"`
 	Environment map[string]string `json:"environment" yaml:"environment"`
 	WorkingDir  string            `json:"workingDir" yaml:"working_dir"`
+	MountPoint  string            `json:"mountPoint" yaml:"mount_point"`
 }
 
 func (dB *DockerRun) SetEmitter(e func(string)) {
@@ -59,6 +60,9 @@ func (dB *DockerRun) Execute() error {
 	}
 
 	// Create and run container
+	if dB.MountPoint == "" {
+		dB.MountPoint = "/velocity_ci"
+	}
 	env := []string{}
 	for k, v := range dB.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -70,11 +74,11 @@ func (dB *DockerRun) Execute() error {
 		Volumes: map[string]struct{}{
 			"/velocity_ci": struct{}{},
 		},
-		WorkingDir: fmt.Sprintf("/velocity_ci/%s", dB.WorkingDir),
+		WorkingDir: fmt.Sprintf("%s/%s", dB.MountPoint, dB.WorkingDir),
 		Env:        env,
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:/velocity_ci", cwd),
+			fmt.Sprintf("%s:/%s", cwd, dB.MountPoint),
 		},
 	}, nil, "")
 	if err != nil {
