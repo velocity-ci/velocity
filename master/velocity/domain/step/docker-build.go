@@ -8,8 +8,8 @@ import (
 
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/command/image/build"
+	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/term"
@@ -36,17 +36,14 @@ func (dB DockerBuild) GetDescription() string {
 }
 
 func (dB DockerBuild) GetDetails() string {
-	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s")
+	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }
 
 func (dB *DockerBuild) Execute() error {
-	cli, err := client.NewEnvClient()
 	ctx := context.Background()
-	if err != nil {
-		panic(err)
-	}
 
-	dB.Context = fmt.Sprintf("%s/%s", os.Getwd(), dB.Context)
+	cwd, _ := os.Getwd()
+	dB.Context = fmt.Sprintf("%s/%s", cwd, dB.Context)
 
 	excludes, err := build.ReadDockerignore(dB.Context)
 	if err != nil {
@@ -56,14 +53,16 @@ func (dB *DockerBuild) Execute() error {
 		ExcludePatterns: excludes,
 	})
 
-	in, out, err := term.StdStreams()
-	dockerCli := command.NewDockerCli(in, out, err)
+	stdIn, stdOut, stdErr := term.StdStreams()
+	dockerCli := command.NewDockerCli(stdIn, stdOut, stdErr)
+	dockerCli.Initialize(cliflags.NewClientOptions())
 
 	res, err := dockerCli.Client().ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
 		Dockerfile: dB.Dockerfile,
 		Tags:       dB.Tags,
 	})
 
+	imageID := ""
 	aux := func(auxJSON *json.RawMessage) {
 		var result types.BuildResult
 		if err := json.Unmarshal(*auxJSON, &result); err != nil {
@@ -73,7 +72,7 @@ func (dB *DockerBuild) Execute() error {
 		}
 	}
 
-	jsonmessage.DisplayJSONMessagesStream(res.Body, dockerCli.Out(), dockerCli.Out().FD(), dockerCli.Out().IsTerminal(), aux)
+	jsonmessage.DisplayJSONMessagesStream(res.Body, dockerCli.Out(), dockerCli.Out().FD(), false, aux)
 	return nil
 }
 
