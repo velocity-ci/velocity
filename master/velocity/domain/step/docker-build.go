@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
+	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/command/image/build"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/cli/command"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -55,13 +56,13 @@ func (dB *DockerBuild) Execute() error {
 		ExcludePatterns: excludes,
 	})
 
-	res, err := cli.ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
+	in, out, err := term.StdStreams()
+	dockerCli := command.NewDockerCli(in, out, err)
+
+	res, err := dockerCli.Client().ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
 		Dockerfile: dB.Dockerfile,
 		Tags:       dB.Tags,
 	})
-
-	in, out, err := term.StdStreams()
-	dockerCli := command.NewDockerCli(in, out, err)
 
 	aux := func(auxJSON *json.RawMessage) {
 		var result types.BuildResult
