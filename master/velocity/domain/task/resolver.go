@@ -2,7 +2,7 @@ package task
 
 import (
 	"github.com/velocity-ci/velocity/master/velocity/domain"
-	"github.com/velocity-ci/velocity/master/velocity/domain/project/task/step"
+	"github.com/velocity-ci/velocity/master/velocity/domain/step"
 	yaml "gopkg.in/yaml.v2"
 )
 

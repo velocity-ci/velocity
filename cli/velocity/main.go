@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
-	"github.com/velocity-ci/velocity/master/velocity/domain/project/task"
+	"github.com/velocity-ci/velocity/master/velocity/domain/task"
 )
 
 func main() {

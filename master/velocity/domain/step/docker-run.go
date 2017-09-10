@@ -17,7 +17,6 @@ import (
 
 type DockerRun struct {
 	domain.BaseStep
-	Description string            `json:"description" yaml:"description"`
 	Image       string            `json:"image" yaml:"image"`
 	Command     []string          `json:"command" yaml:"command"`
 	Environment map[string]string `json:"environment" yaml:"environment"`

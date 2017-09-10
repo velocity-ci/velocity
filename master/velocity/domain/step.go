@@ -11,7 +11,8 @@ type Step interface {
 }
 
 type BaseStep struct {
-	Type       string `json:"type" yaml:"type"`
-	Parameters []Parameter
-	Emit       func(string)
+	Type        string `json:"type" yaml:"type"`
+	Description string `json:"description" yaml:"description"`
+	Parameters  []Parameter
+	Emit        func(string)
 }
