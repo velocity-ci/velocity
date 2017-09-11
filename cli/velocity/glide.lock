@@ -1,0 +1,159 @@
+hash: ee18eab3c32da68b6f49c9a8447d82565278e394c5459310e529adc808275c99
+updated: 2017-09-10T23:37:53.820653624+01:00
+imports:
+- name: github.com/Azure/go-ansiterm
+  version: 19f72df4d05d31cbe1c56bfc8045c96babff6c7e
+  subpackages:
+  - winterm
+- name: github.com/docker/cli
+  version: aae519d0f605dc29e3880dc975ec6783001b7c8a
+  subpackages:
+  - cli
+  - cli/command
+  - cli/command/image/build
+  - cli/config
+  - cli/config/configfile
+  - cli/config/credentials
+  - cli/flags
+  - opts
+- name: github.com/docker/distribution
+  version: 5db89f0ca68677abc5eefce8f2a0a772c98ba52d
+  subpackages:
+  - digestset
+  - reference
+  - registry/api/errcode
+  - registry/api/v2
+  - registry/client
+  - registry/client/auth
+  - registry/client/auth/challenge
+  - registry/client/transport
+  - registry/storage/cache
+  - registry/storage/cache/memory
+- name: github.com/docker/docker
+  version: 184cea5ff710abde25547749e5608b24a255ba09
+  subpackages:
+  - api
+  - api/types
+  - api/types/blkiodev
+  - api/types/container
+  - api/types/events
+  - api/types/filters
+  - api/types/image
+  - api/types/mount
+  - api/types/network
+  - api/types/registry
+  - api/types/strslice
+  - api/types/swarm
+  - api/types/swarm/runtime
+  - api/types/time
+  - api/types/versions
+  - api/types/volume
+  - builder/dockerignore
+  - builder/remotecontext/git
+  - client
+  - pkg/archive
+  - pkg/fileutils
+  - pkg/homedir
+  - pkg/idtools
+  - pkg/ioutils
+  - pkg/jsonlog
+  - pkg/jsonmessage
+  - pkg/longpath
+  - pkg/mount
+  - pkg/pools
+  - pkg/progress
+  - pkg/promise
+  - pkg/streamformatter
+  - pkg/stringid
+  - pkg/symlink
+  - pkg/system
+  - pkg/tarsum
+  - pkg/term
+  - pkg/term/windows
+  - pkg/tlsconfig
+  - pkg/urlutil
+  - registry
+  - registry/resumable
+- name: github.com/docker/docker-credential-helpers
+  version: d68f9aeca33f5fd3f08eeae5e9d175edf4e731d1
+  subpackages:
+  - client
+  - credentials
+- name: github.com/docker/go-connections
+  version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
+  subpackages:
+  - nat
+  - sockets
+  - tlsconfig
+- name: github.com/docker/go-units
+  version: 0dadbb0345b35ec7ef35e228dabb8de89a65bf52
+- name: github.com/docker/libtrust
+  version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
+- name: github.com/docker/notary
+  version: 8a1de3cfc3f1408e54d6364fc949214a4883a9f3
+  subpackages:
+  - passphrase
+- name: github.com/gogo/protobuf
+  version: 2adc21fd136931e0388e278825291678e1d98309
+  subpackages:
+  - proto
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/mux
+  version: bcd8bc72b08df0f70df986b97f95590779502d31
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/Microsoft/go-winio
+  version: 78439966b38d69bf38227fbf57ac8a6fee70f69a
+- name: github.com/Nvveen/Gotty
+  version: cd527374f1e5bff4938207604a14f2e38a9cf512
+- name: github.com/opencontainers/go-digest
+  version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
+- name: github.com/opencontainers/image-spec
+  version: bd853405272a3c074a79dfe5cac06c752d4822cb
+  subpackages:
+  - specs-go
+  - specs-go/v1
+- name: github.com/opencontainers/runc
+  version: 13fa5d2953d2fabbf14c2f6fd05eac70d71c45c7
+  subpackages:
+  - libcontainer/system
+  - libcontainer/user
+- name: github.com/pkg/errors
+  version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
+- name: github.com/sirupsen/logrus
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
+- name: github.com/spf13/cobra
+  version: b78744579491c1ceeaaa3b40205e56b0591b93a3
+- name: github.com/spf13/pflag
+  version: 7aff26db30c1be810f9de5038ec5ef96ac41fd7c
+- name: github.com/velocity-ci/velocity
+  version: 834ba4df08937b3bb5ecf0c331eee067691a0b40
+  subpackages:
+  - master/velocity/domain
+  - master/velocity/domain/step
+  - master/velocity/domain/task
+- name: golang.org/x/crypto
+  version: 9ba3862cf6a5452ae579de98f9364dd2e544844c
+  subpackages:
+  - bcrypt
+  - blowfish
+  - ssh/terminal
+- name: golang.org/x/net
+  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
+  subpackages:
+  - context
+  - context/ctxhttp
+  - proxy
+- name: golang.org/x/sys
+  version: a5054c7c1385fd50d9394475365355a87a7873ec
+  subpackages:
+  - unix
+  - windows
+- name: golang.org/x/time
+  version: 8be79e1e0910c292df4e79c241bb7e8f7e725959
+  subpackages:
+  - rate
+- name: gopkg.in/yaml.v2
+  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
+testImports: []
