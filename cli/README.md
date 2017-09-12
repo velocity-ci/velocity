@@ -1,5 +1,12 @@
 ## Velocity CLI
 
+### Installation
+
+#### Via Docker
+
+
+#### Via Binary
+
 ### Usage
 
 ```

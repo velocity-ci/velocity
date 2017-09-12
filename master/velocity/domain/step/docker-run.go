@@ -52,6 +52,9 @@ func (dR *DockerRun) Execute() error {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	cwd, _ := os.Getwd()
+	if os.Getenv("SIB_CWD") != "" {
+		cwd = os.Getenv("SIB_CWD")
+	}
 
 	config := &container.Config{
 		Image: dR.Image,
