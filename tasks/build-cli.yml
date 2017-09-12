@@ -1,0 +1,37 @@
+description: "Builds Master"
+name: build-cli
+steps: 
+  - type: build
+    description: Build development image
+    dockerfile: dev.Dockerfile
+    context: ./cli
+    tags:
+      - veloci/cli-dev:latest
+  
+  - type: run
+    description: Install dependencies
+    image: veloci/cli-dev:latest
+    mount_point: /go/src/github.com/velocity-ci/velocity/
+    working_dir: cli/velocity
+    command: ["glide", "install", "--strip-vendor"]
+
+  - type: run
+    description: Remove extra dependencies
+    image: veloci/cli-dev:latest
+    mount_point: /go/src/github.com/velocity-ci/velocity/
+    working_dir: cli/velocity
+    command: ["rm", "-r", "vendor/github.com/velocity-ci"]
+
+  - type: run
+    description: Build binary
+    image: golang
+    mount_point: /go/src/github.com/velocity-ci/velocity/
+    working_dir: cli/velocity
+    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity"]
+
+  - type: build
+    description: Build release image
+    dockerfile: app.Dockerfile
+    context: ./cli
+    tags:
+      - veloci/cli:latest
