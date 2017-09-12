@@ -30,4 +30,4 @@ steps:
     dockerfile: app.Dockerfile
     context: ./master
     tags:
-      - veloci/master:latest
+      - veloci/master:${GIT_DESCRIBE}

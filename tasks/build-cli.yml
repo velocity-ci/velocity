@@ -37,4 +37,4 @@ steps:
     dockerfile: app.Dockerfile
     context: ./cli
     tags:
-      - veloci/cli:latest
+      - veloci/cli:${GIT_DESCRIBE}

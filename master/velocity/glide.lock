@@ -1,5 +1,5 @@
-hash: 8dd4296b3bf885a8d1eebaa7433c105c4c68ac159d78b920413d8c112007ae92
-updated: 2017-09-11T14:26:03.995149301+01:00
+hash: 1bd50657abadc2d9dc7c8b3483d103dd00ece7a313f94e52f30f92582ac318b6
+updated: 2017-09-12T13:57:07.324845083+01:00
 imports:
 - name: github.com/Azure/go-ansiterm
   version: 19f72df4d05d31cbe1c56bfc8045c96babff6c7e
@@ -168,6 +168,8 @@ imports:
   version: 8be79e1e0910c292df4e79c241bb7e8f7e725959
   subpackages:
   - rate
+- name: gopkg.in/src-d/go-git.v3
+  version: f9879dd043f84936a1f8acb8a53b74332a7ae135
 - name: gopkg.in/yaml.v2
   version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
 testImports: []

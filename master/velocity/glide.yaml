@@ -22,3 +22,5 @@ import:
   - pkg/tlsconfig
   - builder/remotecontext/git
 - package: github.com/docker/cli
+- package: gopkg.in/src-d/go-git.v3
+  version: ^4.0.0-rc9

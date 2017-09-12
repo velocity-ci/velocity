@@ -2,6 +2,7 @@ package step
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
@@ -46,5 +47,17 @@ func (dB *DockerBuild) Validate(params []domain.Parameter) error {
 }
 
 func (dB *DockerBuild) SetParams(params []domain.Parameter) error {
+	dB.Parameters = params
+	for _, param := range dB.Parameters {
+		dB.Context = strings.Replace(dB.Context, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
+		dB.Dockerfile = strings.Replace(dB.Dockerfile, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
+
+		tags := []string{}
+
+		for _, t := range dB.Tags {
+			tags = append(tags, strings.Replace(t, fmt.Sprintf("${%s}", param.Name), param.Value, -1))
+		}
+		dB.Tags = tags
+	}
 	return nil
 }
