@@ -1,4 +1,4 @@
-module Views.Page exposing (frame, ActivePage(..), bodyId)
+module Views.Page exposing (frame, ActivePage(..))
 
 {-| The frame around a typical page - that is, the header and footer.
 -}
@@ -47,7 +47,7 @@ frame isLoading user page content =
 viewHeader : ActivePage -> Maybe User -> Bool -> Html msg
 viewHeader page user isLoading =
     nav [ class "navbar navbar-expand-md navbar-dark fixed-top bg-dark" ]
-        [ a [ class "navbar-brand", href "#" ]
+        [ a [ class "navbar-brand", Route.href Route.Home ]
             [ text "VeloCIty" ]
         , div [ class "collapse navbar-collapse", id "navbarCollapse" ]
             [ ul [ class "navbar-nav ml-auto" ] <|
@@ -61,22 +61,6 @@ viewContent : Html msg -> Html msg
 viewContent content =
     div [ class "container", style [ ( "margin-top", "4.5rem" ) ] ]
         [ content ]
-
-
-
---
---viewHeader : ActivePage -> Maybe User -> Bool -> Html msg
---viewHeader page user isLoading =
---    nav [ class "navbar navbar-expand-md navbar-dark fixed-top bg-dark" ]
---        [ div [ class "container" ]
---            [ a [ class "navbar-brand", Route.href Route.Home ]
---                [ text "velocity" ]
---            , ul [ class "nav navbar-nav pull-xs-right" ] <|
---                lazy2 Util.viewIf isLoading spinner
---                    :: (navbarLink (page == Home) Route.Home [ text "Home" ])
---                    :: viewSignIn page user
---            ]
---        ]
 
 
 viewSignIn : ActivePage -> Maybe User -> List (Html msg)
@@ -99,14 +83,3 @@ navbarLink : Bool -> Route -> List (Html msg) -> Html msg
 navbarLink isActive route linkContent =
     li [ classList [ ( "nav-item", True ), ( "active", isActive ) ] ]
         [ a [ class "nav-link", Route.href route ] linkContent ]
-
-
-{-| This id comes from index.html.
-
-The Feed uses it to scroll to the top of the page (by ID) when switching pages
-in the pagination sense.
-
--}
-bodyId : String
-bodyId =
-    "page-body"

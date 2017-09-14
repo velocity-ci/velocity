@@ -8,6 +8,7 @@ import Request.Project
 import Views.Page as Page
 import Http
 import Html exposing (..)
+import Html.Attributes exposing (..)
 import Util exposing ((=>))
 
 
@@ -41,7 +42,33 @@ init session =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div [] [ text "Projects page!" ]
+    div [ class "row", attribute "style" "margin-top:3em;" ]
+        [ div [ class "col-12" ]
+            [ div [ class "card" ]
+                [ h4 [ class "card-header" ]
+                    [ text ("Projects (" ++ (model.projects |> List.length |> toString) ++ ")") ]
+                , ul [ class "list-group" ] (List.map viewProject model.projects)
+                ]
+            ]
+        ]
+
+
+viewProject : Project -> Html Msg
+viewProject project =
+    li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
+        [ div [ class "d-flex w-100 justify-content-between" ]
+            [ h5 [ class "mb-1" ]
+                [ a [ href "#" ]
+                    [ text project.name ]
+                ]
+            , small []
+                [ text project.updatedAt ]
+            ]
+        , p [ class "mb-1" ]
+            [ text "Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit." ]
+        , small []
+            [ text "Donec id elit non mi porta." ]
+        ]
 
 
 
