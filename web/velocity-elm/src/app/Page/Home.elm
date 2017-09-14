@@ -117,6 +117,4 @@ type Msg
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
-    case msg of
-        _ ->
-            model => Cmd.none
+    model => Cmd.none

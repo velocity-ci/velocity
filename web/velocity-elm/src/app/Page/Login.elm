@@ -16,6 +16,7 @@ import Http
 import Request.User exposing (storeSession)
 import Util exposing ((=>))
 import Data.User as User exposing (User)
+import Page.Helpers exposing (ifBelowLength, validClasses)
 
 
 -- MODEL --
@@ -76,70 +77,41 @@ view session model =
         ]
 
 
-isInvalid : List Error -> FormField -> Bool
-isInvalid errors formField =
-    formField.dirty && List.length (getFieldErrors formField errors) > 0
-
-
-isValid : List Error -> FormField -> Bool
-isValid errors formField =
-    formField.dirty && List.length (getFieldErrors formField errors) == 0
-
-
-validClasses : List Error -> FormField -> List ( String, Bool )
-validClasses errors field =
-    [ ( "is-invalid", isInvalid errors field )
-    , ( "is-valid", isValid errors field )
-    ]
-
-
 viewForm : Model -> Html Msg
 viewForm model =
-    Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
-        [ div [ class "form-group" ]
-            [ label [ for "username" ] [ text "Username" ]
-            , input
-                [ class "form-control"
-                , classList (validClasses model.errors model.username)
-                , id "username"
+    let
+        inputClassList =
+            validClasses <| model.errors
+    in
+        Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
+            [ Form.input
+                "username"
+                "Username"
+                [ classList <| inputClassList model.username
                 , placeholder "Username"
                 , attribute "required" ""
-                , type_ "text"
                 , onInput SetUsername
                 , value model.username.value
                 ]
                 []
-            ]
-        , div [ class "form-group" ]
-            [ label [ for "password" ] [ text "Password" ]
-            , input
-                [ class "form-control"
-                , classList (validClasses model.errors model.password)
-                , id "password"
+            , Form.password
+                "password"
+                "Password"
+                [ classList <| inputClassList model.password
                 , placeholder "Password"
                 , attribute "required" ""
-                , type_ "password"
                 , onInput SetPassword
                 , value model.password.value
                 ]
                 []
+            , button
+                [ class "btn btn-primary"
+                , type_ "submit"
+                , disabled (not <| List.isEmpty model.errors)
+                ]
+                [ text "Submit" ]
+            , Util.viewIf model.submitting Form.viewSpinner
             ]
-        , button
-            [ class "btn btn-primary"
-            , type_ "submit"
-            , disabled (not <| List.isEmpty model.errors)
-            ]
-            [ text "Submit" ]
-        , Util.viewIf model.submitting viewFormLoadingSpinner
-        ]
-
-
-viewFormLoadingSpinner : Html Msg
-viewFormLoadingSpinner =
-    span []
-        [ i [ class "fa fa-circle-o-notch fa-spin fa-fw" ] []
-        , span [ class "sr-only" ] [ text "Loading..." ]
-        ]
 
 
 
@@ -160,25 +132,7 @@ type ExternalMsg
 
 updateInput : Field -> String -> FormField
 updateInput field value =
-    { value = value, field = field, dirty = True }
-
-
-inputValue : FormField -> String
-inputValue input =
-    input.value
-
-
-getFieldErrors : FormField -> List Error -> List Error
-getFieldErrors formField errors =
-    let
-        isFieldError error =
-            let
-                ( field, _ ) =
-                    error
-            in
-                formField.field == field
-    in
-        List.filter isFieldError errors
+    FormField value True field
 
 
 update : Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
@@ -189,9 +143,14 @@ update msg model =
                 [] ->
                     let
                         submitValues =
-                            { username = inputValue model.username, password = inputValue model.password }
+                            { username = model.username.value
+                            , password = model.password.value
+                            }
                     in
-                        { model | errors = [], submitting = True }
+                        { model
+                            | errors = []
+                            , submitting = True
+                        }
                             => Http.send LoginCompleted (Request.User.login submitValues)
                             => NoOp
 
@@ -251,18 +210,13 @@ type alias Error =
     ( Field, String )
 
 
-ifBelowLength : Int -> error -> Validator error String
-ifBelowLength length =
-    ifInvalid (\s -> String.length s < length)
-
-
 validate : Model -> List Error
 validate =
     Validate.all
         [ (.username >> .value) >> ifBlank (Username => "username can't be blank.")
         , (.password >> .value) >> ifBlank (Password => "password can't be blank.")
-        , (.username >> .value) >> (ifBelowLength 3) (Username => "username must be over 3 characters.")
-        , (.password >> .value) >> (ifBelowLength 8) (Password => "password must be over 8 characters.")
+        , (.username >> .value) >> (ifBelowLength 3) (Username => "username must be over 2 characters.")
+        , (.password >> .value) >> (ifBelowLength 8) (Password => "password must be over 7 characters.")
         ]
 
 

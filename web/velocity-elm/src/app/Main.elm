@@ -252,6 +252,9 @@ updatePage page msg model =
             ( ProjectsLoaded (Err error), _ ) ->
                 { model | pageState = Loaded (Errored error) } => Cmd.none
 
+            ( ProjectsMsg subMsg, Projects subModel ) ->
+                toPage Projects ProjectsMsg (Projects.update session) subMsg subModel
+
             ( _, NotFound ) ->
                 -- Disregard incoming messages when we're on the
                 -- NotFound page.
