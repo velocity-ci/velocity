@@ -14,6 +14,7 @@ import Util exposing ((=>))
 import Views.Form as Form
 import Validate exposing (..)
 import Page.Helpers exposing (ifBelowLength, validClasses)
+import Time.DateTime as DateTime
 
 
 -- MODEL --
@@ -170,12 +171,17 @@ viewProjectList projects =
             projects
                 |> List.length
                 |> toString
+
+        latestProjects =
+            projects
+                |> List.sortBy (.updatedAt >> DateTime.toTimestamp)
+                |> List.reverse
     in
         div [ class "row", style [ ( "margin-top", "3em" ) ] ]
             [ div [ class "col-12" ]
                 [ div [ class "card" ]
                     [ h4 [ class "card-header" ] [ text ("Projects (" ++ projectAmount ++ ")") ]
-                    , ul [ class "list-group" ] (List.map viewProjectListItem projects)
+                    , ul [ class "list-group" ] (List.map viewProjectListItem latestProjects)
                     ]
                 ]
             ]
@@ -183,16 +189,27 @@ viewProjectList projects =
 
 viewProjectListItem : Project -> Html Msg
 viewProjectListItem project =
-    li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-        [ div [ class "d-flex w-100 justify-content-between" ]
-            [ h5 [ class "mb-1" ] [ a [ href "#" ] [ text project.name ] ]
-            , small [] [ text project.updatedAt ]
+    let
+        ( year, month, day, hour, minute, second, millisecond ) =
+            project.updatedAt
+                |> DateTime.toTuple
+
+        s =
+            toString
+
+        formattedUpdatedAt =
+            s day ++ "/" ++ s month ++ "/" ++ s year ++ " " ++ s hour ++ ":" ++ s minute
+    in
+        li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
+            [ div [ class "d-flex w-100 justify-content-between" ]
+                [ h5 [ class "mb-1" ] [ a [ href "#" ] [ text project.name ] ]
+                , small [] [ text formattedUpdatedAt ]
+                ]
+            , p [ class "mb-1" ]
+                [ text "Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit." ]
+            , small []
+                [ text "Donec id elit non mi porta." ]
             ]
-        , p [ class "mb-1" ]
-            [ text "Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit." ]
-        , small []
-            [ text "Donec id elit non mi porta." ]
-        ]
 
 
 
