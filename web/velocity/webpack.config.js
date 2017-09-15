@@ -95,7 +95,7 @@ if (prod) {
     config = merge(commonConfig, {
         entry: {
             app: [
-                `webpack-dev-server/client?http://localhost:4201`,
+                `webpack-dev-server/client?http://localhost:4200`,
                 'webpack/hot/only-dev-server',
                 entryPath
             ]
