@@ -1,7 +1,7 @@
 GIT_VERSION = $(shell git describe --always)
 
 install:
-	docker run --rm -v ${CURDIR}/velocity:/app -w /app node:8 yarn upgrade
+	docker run --rm -v ${CURDIR}/velocity:/app -w /app node:8 yarn install
 	docker run --rm -v ${CURDIR}/velocity:/app -w /app node:8 node_modules/.bin/elm-package install -y
 
 serve:
