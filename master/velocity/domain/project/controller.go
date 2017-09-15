@@ -54,19 +54,24 @@ func (c Controller) getProjectsHandler(w http.ResponseWriter, r *http.Request) {
 func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	// username := middlewares.UsernameFromContext(r.Context())
 
-	project, err := FromRequest(r.Body)
+	p, err := FromRequest(r.Body)
 	if err != nil {
 		c.render.JSON(w, http.StatusBadRequest, nil)
 		return
 	}
+	valid, errs := ValidatePOST(p)
+	if !valid {
+		c.render.JSON(w, http.StatusBadRequest, errs)
+		return
+	}
 
-	_, err = c.projectDBManager.FindByID(project.ID)
+	_, err = c.projectDBManager.FindByID(p.ID)
 	if err == nil {
 		c.render.JSON(w, http.StatusBadRequest, nil)
 		return
 	}
 
-	c.projectDBManager.Save(project)
+	c.projectDBManager.Save(p)
 
-	c.render.JSON(w, http.StatusCreated, project)
+	c.render.JSON(w, http.StatusCreated, p)
 }

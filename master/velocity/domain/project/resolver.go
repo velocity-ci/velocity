@@ -2,45 +2,56 @@ package project
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"strings"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/middlewares"
 )
 
-// FromRequest - Validates and Transforms raw request data into a Project struct.
 func FromRequest(b io.ReadCloser) (*domain.Project, error) {
 	p := &domain.Project{}
 
-	reqProject := &requestProject{}
-
-	err := json.NewDecoder(b).Decode(reqProject)
+	err := json.NewDecoder(b).Decode(p)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(reqProject.Name) < 3 {
-		return nil, errors.New("Name too short")
-	}
-
-	if len(reqProject.Repository) < 8 {
-		return nil, errors.New("Invalid repository address")
-	}
-
-	if len(reqProject.Repository) < 8 {
-		return nil, errors.New("Invalid key")
-	}
-
-	p.ID = strings.Replace(strings.ToLower(reqProject.Name), " ", "-", -1)
-	p.Name = reqProject.Name
-	p.Repository = reqProject.Repository
-	p.PrivateKey = reqProject.PrivateKey
+	p.ID = strings.Replace(strings.ToLower(p.Name), " ", "-", -1)
 
 	return p, nil
 }
 
-type requestProject struct {
+func ValidatePOST(p *domain.Project) (bool, *middlewares.ResponseErrors) {
+	hasErrors := false
+
+	errs := projectErrors{}
+
+	if len(p.Name) < 3 || len(p.Name) > 128 {
+		errs.Name = "Invalid name"
+		hasErrors = true
+	}
+
+	if len(p.Repository) < 8 || len(p.Repository) > 128 {
+		errs.Repository = "Invalid repository address"
+		hasErrors = true
+	}
+
+	if len(p.PrivateKey) < 8 {
+		errs.PrivateKey = "Invalid key"
+		hasErrors = true
+	}
+
+	if hasErrors {
+		return false, &middlewares.ResponseErrors{
+			Errors: &errs,
+		}
+	}
+
+	return true, nil
+}
+
+type projectErrors struct {
 	Name       string `json:"name"`
 	Repository string `json:"repository"`
 	PrivateKey string `json:"key"`

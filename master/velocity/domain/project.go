@@ -1,6 +1,8 @@
 package domain
 
-import "time"
+import (
+	"time"
+)
 
 type Project struct {
 	CreatedAt  time.Time `json:"createdAt"`
