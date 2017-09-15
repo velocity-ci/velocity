@@ -22,7 +22,7 @@ func FromRequest(b io.ReadCloser) (*domain.Project, error) {
 	return p, nil
 }
 
-func ValidatePOST(p *domain.Project) (bool, *middlewares.ResponseErrors) {
+func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.ResponseErrors) {
 	hasErrors := false
 
 	errs := projectErrors{}
@@ -45,6 +45,14 @@ func ValidatePOST(p *domain.Project) (bool, *middlewares.ResponseErrors) {
 	if hasErrors {
 		return false, &middlewares.ResponseErrors{
 			Errors: &errs,
+		}
+	}
+	_, err := dbManager.FindByID(p.ID)
+	if err == nil {
+		return false, &middlewares.ResponseErrors{
+			Errors: &projectErrors{
+				Name: "Name already taken.",
+			},
 		}
 	}
 

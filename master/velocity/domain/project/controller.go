@@ -59,15 +59,9 @@ func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) 
 		c.render.JSON(w, http.StatusBadRequest, nil)
 		return
 	}
-	valid, errs := ValidatePOST(p)
+	valid, errs := ValidatePOST(p, c.projectDBManager)
 	if !valid {
 		c.render.JSON(w, http.StatusBadRequest, errs)
-		return
-	}
-
-	_, err = c.projectDBManager.FindByID(p.ID)
-	if err == nil {
-		c.render.JSON(w, http.StatusBadRequest, nil)
 		return
 	}
 
