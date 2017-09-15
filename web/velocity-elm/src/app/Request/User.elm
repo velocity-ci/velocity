@@ -2,7 +2,6 @@ module Request.User exposing (login, storeSession)
 
 import Data.User as User exposing (User)
 import Http
-import Json.Decode as Decode
 import Json.Encode as Encode
 import Ports
 import Request.Helpers exposing (apiUrl)
