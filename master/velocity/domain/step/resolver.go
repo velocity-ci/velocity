@@ -15,6 +15,10 @@ func ResolveStepFromYAML(y string) domain.Step {
 	switch bStep.Type {
 	case "run":
 		return resolveRunStep(y)
+	case "build":
+		return resolveBuildStep(y)
+	case "plugin":
+		return resolvePluginStep(y)
 	default:
 		return nil
 	}
@@ -22,6 +26,24 @@ func ResolveStepFromYAML(y string) domain.Step {
 
 func resolveRunStep(y string) domain.Step {
 	step := &DockerRun{}
+	err := yaml.Unmarshal([]byte(y), &step)
+	if err != nil {
+		panic(err)
+	}
+	return step
+}
+
+func resolveBuildStep(y string) domain.Step {
+	step := &DockerBuild{}
+	err := yaml.Unmarshal([]byte(y), &step)
+	if err != nil {
+		panic(err)
+	}
+	return step
+}
+
+func resolvePluginStep(y string) domain.Step {
+	step := &Plugin{}
 	err := yaml.Unmarshal([]byte(y), &step)
 	if err != nil {
 		panic(err)

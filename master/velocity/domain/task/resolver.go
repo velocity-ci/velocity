@@ -2,7 +2,7 @@ package task
 
 import (
 	"github.com/velocity-ci/velocity/master/velocity/domain"
-	"github.com/velocity-ci/velocity/master/velocity/domain/project/task/step"
+	"github.com/velocity-ci/velocity/master/velocity/domain/step"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -13,7 +13,7 @@ type yamlTask struct {
 	Steps       []map[string]interface{} `yaml:"steps"`
 }
 
-func ResolveTaskFromYAML(y string) domain.Task {
+func ResolveTaskFromYAML(y string, additionalParams []domain.Parameter) domain.Task {
 	yTask := yamlTask{}
 	err := yaml.Unmarshal([]byte(y), &yTask)
 	if err != nil {
@@ -32,7 +32,7 @@ func ResolveTaskFromYAML(y string) domain.Task {
 			panic(err)
 		}
 		s := step.ResolveStepFromYAML(string(mStep[:]))
-		err = s.Validate(task.Parameters)
+		err = s.Validate(append(task.Parameters, additionalParams...))
 		if err != nil {
 			panic(err)
 		}

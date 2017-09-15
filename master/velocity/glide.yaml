@@ -15,3 +15,12 @@ import:
   version: ^1.1.0
 - package: github.com/satori/go.uuid
   version: ^1.1.0
+- package: github.com/docker/docker
+  version: 184cea5ff710abde25547749e5608b24a255ba09
+  subpackages:
+  - client
+  - pkg/tlsconfig
+  - builder/remotecontext/git
+- package: github.com/docker/cli
+- package: gopkg.in/src-d/go-git.v3
+  version: ^4.0.0-rc9

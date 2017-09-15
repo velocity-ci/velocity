@@ -1,118 +1,97 @@
 package step
 
 import (
-	"bufio"
-	"context"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
+const successANSI = "\x1b[1m\x1b[40m\x1b[32m"
+const errorANSI = "\x1b[1m\x1b[40m\x1b[31m"
+const infoANSI = "\x1b[1m\x1b[40m\x1b[34m"
+
 type DockerRun struct {
-	domain.BaseStep
-	Description string            `json:"description" yaml:"description"`
-	Image       string            `json:"image" yaml:"image"`
-	Command     []string          `json:"command" yaml:"command"`
-	Environment map[string]string `json:"environment" yaml:"environment"`
-	WorkingDir  string            `json:"workingDir" yaml:"working_dir"`
-	MountPoint  string            `json:"mountPoint" yaml:"mount_point"`
+	domain.BaseStep `yaml:",inline"`
+	Image           string            `json:"image" yaml:"image"`
+	Command         []string          `json:"command" yaml:"command"`
+	Environment     map[string]string `json:"environment" yaml:"environment"`
+	WorkingDir      string            `json:"workingDir" yaml:"working_dir"`
+	MountPoint      string            `json:"mountPoint" yaml:"mount_point"`
+	IgnoreExitCode  bool              `json:"ignoreExitCode" yaml:"ignore_exit"`
 }
 
-func (dB *DockerRun) SetEmitter(e func(string)) {
-	dB.Emit = e
+func (dR *DockerRun) SetEmitter(e func(string)) {
+	dR.Emit = e
 }
 
-func (dB DockerRun) GetType() string {
+func (dR DockerRun) GetType() string {
 	return "run"
 }
 
-func (dB DockerRun) GetDescription() string {
-	return dB.Description
+func (dR DockerRun) GetDescription() string {
+	return dR.Description
 }
 
-func (dB DockerRun) GetDetails() string {
-	return fmt.Sprintf("image: %s command: %s", dB.Image, dB.Command)
+func (dR DockerRun) GetDetails() string {
+	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dB *DockerRun) Execute() error {
-	cli, err := client.NewEnvClient()
-	ctx := context.Background()
-	if err != nil {
-		panic(err)
-	}
-	// Pull Image
-	reader, err := cli.ImagePull(ctx, fmt.Sprintf("docker.io/%s", dB.Image), types.ImagePullOptions{})
-	if err != nil {
-		panic(err)
-	}
-	defer reader.Close()
+func (dR *DockerRun) Execute() error {
 
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		dB.Emit(scanner.Text())
-	}
+	dR.Emit(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description))
 
-	// Create and run container
-	if dB.MountPoint == "" {
-		dB.MountPoint = "/velocity_ci"
+	if dR.MountPoint == "" {
+		dR.MountPoint = "/velocity_ci"
 	}
 	env := []string{}
-	for k, v := range dB.Environment {
+	for k, v := range dR.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	cwd, _ := os.Getwd()
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: dB.Image,
-		Cmd:   dB.Command,
+	if os.Getenv("SIB_CWD") != "" {
+		cwd = os.Getenv("SIB_CWD")
+	}
+
+	config := &container.Config{
+		Image: dR.Image,
+		Cmd:   dR.Command,
 		Volumes: map[string]struct{}{
-			dB.MountPoint: struct{}{},
+			dR.MountPoint: struct{}{},
 		},
-		WorkingDir: fmt.Sprintf("%s/%s", dB.MountPoint, dB.WorkingDir),
+		WorkingDir: fmt.Sprintf("%s/%s", dR.MountPoint, dR.WorkingDir),
 		Env:        env,
-	}, &container.HostConfig{
+	}
+
+	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:/%s", cwd, dB.MountPoint),
+			fmt.Sprintf("%s:/%s", cwd, dR.MountPoint),
 		},
-	}, nil, "")
+	}
+
+	exitCode, err := runContainer(
+		resolvePullImage(dR.Image),
+		config,
+		hostConfig,
+		dR.Parameters,
+		dR.Emit,
+	)
+
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
+	if exitCode != 0 && !dR.IgnoreExitCode {
+		dR.Emit(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode))
+		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
-	if err != nil {
-		panic(err)
-	}
-	scanner = bufio.NewScanner(out)
-	for scanner.Scan() {
-		allBytes := scanner.Bytes()
-		o := string(allBytes[8:])
-		for _, p := range dB.Parameters {
-			if p.Secret {
-				o = strings.Replace(o, p.Value, "***", -1)
-			}
-		}
-		dB.Emit(o)
-	}
-
-	if _, err = cli.ContainerWait(ctx, resp.ID); err != nil {
-		panic(err)
-	}
-
-	cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
-
-	io.Copy(os.Stdout, out)
+	dR.Emit(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode))
 	return nil
+
 }
 
 func (dR DockerRun) Validate(params []domain.Parameter) error {
