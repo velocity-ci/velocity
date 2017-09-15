@@ -1,11 +1,11 @@
-import { enableProdMode } from '@angular/core';
-import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+import './styles.scss';
 
-import { AppModule } from './app/app.module';
-import { environment } from './environments/environment';
+const app = require('./app/Main.elm').Main.fullscreen(localStorage.session || null);
 
-if (environment.production) {
-  enableProdMode();
-}
+app.ports.storeSession.subscribe(session => localStorage.session = session);
 
-platformBrowserDynamic().bootstrapModule(AppModule);
+window.addEventListener('storage', event => {
+  if (event.storageArea === localStorage && event.key === 'session') {
+    app.ports.onSessionChange.send(event.newValue);
+  }
+}, false);
