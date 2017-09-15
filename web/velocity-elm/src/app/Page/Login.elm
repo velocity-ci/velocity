@@ -8,8 +8,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Views.Form as Form
-import Json.Decode as Decode exposing (field, decodeString, string, Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (optional, decode)
 import Validate exposing (..)
 import Data.Session as Session exposing (Session)
 import Http
@@ -40,6 +38,7 @@ type alias Model =
     , username : FormField
     , password : FormField
     , submitting : Bool
+    , globalError : Maybe String
     }
 
 
@@ -56,6 +55,7 @@ initialModel =
             , username = newField Username
             , password = newField Password
             , submitting = False
+            , globalError = Nothing
             }
     in
         { initial | errors = validate initial }
@@ -71,10 +71,23 @@ view session model =
         [ div [ class "col col-md-6" ]
             [ div [ class "card" ]
                 [ div [ class "card-body" ]
-                    [ viewForm model ]
+                    [ viewGlobalError model.globalError
+                    , viewForm model
+                    ]
                 ]
             ]
         ]
+
+
+viewGlobalError : Maybe String -> Html Msg
+viewGlobalError maybeError =
+    case maybeError of
+        Just error ->
+            div [ class "alert alert-danger", attribute "role" "alert" ]
+                [ text error ]
+
+        Nothing ->
+            text ""
 
 
 viewForm : Model -> Html Msg
@@ -107,7 +120,7 @@ viewForm model =
             , button
                 [ class "btn btn-primary"
                 , type_ "submit"
-                , disabled (not <| List.isEmpty model.errors)
+                , disabled ((not <| List.isEmpty model.errors) && (not <| model.submitting))
                 ]
                 [ text "Submit" ]
             , Util.viewIf model.submitting Form.viewSpinner
@@ -150,6 +163,7 @@ update msg model =
                         { model
                             | errors = []
                             , submitting = True
+                            , globalError = Nothing
                         }
                             => Http.send LoginCompleted (Request.User.login submitValues)
                             => NoOp
@@ -179,19 +193,13 @@ update msg model =
 
         LoginCompleted (Err error) ->
             let
-                errorMessages =
-                    case error of
-                        Http.BadStatus response ->
-                            response.body
-                                |> decodeString (field "errors" errorsDecoder)
-                                |> Result.withDefault []
-
-                        _ ->
-                            [ "unable to process registration" ]
+                newModel =
+                    { model | password = newField Password }
             in
-                { model
-                    | errors = List.map (\errorMessage -> Form => errorMessage) errorMessages
+                { newModel
+                    | errors = validate newModel
                     , submitting = False
+                    , globalError = Just "Invalid username or password. Please try again..."
                 }
                     => Cmd.none
                     => NoOp
@@ -218,19 +226,3 @@ validate =
         , (.username >> .value) >> (ifBelowLength 3) (Username => "username must be over 2 characters.")
         , (.password >> .value) >> (ifBelowLength 8) (Password => "password must be over 7 characters.")
         ]
-
-
-errorsDecoder : Decoder (List String)
-errorsDecoder =
-    decode (\username password -> List.concat [ username, password ])
-        |> optionalError "username"
-        |> optionalError "password"
-
-
-optionalError : String -> Decoder (List String -> a) -> Decoder a
-optionalError fieldName =
-    let
-        errorToString errorMessage =
-            String.join " " [ fieldName, errorMessage ]
-    in
-        optional fieldName (Decode.list (Decode.map errorToString string)) []
