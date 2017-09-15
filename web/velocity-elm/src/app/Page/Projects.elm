@@ -157,7 +157,7 @@ viewProjectForm model =
                 , button
                     [ class "btn btn-primary"
                     , type_ "submit"
-                    , disabled (not <| List.isEmpty model.errors)
+                    , disabled ((not <| List.isEmpty model.errors) && (not <| model.submitting))
                     ]
                     [ text "Submit" ]
                 ]
@@ -295,10 +295,13 @@ update session msg model =
                     => Cmd.none
 
         ProjectCreated (Err err) ->
-            model => Cmd.none
+            { model | submitting = False } => Cmd.none
 
         ProjectCreated (Ok project) ->
-            { model | projects = project :: model.projects }
+            { model
+                | projects = project :: model.projects
+                , submitting = False
+            }
                 => Cmd.none
 
 
