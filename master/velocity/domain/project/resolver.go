@@ -2,8 +2,14 @@ package project
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"strings"
+
+	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/middlewares"
@@ -37,11 +43,6 @@ func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.R
 		hasErrors = true
 	}
 
-	if len(p.PrivateKey) < 8 {
-		errs.PrivateKey = "Invalid key"
-		hasErrors = true
-	}
-
 	if hasErrors {
 		return false, &middlewares.ResponseErrors{
 			Errors: &errs,
@@ -56,11 +57,32 @@ func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.R
 		}
 	}
 
-	return true, nil
+	return validateRepository(p)
 }
 
 type projectErrors struct {
 	Name       string `json:"name"`
 	Repository string `json:"repository"`
 	PrivateKey string `json:"key"`
+}
+
+func validateRepository(p *domain.Project) (bool, *middlewares.ResponseErrors) {
+	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", p.ID))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer os.RemoveAll(dir) // clean up
+
+	// Clones the repository into the given dir, just as a normal git clone does
+	_, err = git.PlainClone(dir, true, &git.CloneOptions{
+		URL:   p.Repository,
+		Depth: 1,
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return true, nil
 }

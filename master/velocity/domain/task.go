@@ -5,11 +5,11 @@ import "time"
 type Task struct {
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
-	Project     Project     `json:"project" gorm:"primary_key"`
-	Name        string      `json:"name" gorm:"primary_key"`
+	Project     Project     `json:"project"`
+	Name        string      `json:"name"`
 	Description string      `json:"description"`
 	Parameters  []Parameter `json:"parameters"`
-	Steps       []Step
+	Steps       []Step      `json:"steps"`
 }
 
 func (t *Task) UpdateParams() {

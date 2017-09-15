@@ -41,6 +41,19 @@ func (c Controller) Setup(router *mux.Router) {
 		middlewares.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.postProjectsHandler)),
 	)).Methods("POST")
+
+	// GET /v1/projects/{id}/commits
+	router.Handle("/v1/projects/{id}/commits", negroni.New(
+		middlewares.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.syncProjectHandler)),
+	)).Methods("GET")
+
+	// POST /v1/projects/{id}/sync
+	router.Handle("/v1/projects/{id}/sync", negroni.New(
+		middlewares.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.syncProjectHandler)),
+	)).Methods("POST")
+
 	c.logger.Println("Set up Project controller.")
 }
 
@@ -67,5 +80,26 @@ func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) 
 
 	c.projectDBManager.Save(p)
 
+	c.render.JSON(w, http.StatusCreated, p)
+}
+
+func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["id"]
+
+	p, err := c.projectDBManager.FindByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	// if p.Synchronising {
+	// 	c.render.JSON(w, http.StatusBadRequest, nil)
+	// 	return
+	// }
+
+	p.Synchronising = true
+	c.projectDBManager.Save(p)
+	go sync(p)
 	c.render.JSON(w, http.StatusCreated, p)
 }
