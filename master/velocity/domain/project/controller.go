@@ -32,16 +32,36 @@ func NewController(
 
 // Setup - Sets up the routes for Projects.
 func (c Controller) Setup(router *mux.Router) {
+
 	router.Handle("/v1/projects", negroni.New(
 		middlewares.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.getProjectsHandler)),
+	)).Methods("GET")
+
+	router.Handle("/v1/projects/{id}", negroni.New(
+		middlewares.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getProjectHandler)),
 	)).Methods("GET")
 
 	router.Handle("/v1/projects", negroni.New(
 		middlewares.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.postProjectsHandler)),
 	)).Methods("POST")
+
 	c.logger.Println("Set up Project controller.")
+}
+
+func (c Controller) getProjectHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	p, err := c.projectDBManager.FindByID(vars["id"])
+
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	c.render.JSON(w, http.StatusOK, p)
 }
 
 func (c Controller) getProjectsHandler(w http.ResponseWriter, r *http.Request) {

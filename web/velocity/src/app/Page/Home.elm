@@ -14,6 +14,7 @@ import Task exposing (Task)
 import Http
 import Request.Project
 import Page.Helpers exposing (formatDate, sortByDatetime)
+import Route
 
 
 -- MODEL --
@@ -81,7 +82,7 @@ view session model =
             ]
         , div [ class "col-12 col-md-6" ]
             [ div [ class "card" ]
-                [ h4 [ class "card-header" ] [ text "Projects" ]
+                [ h4 [ class "card-header" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
                 , viewProjectList model.projects
                 ]
             ]
@@ -102,7 +103,7 @@ viewProjectListItem project =
     li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
         [ div [ class "d-flex w-100 justify-content-between" ]
             [ h5 [ class "mb-1" ]
-                [ text project.name ]
+                [ a [ Route.href (Route.Project project.id) ] [ text project.name ] ]
             , small []
                 [ text (formatDate project.updatedAt) ]
             ]

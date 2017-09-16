@@ -14,6 +14,7 @@ import Util exposing ((=>))
 import Views.Form as Form
 import Validate exposing (..)
 import Page.Helpers exposing (ifBelowLength, validClasses, formatDateTime, sortByDatetime)
+import Route
 
 
 -- MODEL --
@@ -188,7 +189,7 @@ viewProjectListItem : Project -> Html Msg
 viewProjectListItem project =
     li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
         [ div [ class "d-flex w-100 justify-content-between" ]
-            [ h5 [ class "mb-1" ] [ a [ href "#" ] [ text project.name ] ]
+            [ h5 [ class "mb-1" ] [ a [ Route.href (Route.Project project.id) ] [ text project.name ] ]
             , small [] [ text (formatDateTime project.updatedAt) ]
             ]
         , small []

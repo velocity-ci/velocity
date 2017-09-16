@@ -89,4 +89,4 @@ isInvalid errors formField =
 
 isValid : List ( field, error ) -> { formField | dirty : Bool, field : field } -> Bool
 isValid errors formField =
-    formField.dirty && List.length (getFieldErrors formField errors) == 0
+    formField.dirty && List.isEmpty (getFieldErrors formField errors)

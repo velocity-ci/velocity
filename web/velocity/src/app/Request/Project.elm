@@ -1,4 +1,4 @@
-module Request.Project exposing (list, create)
+module Request.Project exposing (list, create, get)
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
@@ -23,10 +23,29 @@ list : Maybe AuthToken -> Http.Request (List Project)
 list maybeToken =
     let
         expect =
-            Decode.list (Project.decoder)
+            Project.decoder
+                |> Decode.list
                 |> Http.expectJson
     in
         apiUrl baseUrl
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+
+-- GET --
+
+
+get : Project.Id -> Maybe AuthToken -> Http.Request Project
+get id maybeToken =
+    let
+        expect =
+            Project.decoder
+                |> Http.expectJson
+    in
+        apiUrl (baseUrl ++ "/" ++ Project.idToString id)
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
