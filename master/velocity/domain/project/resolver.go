@@ -28,7 +28,7 @@ func FromRequest(b io.ReadCloser) (*domain.Project, error) {
 	return p, nil
 }
 
-func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.ResponseErrors) {
+func ValidatePOST(p *domain.Project, m *Manager) (bool, *middlewares.ResponseErrors) {
 	hasErrors := false
 
 	errs := projectErrors{}
@@ -48,7 +48,7 @@ func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.R
 			Errors: &errs,
 		}
 	}
-	_, err := dbManager.FindByID(p.ID)
+	_, err := m.FindByID(p.ID)
 	if err == nil {
 		return false, &middlewares.ResponseErrors{
 			Errors: &projectErrors{

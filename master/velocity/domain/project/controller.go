@@ -12,21 +12,21 @@ import (
 
 // Controller - Handles Projects.
 type Controller struct {
-	logger           *log.Logger
-	render           *render.Render
-	projectDBManager *DBManager
+	logger         *log.Logger
+	render         *render.Render
+	projectManager *Manager
 }
 
 // NewController - Returns a new Controller for Projects.
 func NewController(
 	controllerLogger *log.Logger,
 	renderer *render.Render,
-	projectDBManager *DBManager,
+	projectManager *Manager,
 ) *Controller {
 	return &Controller{
-		logger:           controllerLogger,
-		render:           renderer,
-		projectDBManager: projectDBManager,
+		logger:         controllerLogger,
+		render:         renderer,
+		projectManager: projectManager,
 	}
 }
 
@@ -51,7 +51,7 @@ func (c Controller) Setup(router *mux.Router) {
 	// GET /v1/projects/{id}/commits
 	router.Handle("/v1/projects/{id}/commits", negroni.New(
 		middlewares.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.syncProjectHandler)),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitsHandler)),
 	)).Methods("GET")
 
 	// POST /v1/projects/{id}/sync
@@ -66,7 +66,7 @@ func (c Controller) Setup(router *mux.Router) {
 func (c Controller) getProjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	p, err := c.projectDBManager.FindByID(vars["id"])
+	p, err := c.projectManager.FindByID(vars["id"])
 
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
@@ -78,7 +78,7 @@ func (c Controller) getProjectHandler(w http.ResponseWriter, r *http.Request) {
 
 func (c Controller) getProjectsHandler(w http.ResponseWriter, r *http.Request) {
 
-	projects := c.projectDBManager.FindAll()
+	projects := c.projectManager.FindAll()
 
 	c.render.JSON(w, http.StatusOK, projects)
 }
@@ -91,13 +91,13 @@ func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) 
 		c.render.JSON(w, http.StatusBadRequest, nil)
 		return
 	}
-	valid, errs := ValidatePOST(p, c.projectDBManager)
+	valid, errs := ValidatePOST(p, c.projectManager)
 	if !valid {
 		c.render.JSON(w, http.StatusBadRequest, errs)
 		return
 	}
 
-	c.projectDBManager.Save(p)
+	c.projectManager.Save(p)
 
 	c.render.JSON(w, http.StatusCreated, p)
 }
@@ -106,7 +106,7 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["id"]
 
-	p, err := c.projectDBManager.FindByID(reqProjectID)
+	p, err := c.projectManager.FindByID(reqProjectID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
@@ -118,7 +118,13 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	p.Synchronising = true
-	c.projectDBManager.Save(p)
+	c.projectManager.Save(p)
 	go sync(p)
 	c.render.JSON(w, http.StatusCreated, p)
+}
+
+func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["id"]
+
 }
