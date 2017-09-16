@@ -4,12 +4,14 @@ import UrlParser as Url exposing (parseHash, s, (</>), string, oneOf, Parser)
 import Navigation exposing (Location)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
+import Data.Project as Project
 
 
 type Route
     = Home
     | Login
     | Projects
+    | Project Project.Id
 
 
 route : Parser (Route -> a) a
@@ -18,6 +20,7 @@ route =
         [ Url.map Home (s "")
         , Url.map Login (s "sign-in")
         , Url.map Projects (s "projects")
+        , Url.map Project (s "project" </> Project.idParser)
         ]
 
 
@@ -38,6 +41,9 @@ routeToString page =
 
                 Projects ->
                     [ "projects" ]
+
+                Project id ->
+                    [ "project", Project.idToString id ]
     in
         "#/" ++ (String.join "/" pieces)
 

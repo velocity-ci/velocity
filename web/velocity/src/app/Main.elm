@@ -10,6 +10,7 @@ import Page.Home as Home
 import Page.Login as Login
 import Page.NotFound as NotFound
 import Page.Projects as Projects
+import Page.Project as Project
 import Ports
 import Route exposing (Route)
 import Task
@@ -23,6 +24,7 @@ type Page
     | Errored PageLoadError
     | Home Home.Model
     | Projects Projects.Model
+    | Project Project.Model
     | Login Login.Model
 
 
@@ -107,9 +109,14 @@ viewPage session isLoading page =
                     |> frame Page.Projects
                     |> Html.map ProjectsMsg
 
+            Project subModel ->
+                Project.view session subModel
+                    |> frame Page.Project
+                    |> Html.map ProjectMsg
+
             Login subModel ->
                 Login.view session subModel
-                    |> frame Page.Other
+                    |> frame Page.Login
                     |> Html.map LoginMsg
 
 
@@ -144,10 +151,13 @@ getPage pageState =
 type Msg
     = SetRoute (Maybe Route)
     | HomeMsg Home.Msg
+    | HomeLoaded (Result PageLoadError Home.Model)
     | SetUser (Maybe User)
     | LoginMsg Login.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
+    | ProjectLoaded (Result PageLoadError Project.Model)
+    | ProjectMsg Project.Msg
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -165,13 +175,31 @@ setRoute maybeRoute model =
                 { model | pageState = Loaded NotFound } => Cmd.none
 
             Just (Route.Home) ->
-                { model | pageState = Loaded (Home Home.initialModel) } => Cmd.none
+                case model.session.user of
+                    Just user ->
+                        transition HomeLoaded (Home.init model.session)
+
+                    Nothing ->
+                        model => Route.modifyUrl Route.Login
 
             Just (Route.Login) ->
                 { model | pageState = Loaded (Login Login.initialModel) } => Cmd.none
 
             Just (Route.Projects) ->
-                transition ProjectsLoaded (Projects.init model.session)
+                case model.session.user of
+                    Just user ->
+                        transition ProjectsLoaded (Projects.init model.session)
+
+                    Nothing ->
+                        errored Page.Projects "You must be signed in to access your projects."
+
+            Just (Route.Project id) ->
+                case model.session.user of
+                    Just user ->
+                        transition ProjectLoaded (Project.init model.session id)
+
+                    Nothing ->
+                        errored Page.Project "You must be signed in to access this project."
 
 
 pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
@@ -243,6 +271,12 @@ updatePage page msg model =
                     { newModel | pageState = Loaded (Login pageModel) }
                         => Cmd.map LoginMsg cmd
 
+            ( HomeLoaded (Ok subModel), _ ) ->
+                { model | pageState = Loaded (Home subModel) } => Cmd.none
+
+            ( HomeLoaded (Err error), _ ) ->
+                { model | pageState = Loaded (Errored error) } => Cmd.none
+
             ( HomeMsg subMsg, Home subModel ) ->
                 toPage Home HomeMsg (Home.update session) subMsg subModel
 
@@ -254,6 +288,15 @@ updatePage page msg model =
 
             ( ProjectsMsg subMsg, Projects subModel ) ->
                 toPage Projects ProjectsMsg (Projects.update session) subMsg subModel
+
+            ( ProjectLoaded (Ok subModel), _ ) ->
+                { model | pageState = Loaded (Project subModel) } => Cmd.none
+
+            ( ProjectLoaded (Err error), _ ) ->
+                { model | pageState = Loaded (Errored error) } => Cmd.none
+
+            ( ProjectMsg subMsg, Project subModel ) ->
+                toPage Project ProjectMsg (Project.update session) subMsg subModel
 
             ( _, NotFound ) ->
                 -- Disregard incoming messages when we're on the

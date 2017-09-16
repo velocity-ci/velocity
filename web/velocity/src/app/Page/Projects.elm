@@ -13,8 +13,8 @@ import Html.Events exposing (onClick, onInput, onSubmit)
 import Util exposing ((=>))
 import Views.Form as Form
 import Validate exposing (..)
-import Page.Helpers exposing (ifBelowLength, validClasses)
-import Time.DateTime as DateTime
+import Page.Helpers exposing (ifBelowLength, validClasses, formatDateTime, sortByDatetime)
+import Route
 
 
 -- MODEL --
@@ -173,9 +173,7 @@ viewProjectList projects =
                 |> toString
 
         latestProjects =
-            projects
-                |> List.sortBy (.updatedAt >> DateTime.toTimestamp)
-                |> List.reverse
+            sortByDatetime .updatedAt projects
     in
         div [ class "row", style [ ( "margin-top", "3em" ) ] ]
             [ div [ class "col-12" ]
@@ -189,27 +187,14 @@ viewProjectList projects =
 
 viewProjectListItem : Project -> Html Msg
 viewProjectListItem project =
-    let
-        ( year, month, day, hour, minute, second, millisecond ) =
-            project.updatedAt
-                |> DateTime.toTuple
-
-        s =
-            toString
-
-        formattedUpdatedAt =
-            s day ++ "/" ++ s month ++ "/" ++ s year ++ " " ++ s hour ++ ":" ++ s minute
-    in
-        li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-            [ div [ class "d-flex w-100 justify-content-between" ]
-                [ h5 [ class "mb-1" ] [ a [ href "#" ] [ text project.name ] ]
-                , small [] [ text formattedUpdatedAt ]
-                ]
-            , p [ class "mb-1" ]
-                [ text "Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit." ]
-            , small []
-                [ text "Donec id elit non mi porta." ]
+    li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
+        [ div [ class "d-flex w-100 justify-content-between" ]
+            [ h5 [ class "mb-1" ] [ a [ Route.href (Route.Project project.id) ] [ text project.name ] ]
+            , small [] [ text (formatDateTime project.updatedAt) ]
             ]
+        , small []
+            [ text project.repository ]
+        ]
 
 
 

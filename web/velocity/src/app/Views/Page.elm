@@ -24,6 +24,7 @@ type ActivePage
     | Home
     | Login
     | Projects
+    | Project
 
 
 {-| Take a page's Html and frame it with a header and footer.
