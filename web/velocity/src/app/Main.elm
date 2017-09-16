@@ -109,7 +109,7 @@ viewPage session isLoading page =
 
             Login subModel ->
                 Login.view session subModel
-                    |> frame Page.Other
+                    |> frame Page.Login
                     |> Html.map LoginMsg
 
 

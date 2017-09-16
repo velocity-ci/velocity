@@ -36,7 +36,7 @@ formatTime dateTime =
 
 formatDateTime : DateTime -> String
 formatDateTime dateTime =
-    (formatDate dateTime) ++ ":" ++ (formatTime dateTime)
+    (formatDate dateTime) ++ " " ++ (formatTime dateTime)
 
 
 sortByDatetime : (a -> DateTime) -> List a -> List a
