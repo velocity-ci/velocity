@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/boltdb/bolt"
 	"github.com/jinzhu/gorm"
 	"github.com/unrolled/render"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
@@ -22,6 +23,7 @@ type VelocityAPI struct {
 	Router *routers.MuxRouter
 	server *http.Server
 	db     *gorm.DB
+	bolt   *bolt.DB
 }
 
 // NewVelocityAPI - Returns a new Velocity API app
@@ -38,11 +40,17 @@ func NewVelocityAPI() App {
 		&domain.Project{},
 	)
 
+	velocityAPI.bolt = persisters.NewBoltDB(dbLogger)
+
 	userDBManager := user.NewDBManager(dbLogger, velocityAPI.db)
 	projectDBManager := project.NewDBManager(dbLogger, velocityAPI.db)
 
+	projectBoltManager := project.NewBoltManager(dbLogger, velocityAPI.bolt)
+
+	projectManager := project.NewManager(dbLogger, projectDBManager, projectBoltManager)
+
 	authController := auth.NewController(controllerLogger, renderer, userDBManager)
-	projectController := project.NewController(controllerLogger, renderer, projectDBManager)
+	projectController := project.NewController(controllerLogger, renderer, projectManager)
 
 	velocityAPI.Router = routers.NewMuxRouter([]routers.Routable{
 		authController,

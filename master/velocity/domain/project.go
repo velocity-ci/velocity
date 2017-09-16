@@ -16,8 +16,6 @@ type Project struct {
 	Synchronising bool `json:"synchronising"`
 
 	Builds []Build `json:"builds" gorm:"ForeignKey:ProjectID"`
-
-	Commits []Commit `json:"-" gorm:"-"`
 }
 
 type Build struct {

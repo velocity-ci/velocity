@@ -4,3 +4,4 @@ dist
 .glide
 tmp
 *.test
+*.db

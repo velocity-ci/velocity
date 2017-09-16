@@ -5,12 +5,13 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
-func sync(p *domain.Project) {
+func sync(p *domain.Project, m *Manager) {
 	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", p.ID))
 	if err != nil {
 		log.Fatal(err)
@@ -41,14 +42,21 @@ func sync(p *domain.Project) {
 			break
 		}
 
+		mParts := strings.Split(commit.Message, "-----END PGP SIGNATURE-----")
+		fmt.Println(mParts)
+		message := mParts[0]
+		if len(mParts) > 1 {
+			message = mParts[1]
+		}
+
 		c := domain.Commit{
 			Hash:    commit.Hash.String(),
+			Message: strings.TrimSpace(message),
 			Author:  commit.Author.Email,
-			Message: commit.Message,
 			Date:    commit.Committer.When,
 		}
 
-		p.Commits = append(p.Commits, c)
+		m.AddCommitForProject(p, &c)
 
 		fmt.Println(c)
 

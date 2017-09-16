@@ -119,12 +119,22 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	p.Synchronising = true
 	c.projectManager.Save(p)
-	go sync(p)
+	go sync(p, c.projectManager)
 	c.render.JSON(w, http.StatusCreated, p)
 }
 
 func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["id"]
+
+	p, err := c.projectManager.FindByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	commits := c.projectManager.GetCommitsForProject(p)
+
+	c.render.JSON(w, http.StatusOK, commits)
 
 }

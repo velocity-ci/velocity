@@ -9,7 +9,7 @@ import (
 
 func NewBoltDB(logger *log.Logger) *bolt.DB {
 
-	db, err := bolt.Open("my.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open("cache.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		log.Fatal(err)
 	}

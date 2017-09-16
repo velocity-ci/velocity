@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
@@ -35,6 +36,7 @@ func (m *Manager) FindByID(ID string) (*domain.Project, error) {
 	if err == nil {
 		return p, nil
 	}
+	fmt.Println(err)
 
 	p, err = m.dbManager.FindByID(ID)
 	if err == nil {
@@ -45,6 +47,24 @@ func (m *Manager) FindByID(ID string) (*domain.Project, error) {
 	return nil, err
 }
 
-func (m *Manager) FindAll() []*domain.Project {
+func (m *Manager) FindAll() []domain.Project {
+	projects := m.boltManager.FindAll()
 
+	if len(projects) < 1 {
+		projects = m.dbManager.FindAll()
+		for _, p := range projects {
+			m.boltManager.Save(&p)
+		}
+	}
+	return projects
+}
+
+func (m *Manager) GetCommitsForProject(p *domain.Project) []domain.Commit {
+	commits := m.boltManager.FindAllCommitsForProject(p)
+
+	return commits
+}
+
+func (m *Manager) AddCommitForProject(p *domain.Project, c *domain.Commit) error {
+	return m.boltManager.AddCommitForProject(p, c)
 }
