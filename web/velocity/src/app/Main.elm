@@ -144,6 +144,7 @@ getPage pageState =
 type Msg
     = SetRoute (Maybe Route)
     | HomeMsg Home.Msg
+    | HomeLoaded (Result PageLoadError Home.Model)
     | SetUser (Maybe User)
     | LoginMsg Login.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
@@ -165,13 +166,23 @@ setRoute maybeRoute model =
                 { model | pageState = Loaded NotFound } => Cmd.none
 
             Just (Route.Home) ->
-                { model | pageState = Loaded (Home Home.initialModel) } => Cmd.none
+                case model.session.user of
+                    Just user ->
+                        transition HomeLoaded (Home.init model.session)
+
+                    Nothing ->
+                        model => Route.modifyUrl Route.Login
 
             Just (Route.Login) ->
                 { model | pageState = Loaded (Login Login.initialModel) } => Cmd.none
 
             Just (Route.Projects) ->
-                transition ProjectsLoaded (Projects.init model.session)
+                case model.session.user of
+                    Just user ->
+                        transition ProjectsLoaded (Projects.init model.session)
+
+                    Nothing ->
+                        errored Page.Projects "You must be signed in to access your projects."
 
 
 pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
@@ -242,6 +253,12 @@ updatePage page msg model =
                 in
                     { newModel | pageState = Loaded (Login pageModel) }
                         => Cmd.map LoginMsg cmd
+
+            ( HomeLoaded (Ok subModel), _ ) ->
+                { model | pageState = Loaded (Home subModel) } => Cmd.none
+
+            ( HomeLoaded (Err error), _ ) ->
+                { model | pageState = Loaded (Errored error) } => Cmd.none
 
             ( HomeMsg subMsg, Home subModel ) ->
                 toPage Home HomeMsg (Home.update session) subMsg subModel
