@@ -22,14 +22,14 @@ func main() {
 
 	flag.Parse()
 
-	getGitParams()
+	gitParams := getGitParams()
 
 	if *version {
 		fmt.Println("Version")
 		os.Exit(0)
 	} else if *list {
 		// look for task ymls and parse them into memory.
-		tasks := getTasksFromDirectory("./tasks/")
+		tasks := getTasksFromDirectory("./tasks/", gitParams)
 		// iterate through tasks in memory and list them.
 		for _, task := range tasks {
 			fmt.Printf("%s: %s (", task.Name, task.Description)
@@ -46,18 +46,18 @@ func main() {
 
 	switch os.Args[1] {
 	case "run":
-		run(os.Args[2])
+		run(os.Args[2], gitParams)
 		break
 	}
 }
 
-func getTasksFromDirectory(dir string) []domain.Task {
+func getTasksFromDirectory(dir string, gitParams []domain.Parameter) []domain.Task {
 	tasks := []domain.Task{}
 
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
 			taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s%s", dir, f.Name()))
-			task := task.ResolveTaskFromYAML(string(taskYml), getGitParams())
+			task := task.ResolveTaskFromYAML(string(taskYml), gitParams)
 			tasks = append(tasks, task)
 		}
 		return nil
@@ -66,8 +66,8 @@ func getTasksFromDirectory(dir string) []domain.Task {
 	return tasks
 }
 
-func run(taskName string) {
-	tasks := getTasksFromDirectory("./tasks/")
+func run(taskName string, gitParams []domain.Parameter) {
+	tasks := getTasksFromDirectory("./tasks/", gitParams)
 
 	var task *domain.Task
 	// find Task requested
@@ -98,8 +98,6 @@ func run(taskName string) {
 		resolvedParams = append(resolvedParams, p)
 	}
 
-	gitParams := getGitParams()
-
 	task.Parameters = append(resolvedParams, gitParams...)
 	task.UpdateParams()
 	task.SetEmitter(func(s string) { fmt.Printf("    %s\n", s) })
@@ -112,9 +110,6 @@ func run(taskName string) {
 
 func getGitParams() []domain.Parameter {
 	path, _ := os.Getwd()
-	if os.Getenv("SIB_CWD") != "" {
-		path = os.Getenv("SIB_CWD")
-	}
 
 	// We instance a new repository targeting the given path (the .git folder)
 	r, err := git.PlainOpen(fmt.Sprintf("%s/", path))
@@ -129,11 +124,7 @@ func getGitParams() []domain.Parameter {
 	}
 	SHA := ref.Hash().String()
 	shortSHA := SHA[:7]
-	fmt.Println(SHA)
-	fmt.Println(shortSHA)
 	branch := ref.Name().Short()
-	fmt.Println(branch)
-
 	describe := shortSHA
 
 	tags, _ := r.Tags()
@@ -144,8 +135,6 @@ func getGitParams() []domain.Parameter {
 		if err == io.EOF {
 			break
 		}
-
-		fmt.Println(t)
 
 		tObj, err := r.TagObject(t.Hash())
 		if err != nil {
@@ -167,7 +156,12 @@ func getGitParams() []domain.Parameter {
 		}
 	}
 
-	fmt.Println(describe)
+	fmt.Printf("GIT_SHA: %s\nGIT_SHORT_SHA: %s\nGIT_BRANCH: %s\nGIT_DESCRIBE: %s\n",
+		SHA,
+		shortSHA,
+		branch,
+		describe,
+	)
 
 	return []domain.Parameter{
 		domain.Parameter{
