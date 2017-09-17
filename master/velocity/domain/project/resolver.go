@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	git "gopkg.in/src-d/go-git.v4"
 
@@ -24,6 +25,8 @@ func FromRequest(b io.ReadCloser) (*domain.Project, error) {
 	}
 
 	p.ID = strings.Replace(strings.ToLower(p.Name), " ", "-", -1)
+	p.CreatedAt = time.Now()
+	p.UpdatedAt = time.Now()
 
 	return p, nil
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	git "gopkg.in/src-d/go-git.v4"
@@ -58,6 +59,7 @@ func sync(p *domain.Project, m *Manager) {
 		m.SaveCommitForProject(p, &c)
 	}
 
+	p.UpdatedAt = time.Now()
 	p.Synchronising = false
 	m.Save(p)
 
