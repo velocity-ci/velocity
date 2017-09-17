@@ -65,6 +65,6 @@ func (m *Manager) GetCommitsForProject(p *domain.Project) []domain.Commit {
 	return commits
 }
 
-func (m *Manager) AddCommitForProject(p *domain.Project, c *domain.Commit) error {
-	return m.boltManager.AddCommitForProject(p, c)
+func (m *Manager) SaveCommitForProject(p *domain.Project, c *domain.Commit) error {
+	return m.boltManager.SaveCommitForProject(p, c)
 }

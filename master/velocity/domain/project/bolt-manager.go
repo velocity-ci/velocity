@@ -120,7 +120,7 @@ func (m *BoltManager) FindAllCommitsForProject(p *domain.Project) []domain.Commi
 	return commits
 }
 
-func (m *BoltManager) AddCommitForProject(p *domain.Project, c *domain.Commit) error {
+func (m *BoltManager) SaveCommitForProject(p *domain.Project, c *domain.Commit) error {
 	tx, err := m.bolt.Begin(true)
 	if err != nil {
 		return err

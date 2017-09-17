@@ -56,7 +56,7 @@ func sync(p *domain.Project, m *Manager) {
 			Date:    commit.Committer.When,
 		}
 
-		m.AddCommitForProject(p, &c)
+		m.SaveCommitForProject(p, &c)
 
 		fmt.Println(c)
 
