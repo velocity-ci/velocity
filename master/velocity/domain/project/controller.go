@@ -112,10 +112,10 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if p.Synchronising {
-	// 	c.render.JSON(w, http.StatusBadRequest, nil)
-	// 	return
-	// }
+	if p.Synchronising {
+		c.render.JSON(w, http.StatusBadRequest, nil)
+		return
+	}
 
 	p.Synchronising = true
 	c.projectManager.Save(p)

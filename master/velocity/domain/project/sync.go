@@ -43,7 +43,6 @@ func sync(p *domain.Project, m *Manager) {
 		}
 
 		mParts := strings.Split(commit.Message, "-----END PGP SIGNATURE-----")
-		fmt.Println(mParts)
 		message := mParts[0]
 		if len(mParts) > 1 {
 			message = mParts[1]
@@ -57,16 +56,9 @@ func sync(p *domain.Project, m *Manager) {
 		}
 
 		m.SaveCommitForProject(p, &c)
-
-		fmt.Println(c)
-
 	}
 
-	// Prints the content of the CHANGELOG file from the cloned repository
-	// changelog, err := os.Open(filepath.Join(dir, "README.md"))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	p.Synchronising = false
+	m.Save(p)
 
-	// io.Copy(os.Stdout, changelog)
 }
