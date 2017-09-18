@@ -2,6 +2,7 @@ package project
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -32,10 +33,20 @@ func (m *BoltManager) Save(p *domain.Project) error {
 	}
 	defer tx.Rollback()
 
-	b, err := tx.CreateBucketIfNotExists([]byte("projects"))
-	b = tx.Bucket([]byte("projects"))
+	m.boltLogger.Printf("saving project: %s", p.ID)
+
+	projectsBucket, err := tx.CreateBucketIfNotExists([]byte("projects"))
+	projectsBucket = tx.Bucket([]byte("projects"))
+	projectBucket, err := projectsBucket.CreateBucketIfNotExists([]byte(p.ID))
+	if err != nil {
+		return err
+	}
+	if projectBucket == nil {
+		projectBucket = projectsBucket.Bucket([]byte(p.ID))
+	}
+
 	projectJSON, err := json.Marshal(p)
-	b.Put([]byte(p.ID), projectJSON)
+	projectBucket.Put([]byte("info"), projectJSON)
 
 	if err := tx.Commit(); err != nil {
 		return err
@@ -51,14 +62,16 @@ func (m *BoltManager) FindByID(ID string) (*domain.Project, error) {
 	}
 	defer tx.Rollback()
 
-	b := tx.Bucket([]byte("projects"))
-	if b == nil {
+	projectsBucket := tx.Bucket([]byte("projects"))
+	if projectsBucket == nil {
 		return nil, fmt.Errorf("Project not found: %s", ID)
 	}
-	v := b.Get([]byte(ID))
-	if v == nil {
+	projectBucket := projectsBucket.Bucket([]byte(ID))
+	if projectBucket == nil {
 		return nil, fmt.Errorf("Project not found: %s", ID)
 	}
+
+	v := projectBucket.Get([]byte("info"))
 
 	p := domain.Project{}
 	err = json.Unmarshal(v, &p)
@@ -82,14 +95,17 @@ func (m *BoltManager) FindAll() []domain.Project {
 	if b == nil {
 		return projects
 	}
-	b.ForEach(func(k, v []byte) error {
+
+	c := b.Cursor()
+	for k, _ := c.First(); k != nil; k, _ = c.Next() {
+		pB := b.Bucket(k)
+		v := pB.Get([]byte("info"))
 		p := domain.Project{}
 		err := json.Unmarshal(v, &p)
 		if err == nil {
 			projects = append(projects, p)
 		}
-		return nil
-	})
+	}
 
 	return projects
 }
@@ -101,16 +117,26 @@ func (m *BoltManager) GetCommitInProject(hash string, p *domain.Project) (*domai
 	}
 	defer tx.Rollback()
 
-	b := tx.Bucket([]byte("projects"))
-	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
-	if b == nil {
+	projectsBucket := tx.Bucket([]byte("projects"))
+	if projectsBucket == nil {
+		return nil, errors.New("Projects not found:")
+	}
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	if projectBucket == nil {
+		return nil, fmt.Errorf("Project not found: %s", p.ID)
+	}
+
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	if commitsBucket == nil {
+		return nil, fmt.Errorf("Could not find any commits for project: %s", p.ID)
+	}
+
+	commitBucket := commitsBucket.Bucket([]byte(hash))
+	if commitBucket == nil {
 		return nil, fmt.Errorf("Could not find project: %s, commit: %s", p.ID, hash)
 	}
 
-	v := b.Get([]byte(hash))
-	if v == nil {
-		return nil, fmt.Errorf("Could not find project: %s, commit: %s", p.ID, hash)
-	}
+	v := commitBucket.Get([]byte("info"))
 
 	c := domain.Commit{}
 	err = json.Unmarshal(v, &c)
@@ -130,20 +156,23 @@ func (m *BoltManager) FindAllCommitsForProject(p *domain.Project) []domain.Commi
 	}
 	defer tx.Rollback()
 
-	b := tx.Bucket([]byte("projects"))
-	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
-	if b == nil {
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	if commitsBucket == nil {
 		return commits
 	}
-	b.ForEach(func(k, v []byte) error {
-		c := domain.Commit{}
-		err := json.Unmarshal(v, &c)
-		if err != nil {
-			fmt.Println(err)
+
+	c := commitsBucket.Cursor()
+	for k, _ := c.First(); k != nil; k, _ = c.Next() {
+		cB := commitsBucket.Bucket(k)
+		v := cB.Get([]byte("info"))
+		commit := domain.Commit{}
+		err := json.Unmarshal(v, &commit)
+		if err == nil {
+			commits = append(commits, commit)
 		}
-		commits = append(commits, c)
-		return nil
-	})
+	}
 
 	return commits
 }
@@ -155,11 +184,33 @@ func (m *BoltManager) SaveCommitForProject(p *domain.Project, c *domain.Commit) 
 	}
 	defer tx.Rollback()
 
-	b := tx.Bucket([]byte("projects"))
-	b.CreateBucketIfNotExists([]byte(fmt.Sprintf("commits-%s", p.ID)))
-	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
+	projectsBucket := tx.Bucket([]byte("projects"))
+	if projectsBucket == nil {
+		return errors.New("Projects not found:")
+	}
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	if projectBucket == nil {
+		return fmt.Errorf("Project not found: %s", p.ID)
+	}
+
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	if commitsBucket == nil {
+		commitsBucket, err = projectBucket.CreateBucket([]byte("commits"))
+		if err != nil {
+			return err
+		}
+	}
+
+	commitBucket, err := commitsBucket.CreateBucketIfNotExists([]byte(c.Hash))
+	if err != nil {
+		return err
+	}
+	if commitBucket == nil {
+		commitBucket = commitsBucket.Bucket([]byte(c.Hash))
+	}
+
 	commitJSON, _ := json.Marshal(c)
-	b.Put([]byte(c.Hash), commitJSON)
+	commitBucket.Put([]byte("info"), commitJSON)
 
 	if err := tx.Commit(); err != nil {
 		return err
@@ -177,16 +228,38 @@ func (m *BoltManager) SaveTaskForCommitInProject(t *task.Task, c *domain.Commit,
 	}
 	defer tx.Rollback()
 
-	b := tx.Bucket([]byte("projects"))
-	b.CreateBucketIfNotExists([]byte(fmt.Sprintf("commits-%s", p.ID)))
-	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
-	b.CreateBucketIfNotExists([]byte(fmt.Sprintf("tasks-%s", c.Hash)))
-	b = b.Bucket([]byte(fmt.Sprintf("tasks-%s", c.Hash)))
+	projectsBucket := tx.Bucket([]byte("projects"))
+	if projectsBucket == nil {
+		return errors.New("Projects not found:")
+	}
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	if projectBucket == nil {
+		return fmt.Errorf("Project not found: %s", p.ID)
+	}
+
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	if commitsBucket == nil {
+		return fmt.Errorf("Could not find any commits for project: %s", p.ID)
+	}
+
+	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
+	if commitBucket == nil {
+		return fmt.Errorf("Could not find project: %s, commit: %s", p.ID, c.Hash)
+	}
+
+	tasksBucket, err := commitBucket.CreateBucketIfNotExists([]byte("tasks"))
+	if err != nil {
+		return err
+	}
+	if tasksBucket == nil {
+		tasksBucket = commitBucket.Bucket([]byte("tasks"))
+	}
+
 	taskJSON, err := json.Marshal(t)
 	if err != nil {
 		fmt.Println(err)
 	}
-	b.Put([]byte(t.Name), taskJSON)
+	tasksBucket.Put([]byte(t.Name), taskJSON)
 
 	if err := tx.Commit(); err != nil {
 		return err
@@ -206,21 +279,38 @@ func (m *BoltManager) GetTasksForCommitInProject(c *domain.Commit, p *domain.Pro
 	}
 	defer tx.Rollback()
 
-	b := tx.Bucket([]byte("projects"))
-	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
-	if b == nil {
+	projectsBucket := tx.Bucket([]byte("projects"))
+	if projectsBucket == nil {
 		return tasks
 	}
-	b = b.Bucket([]byte(fmt.Sprintf("tasks-%s", c.Hash)))
-	b.ForEach(func(k, v []byte) error {
-		t := task.NewTask()
-		err := json.Unmarshal(v, &t)
-		if err != nil {
-			fmt.Println(err)
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	if projectBucket == nil {
+		return tasks
+	}
+
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	if commitsBucket == nil {
+		return tasks
+	}
+
+	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
+	if commitBucket == nil {
+		return tasks
+	}
+
+	tasksBucket := commitBucket.Bucket([]byte("tasks"))
+	if tasksBucket == nil {
+		return tasks
+	}
+
+	cursor := tasksBucket.Cursor()
+	for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
+		task := task.NewTask()
+		err := json.Unmarshal(v, &task)
+		if err == nil {
+			tasks = append(tasks, task)
 		}
-		tasks = append(tasks, t)
-		return nil
-	})
+	}
 
 	return tasks
 }
