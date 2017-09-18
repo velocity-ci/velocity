@@ -62,10 +62,13 @@ func sync(p *domain.Project, m *Manager) {
 
 		m.SaveCommitForProject(p, &c)
 
-		w.Checkout(&git.CheckoutOptions{
-			Hash:   commit.Hash,
-			Branch: r.Name(),
+		err = w.Checkout(&git.CheckoutOptions{
+			Hash: commit.Hash,
 		})
+
+		if err != nil {
+			fmt.Println(err)
+		}
 
 		SHA := r.Hash().String()
 		shortSHA := SHA[:7]
