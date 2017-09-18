@@ -196,7 +196,7 @@ viewProjectForm model =
                         , button
                             [ class "btn btn-primary"
                             , type_ "submit"
-                            , disabled ((not <| List.isEmpty (model.errors ++ model.serverErrors)) && (not <| model.submitting))
+                            , disabled ((not <| List.isEmpty combinedErrors) && (not <| model.submitting))
                             ]
                             [ text "Submit" ]
                         ]
