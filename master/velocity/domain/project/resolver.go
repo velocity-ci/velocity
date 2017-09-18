@@ -28,17 +28,17 @@ func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.R
 	errs := projectErrors{}
 
 	if len(p.Name) < 3 || len(p.Name) > 128 {
-		errs.Name = "Invalid name"
+		errs.Name = []string{"Invalid name"}
 		hasErrors = true
 	}
 
 	if len(p.Repository) < 8 || len(p.Repository) > 128 {
-		errs.Repository = "Invalid repository address"
+		errs.Repository = []string{"Invalid repository address"}
 		hasErrors = true
 	}
 
 	if len(p.PrivateKey) < 8 {
-		errs.PrivateKey = "Invalid key"
+		errs.PrivateKey = []string{"Invalid key"}
 		hasErrors = true
 	}
 
@@ -51,7 +51,7 @@ func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.R
 	if err == nil {
 		return false, &middlewares.ResponseErrors{
 			Errors: &projectErrors{
-				Name: "Name already taken.",
+				Name: []string{"Name already taken."},
 			},
 		}
 	}
@@ -60,7 +60,7 @@ func ValidatePOST(p *domain.Project, dbManager *DBManager) (bool, *middlewares.R
 }
 
 type projectErrors struct {
-	Name       string `json:"name"`
-	Repository string `json:"repository"`
-	PrivateKey string `json:"key"`
+	Name       []string `json:"name"`
+	Repository []string `json:"repository"`
+	PrivateKey []string `json:"key"`
 }

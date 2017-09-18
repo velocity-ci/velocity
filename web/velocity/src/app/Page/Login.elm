@@ -100,6 +100,7 @@ viewForm model =
             [ Form.input
                 "username"
                 "Username"
+                []
                 [ classList <| inputClassList model.username
                 , placeholder "Username"
                 , attribute "required" ""
@@ -110,6 +111,7 @@ viewForm model =
             , Form.password
                 "password"
                 "Password"
+                []
                 [ classList <| inputClassList model.password
                 , placeholder "Password"
                 , attribute "required" ""
