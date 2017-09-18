@@ -1,17 +1,23 @@
-package step
+package task
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 type DockerBuild struct {
-	domain.BaseStep `yaml:",inline"`
-	Dockerfile      string   `json:"dockerfile" yaml:"dockerfile"`
-	Context         string   `json:"context" yaml:"context"`
-	Tags            []string `json:"tags" yaml:"tags"`
+	BaseStep   `yaml:",inline"`
+	Dockerfile string   `json:"dockerfile" yaml:"dockerfile"`
+	Context    string   `json:"context" yaml:"context"`
+	Tags       []string `json:"tags" yaml:"tags"`
+}
+
+func NewDockerBuild() DockerBuild {
+	return DockerBuild{
+		Dockerfile: "",
+		Context:    "",
+		Tags:       []string{},
+	}
 }
 
 func (dB *DockerBuild) SetEmitter(e func(string)) {
@@ -42,11 +48,11 @@ func (dB *DockerBuild) Execute() error {
 	)
 }
 
-func (dB *DockerBuild) Validate(params []domain.Parameter) error {
+func (dB *DockerBuild) Validate(params []Parameter) error {
 	return nil
 }
 
-func (dB *DockerBuild) SetParams(params []domain.Parameter) error {
+func (dB *DockerBuild) SetParams(params []Parameter) error {
 	dB.Parameters = params
 	for _, param := range dB.Parameters {
 		dB.Context = strings.Replace(dB.Context, fmt.Sprintf("${%s}", param.Name), param.Value, -1)

@@ -5,10 +5,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain/task"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
@@ -21,8 +23,9 @@ func sync(p *domain.Project, m *Manager) {
 	defer os.RemoveAll(dir) // clean up
 
 	// Clones the repository into the given dir, just as a normal git clone does
-	repo, err := git.PlainClone(dir, true, &git.CloneOptions{
-		URL: p.Repository,
+	repo, err := git.PlainClone(dir, false, &git.CloneOptions{
+		URL:   p.Repository,
+		Depth: 10,
 	})
 
 	if err != nil {
@@ -30,6 +33,7 @@ func sync(p *domain.Project, m *Manager) {
 	}
 
 	refIter, err := repo.References()
+	w, err := repo.Worktree()
 	for {
 		r, err := refIter.Next()
 		if err != nil {
@@ -57,6 +61,45 @@ func sync(p *domain.Project, m *Manager) {
 		}
 
 		m.SaveCommitForProject(p, &c)
+
+		w.Checkout(&git.CheckoutOptions{
+			Hash:   commit.Hash,
+			Branch: r.Name(),
+		})
+
+		SHA := r.Hash().String()
+		shortSHA := SHA[:7]
+		branch := r.Name().Short()
+		describe := shortSHA
+
+		gitParams := []task.Parameter{
+			task.Parameter{
+				Name:  "GIT_SHA",
+				Value: SHA,
+			},
+			task.Parameter{
+				Name:  "GIT_SHORT_SHA",
+				Value: shortSHA,
+			},
+			task.Parameter{
+				Name:  "GIT_BRANCH",
+				Value: branch,
+			},
+			task.Parameter{
+				Name:  "GIT_DESCRIBE",
+				Value: describe,
+			},
+		}
+
+		filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
+			if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
+				taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
+				task := task.ResolveTaskFromYAML(string(taskYml), gitParams)
+				m.SaveTaskForCommitInProject(&task, &c, p)
+			}
+			return nil
+		})
+
 	}
 
 	p.UpdatedAt = time.Now()

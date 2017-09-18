@@ -60,6 +60,12 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.syncProjectHandler)),
 	)).Methods("POST")
 
+	// GET /v1/projects/{projectID}/commits/{commitHash}/tasks
+	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/tasks", negroni.New(
+		middlewares.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTasksHandler)),
+	)).Methods("GET")
+
 	c.logger.Println("Set up Project controller.")
 }
 
@@ -136,5 +142,26 @@ func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Requ
 	commits := c.projectManager.GetCommitsForProject(p)
 
 	c.render.JSON(w, http.StatusOK, commits)
+}
 
+func (c Controller) getProjectCommitTasksHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["projectID"]
+	reqCommitID := reqVars["commitHash"]
+
+	project, err := c.projectManager.FindByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	commit, err := c.projectManager.GetCommitInProject(reqCommitID, project)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	tasks := c.projectManager.GetTasksForCommitInProject(commit, project)
+
+	c.render.JSON(w, http.StatusOK, tasks)
 }

@@ -1,13 +1,11 @@
-package step
+package task
 
 import (
 	"fmt"
-
-	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 type DockerCompose struct {
-	domain.BaseStep
+	BaseStep
 	ComposeFile string `json:"composeFile" yaml:"compose_file"`
 	Contents    dockerComposeYaml
 }
@@ -28,11 +26,11 @@ func (dC DockerCompose) GetDetails() string {
 	return fmt.Sprintf("composeFile: %s", dC.ComposeFile)
 }
 
-func (dC *DockerCompose) Validate(params []domain.Parameter) error {
+func (dC *DockerCompose) Validate(params []Parameter) error {
 	return nil
 }
 
-func (dC *DockerCompose) SetParams(params []domain.Parameter) error {
+func (dC *DockerCompose) SetParams(params []Parameter) error {
 	return nil
 }
 

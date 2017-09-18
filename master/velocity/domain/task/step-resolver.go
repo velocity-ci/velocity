@@ -1,12 +1,11 @@
-package step
+package task
 
 import (
-	"github.com/velocity-ci/velocity/master/velocity/domain"
 	yaml "gopkg.in/yaml.v2"
 )
 
-func ResolveStepFromYAML(y string) domain.Step {
-	bStep := domain.BaseStep{}
+func ResolveStepFromYAML(y string) Step {
+	bStep := BaseStep{}
 	err := yaml.Unmarshal([]byte(y), &bStep)
 	if err != nil {
 		panic(err)
@@ -24,25 +23,25 @@ func ResolveStepFromYAML(y string) domain.Step {
 	}
 }
 
-func resolveRunStep(y string) domain.Step {
-	step := &DockerRun{}
+func resolveRunStep(y string) Step {
+	step := NewDockerRun()
 	err := yaml.Unmarshal([]byte(y), &step)
 	if err != nil {
 		panic(err)
 	}
-	return step
+	return &step
 }
 
-func resolveBuildStep(y string) domain.Step {
-	step := &DockerBuild{}
+func resolveBuildStep(y string) Step {
+	step := NewDockerBuild()
 	err := yaml.Unmarshal([]byte(y), &step)
 	if err != nil {
 		panic(err)
 	}
-	return step
+	return &step
 }
 
-func resolvePluginStep(y string) domain.Step {
+func resolvePluginStep(y string) Step {
 	step := &Plugin{}
 	err := yaml.Unmarshal([]byte(y), &step)
 	if err != nil {

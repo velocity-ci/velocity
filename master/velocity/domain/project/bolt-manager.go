@@ -7,6 +7,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain/task"
 )
 
 type BoltManager struct {
@@ -93,6 +94,33 @@ func (m *BoltManager) FindAll() []domain.Project {
 	return projects
 }
 
+func (m *BoltManager) GetCommitInProject(hash string, p *domain.Project) (*domain.Commit, error) {
+	tx, err := m.bolt.Begin(false)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	b := tx.Bucket([]byte("projects"))
+	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
+	if b == nil {
+		return nil, fmt.Errorf("Could not find project: %s, commit: %s", p.ID, hash)
+	}
+
+	v := b.Get([]byte(hash))
+	if v == nil {
+		return nil, fmt.Errorf("Could not find project: %s, commit: %s", p.ID, hash)
+	}
+
+	c := domain.Commit{}
+	err = json.Unmarshal(v, &c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
+}
+
 func (m *BoltManager) FindAllCommitsForProject(p *domain.Project) []domain.Commit {
 	commits := []domain.Commit{}
 
@@ -140,4 +168,59 @@ func (m *BoltManager) SaveCommitForProject(p *domain.Project, c *domain.Commit) 
 	m.boltLogger.Printf("Saved commit %s for %s", c.Hash, p.ID)
 
 	return nil
+}
+
+func (m *BoltManager) SaveTaskForCommitInProject(t *task.Task, c *domain.Commit, p *domain.Project) error {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	b := tx.Bucket([]byte("projects"))
+	b.CreateBucketIfNotExists([]byte(fmt.Sprintf("commits-%s", p.ID)))
+	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
+	b.CreateBucketIfNotExists([]byte(fmt.Sprintf("tasks-%s", c.Hash)))
+	b = b.Bucket([]byte(fmt.Sprintf("tasks-%s", c.Hash)))
+	taskJSON, err := json.Marshal(t)
+	if err != nil {
+		fmt.Println(err)
+	}
+	b.Put([]byte(t.Name), taskJSON)
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	m.boltLogger.Printf("Saved task %s for %s in %s", t.Name, c.Hash, p.ID)
+
+	return nil
+}
+
+func (m *BoltManager) GetTasksForCommitInProject(c *domain.Commit, p *domain.Project) []task.Task {
+	tasks := []task.Task{}
+
+	tx, err := m.bolt.Begin(false)
+	if err != nil {
+		return tasks
+	}
+	defer tx.Rollback()
+
+	b := tx.Bucket([]byte("projects"))
+	b = b.Bucket([]byte(fmt.Sprintf("commits-%s", p.ID)))
+	if b == nil {
+		return tasks
+	}
+	b = b.Bucket([]byte(fmt.Sprintf("tasks-%s", c.Hash)))
+	b.ForEach(func(k, v []byte) error {
+		t := task.NewTask()
+		err := json.Unmarshal(v, &t)
+		if err != nil {
+			fmt.Println(err)
+		}
+		tasks = append(tasks, t)
+		return nil
+	})
+
+	return tasks
 }

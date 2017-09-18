@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/domain/task"
 )
 
 type Manager struct {
@@ -59,6 +60,10 @@ func (m *Manager) FindAll() []domain.Project {
 	return projects
 }
 
+func (m *Manager) GetCommitInProject(hash string, p *domain.Project) (*domain.Commit, error) {
+	return m.boltManager.GetCommitInProject(hash, p)
+}
+
 func (m *Manager) GetCommitsForProject(p *domain.Project) []domain.Commit {
 	commits := m.boltManager.FindAllCommitsForProject(p)
 
@@ -67,4 +72,12 @@ func (m *Manager) GetCommitsForProject(p *domain.Project) []domain.Commit {
 
 func (m *Manager) SaveCommitForProject(p *domain.Project, c *domain.Commit) error {
 	return m.boltManager.SaveCommitForProject(p, c)
+}
+
+func (m *Manager) SaveTaskForCommitInProject(t *task.Task, c *domain.Commit, p *domain.Project) error {
+	return m.boltManager.SaveTaskForCommitInProject(t, c, p)
+}
+
+func (m *Manager) GetTasksForCommitInProject(c *domain.Commit, p *domain.Project) []task.Task {
+	return m.boltManager.GetTasksForCommitInProject(c, p)
 }

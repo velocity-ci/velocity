@@ -1,14 +1,13 @@
-package step
+package task
 
 import (
 	"fmt"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 type Plugin struct {
-	domain.BaseStep
+	BaseStep
 	Image          string            `json:"image" yaml:"image"`
 	DockerInDocker bool              `json:"dind" yaml:"dind"`
 	Environment    map[string]string `json:"environment" yaml:"environment"`
@@ -75,12 +74,12 @@ func (p *Plugin) Execute() error {
 	return nil
 }
 
-func (p Plugin) Validate(params []domain.Parameter) error {
+func (p Plugin) Validate(params []Parameter) error {
 
 	return nil
 }
 
-func (p *Plugin) SetParams(params []domain.Parameter) error {
+func (p *Plugin) SetParams(params []Parameter) error {
 
 	return nil
 }

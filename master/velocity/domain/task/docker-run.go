@@ -1,4 +1,4 @@
-package step
+package task
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
 
 const successANSI = "\x1b[1m\x1b[40m\x1b[32m"
@@ -15,13 +14,24 @@ const errorANSI = "\x1b[1m\x1b[40m\x1b[31m"
 const infoANSI = "\x1b[1m\x1b[40m\x1b[34m"
 
 type DockerRun struct {
-	domain.BaseStep `yaml:",inline"`
-	Image           string            `json:"image" yaml:"image"`
-	Command         []string          `json:"command" yaml:"command"`
-	Environment     map[string]string `json:"environment" yaml:"environment"`
-	WorkingDir      string            `json:"workingDir" yaml:"working_dir"`
-	MountPoint      string            `json:"mountPoint" yaml:"mount_point"`
-	IgnoreExitCode  bool              `json:"ignoreExitCode" yaml:"ignore_exit"`
+	BaseStep       `yaml:",inline"`
+	Image          string            `json:"image" yaml:"image"`
+	Command        []string          `json:"command" yaml:"command"`
+	Environment    map[string]string `json:"environment" yaml:"environment"`
+	WorkingDir     string            `json:"workingDir" yaml:"working_dir"`
+	MountPoint     string            `json:"mountPoint" yaml:"mount_point"`
+	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignore_exit"`
+}
+
+func NewDockerRun() DockerRun {
+	return DockerRun{
+		Image:          "",
+		Command:        []string{},
+		Environment:    map[string]string{},
+		WorkingDir:     "",
+		MountPoint:     "",
+		IgnoreExitCode: false,
+	}
 }
 
 func (dR *DockerRun) SetEmitter(e func(string)) {
@@ -94,7 +104,7 @@ func (dR *DockerRun) Execute() error {
 
 }
 
-func (dR DockerRun) Validate(params []domain.Parameter) error {
+func (dR DockerRun) Validate(params []Parameter) error {
 	re := regexp.MustCompile("\\$\\{(.+)\\}")
 
 	requiredParams := re.FindAllStringSubmatch(dR.Image, -1)
@@ -125,7 +135,7 @@ func (dR DockerRun) Validate(params []domain.Parameter) error {
 	return nil
 }
 
-func (dR *DockerRun) SetParams(params []domain.Parameter) error {
+func (dR *DockerRun) SetParams(params []Parameter) error {
 	dR.Parameters = params
 	for _, param := range dR.Parameters {
 		dR.Image = strings.Replace(dR.Image, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
@@ -150,7 +160,7 @@ func (dR *DockerRun) SetParams(params []domain.Parameter) error {
 	return nil
 }
 
-func isAllInParams(matches [][]string, params []domain.Parameter) bool {
+func isAllInParams(matches [][]string, params []Parameter) bool {
 	for _, match := range matches {
 		found := false
 		for _, param := range params {

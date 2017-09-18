@@ -1,4 +1,4 @@
-package domain
+package task
 
 type Parameter struct {
 	Name         string   `json:"name" yaml:"name"`
