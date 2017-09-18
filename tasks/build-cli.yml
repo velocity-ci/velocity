@@ -1,4 +1,4 @@
-description: "Builds Master"
+description: "Builds CLI"
 name: build-cli
 steps: 
   - type: build
