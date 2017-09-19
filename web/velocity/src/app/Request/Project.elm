@@ -1,7 +1,8 @@
-module Request.Project exposing (list, create, get)
+module Request.Project exposing (list, create, get, commits)
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
+import Data.Commit as Commit exposing (Commit)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
@@ -28,6 +29,25 @@ list maybeToken =
                 |> Http.expectJson
     in
         apiUrl baseUrl
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+
+-- COMMITS --
+
+
+commits : Project.Id -> Maybe AuthToken -> Http.Request (List Commit)
+commits id maybeToken =
+    let
+        expect =
+            Commit.decoder
+                |> Decode.list
+                |> Http.expectJson
+    in
+        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/commits")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken

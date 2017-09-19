@@ -121,6 +121,7 @@ viewProjectFormContainer model =
                             [ type_ "button"
                             , class "btn btn-primary btn-sm float-right"
                             , onClick (SetFormCollapsed <| not model.formCollapsed)
+                            , disabled model.submitting
                             ]
                             [ i [ class "fa", classList toggleClassList ] [] ]
                         ]
