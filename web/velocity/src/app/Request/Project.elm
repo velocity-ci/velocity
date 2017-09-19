@@ -1,4 +1,4 @@
-module Request.Project exposing (list, create, get, commits)
+module Request.Project exposing (list, create, get, commits, sync)
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
@@ -32,6 +32,24 @@ list maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+
+-- SYNC --
+
+
+sync : Project.Id -> AuthToken -> Http.Request Project
+sync id token =
+    let
+        expect =
+            Project.decoder
+                |> Http.expectJson
+    in
+        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/sync")
+            |> HttpBuilder.post
+            |> withAuthorization (Just token)
+            |> withExpect expect
             |> HttpBuilder.toRequest
 
 

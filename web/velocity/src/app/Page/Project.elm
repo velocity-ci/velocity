@@ -8,6 +8,7 @@ import Task exposing (Task)
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Views.Page as Page
 import Util exposing ((=>))
 import Http
@@ -60,7 +61,7 @@ view session model =
             [ h3 [ class "card-header" ]
                 [ text project.name ]
             , div [ class "card-block" ]
-                [ div [] [ button [ class "btn btn-primary btn-lg" ] [ text "Synchronize" ] ]
+                [ div [] [ button [ class "btn btn-primary btn-lg", onClick SubmitSync ] [ text "Synchronize" ] ]
                 , div [] (List.map viewCommitListItem model.commits)
                 ]
             ]
@@ -91,9 +92,29 @@ viewCommitListItem commit =
 
 
 type Msg
-    = NoOp
+    = SubmitSync
+    | SyncCompleted (Result Http.Error Project)
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
-    model => Cmd.none
+    case msg of
+        SubmitSync ->
+            let
+                cmdFromAuth authToken =
+                    authToken
+                        |> Request.Project.sync model.project.id
+                        |> Http.send SyncCompleted
+
+                cmd =
+                    session
+                        |> Session.attempt "sync project" cmdFromAuth
+                        |> Tuple.second
+            in
+                model => cmd
+
+        SyncCompleted (Ok project) ->
+            model => Cmd.none
+
+        SyncCompleted (Err err) ->
+            model => Cmd.none
