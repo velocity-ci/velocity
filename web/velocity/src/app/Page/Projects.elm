@@ -199,6 +199,7 @@ viewProjectForm model =
                             , disabled ((not <| List.isEmpty combinedErrors) && (not <| model.submitting))
                             ]
                             [ text "Submit" ]
+                        , Util.viewIf model.submitting Form.viewSpinner
                         ]
                    ]
             )
@@ -257,7 +258,15 @@ updateInput field value =
 
 resetServerErrors : List Error -> Field -> List Error
 resetServerErrors errors field =
-    List.filter (\error -> (Tuple.first error) /= field) errors
+    let
+        shouldInclude error =
+            let
+                errorField =
+                    Tuple.first error
+            in
+                errorField /= field && errorField /= Form
+    in
+        List.filter shouldInclude errors
 
 
 serverErrorToFormError : ( String, String ) -> Error
