@@ -6,6 +6,7 @@ module Page.Helpers
         , sortByDatetime
         , getFieldErrors
         , ifBelowLength
+        , ifAboveLength
         , validClasses
         )
 
@@ -50,14 +51,19 @@ sortByDatetime property items =
 -- FORM VALIDATION --
 
 
-getFieldErrors : { b | field : field } -> List ( field, error ) -> List ( field, error )
-getFieldErrors formField errors =
+getFieldErrors : List ( field, error ) -> { b | field : field } -> List ( field, error )
+getFieldErrors errors formField =
     List.filter (\e -> formField.field == Tuple.first e) errors
 
 
 ifBelowLength : Int -> error -> Validator error String
 ifBelowLength length =
     ifInvalid (\s -> String.length s < length)
+
+
+ifAboveLength : Int -> error -> Validator error String
+ifAboveLength length =
+    ifInvalid (\s -> String.length s > length)
 
 
 validClasses :
@@ -84,9 +90,9 @@ appendZero int =
 
 isInvalid : List ( field, error ) -> { formField | dirty : Bool, field : field } -> Bool
 isInvalid errors formField =
-    formField.dirty && List.length (getFieldErrors formField errors) > 0
+    formField.dirty && List.length (getFieldErrors errors formField) > 0
 
 
 isValid : List ( field, error ) -> { formField | dirty : Bool, field : field } -> Bool
 isValid errors formField =
-    formField.dirty && List.isEmpty (getFieldErrors formField errors)
+    formField.dirty && List.isEmpty (getFieldErrors errors formField)

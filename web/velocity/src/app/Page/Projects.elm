@@ -13,8 +13,10 @@ import Html.Events exposing (onClick, onInput, onSubmit)
 import Util exposing ((=>))
 import Views.Form as Form
 import Validate exposing (..)
-import Page.Helpers exposing (ifBelowLength, validClasses, formatDateTime, sortByDatetime)
+import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, formatDateTime, sortByDatetime, getFieldErrors)
 import Route
+import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
+import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
 
 
 -- MODEL --
@@ -34,12 +36,18 @@ type alias FormField =
     }
 
 
-type alias Model =
-    { formCollapsed : Bool
-    , name : FormField
+type alias ProjectForm =
+    { name : FormField
     , repository : FormField
     , privateKey : FormField
+    }
+
+
+type alias Model =
+    { formCollapsed : Bool
+    , form : ProjectForm
     , errors : List Error
+    , serverErrors : List Error
     , submitting : Bool
     , projects : List Project
     }
@@ -48,6 +56,14 @@ type alias Model =
 newField : Field -> FormField
 newField field =
     FormField "" False field
+
+
+initialForm : ProjectForm
+initialForm =
+    { name = newField Name
+    , repository = newField Repository
+    , privateKey = newField PrivateKey
+    }
 
 
 init : Session -> Task PageLoadError Model
@@ -63,17 +79,16 @@ init session =
         handleLoadError _ =
             pageLoadError Page.Projects "Projects are currently unavailable."
 
-        initialFormErrors =
-            validate
-                { name = newField Name
-                , repository = newField Repository
-                , privateKey = newField PrivateKey
-                }
-
-        staticInitialModel =
-            Model True (newField Name) (newField Repository) (newField PrivateKey) initialFormErrors False
+        initialModel projects =
+            { formCollapsed = True
+            , form = initialForm
+            , errors = validate initialForm
+            , serverErrors = []
+            , submitting = False
+            , projects = projects
+            }
     in
-        Task.map staticInitialModel loadProjects
+        Task.map initialModel loadProjects
             |> Task.mapError handleLoadError
 
 
@@ -115,53 +130,79 @@ viewProjectFormContainer model =
             ]
 
 
+viewGlobalError : Error -> Html Msg
+viewGlobalError error =
+    div [ class "alert alert-danger" ] [ text (Tuple.second error) ]
+
+
 viewProjectForm : Model -> Html Msg
 viewProjectForm model =
     let
+        form =
+            model.form
+
+        combinedErrors =
+            model.errors ++ model.serverErrors
+
         inputClassList =
-            validClasses <| model.errors
+            validClasses combinedErrors
+
+        errors field =
+            if field.dirty then
+                getFieldErrors combinedErrors field
+            else
+                []
+
+        globalErrors =
+            List.filter (\e -> (Tuple.first e) == Form) combinedErrors
     in
         div [ class "card-body" ]
-            [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
-                [ Form.input
-                    "name"
-                    "Name"
-                    [ placeholder "Name"
-                    , attribute "required" ""
-                    , value model.name.value
-                    , onInput SetName
-                    , classList <| inputClassList model.name
-                    ]
-                    []
-                , Form.input
-                    "repository"
-                    "Repository address"
-                    [ placeholder "Repository"
-                    , attribute "required" ""
-                    , value model.repository.value
-                    , onInput SetRepository
-                    , classList <| inputClassList model.repository
-                    ]
-                    []
-                , Form.textarea
-                    "key"
-                    "Private key"
-                    [ placeholder "Private key"
-                    , attribute "required" ""
-                    , rows 3
-                    , value model.privateKey.value
-                    , onInput SetPrivateKey
-                    , classList <| inputClassList model.privateKey
-                    ]
-                    []
-                , button
-                    [ class "btn btn-primary"
-                    , type_ "submit"
-                    , disabled ((not <| List.isEmpty model.errors) && (not <| model.submitting))
-                    ]
-                    [ text "Submit" ]
-                ]
-            ]
+            (List.map viewGlobalError globalErrors
+                ++ [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
+                        [ Form.input
+                            "name"
+                            "Name"
+                            (errors form.name)
+                            [ placeholder "Name"
+                            , attribute "required" ""
+                            , value form.name.value
+                            , onInput SetName
+                            , classList <| inputClassList form.name
+                            ]
+                            []
+                        , Form.input
+                            "repository"
+                            "Repository address"
+                            (errors form.repository)
+                            [ placeholder "Repository"
+                            , attribute "required" ""
+                            , value form.repository.value
+                            , onInput SetRepository
+                            , classList <| inputClassList form.repository
+                            ]
+                            []
+                        , Form.textarea
+                            "key"
+                            "Private key"
+                            (errors form.privateKey)
+                            [ placeholder "Private key"
+                            , attribute "required" ""
+                            , rows 3
+                            , value form.privateKey.value
+                            , onInput SetPrivateKey
+                            , classList <| inputClassList form.privateKey
+                            ]
+                            []
+                        , button
+                            [ class "btn btn-primary"
+                            , type_ "submit"
+                            , disabled ((not <| List.isEmpty combinedErrors) && (not <| model.submitting))
+                            ]
+                            [ text "Submit" ]
+                        , Util.viewIf model.submitting Form.viewSpinner
+                        ]
+                   ]
+            )
 
 
 viewProjectList : List Project -> Html Msg
@@ -215,79 +256,146 @@ updateInput field value =
     FormField value True field
 
 
+resetServerErrors : List Error -> Field -> List Error
+resetServerErrors errors field =
+    let
+        shouldInclude error =
+            let
+                errorField =
+                    Tuple.first error
+            in
+                errorField /= field && errorField /= Form
+    in
+        List.filter shouldInclude errors
+
+
+serverErrorToFormError : ( String, String ) -> Error
+serverErrorToFormError ( fieldNameString, errorString ) =
+    let
+        field =
+            case fieldNameString of
+                "name" ->
+                    Name
+
+                "repository" ->
+                    Repository
+
+                "key" ->
+                    PrivateKey
+
+                _ ->
+                    Form
+    in
+        field => errorString
+
+
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
-    case msg of
-        SubmitForm ->
-            case validate model of
-                [] ->
-                    let
-                        submitValues =
-                            { name = model.name.value
-                            , repository = model.repository.value
-                            , privateKey = model.privateKey.value
+    let
+        form =
+            model.form
+
+        resetServerErrorsForField =
+            resetServerErrors model.serverErrors
+    in
+        case msg of
+            SubmitForm ->
+                case validate form of
+                    [] ->
+                        let
+                            submitValues =
+                                { name = form.name.value
+                                , repository = form.repository.value
+                                , privateKey = form.privateKey.value
+                                }
+
+                            cmdFromAuth authToken =
+                                authToken
+                                    |> Request.Project.create submitValues
+                                    |> Http.send ProjectCreated
+
+                            cmd =
+                                session
+                                    |> Session.attempt "create project" cmdFromAuth
+                                    |> Tuple.second
+                        in
+                            { model
+                                | submitting = True
+                                , serverErrors = []
+                                , errors = []
                             }
+                                => cmd
 
-                        cmdFromAuth authToken =
-                            authToken
-                                |> Request.Project.create submitValues
-                                |> Http.send ProjectCreated
+                    errors ->
+                        { model | errors = errors }
+                            => Cmd.none
 
-                        cmd =
-                            session
-                                |> Session.attempt "create project" cmdFromAuth
-                                |> Tuple.second
-                    in
-                        { model
-                            | submitting = True
-                            , name = newField Name
-                            , repository = newField Repository
-                            , privateKey = newField PrivateKey
-                            , formCollapsed = True
-                        }
-                            => cmd
+            SetFormCollapsed state ->
+                { model | formCollapsed = state }
+                    => Cmd.none
 
-                errors ->
-                    { model | errors = errors }
+            SetName name ->
+                let
+                    newForm =
+                        { form | name = name |> (updateInput Name) }
+                in
+                    { model
+                        | errors = validate newForm
+                        , form = newForm
+                        , serverErrors = resetServerErrorsForField Name
+                    }
                         => Cmd.none
 
-        SetFormCollapsed state ->
-            { model | formCollapsed = state }
-                => Cmd.none
+            SetRepository repository ->
+                let
+                    newForm =
+                        { form | repository = repository |> (updateInput Repository) }
+                in
+                    { model
+                        | errors = validate newForm
+                        , form = newForm
+                        , serverErrors = resetServerErrorsForField Repository
+                    }
+                        => Cmd.none
 
-        SetName name ->
-            let
-                newModel =
-                    { model | name = name |> (updateInput Name) }
-            in
-                { newModel | errors = validate newModel }
+            SetPrivateKey privateKey ->
+                let
+                    newForm =
+                        { form | privateKey = privateKey |> (updateInput PrivateKey) }
+                in
+                    { model
+                        | errors = validate newForm
+                        , form = newForm
+                        , serverErrors = resetServerErrorsForField PrivateKey
+                    }
+                        => Cmd.none
+
+            ProjectCreated (Err err) ->
+                let
+                    errorMessages =
+                        case err of
+                            Http.BadStatus response ->
+                                response.body
+                                    |> decodeString (field "errors" errorsDecoder)
+                                    |> Result.withDefault []
+
+                            _ ->
+                                [ ( "", "Unable to process project." ) ]
+                in
+                    { model
+                        | submitting = False
+                        , serverErrors = List.map serverErrorToFormError errorMessages
+                    }
+                        => Cmd.none
+
+            ProjectCreated (Ok project) ->
+                { model
+                    | projects = project :: model.projects
+                    , submitting = False
+                    , formCollapsed = True
+                    , form = initialForm
+                }
                     => Cmd.none
-
-        SetRepository repository ->
-            let
-                newModel =
-                    { model | repository = repository |> (updateInput Repository) }
-            in
-                { newModel | errors = validate newModel }
-                    => Cmd.none
-
-        SetPrivateKey privateKey ->
-            let
-                newModel =
-                    { model | privateKey = privateKey |> (updateInput PrivateKey) }
-            in
-                { newModel | errors = validate newModel }
-                    => Cmd.none
-
-        ProjectCreated (Err err) ->
-            { model | submitting = False } => Cmd.none
-
-        ProjectCreated (Ok project) ->
-            { model
-                | projects = project :: model.projects
-                , submitting = False
-            }
-                => Cmd.none
 
 
 
@@ -298,19 +406,29 @@ type alias Error =
     ( Field, String )
 
 
-validate :
-    Validator ( Field, String )
-        { d
-            | name : { a | value : String }
-            , privateKey : { b | value : String }
-            , repository : { c | value : String }
-        }
+validate : Validator ( Field, String ) ProjectForm
 validate =
     Validate.all
-        [ (.name >> .value) >> ifBlank (Name => "project name can't be blank.")
-        , (.repository >> .value) >> ifBlank (Repository => "project repository can't be blank.")
-        , (.privateKey >> .value) >> ifBlank (PrivateKey => "private key can't be blank.")
-        , (.name >> .value) >> (ifBelowLength 3) (Name => "name must be over 2 characters.")
-        , (.repository >> .value) >> (ifBelowLength 8) (Repository => "repository must be over 7 characters.")
-        , (.privateKey >> .value) >> (ifBelowLength 8) (PrivateKey => "private key must be over 7 characters.")
+        [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
+        , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
+        , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
+        , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
+        , (.privateKey >> .value) >> (ifBelowLength 8) (PrivateKey => "Private key must be over 7 characters.")
         ]
+
+
+errorsDecoder : Decoder (List ( String, String ))
+errorsDecoder =
+    decode (\name repository privateKey -> List.concat [ name, repository, privateKey ])
+        |> optionalError "name"
+        |> optionalError "repository"
+        |> optionalError "key"
+
+
+optionalError : String -> Decoder (List ( String, String ) -> a) -> Decoder a
+optionalError fieldName =
+    let
+        errorToTuple errorMessage =
+            ( fieldName, errorMessage )
+    in
+        optional fieldName (Decode.list (Decode.map errorToTuple string)) []
