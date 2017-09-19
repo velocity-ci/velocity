@@ -168,6 +168,7 @@ viewProjectForm model =
                             , value form.name.value
                             , onInput SetName
                             , classList <| inputClassList form.name
+                            , disabled model.submitting
                             ]
                             []
                         , Form.input
@@ -179,6 +180,7 @@ viewProjectForm model =
                             , value form.repository.value
                             , onInput SetRepository
                             , classList <| inputClassList form.repository
+                            , disabled model.submitting
                             ]
                             []
                         , Form.textarea
@@ -191,12 +193,13 @@ viewProjectForm model =
                             , value form.privateKey.value
                             , onInput SetPrivateKey
                             , classList <| inputClassList form.privateKey
+                            , disabled model.submitting
                             ]
                             []
                         , button
                             [ class "btn btn-primary"
                             , type_ "submit"
-                            , disabled ((not <| List.isEmpty combinedErrors) && (not <| model.submitting))
+                            , disabled ((not <| List.isEmpty combinedErrors) || model.submitting)
                             ]
                             [ text "Submit" ]
                         , Util.viewIf model.submitting Form.viewSpinner
