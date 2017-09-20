@@ -46,11 +46,6 @@ func ValidatePOST(p *domain.Project, m *Manager) (bool, *middlewares.ResponseErr
 		hasErrors = true
 	}
 
-	if len(p.PrivateKey) < 8 {
-		errs.PrivateKey = []string{"Invalid key"}
-		hasErrors = true
-	}
-
 	if hasErrors {
 		return false, &middlewares.ResponseErrors{
 			Errors: &errs,
@@ -82,6 +77,8 @@ func validateRepository(p *domain.Project) (bool, *middlewares.ResponseErrors) {
 	}
 
 	defer os.RemoveAll(dir) // clean up
+
+	fmt.Println(os.Getenv("SSH_AUTH_SOCK"))
 
 	// Clones the repository into the given dir, just as a normal git clone does
 	_, err = git.PlainClone(dir, true, &git.CloneOptions{

@@ -5,9 +5,9 @@ import (
 )
 
 type Project struct {
-	Name       string `json:"name"`
-	Repository string `json:"repository"`
-	PrivateKey string `json:"key"`
+	Name       string  `json:"name"`
+	Repository string  `json:"repository"`
+	RepoAuth   GitAuth `json:"authentication"`
 
 	ID        string    `json:"id" gorm:"primary_key"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -16,6 +16,11 @@ type Project struct {
 	Synchronising bool `json:"synchronising"`
 
 	Builds []Build `json:"builds" gorm:"ForeignKey:ProjectID"`
+}
+
+type GitAuth struct {
+	PrivateKey string `json:"sshKey"`
+	Username   string `json:"username"`
 }
 
 type Build struct {
