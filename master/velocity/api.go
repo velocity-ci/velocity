@@ -8,9 +8,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/jinzhu/gorm"
 	"github.com/unrolled/render"
-	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/domain/auth"
 	"github.com/velocity-ci/velocity/master/velocity/domain/project"
 	"github.com/velocity-ci/velocity/master/velocity/domain/user"
@@ -22,7 +20,6 @@ import (
 type VelocityAPI struct {
 	Router *routers.MuxRouter
 	server *http.Server
-	db     *gorm.DB
 	bolt   *bolt.DB
 }
 
@@ -31,26 +28,16 @@ func NewVelocityAPI() App {
 	velocityAPI := &VelocityAPI{}
 
 	controllerLogger := log.New(os.Stdout, "[controller]", log.Lshortfile)
-	dbLogger := log.New(os.Stdout, "[database]", log.Lshortfile)
+	boltLogger := log.New(os.Stdout, "[bolt]", log.Lshortfile)
 	renderer := render.New()
 
-	velocityAPI.db = persisters.NewGORMDB(
-		dbLogger,
-		&domain.User{},
-		&domain.Project{},
-	)
+	velocityAPI.bolt = persisters.NewBoltDB(boltLogger)
 
-	velocityAPI.bolt = persisters.NewBoltDB(dbLogger)
+	userBoltManager := user.NewBoltManager(boltLogger, velocityAPI.bolt)
+	projectBoltManager := project.NewBoltManager(boltLogger, velocityAPI.bolt)
 
-	userDBManager := user.NewDBManager(dbLogger, velocityAPI.db)
-	projectDBManager := project.NewDBManager(dbLogger, velocityAPI.db)
-
-	projectBoltManager := project.NewBoltManager(dbLogger, velocityAPI.bolt)
-
-	projectManager := project.NewManager(dbLogger, projectDBManager, projectBoltManager)
-
-	authController := auth.NewController(controllerLogger, renderer, userDBManager)
-	projectController := project.NewController(controllerLogger, renderer, projectManager)
+	authController := auth.NewController(controllerLogger, renderer, userBoltManager)
+	projectController := project.NewController(controllerLogger, renderer, projectBoltManager)
 
 	velocityAPI.Router = routers.NewMuxRouter([]routers.Routable{
 		authController,
@@ -74,7 +61,9 @@ func (v *VelocityAPI) Stop() {
 	if err := v.server.Shutdown(nil); err != nil {
 		panic(err)
 	}
-	v.db.Close()
+	if err := v.bolt.Close(); err != nil {
+		panic(err)
+	}
 }
 
 // Start - Starts the API

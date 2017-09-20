@@ -14,7 +14,7 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 )
 
-func sync(p *domain.Project, m *Manager) {
+func sync(p *domain.Project, m *BoltManager) {
 	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", p.ID))
 	if err != nil {
 		log.Fatal(err)

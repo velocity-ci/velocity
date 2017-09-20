@@ -9,10 +9,8 @@ import (
 )
 
 // FromRequest - Validates and Transforms raw request data into a User struct.
-func FromRequest(b io.ReadCloser) (*domain.User, error) {
-	user := &domain.User{}
-
-	requestUser := &requestUser{}
+func FromRequest(b io.ReadCloser) (*domain.RequestUser, error) {
+	requestUser := &domain.RequestUser{}
 
 	err := json.NewDecoder(b).Decode(requestUser)
 	if err != nil {
@@ -27,13 +25,5 @@ func FromRequest(b io.ReadCloser) (*domain.User, error) {
 		return nil, errors.New("Invalid credentials")
 	}
 
-	user.Username = requestUser.Username
-	user.Password = requestUser.Password
-
-	return user, nil
-}
-
-type requestUser struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	return requestUser, nil
 }

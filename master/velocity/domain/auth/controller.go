@@ -11,21 +11,21 @@ import (
 
 // Controller - Handles authentication
 type Controller struct {
-	logger        *log.Logger
-	render        *render.Render
-	userDBManager *user.DBManager
+	logger  *log.Logger
+	render  *render.Render
+	manager *user.BoltManager
 }
 
 // NewController - returns a new Controller for Authentication.
 func NewController(
 	controllerLogger *log.Logger,
 	renderer *render.Render,
-	userDBManager *user.DBManager,
+	userBoltManager *user.BoltManager,
 ) *Controller {
 	return &Controller{
-		logger:        controllerLogger,
-		render:        renderer,
-		userDBManager: userDBManager,
+		logger:  controllerLogger,
+		render:  renderer,
+		manager: userBoltManager,
 	}
 }
 
@@ -45,18 +45,18 @@ func (c Controller) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := c.userDBManager.FindByUsername(requestUser.Username)
+	boltUser, err := c.manager.FindByUsername(requestUser.Username)
 	if err != nil {
 		c.render.JSON(w, http.StatusUnauthorized, nil)
 		return
 	}
 
-	if !user.ValidatePassword(requestUser.Password) {
+	if !boltUser.ValidatePassword(requestUser.Password) {
 		c.render.JSON(w, http.StatusUnauthorized, nil)
 		return
 	}
 
-	token := NewAuthToken(user)
+	token := NewAuthToken(boltUser)
 	c.render.JSON(w, http.StatusCreated, token)
 
 }
