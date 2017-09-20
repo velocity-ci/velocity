@@ -20,7 +20,7 @@ type Controller struct {
 	render     *render.Render
 	validator  *validator.Validate
 	translator ut.Translator
-	manager    *Manager
+	manager    *BoltManager
 }
 
 // NewController - returns a new Controller for Authentication.
@@ -29,7 +29,7 @@ func NewController(
 	renderer *render.Render,
 	validator *validator.Validate,
 	translator ut.Translator,
-	manager *Manager,
+	manager *BoltManager,
 ) *Controller {
 	return &Controller{
 		logger:     controllerLogger,
@@ -83,7 +83,7 @@ func (c Controller) postKnownHostsHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (c Controller) getKnownHostsHandler(w http.ResponseWriter, r *http.Request) {
-	knownHosts := c.manager.All()
+	knownHosts := c.manager.FindAll()
 
 	responseKnownHosts := []*domain.ResponseKnownHost{}
 	for _, k := range knownHosts {

@@ -1,6 +1,9 @@
 package knownhost
 
 import (
+	"log"
+	"os"
+
 	ut "github.com/go-playground/universal-translator"
 	"golang.org/x/crypto/ssh"
 	validator "gopkg.in/go-playground/validator.v9"
@@ -19,7 +22,7 @@ func ValidateKnownHost(fl validator.FieldLevel) bool {
 		return false
 	}
 
-	m := NewManager()
+	m := NewManager(log.New(os.Stdout, "[files]", log.Lshortfile))
 
 	return !m.Exists(knownHost)
 }

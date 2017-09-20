@@ -3,6 +3,7 @@ package knownhost
 import (
 	"encoding/json"
 	"io"
+	"strings"
 
 	ut "github.com/go-playground/universal-translator"
 	validator "gopkg.in/go-playground/validator.v9"
@@ -17,6 +18,8 @@ func FromRequest(b io.Reader, validate *validator.Validate, trans ut.Translator)
 	if err != nil {
 		return nil, err
 	}
+
+	reqKnownHost.Entry = strings.TrimSpace(reqKnownHost.Entry)
 
 	validate.RegisterValidation("knownHost", ValidateKnownHost)
 	validate.RegisterTranslation("knownHost", trans, registerFunc, translationFunc)

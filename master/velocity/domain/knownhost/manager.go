@@ -15,42 +15,39 @@ type Manager struct {
 	logger *log.Logger
 }
 
-func NewManager() *Manager {
+func NewManager(fileLogger *log.Logger) *Manager {
 	os.MkdirAll("/root/.ssh/", os.ModePerm)
 	f, err := os.OpenFile(knownHostsPath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	return &Manager{}
+
+	return &Manager{
+		logger: fileLogger,
+	}
 }
 
 func (m Manager) Save(e *domain.KnownHost) error {
 	f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_WRONLY|os.O_SYNC, 0644)
 	if err != nil {
-		fmt.Println("AAAA")
 		return err
 	}
 	defer f.Close()
 
 	_, err = f.WriteString(fmt.Sprintf("%s\n", e.Entry))
-	i, _ := f.Stat()
-	fmt.Println(i.Mode(), i.Size(), i.IsDir(), i.Name())
 	if err != nil {
-		fmt.Println("CCCC")
-
 		return err
 	}
 
-	fmt.Println("Wrote entry to known_hosts.")
+	m.logger.Printf("Wrote %s to %s", e.Entry, knownHostsPath)
 
 	return nil
 }
 
 func (m Manager) Exists(e string) bool {
-	f, err := os.OpenFile(knownHostsPath, os.O_RDONLY|os.O_SYNC, 0644)
+	f, err := os.OpenFile(knownHostsPath, os.O_RDONLY, 0644)
 	if err != nil {
-		fmt.Println("BBB")
 		log.Fatal(err)
 		return false
 	}
@@ -58,6 +55,7 @@ func (m Manager) Exists(e string) bool {
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
+		fmt.Println(scanner.Text())
 		if scanner.Text() == e {
 			return true
 		}

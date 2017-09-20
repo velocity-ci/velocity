@@ -31,17 +31,19 @@ func NewVelocityAPI() App {
 
 	controllerLogger := log.New(os.Stdout, "[controller]", log.Lshortfile)
 	boltLogger := log.New(os.Stdout, "[bolt]", log.Lshortfile)
+	fileLogger := log.New(os.Stdout, "[files]", log.Lshortfile)
 	renderer := render.New()
 	validator, translator := middlewares.NewValidator()
 
 	velocityAPI.bolt = persisters.NewBoltDB(boltLogger)
 
+	knownhostManager := knownhost.NewManager(fileLogger)
+
 	userBoltManager := user.NewBoltManager(boltLogger, velocityAPI.bolt)
 	projectBoltManager := project.NewBoltManager(boltLogger, velocityAPI.bolt)
+	knownhostBoltManager := knownhost.NewBoltManager(boltLogger, velocityAPI.bolt, knownhostManager)
 
-	knownhostManager := knownhost.NewManager()
-
-	knownhostController := knownhost.NewController(controllerLogger, renderer, validator, translator, knownhostManager)
+	knownhostController := knownhost.NewController(controllerLogger, renderer, validator, translator, knownhostBoltManager)
 	authController := auth.NewController(controllerLogger, renderer, userBoltManager)
 	projectController := project.NewController(controllerLogger, renderer, projectBoltManager)
 
