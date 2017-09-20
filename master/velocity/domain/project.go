@@ -9,18 +9,18 @@ type Project struct {
 	Repository string `json:"repository"`
 	PrivateKey string `json:"key"`
 
-	ID        string    `json:"id" gorm:"primary_key"`
+	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 
 	Synchronising bool `json:"synchronising"`
 
-	Builds []Build `json:"builds" gorm:"ForeignKey:ProjectID"`
+	Builds []Build `json:"builds"`
 }
 
 type Build struct {
-	ProjectID  string `json:"projectID" gorm:"primary_key"`
-	CommitHash string `json:"commitHash" gorm:"primary_key"`
+	ProjectID  string `json:"projectID"`
+	CommitHash string `json:"commitHash"`
 }
 
 type Commit struct {

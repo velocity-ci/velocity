@@ -1,7 +1,5 @@
 package: github.com/velocity-ci/velocity/master/velocity
 import:
-- package: github.com/jinzhu/gorm
-  version: master
 - package: github.com/dgrijalva/jwt-go
   version: ^3.0.0
 - package: github.com/gorilla/mux

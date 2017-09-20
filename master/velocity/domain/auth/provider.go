@@ -13,7 +13,7 @@ type velocityClaims struct {
 	jwt.StandardClaims
 }
 
-func NewAuthToken(user *domain.User) *domain.UserAuth {
+func NewAuthToken(user *domain.BoltUser) *domain.UserAuth {
 	now := time.Now()
 	expires := time.Now().Add(time.Hour * 24 * 2)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, velocityClaims{
