@@ -10,6 +10,7 @@ import Data.Project as Project
 type Route
     = Home
     | Login
+    | Logout
     | Projects
     | Project Project.Id
     | KnownHosts
@@ -20,6 +21,7 @@ route =
     oneOf
         [ Url.map Home (s "")
         , Url.map Login (s "sign-in")
+        , Url.map Logout (s "logout")
         , Url.map Projects (s "projects")
         , Url.map Project (s "project" </> Project.idParser)
         , Url.map KnownHosts (s "known-hosts")
@@ -41,6 +43,9 @@ routeToString page =
                 Login ->
                     [ "sign-in" ]
 
+                Logout ->
+                    [ "logout" ]
+
                 Projects ->
                     [ "projects" ]
 
@@ -48,7 +53,7 @@ routeToString page =
                     [ "project", Project.idToString id ]
 
                 KnownHosts ->
-                  [ "known-hosts" ]
+                    [ "known-hosts" ]
     in
         "#/" ++ (String.join "/" pieces)
 

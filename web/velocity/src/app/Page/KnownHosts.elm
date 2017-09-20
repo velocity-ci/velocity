@@ -187,7 +187,6 @@ viewKnownHostList knownHosts =
             knownHosts
                 |> List.length
                 |> toString
-
     in
         div [ class "row", style [ ( "margin-top", "3em" ) ] ]
             [ div [ class "col-12" ]

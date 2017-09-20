@@ -3,15 +3,18 @@ module Data.KnownHost exposing (KnownHost, decoder)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required)
 
+
 type alias KnownHost =
-    { hosts: List String
-    , comment: String
-    , sha256: String
-    , md5: String
+    { hosts : List String
+    , comment : String
+    , sha256 : String
+    , md5 : String
     }
 
 
+
 -- SERIALIZATION --
+
 
 decoder : Decoder KnownHost
 decoder =

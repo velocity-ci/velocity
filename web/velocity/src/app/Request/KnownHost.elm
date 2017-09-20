@@ -34,6 +34,7 @@ list maybeToken =
             |> HttpBuilder.toRequest
 
 
+
 -- CREATE --
 
 
@@ -52,7 +53,7 @@ create config token =
 
         project =
             Encode.object
-                [ "entry" => Encode.string config.scannedKey]
+                [ "entry" => Encode.string config.scannedKey ]
 
         body =
             project

@@ -126,6 +126,8 @@ viewPage session isLoading page =
                     |> frame Page.KnownHosts
                     |> Html.map KnownHostsMsg
 
+
+
 -- SUBSCRIPTIONS --
 
 
@@ -192,6 +194,17 @@ setRoute maybeRoute model =
             Just (Route.Login) ->
                 { model | pageState = Loaded (Login Login.initialModel) } => Cmd.none
 
+            Just (Route.Logout) ->
+                let
+                    session =
+                        model.session
+                in
+                    { model | session = { session | user = Nothing } }
+                        => Cmd.batch
+                            [ Ports.storeSession Nothing
+                            , Route.modifyUrl Route.Home
+                            ]
+
             Just (Route.Projects) ->
                 case model.session.user of
                     Just user ->
@@ -206,7 +219,7 @@ setRoute maybeRoute model =
                         transition KnownHostsLoaded (KnownHosts.init model.session)
 
                     Nothing ->
-                        errored Page.Projects "You must be signed in to access your known hosts."
+                        errored Page.KnownHosts "You must be signed in to access your known hosts."
 
             Just (Route.Project id) ->
                 case model.session.user of
