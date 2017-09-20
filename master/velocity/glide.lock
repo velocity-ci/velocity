@@ -1,5 +1,5 @@
 hash: 54a061511bb0c475ce7aa9025f614ac5900239b755a7e2df2d6cadb6e1cdb754
-updated: 2017-09-15T21:30:27.713188381+01:00
+updated: 2017-09-20T01:58:19.371826727+01:00
 imports:
 - name: github.com/Azure/go-ansiterm
   version: 19f72df4d05d31cbe1c56bfc8045c96babff6c7e
@@ -10,7 +10,7 @@ imports:
 - name: github.com/dgrijalva/jwt-go
   version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
 - name: github.com/docker/cli
-  version: 6d614ec54d41ea7a3f96c8ee5ba797b01d640ae1
+  version: 9e162fb011d8fd79b38d9cba868d8abdc740efba
   subpackages:
   - cli
   - cli/command
@@ -97,8 +97,14 @@ imports:
   version: 8a1de3cfc3f1408e54d6364fc949214a4883a9f3
   subpackages:
   - passphrase
+- name: github.com/go-playground/locales
+  version: 1e5f1161c6416a5ff48840eb8724a394e48cc534
+  subpackages:
+  - currency
+- name: github.com/go-playground/universal-translator
+  version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/go-sql-driver/mysql
-  version: 1548d61ac1b48a30add201183a992009bc02af20
+  version: be22b3051b3467094e9908389d900e74f72cf08f
 - name: github.com/gogo/protobuf
   version: 2adc21fd136931e0388e278825291678e1d98309
   subpackages:
@@ -199,6 +205,8 @@ imports:
   version: 8be79e1e0910c292df4e79c241bb7e8f7e725959
   subpackages:
   - rate
+- name: gopkg.in/go-playground/validator.v9
+  version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
 - name: gopkg.in/src-d/go-billy.v3
   version: c329b7bc7b9d24905d2bc1b85bfa29f7ae266314
   subpackages:

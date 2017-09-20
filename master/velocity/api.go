@@ -12,8 +12,10 @@ import (
 	"github.com/unrolled/render"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/domain/auth"
+	"github.com/velocity-ci/velocity/master/velocity/domain/knownhost"
 	"github.com/velocity-ci/velocity/master/velocity/domain/project"
 	"github.com/velocity-ci/velocity/master/velocity/domain/user"
+	"github.com/velocity-ci/velocity/master/velocity/middlewares"
 	"github.com/velocity-ci/velocity/master/velocity/persisters"
 	"github.com/velocity-ci/velocity/master/velocity/routers"
 )
@@ -33,6 +35,7 @@ func NewVelocityAPI() App {
 	controllerLogger := log.New(os.Stdout, "[controller]", log.Lshortfile)
 	dbLogger := log.New(os.Stdout, "[database]", log.Lshortfile)
 	renderer := render.New()
+	validator, translator := middlewares.NewValidator()
 
 	velocityAPI.db = persisters.NewGORMDB(
 		dbLogger,
@@ -48,13 +51,16 @@ func NewVelocityAPI() App {
 	projectBoltManager := project.NewBoltManager(dbLogger, velocityAPI.bolt)
 
 	projectManager := project.NewManager(dbLogger, projectDBManager, projectBoltManager)
+	knownhostManager := knownhost.NewManager()
 
 	authController := auth.NewController(controllerLogger, renderer, userDBManager)
 	projectController := project.NewController(controllerLogger, renderer, projectManager)
+	knownhostController := knownhost.NewController(controllerLogger, renderer, validator, translator, knownhostManager)
 
 	velocityAPI.Router = routers.NewMuxRouter([]routers.Routable{
 		authController,
 		projectController,
+		knownhostController,
 	}, true)
 
 	port := os.Getenv("PORT")
