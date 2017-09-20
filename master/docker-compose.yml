@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: dev.Dockerfile
-    command: fresh
+    command: /bin/sh -c "eval `ssh-agent` && exec fresh"
     restart: unless-stopped
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/master/"

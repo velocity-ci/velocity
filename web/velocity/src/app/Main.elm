@@ -11,6 +11,7 @@ import Page.Login as Login
 import Page.NotFound as NotFound
 import Page.Projects as Projects
 import Page.Project as Project
+import Page.KnownHosts as KnownHosts
 import Ports
 import Route exposing (Route)
 import Task
@@ -26,6 +27,7 @@ type Page
     | Projects Projects.Model
     | Project Project.Model
     | Login Login.Model
+    | KnownHosts KnownHosts.Model
 
 
 type PageState
@@ -119,7 +121,10 @@ viewPage session isLoading page =
                     |> frame Page.Login
                     |> Html.map LoginMsg
 
-
+            KnownHosts subModel ->
+                KnownHosts.view session subModel
+                    |> frame Page.KnownHosts
+                    |> Html.map KnownHostsMsg
 
 -- SUBSCRIPTIONS --
 
@@ -158,6 +163,8 @@ type Msg
     | ProjectsMsg Projects.Msg
     | ProjectLoaded (Result PageLoadError Project.Model)
     | ProjectMsg Project.Msg
+    | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
+    | KnownHostsMsg KnownHosts.Msg
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -192,6 +199,14 @@ setRoute maybeRoute model =
 
                     Nothing ->
                         errored Page.Projects "You must be signed in to access your projects."
+
+            Just (Route.KnownHosts) ->
+                case model.session.user of
+                    Just user ->
+                        transition KnownHostsLoaded (KnownHosts.init model.session)
+
+                    Nothing ->
+                        errored Page.Projects "You must be signed in to access your known hosts."
 
             Just (Route.Project id) ->
                 case model.session.user of
@@ -288,6 +303,15 @@ updatePage page msg model =
 
             ( ProjectsMsg subMsg, Projects subModel ) ->
                 toPage Projects ProjectsMsg (Projects.update session) subMsg subModel
+
+            ( KnownHostsLoaded (Ok subModel), _ ) ->
+                { model | pageState = Loaded (KnownHosts subModel) } => Cmd.none
+
+            ( KnownHostsLoaded (Err error), _ ) ->
+                { model | pageState = Loaded (Errored error) } => Cmd.none
+
+            ( KnownHostsMsg subMsg, KnownHosts subModel ) ->
+                toPage KnownHosts KnownHostsMsg (KnownHosts.update session) subMsg subModel
 
             ( ProjectLoaded (Ok subModel), _ ) ->
                 { model | pageState = Loaded (Project subModel) } => Cmd.none

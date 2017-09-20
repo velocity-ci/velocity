@@ -12,6 +12,7 @@ type Route
     | Login
     | Projects
     | Project Project.Id
+    | KnownHosts
 
 
 route : Parser (Route -> a) a
@@ -21,6 +22,7 @@ route =
         , Url.map Login (s "sign-in")
         , Url.map Projects (s "projects")
         , Url.map Project (s "project" </> Project.idParser)
+        , Url.map KnownHosts (s "known-hosts")
         ]
 
 
@@ -44,6 +46,9 @@ routeToString page =
 
                 Project id ->
                     [ "project", Project.idToString id ]
+
+                KnownHosts ->
+                  [ "known-hosts" ]
     in
         "#/" ++ (String.join "/" pieces)
 

@@ -25,6 +25,7 @@ type ActivePage
     | Login
     | Projects
     | Project
+    | KnownHosts
 
 
 {-| Take a page's Html and frame it with a header and footer.
@@ -72,7 +73,9 @@ viewSignIn page user =
             ]
 
         Just user ->
-            [ navbarLink (page == Projects) Route.Projects [ text "Projects" ] ]
+            [ navbarLink (page == Projects) Route.Projects [ text "Projects" ]
+            , navbarLink (page == KnownHosts) Route.KnownHosts [ text "Known Hosts" ]
+            ]
 
 
 viewFooter : Html msg

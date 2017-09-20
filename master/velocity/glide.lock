@@ -1,5 +1,5 @@
 hash: 4fad48a0791ababdda60c2bbd6433fd21c942c467b20c72968872c79342753f3
-updated: 2017-09-20T13:25:40.350695735+01:00
+updated: 2017-09-20T13:46:57.373842673+01:00
 imports:
 - name: github.com/Azure/go-ansiterm
   version: 19f72df4d05d31cbe1c56bfc8045c96babff6c7e
@@ -97,6 +97,13 @@ imports:
   version: 8a1de3cfc3f1408e54d6364fc949214a4883a9f3
   subpackages:
   - passphrase
+- name: github.com/go-playground/locales
+  version: 1e5f1161c6416a5ff48840eb8724a394e48cc534
+  subpackages:
+  - currency
+  - en
+- name: github.com/go-playground/universal-translator
+  version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/gogo/protobuf
   version: 2adc21fd136931e0388e278825291678e1d98309
   subpackages:
@@ -191,6 +198,10 @@ imports:
   version: 8be79e1e0910c292df4e79c241bb7e8f7e725959
   subpackages:
   - rate
+- name: gopkg.in/go-playground/validator.v9
+  version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
+  subpackages:
+  - translations/en
 - name: gopkg.in/src-d/go-billy.v3
   version: c329b7bc7b9d24905d2bc1b85bfa29f7ae266314
   subpackages:
