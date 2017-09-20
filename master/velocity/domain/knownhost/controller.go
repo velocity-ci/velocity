@@ -8,7 +8,9 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
+	"github.com/urfave/negroni"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/middlewares"
 	validator "gopkg.in/go-playground/validator.v9"
 )
 
@@ -42,12 +44,16 @@ func NewController(
 func (c Controller) Setup(router *mux.Router) {
 
 	router.
-		HandleFunc("/v1/ssh/known-hosts", c.postKnownHostsHandler).
-		Methods("POST")
+		Handle("/v1/ssh/known-hosts", negroni.New(
+			middlewares.NewJWT(c.render),
+			negroni.Wrap(http.HandlerFunc(c.postKnownHostsHandler)),
+		)).Methods("POST")
 
 	router.
-		HandleFunc("/v1/ssh/known-hosts", c.getKnownHostsHandler).
-		Methods("GET")
+		Handle("/v1/ssh/known-hosts", negroni.New(
+			middlewares.NewJWT(c.render),
+			negroni.Wrap(http.HandlerFunc(c.getKnownHostsHandler)),
+		)).Methods("GET")
 
 	c.logger.Println("Set up Known Hosts controller.")
 }
