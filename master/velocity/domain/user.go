@@ -6,28 +6,29 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type User struct {
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
-	Username       string    `gorm:"primary_key" json:"username"`
-	Password       string    `gorm:"-" json:"-"`
-	HashedPassword string    `json:"-"`
+type BoltUser struct {
+	Username       string `json:"username"`
+	HashedPassword string `json:"hashedPassword"`
 }
 
-func (u *User) ValidatePassword(password string) bool {
+type RequestUser struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func (u *BoltUser) ValidatePassword(password string) bool {
 	if bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password)) == nil {
 		return true
 	}
 	return false
 }
 
-func (u *User) HashPassword() {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+func (u *BoltUser) HashPassword(password string) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		panic(err)
 	}
 	u.HashedPassword = string(hashedPassword[:])
-	u.Password = ""
 }
 
 type UserAuth struct {

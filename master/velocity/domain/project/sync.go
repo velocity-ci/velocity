@@ -17,7 +17,7 @@ import (
 	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
-func sync(p *domain.Project, m *Manager) {
+func sync(p *domain.Project, m *BoltManager) {
 	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", p.ID))
 	if err != nil {
 		log.Fatal(err)

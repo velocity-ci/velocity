@@ -34,7 +34,7 @@ func FromRequest(b io.ReadCloser) (*domain.Project, error) {
 	return p, nil
 }
 
-func ValidatePOST(p *domain.Project, m *Manager) (bool, *middlewares.ResponseErrors) {
+func ValidatePOST(p *domain.Project, m *BoltManager) (bool, *middlewares.ResponseErrors) {
 	hasErrors := false
 
 	errs := projectErrors{}

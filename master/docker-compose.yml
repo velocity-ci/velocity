@@ -2,17 +2,6 @@ version: '3'
 
 services:
 
-  mysql:
-    image: mysql:latest
-    environment:
-      MYSQL_USER: velocity_dev
-      MYSQL_PASSWORD: velocity_dev
-      MYSQL_DATABASE: velocity_dev
-      MYSQL_ROOT_PASSWORD: velocity_dev
-    ports:
-     - "3306:3306"
-
-  # Golang API
   api:
     build:
       context: .
@@ -23,19 +12,7 @@ services:
       - "./:/go/src/github.com/velocity-ci/velocity/master/"
     working_dir: /go/src/github.com/velocity-ci/velocity/master/velocity
     environment:
-      TYPE: API
       JWT_SECRET: development
-      DATABASE_TYPE: MYSQL
-      DATABASE_HOST: database
-      DATABASE_PORT: 3306
-      DATABASE_NAME: velocity_dev
-      DATABASE_USERNAME: velocity_dev
-      DATABASE_PASSWORD: velocity_dev
-      GORM_DEBUG: "true"
       PORT: 80
     ports:
       - "80:80"
-    links:
-      - mysql:database
-    depends_on:
-      - mysql
