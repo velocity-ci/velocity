@@ -9,9 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/ssh"
+
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/domain/task"
 	git "gopkg.in/src-d/go-git.v4"
+	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
 func sync(p *domain.Project, m *Manager) {
@@ -23,9 +26,12 @@ func sync(p *domain.Project, m *Manager) {
 	defer os.RemoveAll(dir) // clean up
 
 	// Clones the repository into the given dir, just as a normal git clone does
+	signer, _ := ssh.ParsePrivateKey([]byte(p.PrivateKey))
+	auth := &gitssh.PublicKeys{User: "git", Signer: signer}
 	repo, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL:   p.Repository,
-		Depth: 10,
+		Depth: 1,
+		Auth:  auth,
 	})
 
 	if err != nil {

@@ -10,7 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/ssh"
+
 	git "gopkg.in/src-d/go-git.v4"
+	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/middlewares"
@@ -46,12 +49,18 @@ func ValidatePOST(p *domain.Project, m *Manager) (bool, *middlewares.ResponseErr
 		hasErrors = true
 	}
 
+	_, err := ssh.ParsePrivateKey([]byte(p.PrivateKey))
+	if err != nil {
+		errs.PrivateKey = []string{"Invalid private key"}
+		hasErrors = true
+	}
+
 	if hasErrors {
 		return false, &middlewares.ResponseErrors{
 			Errors: &errs,
 		}
 	}
-	_, err := m.FindByID(p.ID)
+	_, err = m.FindByID(p.ID)
 
 	if err == nil {
 		return false, &middlewares.ResponseErrors{
@@ -78,12 +87,14 @@ func validateRepository(p *domain.Project) (bool, *middlewares.ResponseErrors) {
 
 	defer os.RemoveAll(dir) // clean up
 
-	fmt.Println(os.Getenv("SSH_AUTH_SOCK"))
+	signer, _ := ssh.ParsePrivateKey([]byte(p.PrivateKey))
+	auth := &gitssh.PublicKeys{User: "git", Signer: signer}
 
 	// Clones the repository into the given dir, just as a normal git clone does
 	_, err = git.PlainClone(dir, true, &git.CloneOptions{
 		URL:   p.Repository,
 		Depth: 1,
+		Auth:  auth,
 	})
 
 	if err != nil {
