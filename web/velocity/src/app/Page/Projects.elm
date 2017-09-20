@@ -98,7 +98,7 @@ init session =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div []
+    div [ class "container-fluid" ]
         [ viewProjectFormContainer model
         , viewProjectList model.projects
         ]
@@ -112,7 +112,7 @@ viewProjectFormContainer model =
             , ( "fa-minus", not model.formCollapsed )
             ]
     in
-        div [ class "row" ]
+        div [ class "row first-row" ]
             [ div [ class "col-12" ]
                 [ div [ class "card" ]
                     [ h4 [ class "card-header" ]
@@ -220,7 +220,7 @@ viewProjectList projects =
         latestProjects =
             sortByDatetime .updatedAt projects
     in
-        div [ class "row", style [ ( "margin-top", "3em" ) ] ]
+        div [ class "row first-row" ]
             [ div [ class "col-12" ]
                 [ div [ class "card" ]
                     [ h4 [ class "card-header" ] [ text ("Projects (" ++ projectAmount ++ ")") ]

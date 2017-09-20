@@ -113,7 +113,7 @@ viewPage session isLoading page =
 
             Project subModel ->
                 Project.view session subModel
-                    |> frame Page.Project
+                    |> frame Page.Projects
                     |> Html.map ProjectMsg
 
             Login subModel ->

@@ -67,12 +67,14 @@ initialModel =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div [ class "row justify-content-md-center" ]
-        [ div [ class "col col-md-6" ]
-            [ div [ class "card" ]
-                [ div [ class "card-body" ]
-                    [ viewGlobalError model.globalError
-                    , viewForm model
+    div [ class "container-fluid" ]
+        [ div [ class "row justify-content-md-center first-row" ]
+            [ div [ class "col col-md-6" ]
+                [ div [ class "card" ]
+                    [ div [ class "card-body" ]
+                        [ viewGlobalError model.globalError
+                        , viewForm model
+                        ]
                     ]
                 ]
             ]

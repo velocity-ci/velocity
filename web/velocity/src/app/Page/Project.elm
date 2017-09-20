@@ -13,6 +13,8 @@ import Views.Page as Page
 import Util exposing ((=>))
 import Http
 import Page.Helpers exposing (formatDate)
+import Route
+import Util exposing (onClickStopPropagation)
 
 
 -- MODEL --
@@ -57,14 +59,43 @@ view session model =
         project =
             model.project
     in
-        div [ class "card" ]
-            [ h3 [ class "card-header" ]
-                [ text project.name ]
-            , div [ class "card-block" ]
-                [ div [] [ button [ class "btn btn-primary btn-lg", onClick SubmitSync ] [ text "Synchronize" ] ]
-                , div [] (List.map viewCommitListItem model.commits)
+        div []
+            [ viewBreadcrumb project
+            , div [ class "container-fluid" ]
+                [ div [ class "row" ]
+                    [ viewSidebar
+                    , viewProjectContainer model
+                    ]
                 ]
             ]
+
+
+viewBreadcrumb : Project -> Html Msg
+viewBreadcrumb project =
+    div [ class "d-flex justify-content-start align-items-center bg-dark", style [ ( "height", "50px" ) ] ]
+        [ div [ class "p-2" ]
+            [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ]
+                [ li [ class "breadcrumb-item" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
+                , li [ class "breadcrumb-item active" ] [ text project.name ]
+                ]
+            ]
+        , div [ class "ml-auto p-2" ]
+            [ button [ class "ml-auto btn btn-primary", type_ "button", onClick SubmitSync ] [ text "Synchronize" ]
+            ]
+        ]
+
+
+viewProjectContainer : Model -> Html Msg
+viewProjectContainer model =
+    div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3" ]
+        [ viewCommitList model.commits
+        ]
+
+
+viewCommitList : List Commit -> Html Msg
+viewCommitList commits =
+    List.map viewCommitListItem commits
+        |> div []
 
 
 viewCommitListItem : Commit -> Html Msg
@@ -85,6 +116,20 @@ viewCommitListItem commit =
                 , small [] authorAndDate
                 ]
             ]
+
+
+viewSidebar : Html Msg
+viewSidebar =
+    nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
+        [ ul [ class "nav nav-pills flex-column" ]
+            [ li [ class "nav-item" ]
+                [ a [ class "nav-link active", href "#" ]
+                    [ text "Commits "
+                    , span [ class "sr-only" ] [ text "(current)" ]
+                    ]
+                ]
+            ]
+        ]
 
 
 

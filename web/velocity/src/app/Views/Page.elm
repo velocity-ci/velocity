@@ -61,7 +61,7 @@ viewHeader page user isLoading =
 
 viewContent : Html msg -> Html msg
 viewContent content =
-    div [ class "container", style [ ( "margin-top", "4.5rem" ) ] ]
+    div []
         [ content ]
 
 
