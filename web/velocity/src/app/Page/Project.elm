@@ -72,15 +72,16 @@ view session model =
 
 viewBreadcrumb : Project -> Html Msg
 viewBreadcrumb project =
-    div [ class "d-flex justify-content-start align-items-center bg-dark", style [ ( "height", "50px" ) ] ]
+    div [ class "d-flex justify-content-start align-items-center bg-light", style [ ( "height", "50px" ) ] ]
         [ div [ class "p-2" ]
-            [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ]
+            [ ol [ class "breadcrumb bg-light", style [ ( "margin", "0" ) ] ]
                 [ li [ class "breadcrumb-item" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
                 , li [ class "breadcrumb-item active" ] [ text project.name ]
                 ]
             ]
         , div [ class "ml-auto p-2" ]
-            [ button [ class "ml-auto btn btn-primary", type_ "button", onClick SubmitSync ] [ text "Synchronize" ]
+            [ button [ class "ml-auto btn btn-dark btn-outline-dark", type_ "button", onClick SubmitSync ]
+                [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
             ]
         ]
 

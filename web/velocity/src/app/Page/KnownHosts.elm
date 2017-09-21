@@ -72,7 +72,7 @@ init session =
                 |> Http.toTask
 
         handleLoadError _ =
-            pageLoadError Page.KnownHosts "Known Hosts are currently unavailable."
+            pageLoadError Page.KnownHosts "Known hosts are currently unavailable."
 
         initialModel knownHosts =
             { formCollapsed = True
@@ -93,7 +93,7 @@ init session =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div []
+    div [ class "container-fluid" ]
         [ viewKnownHostFormContainer model
         , viewKnownHostList model.knownHosts
         ]
@@ -107,7 +107,7 @@ viewKnownHostFormContainer model =
             , ( "fa-minus", not model.formCollapsed )
             ]
     in
-        div [ class "row" ]
+        div [ class "row first-row" ]
             [ div [ class "col-12" ]
                 [ div [ class "card" ]
                     [ h4 [ class "card-header" ]
@@ -188,10 +188,10 @@ viewKnownHostList knownHosts =
                 |> List.length
                 |> toString
     in
-        div [ class "row", style [ ( "margin-top", "3em" ) ] ]
+        div [ class "row first-row" ]
             [ div [ class "col-12" ]
                 [ div [ class "card" ]
-                    [ h4 [ class "card-header" ] [ text ("KnownHosts (" ++ knownHostAmount ++ ")") ]
+                    [ h4 [ class "card-header" ] [ text ("Known hosts (" ++ knownHostAmount ++ ")") ]
                     , ul [ class "list-group" ] (List.map viewKnownHostListItem knownHosts)
                     ]
                 ]

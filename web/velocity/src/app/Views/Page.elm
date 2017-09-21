@@ -74,7 +74,7 @@ viewSignIn page user =
 
         Just user ->
             [ navbarLink (page == Projects) Route.Projects [ text "Projects" ]
-            , navbarLink (page == KnownHosts) Route.KnownHosts [ text "Known Hosts" ]
+            , navbarLink (page == KnownHosts) Route.KnownHosts [ text "Known hosts" ]
             , navbarLink False Route.Logout [ text "Sign out" ]
             ]
 

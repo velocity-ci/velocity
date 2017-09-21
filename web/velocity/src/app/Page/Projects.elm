@@ -98,9 +98,22 @@ init session =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div [ class "container-fluid" ]
-        [ viewProjectFormContainer model
-        , viewProjectList model.projects
+    div []
+        [ div [ class "container-fluid" ]
+            [ viewProjectFormContainer model
+            , viewProjectList model.projects
+            ]
+        ]
+
+
+viewBreadcrumb : Html Msg
+viewBreadcrumb =
+    div [ class "d-flex justify-content-start align-items-center bg-dark", style [ ( "height", "50px" ) ] ]
+        [ div [ class "p-2" ]
+            [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ]
+                [ li [ class "breadcrumb-item active" ] [ text "Projects" ]
+                ]
+            ]
         ]
 
 
@@ -200,7 +213,7 @@ viewProjectForm model =
                         , button
                             [ class "btn btn-primary"
                             , type_ "submit"
-                            , disabled ((not <| List.isEmpty combinedErrors) || model.submitting)
+                            , disabled ((not <| List.isEmpty model.errors) || model.submitting)
                             ]
                             [ text "Submit" ]
                         , Util.viewIf model.submitting Form.viewSpinner
