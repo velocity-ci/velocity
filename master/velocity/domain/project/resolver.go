@@ -26,7 +26,6 @@ func FromRequest(b io.ReadCloser) (*domain.Project, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	p.ID = strings.Replace(strings.ToLower(p.Name), " ", "-", -1)
 	p.CreatedAt = time.Now()
 	p.UpdatedAt = time.Now()
@@ -50,7 +49,10 @@ func ValidatePOST(p *domain.Project, m *BoltManager) (bool, *middlewares.Respons
 	}
 
 	_, err := ssh.ParsePrivateKey([]byte(p.PrivateKey))
+
 	if err != nil {
+		fmt.Println("SSH Parse Private Key Error:")
+		fmt.Println(err)
 		errs.PrivateKey = []string{"Invalid private key"}
 		hasErrors = true
 	}
@@ -98,7 +100,16 @@ func validateRepository(p *domain.Project) (bool, *middlewares.ResponseErrors) {
 	})
 
 	if err != nil {
-		log.Fatal(err)
+
+		fmt.Println("Repository Clone Error:")
+		fmt.Println(err.Error())
+
+		return false, &middlewares.ResponseErrors{
+			Errors: &projectErrors{
+				Repository: []string{"Failed to clone repository."},
+			},
+		}
+
 	}
 
 	return true, nil
