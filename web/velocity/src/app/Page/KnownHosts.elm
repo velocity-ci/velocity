@@ -156,7 +156,7 @@ viewKnownHostForm model =
             (List.map viewGlobalError globalErrors
                 ++ [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
                         [ Form.textarea
-                            "scannedKey"
+                            "scanned_key"
                             "Scanned key"
                             (errors form.scannedKey)
                             [ placeholder "Scanned key (ssh-keyscan <host>)"
@@ -276,7 +276,7 @@ update session msg model =
 
                             cmd =
                                 session
-                                    |> Session.attempt "create knownHost" cmdFromAuth
+                                    |> Session.attempt "create known host" cmdFromAuth
                                     |> Tuple.second
                         in
                             { model

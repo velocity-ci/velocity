@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
+import Data.Project exposing (idToString)
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
 import Navigation exposing (Location)
@@ -17,6 +18,7 @@ import Route exposing (Route)
 import Task
 import Util exposing ((=>))
 import Views.Page as Page exposing (ActivePage)
+import Page.Project.Route as ProjectRoute
 
 
 type Page
@@ -163,7 +165,7 @@ type Msg
     | LoginMsg Login.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
-    | ProjectLoaded (Result PageLoadError Project.Model)
+    | ProjectLoaded (Result PageLoadError ( Project.Model, Cmd Project.Msg ))
     | ProjectMsg Project.Msg
     | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
     | KnownHostsMsg KnownHosts.Msg
@@ -221,13 +223,39 @@ setRoute maybeRoute model =
                     Nothing ->
                         errored Page.KnownHosts "You must be signed in to access your known hosts."
 
-            Just (Route.Project id) ->
-                case model.session.user of
-                    Just user ->
-                        transition ProjectLoaded (Project.init model.session id)
+            Just (Route.ProjectChild subRoute id) ->
+                let
+                    loadFreshPage =
+                        Just subRoute
+                            |> Project.init model.session id
+                            |> transition ProjectLoaded
 
-                    Nothing ->
-                        errored Page.Project "You must be signed in to access this project."
+                    transitionSubPage subModel =
+                        let
+                            ( newModel, newMsg ) =
+                                subModel
+                                    |> Project.update model.session (Project.SetRoute (Just subRoute))
+                        in
+                            { model | pageState = Loaded (Project newModel) }
+                                => Cmd.map ProjectMsg newMsg
+                in
+                    case ( model.session.user, model.pageState ) of
+                        ( Just user, Loaded page ) ->
+                            case page of
+                                Project subModel ->
+                                    if id == subModel.project.id then
+                                        transitionSubPage subModel
+                                    else
+                                        loadFreshPage
+
+                                _ ->
+                                    loadFreshPage
+
+                        ( Just user, TransitioningFrom page ) ->
+                            loadFreshPage
+
+                        ( Nothing, _ ) ->
+                            errored Page.Project ("You must be signed in to access project '" ++ idToString id ++ "'.")
 
 
 pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
@@ -326,8 +354,9 @@ updatePage page msg model =
             ( KnownHostsMsg subMsg, KnownHosts subModel ) ->
                 toPage KnownHosts KnownHostsMsg (KnownHosts.update session) subMsg subModel
 
-            ( ProjectLoaded (Ok subModel), _ ) ->
-                { model | pageState = Loaded (Project subModel) } => Cmd.none
+            ( ProjectLoaded (Ok ( subModel, subMsg )), _ ) ->
+                { model | pageState = Loaded (Project subModel) }
+                    => Cmd.map ProjectMsg subMsg
 
             ( ProjectLoaded (Err error), _ ) ->
                 { model | pageState = Loaded (Errored error) } => Cmd.none

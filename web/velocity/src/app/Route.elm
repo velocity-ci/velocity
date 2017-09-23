@@ -5,6 +5,7 @@ import Navigation exposing (Location)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Data.Project as Project
+import Page.Project.Route as ProjectRoute
 
 
 type Route
@@ -12,7 +13,7 @@ type Route
     | Login
     | Logout
     | Projects
-    | Project Project.Id
+    | ProjectChild ProjectRoute.Route Project.Id
     | KnownHosts
 
 
@@ -23,8 +24,8 @@ route =
         , Url.map Login (s "sign-in")
         , Url.map Logout (s "logout")
         , Url.map Projects (s "projects")
-        , Url.map Project (s "project" </> Project.idParser)
         , Url.map KnownHosts (s "known-hosts")
+        , Url.map (\id -> ProjectChild (ProjectRoute.Commits id) id) (s "project" </> Project.idParser </> s "commits")
         ]
 
 
@@ -49,8 +50,8 @@ routeToString page =
                 Projects ->
                     [ "projects" ]
 
-                Project id ->
-                    [ "project", Project.idToString id ]
+                ProjectChild child id ->
+                    [ "project", Project.idToString id, "commits" ]
 
                 KnownHosts ->
                     [ "known-hosts" ]

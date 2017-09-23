@@ -17,6 +17,7 @@ import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, format
 import Route
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
+import Page.Project.Route as ProjectRoute
 
 
 -- MODEL --
@@ -247,7 +248,7 @@ viewProjectListItem : Project -> Html Msg
 viewProjectListItem project =
     li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
         [ div [ class "d-flex w-100 justify-content-between" ]
-            [ h5 [ class "mb-1" ] [ a [ Route.href (Route.Project project.id) ] [ text project.name ] ]
+            [ h5 [ class "mb-1" ] [ a [ Route.href (Route.ProjectChild (ProjectRoute.Commits project.id) project.id) ] [ text project.name ] ]
             , small [] [ text (formatDateTime project.updatedAt) ]
             ]
         , small []
