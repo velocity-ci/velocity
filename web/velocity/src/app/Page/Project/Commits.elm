@@ -2,11 +2,12 @@ module Page.Project.Commits exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Page.Helpers exposing (formatDate)
+import Page.Helpers exposing (formatDate, sortByDatetime)
 import Request.Project
 import Util exposing ((=>))
 import Task exposing (Task)
@@ -18,7 +19,9 @@ import Http
 
 
 type alias Model =
-    { commits : List Commit }
+    { commits : List Commit
+    , submitting : Bool
+    }
 
 
 init : Session -> Project.Id -> Task PageLoadError Model
@@ -32,10 +35,15 @@ init session id =
                 |> Request.Project.commits id
                 |> Http.toTask
 
+        initialModel commits =
+            { commits = commits
+            , submitting = False
+            }
+
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map Model loadCommits
+        Task.map initialModel loadCommits
             |> Task.mapError handleLoadError
 
 
@@ -49,9 +57,19 @@ view model =
         [ viewCommitList model.commits ]
 
 
+viewBreadcrumbExtraItems : Model -> Html Msg
+viewBreadcrumbExtraItems model =
+    div [ class "ml-auto p-2" ]
+        [ button
+            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled model.submitting ]
+            [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
+        ]
+
+
 viewCommitList : List Commit -> Html Msg
 viewCommitList commits =
-    List.map viewCommitListItem commits
+    sortByDatetime .date commits
+        |> List.map viewCommitListItem
         |> div []
 
 
@@ -80,9 +98,39 @@ viewCommitListItem commit =
 
 
 type Msg
-    = NoOp
+    = SubmitSync
+    | SyncCompleted (Result Http.Error (List Commit))
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg model =
-    model => Cmd.none
+update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update project session msg model =
+    case msg of
+        SubmitSync ->
+            let
+                getCommits authToken =
+                    Request.Project.commits project.id (Just authToken)
+                        |> Http.toTask
+
+                cmdFromAuth authToken =
+                    authToken
+                        |> Request.Project.sync project.id
+                        |> Http.toTask
+                        |> Task.andThen (always (getCommits authToken))
+                        |> Task.attempt SyncCompleted
+
+                cmd =
+                    session
+                        |> Session.attempt "sync project" cmdFromAuth
+                        |> Tuple.second
+            in
+                { model | submitting = True } => cmd
+
+        SyncCompleted (Ok commits) ->
+            { model
+                | submitting = False
+                , commits = commits
+            }
+                => Cmd.none
+
+        SyncCompleted (Err err) ->
+            { model | submitting = False } => Cmd.none

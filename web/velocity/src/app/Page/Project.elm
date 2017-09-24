@@ -94,10 +94,13 @@ view session model =
     let
         project =
             model.project
+
+        ( subPageFrame, breadcrumb ) =
+            viewSubPage session model
     in
         div []
-            [ viewBreadcrumb project
-            , div [ class "container-fluid" ] [ viewSubPage session model ]
+            [ breadcrumb
+            , div [ class "container-fluid" ] [ subPageFrame ]
             ]
 
 
@@ -119,24 +122,21 @@ sidebarLink isActive route linkContent =
         ]
 
 
-viewBreadcrumb : Project -> Html Msg
-viewBreadcrumb project =
+viewBreadcrumb : Project -> String -> Html Msg -> Html Msg
+viewBreadcrumb project activeItem extraItems =
     div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container", style [ ( "height", "50px" ) ] ]
         [ div [ class "p-2" ]
             [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ]
                 [ li [ class "breadcrumb-item" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
                 , li [ class "breadcrumb-item active" ] [ text project.name ]
+                , li [ class "breadcrumb-item active" ] [ text activeItem ]
                 ]
             ]
-        , div [ class "ml-auto p-2" ] []
-          --            [ button
-          --                [ class "ml-auto btn btn-dark btn-outline-dark", type_ "button", onClick SubmitSync, disabled synchronizing ]
-          --                [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
-          --            ]
+        , extraItems
         ]
 
 
-viewSubPage : Session -> Model -> Html Msg
+viewSubPage : Session -> Model -> ( Html Msg, Html Msg )
 viewSubPage session model =
     let
         page =
@@ -147,6 +147,9 @@ viewSubPage session model =
                 TransitioningFrom page ->
                     page
 
+        breadcrumb =
+            viewBreadcrumb model.project
+
         sidebar =
             viewSidebar model.project
     in
@@ -154,20 +157,24 @@ viewSubPage session model =
             Blank ->
                 Html.text ""
                     |> frame (sidebar OtherPage)
+                    => breadcrumb "" (Html.text "")
 
             Errored subModel ->
                 Html.text "Errored"
                     |> frame (sidebar OtherPage)
+                    => breadcrumb "" (Html.text "")
 
             Commits subModel ->
                 Commits.view subModel
                     |> frame (sidebar CommitsPage)
                     |> Html.map CommitsMsg
+                    => breadcrumb "Commits" (Commits.viewBreadcrumbExtraItems subModel |> Html.map CommitsMsg)
 
             Settings subModel ->
                 Settings.view subModel
                     |> frame (sidebar SettingsPage)
                     |> Html.map SettingsMsg
+                    => breadcrumb "Settings" (Html.text "")
 
 
 frame : Html msg -> Html msg -> Html msg
@@ -176,20 +183,6 @@ frame sidebar content =
         [ sidebar
         , div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3" ] [ content ]
         ]
-
-
-
--- SUBSCRIPTIONS --
-
-
-getSubPage : SubPageState -> SubPage
-getSubPage subPageState =
-    case subPageState of
-        Loaded subPage ->
-            subPage
-
-        TransitioningFrom subPage ->
-            subPage
 
 
 
@@ -202,6 +195,16 @@ type Msg
     | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
     | SettingsMsg Settings.Msg
+
+
+getSubPage : SubPageState -> SubPage
+getSubPage subPageState =
+    case subPageState of
+        Loaded subPage ->
+            subPage
+
+        TransitioningFrom subPage ->
+            subPage
 
 
 setRoute : Session -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
@@ -273,7 +276,7 @@ updateSubPage session subPage msg model =
                 { model | subPageState = Loaded (Errored error) } => Cmd.none
 
             ( CommitsMsg subMsg, Commits subModel ) ->
-                toPage Commits CommitsMsg (Commits.update session) subMsg subModel
+                toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
