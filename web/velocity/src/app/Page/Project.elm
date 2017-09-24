@@ -15,6 +15,7 @@ import Views.Page as Page exposing (ActivePage)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commits as Commits
 import Page.Project.Settings as Settings
+import Page.Project.Commit as Commit
 
 
 -- SUB PAGES --
@@ -23,6 +24,7 @@ import Page.Project.Settings as Settings
 type SubPage
     = Blank
     | Commits Commits.Model
+    | Commit Commit.Model
     | Settings Settings.Model
     | Errored PageLoadError
 
@@ -71,10 +73,12 @@ init session id maybeRoute =
                 (\successModel ->
                     case maybeRoute of
                         Just route ->
-                            Task.succeed (update session (SetRoute maybeRoute) successModel)
+                            update session (SetRoute maybeRoute) successModel
+                                |> Task.succeed
 
                         Nothing ->
-                            Task.succeed (successModel => Cmd.none)
+                            ( successModel, Cmd.none )
+                                |> Task.succeed
                 )
             |> Task.mapError handleLoadError
 
@@ -92,9 +96,6 @@ type ActiveSubPage
 view : Session -> Model -> Html Msg
 view session model =
     let
-        project =
-            model.project
-
         ( subPageFrame, breadcrumb ) =
             viewSubPage session model
     in
@@ -108,8 +109,12 @@ viewSidebar : Project -> ActiveSubPage -> Html msg
 viewSidebar project subPage =
     nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
-            [ sidebarLink (subPage == CommitsPage) (Route.Project ProjectRoute.Commits project.id) [ text "Commits" ]
-            , sidebarLink (subPage == SettingsPage) (Route.Project ProjectRoute.Settings project.id) [ text "Settings" ]
+            [ sidebarLink (subPage == CommitsPage)
+                (Route.Project ProjectRoute.Commits project.id)
+                [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
+            , sidebarLink (subPage == SettingsPage)
+                (Route.Project ProjectRoute.Settings project.id)
+                [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [], text " Settings" ]
             ]
         ]
 
@@ -165,10 +170,16 @@ viewSubPage session model =
                     => breadcrumb "" (Html.text "")
 
             Commits subModel ->
-                Commits.view subModel
+                Commits.view model.project subModel
                     |> frame (sidebar CommitsPage)
                     |> Html.map CommitsMsg
                     => breadcrumb "Commits" (Commits.viewBreadcrumbExtraItems subModel |> Html.map CommitsMsg)
+
+            Commit subModel ->
+                Commit.view subModel
+                    |> frame (sidebar CommitsPage)
+                    |> Html.map CommitMsg
+                    => breadcrumb "Commits" (Html.text "")
 
             Settings subModel ->
                 Settings.view subModel
@@ -194,6 +205,8 @@ type Msg
     | SetRoute (Maybe ProjectRoute.Route)
     | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
+    | CommitMsg Commit.Msg
+    | CommitLoaded (Result PageLoadError Commit.Model)
     | SettingsMsg Settings.Msg
 
 
@@ -225,6 +238,14 @@ setRoute session maybeRoute model =
                 case session.user of
                     Just user ->
                         transition CommitsLoaded (Commits.init session model.project.id)
+
+                    Nothing ->
+                        errored Page.Project "Uhoh"
+
+            Just (ProjectRoute.Commit hash) ->
+                case session.user of
+                    Just user ->
+                        transition CommitLoaded (Commit.init session model.project.id hash)
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -277,6 +298,15 @@ updateSubPage session subPage msg model =
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
+
+            ( CommitLoaded (Ok subModel), _ ) ->
+                { model | subPageState = Loaded (Commit subModel) } => Cmd.none
+
+            ( CommitLoaded (Err error), _ ) ->
+                { model | subPageState = Loaded (Errored error) } => Cmd.none
+
+            ( CommitMsg subMsg, Commit subModel ) ->
+                toPage Commit CommitMsg (Commit.update model.project session) subMsg subModel
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page

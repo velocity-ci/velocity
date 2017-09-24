@@ -239,8 +239,10 @@ setRoute maybeRoute model =
                                 => Cmd.map ProjectMsg newMsg
                 in
                     case ( model.session.user, model.pageState ) of
-                        ( Just user, Loaded page ) ->
+                        ( Just _, Loaded page ) ->
                             case page of
+                                -- If we're on the product page for the same product as the new route just load sub-page
+                                -- Otherwise load the project page fresh
                                 Project subModel ->
                                     if id == subModel.project.id then
                                         transitionSubPage subModel
@@ -250,7 +252,7 @@ setRoute maybeRoute model =
                                 _ ->
                                     loadFreshPage
 
-                        ( Just user, TransitioningFrom page ) ->
+                        ( Just _, TransitioningFrom _ ) ->
                             loadFreshPage
 
                         ( Nothing, _ ) ->

@@ -1,8 +1,9 @@
-module Request.Project exposing (list, create, get, commits, sync)
+module Request.Project exposing (list, create, get, commits, commit, commitTasks, sync)
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
 import Data.Commit as Commit exposing (Commit)
+import Data.Task as Task exposing (Task)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
@@ -66,6 +67,50 @@ commits id maybeToken =
                 |> Http.expectJson
     in
         apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/commits")
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+commit : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request Commit
+commit id hash maybeToken =
+    let
+        expect =
+            Commit.decoder
+                |> Http.expectJson
+
+        urlPieces =
+            [ baseUrl
+            , Project.idToString id
+            , "commits"
+            , Commit.hashToString hash
+            ]
+    in
+        apiUrl (String.join "/" urlPieces)
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+commitTasks : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (List Task)
+commitTasks id hash maybeToken =
+    let
+        expect =
+            Task.decoder
+                |> Decode.list
+                |> Http.expectJson
+
+        urlPieces =
+            [ baseUrl
+            , Project.idToString id
+            , "commits"
+            , Commit.hashToString hash
+            , "tasks"
+            ]
+    in
+        apiUrl (String.join "/" urlPieces)
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken

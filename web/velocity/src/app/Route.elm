@@ -5,6 +5,7 @@ import Navigation exposing (Location)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Data.Project as Project
+import Data.Commit as Commit
 import Page.Project.Route as ProjectRoute exposing (Route(..))
 
 
@@ -26,6 +27,7 @@ route =
         , Url.map Projects (s "projects")
         , Url.map KnownHosts (s "known-hosts")
         , Url.map (Project Commits) (s "project" </> Project.idParser </> s "commits")
+        , Url.map (\id hash -> Project (Commit hash) id) (s "project" </> Project.idParser </> s "commits" </> Commit.hashParser)
         , Url.map (Project Settings) (s "project" </> Project.idParser </> s "settings")
         ]
 

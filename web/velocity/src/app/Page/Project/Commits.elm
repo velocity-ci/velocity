@@ -13,6 +13,8 @@ import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
 import Http
+import Route
+import Page.Project.Route as ProjectRoute
 
 
 -- MODEL --
@@ -51,10 +53,10 @@ init session id =
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Project -> Model -> Html Msg
+view project model =
     div []
-        [ viewCommitList model.commits ]
+        [ viewCommitList project model.commits ]
 
 
 viewBreadcrumbExtraItems : Model -> Html Msg
@@ -66,24 +68,27 @@ viewBreadcrumbExtraItems model =
         ]
 
 
-viewCommitList : List Commit -> Html Msg
-viewCommitList commits =
+viewCommitList : Project -> List Commit -> Html Msg
+viewCommitList project commits =
     sortByDatetime .date commits
-        |> List.map viewCommitListItem
+        |> List.map (viewCommitListItem project.id)
         |> div []
 
 
-viewCommitListItem : Commit -> Html Msg
-viewCommitListItem commit =
+viewCommitListItem : Project.Id -> Commit -> Html Msg
+viewCommitListItem id commit =
     let
         authorAndDate =
             [ strong [] [ text commit.author ], text (" commited on " ++ formatDate commit.date) ]
 
         truncatedHash =
-            String.slice 0 7 commit.hash
+            Commit.truncateHash commit.hash
+
+        route =
+            Route.Project (ProjectRoute.Commit commit.hash) id
     in
         div [ class "list-group" ]
-            [ a [ class "list-group-item list-group-item-action flex-column align-items-start", href "#" ]
+            [ a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route ]
                 [ div [ class "d-flex w-100 justify-content-between" ]
                     [ h5 [ class "mb-1" ] [ text commit.message ]
                     , small [] [ text truncatedHash ]
@@ -115,7 +120,7 @@ update project session msg model =
                     authToken
                         |> Request.Project.sync project.id
                         |> Http.toTask
-                        |> Task.andThen (always (getCommits authToken))
+                        |> Task.andThen (getCommits authToken |> always)
                         |> Task.attempt SyncCompleted
 
                 cmd =
