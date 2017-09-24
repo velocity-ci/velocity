@@ -26,9 +26,10 @@ route =
         , Url.map Logout (s "logout")
         , Url.map Projects (s "projects")
         , Url.map KnownHosts (s "known-hosts")
-        , Url.map (Project Commits) (s "project" </> Project.idParser </> s "commits")
-        , Url.map (\id hash -> Project (Commit hash) id) (s "project" </> Project.idParser </> s "commits" </> Commit.hashParser)
-        , Url.map (Project Settings) (s "project" </> Project.idParser </> s "settings")
+        , Url.map (Project Overview) (s "projects" </> Project.idParser)
+        , Url.map (Project Commits) (s "projects" </> Project.idParser </> s "commits")
+        , Url.map (\id hash -> Project (Commit hash) id) (s "projects" </> Project.idParser </> s "commits" </> Commit.hashParser)
+        , Url.map (Project Settings) (s "projects" </> Project.idParser </> s "settings")
         ]
 
 
@@ -54,7 +55,7 @@ routeToString page =
                     [ "projects" ]
 
                 Project child id ->
-                    [ "project", Project.idToString id ] ++ (ProjectRoute.routeToPieces child)
+                    [ "projects", Project.idToString id ] ++ (ProjectRoute.routeToPieces child)
 
                 KnownHosts ->
                     [ "known-hosts" ]

@@ -16,6 +16,7 @@ import Page.Project.Route as ProjectRoute
 import Page.Project.Commits as Commits
 import Page.Project.Settings as Settings
 import Page.Project.Commit as Commit
+import Page.Project.Overview as Overview
 
 
 -- SUB PAGES --
@@ -23,6 +24,7 @@ import Page.Project.Commit as Commit
 
 type SubPage
     = Blank
+    | Overview
     | Commits Commits.Model
     | Commit Commit.Model
     | Settings Settings.Model
@@ -89,6 +91,7 @@ init session id maybeRoute =
 
 type ActiveSubPage
     = OtherPage
+    | OverviewPage
     | CommitsPage
     | SettingsPage
 
@@ -109,7 +112,10 @@ viewSidebar : Project -> ActiveSubPage -> Html msg
 viewSidebar project subPage =
     nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
-            [ sidebarLink (subPage == CommitsPage)
+            [ sidebarLink (subPage == OverviewPage)
+                (Route.Project ProjectRoute.Overview project.id)
+                [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
+            , sidebarLink (subPage == CommitsPage)
                 (Route.Project ProjectRoute.Commits project.id)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
             , sidebarLink (subPage == SettingsPage)
@@ -127,18 +133,64 @@ sidebarLink isActive route linkContent =
         ]
 
 
-viewBreadcrumb : Project -> String -> Html Msg -> Html Msg
-viewBreadcrumb project activeItem extraItems =
-    div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container", style [ ( "height", "50px" ) ] ]
-        [ div [ class "p-2" ]
-            [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ]
-                [ li [ class "breadcrumb-item" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
-                , li [ class "breadcrumb-item active" ] [ text project.name ]
-                , li [ class "breadcrumb-item active" ] [ text activeItem ]
-                ]
+
+--
+--viewBreadcrumb : Project -> String -> Html Msg -> Html Msg
+--viewBreadcrumb project activeItem extraItems =
+--    div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container", style [ ( "height", "50px" ) ] ]
+--        [ div [ class "p-2" ]
+--            [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ]
+--                [ li [ class "breadcrumb-item" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
+--                , li [ class "breadcrumb-item active" ] [ text project.name ]
+--                , li [ class "breadcrumb-item active" ] [ text activeItem ]
+--                ]
+--            ]
+--        , extraItems
+--        ]
+
+
+viewBreadcrumb : Project -> Html Msg -> List ( Route, String ) -> Html Msg
+viewBreadcrumb project additionalElements items =
+    let
+        fixedItems =
+            [ ( Route.Projects, "Projects" )
+            , ( Route.Project (ProjectRoute.Overview) project.id, project.name )
             ]
-        , extraItems
-        ]
+
+        allItems =
+            fixedItems ++ items
+
+        allItemLength =
+            List.length allItems
+
+        breadcrumbItem i item =
+            item |> viewBreadcrumbItem (i == (allItemLength - 1))
+
+        itemElements =
+            List.indexedMap breadcrumbItem allItems
+    in
+        div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container", style [ ( "height", "50px" ) ] ]
+            [ div [ class "p-2" ]
+                [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ] itemElements ]
+            , additionalElements
+            ]
+
+
+viewBreadcrumbItem : Bool -> ( Route, String ) -> Html msg
+viewBreadcrumbItem active ( route, name ) =
+    let
+        children =
+            if active then
+                text name
+            else
+                a [ Route.href route ] [ text name ]
+    in
+        li
+            [ Route.href route
+            , class "breadcrumb-item"
+            , classList [ ( "active", active ) ]
+            ]
+            [ children ]
 
 
 viewSubPage : Session -> Model -> ( Html Msg, Html Msg )
@@ -152,40 +204,82 @@ viewSubPage session model =
                 TransitioningFrom page ->
                     page
 
+        project =
+            model.project
+
         breadcrumb =
-            viewBreadcrumb model.project
+            viewBreadcrumb project
 
         sidebar =
-            viewSidebar model.project
+            viewSidebar project
     in
         case page of
             Blank ->
-                Html.text ""
-                    |> frame (sidebar OtherPage)
-                    => breadcrumb "" (Html.text "")
+                let
+                    content =
+                        Html.text ""
+                            |> frame (sidebar OtherPage)
+                in
+                    ( content, breadcrumb (text "") [] )
 
             Errored subModel ->
-                Html.text "Errored"
-                    |> frame (sidebar OtherPage)
-                    => breadcrumb "" (Html.text "")
+                let
+                    content =
+                        Html.text "Errored"
+                            |> frame (sidebar OtherPage)
+                in
+                    ( content, breadcrumb (text "") [] )
+
+            Overview ->
+                let
+                    content =
+                        Overview.view model.project
+                            |> frame (sidebar OverviewPage)
+                in
+                    ( content, breadcrumb (text "") [] )
 
             Commits subModel ->
-                Commits.view model.project subModel
-                    |> frame (sidebar CommitsPage)
-                    |> Html.map CommitsMsg
-                    => breadcrumb "Commits" (Commits.viewBreadcrumbExtraItems subModel |> Html.map CommitsMsg)
+                let
+                    content =
+                        Commits.view model.project subModel
+                            |> frame (sidebar CommitsPage)
+                            |> Html.map CommitsMsg
+
+                    crumbExtraItems =
+                        Commits.viewBreadcrumbExtraItems subModel
+                            |> Html.map CommitsMsg
+
+                    crumb =
+                        Commits.breadcrumb project
+                            |> breadcrumb crumbExtraItems
+                in
+                    ( content, crumb )
 
             Commit subModel ->
-                Commit.view subModel
-                    |> frame (sidebar CommitsPage)
-                    |> Html.map CommitMsg
-                    => breadcrumb "Commits" (Html.text "")
+                let
+                    content =
+                        Commit.view subModel
+                            |> frame (sidebar CommitsPage)
+                            |> Html.map CommitMsg
+
+                    crumb =
+                        Commit.breadcrumb project subModel.commit
+                            |> breadcrumb (text "")
+                in
+                    ( content, crumb )
 
             Settings subModel ->
-                Settings.view subModel
-                    |> frame (sidebar SettingsPage)
-                    |> Html.map SettingsMsg
-                    => breadcrumb "Settings" (Html.text "")
+                let
+                    content =
+                        Settings.view subModel
+                            |> frame (sidebar SettingsPage)
+                            |> Html.map SettingsMsg
+
+                    crumb =
+                        Settings.breadcrumb project
+                            |> breadcrumb (text "")
+                in
+                    ( content, crumb )
 
 
 frame : Html msg -> Html msg -> Html msg
@@ -233,6 +327,14 @@ setRoute session maybeRoute model =
         case maybeRoute of
             Nothing ->
                 { model | subPageState = Loaded Blank } => Cmd.none
+
+            Just (ProjectRoute.Overview) ->
+                case session.user of
+                    Just user ->
+                        { model | subPageState = Loaded Overview } => Cmd.none
+
+                    Nothing ->
+                        errored Page.Project "Uhoh"
 
             Just (ProjectRoute.Commits) ->
                 case session.user of

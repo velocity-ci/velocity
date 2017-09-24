@@ -8,7 +8,8 @@ import Data.Commit as Commit
 
 
 type Route
-    = Commits
+    = Overview
+    | Commits
     | Commit Commit.Hash
     | Settings
 
@@ -20,6 +21,9 @@ type Route
 routeToPieces : Route -> List String
 routeToPieces page =
     case page of
+        Overview ->
+            []
+
         Commits ->
             [ "commits" ]
 

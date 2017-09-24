@@ -9,11 +9,14 @@ import Data.Project as Project exposing (Project)
 import Data.Task as ProjectTask
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
+import Page.Project.Commits as Commits
 import Request.Project
 import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
 import Http
+import Route exposing (Route)
+import Page.Project.Route as ProjectRoute
 
 
 -- MODEL --
@@ -100,6 +103,14 @@ viewTaskListItem task =
     a [ class "list-group-item list-group-item-action flex-column align-items-start", href "#" ]
         [ div [ class "d-flex w-100 justify-content-between" ] [ h5 [ class "mb-1" ] [ text task.name ] ]
         , p [ class "mb-1" ] [ text task.description ]
+        ]
+
+
+breadcrumb : Project -> Commit -> List ( Route, String )
+breadcrumb project commit =
+    List.concat
+        [ Commits.breadcrumb project
+        , [ ( Route.Project (ProjectRoute.Commit commit.hash) project.id, Commit.truncateHash commit.hash ) ]
         ]
 
 

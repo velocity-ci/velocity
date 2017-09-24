@@ -13,7 +13,7 @@ import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
 import Http
-import Route
+import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 
 
@@ -94,6 +94,11 @@ viewCommitListItem id commit =
                 ]
             , small [] authorAndDate
             ]
+
+
+breadcrumb : Project -> List ( Route, String )
+breadcrumb project =
+    [ ( Route.Project ProjectRoute.Commits project.id, "Commits" ) ]
 
 
 
