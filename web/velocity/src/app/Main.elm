@@ -18,7 +18,6 @@ import Route exposing (Route)
 import Task
 import Util exposing ((=>))
 import Views.Page as Page exposing (ActivePage)
-import Page.Project.Route as ProjectRoute
 
 
 type Page
@@ -223,7 +222,7 @@ setRoute maybeRoute model =
                     Nothing ->
                         errored Page.KnownHosts "You must be signed in to access your known hosts."
 
-            Just (Route.ProjectChild subRoute id) ->
+            Just (Route.Project subRoute id) ->
                 let
                     loadFreshPage =
                         Just subRoute

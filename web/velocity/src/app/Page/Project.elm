@@ -10,15 +10,20 @@ import Html.Attributes exposing (..)
 import Views.Page as Page
 import Util exposing ((=>), viewIf)
 import Http
-import Route
+import Route exposing (Route)
+import Views.Page as Page exposing (ActivePage)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commits as Commits
-import Views.Page as Page exposing (ActivePage)
+import Page.Project.Settings as Settings
+
+
+-- SUB PAGES --
 
 
 type SubPage
     = Blank
     | Commits Commits.Model
+    | Settings Settings.Model
     | Errored PageLoadError
 
 
@@ -53,10 +58,6 @@ init session id maybeRoute =
                 |> Request.Project.get id
                 |> Http.toTask
 
-        loadCommits =
-            Commits.init session id
-                |> Task.map Commits
-
         initialModel project =
             { project = project
             , subPageState = Loaded initialSubPage
@@ -85,6 +86,7 @@ init session id maybeRoute =
 type ActiveSubPage
     = OtherPage
     | CommitsPage
+    | SettingsPage
 
 
 view : Session -> Model -> Html Msg
@@ -103,15 +105,16 @@ viewSidebar : Project -> ActiveSubPage -> Html msg
 viewSidebar project subPage =
     nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
-            [ sidebarLink (subPage == CommitsPage) (ProjectRoute.Commits project.id) [ text "Commits " ]
+            [ sidebarLink (subPage == CommitsPage) (Route.Project ProjectRoute.Commits project.id) [ text "Commits" ]
+            , sidebarLink (subPage == SettingsPage) (Route.Project ProjectRoute.Settings project.id) [ text "Settings" ]
             ]
         ]
 
 
-sidebarLink : Bool -> ProjectRoute.Route -> List (Html msg) -> Html msg
+sidebarLink : Bool -> Route -> List (Html msg) -> Html msg
 sidebarLink isActive route linkContent =
     li [ class "nav-item" ]
-        [ a [ class "nav-link", ProjectRoute.href route, classList [ ( "active", isActive ) ] ]
+        [ a [ class "nav-link", Route.href route, classList [ ( "active", isActive ) ] ]
             (linkContent ++ [ Util.viewIf isActive (span [ class "sr-only" ] [ text "(current)" ]) ])
         ]
 
@@ -161,6 +164,11 @@ viewSubPage session model =
                     |> frame (sidebar CommitsPage)
                     |> Html.map CommitsMsg
 
+            Settings subModel ->
+                Settings.view subModel
+                    |> frame (sidebar SettingsPage)
+                    |> Html.map SettingsMsg
+
 
 frame : Html msg -> Html msg -> Html msg
 frame sidebar content =
@@ -193,6 +201,7 @@ type Msg
     | SetRoute (Maybe ProjectRoute.Route)
     | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
+    | SettingsMsg Settings.Msg
 
 
 setRoute : Session -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
@@ -209,10 +218,18 @@ setRoute session maybeRoute model =
             Nothing ->
                 { model | subPageState = Loaded Blank } => Cmd.none
 
-            Just (ProjectRoute.Commits id) ->
+            Just (ProjectRoute.Commits) ->
                 case session.user of
                     Just user ->
-                        transition CommitsLoaded (Commits.init session id)
+                        transition CommitsLoaded (Commits.init session model.project.id)
+
+                    Nothing ->
+                        errored Page.Project "Uhoh"
+
+            Just (ProjectRoute.Settings) ->
+                case session.user of
+                    Just user ->
+                        { model | subPageState = Loaded (Settings (Settings.init model.project)) } => Cmd.none
 
                     Nothing ->
                         errored Page.Project "Uhoh"
