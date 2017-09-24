@@ -72,7 +72,7 @@ viewCommitList : Project -> List Commit -> Html Msg
 viewCommitList project commits =
     sortByDatetime .date commits
         |> List.map (viewCommitListItem project.id)
-        |> div []
+        |> div [ class "list-group" ]
 
 
 viewCommitListItem : Project.Id -> Commit -> Html Msg
@@ -87,14 +87,12 @@ viewCommitListItem id commit =
         route =
             Route.Project (ProjectRoute.Commit commit.hash) id
     in
-        div [ class "list-group" ]
-            [ a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route ]
-                [ div [ class "d-flex w-100 justify-content-between" ]
-                    [ h5 [ class "mb-1" ] [ text commit.message ]
-                    , small [] [ text truncatedHash ]
-                    ]
-                , small [] authorAndDate
+        a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route ]
+            [ div [ class "d-flex w-100 justify-content-between" ]
+                [ h5 [ class "mb-1" ] [ text commit.message ]
+                , small [] [ text truncatedHash ]
                 ]
+            , small [] authorAndDate
             ]
 
 

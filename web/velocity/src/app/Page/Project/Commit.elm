@@ -58,8 +58,8 @@ view model =
         commit =
             model.commit
     in
-        div [ class "card" ]
-            [ div [ class "card-body" ] [ viewCommitDetails commit ]
+        div []
+            [ div [ class "card" ] [ div [ class "card-body" ] [ viewCommitDetails commit ] ]
             , viewTaskList model.tasks
             ]
 
@@ -84,14 +84,21 @@ viewCommitDetails commit =
 
 viewTaskList : List ProjectTask.Task -> Html Msg
 viewTaskList tasks =
-    List.map viewTaskListItem tasks
-        |> div [ class "list-group list-group-flush" ]
+    let
+        taskList =
+            List.map viewTaskListItem tasks
+                |> div [ class "list-group list-group-flush" ]
+    in
+        div [ class "card first-row" ]
+            [ h5 [ class "card-header" ] [ text "Tasks" ]
+            , taskList
+            ]
 
 
 viewTaskListItem : ProjectTask.Task -> Html Msg
 viewTaskListItem task =
     a [ class "list-group-item list-group-item-action flex-column align-items-start", href "#" ]
-        [ div [ class "d-flex w-100 justify-content-between" ] [ h4 [ class "mb-1" ] [ text task.name ] ]
+        [ div [ class "d-flex w-100 justify-content-between" ] [ h5 [ class "mb-1" ] [ text task.name ] ]
         , p [ class "mb-1" ] [ text task.description ]
         ]
 
