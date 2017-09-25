@@ -1,4 +1,4 @@
-module Request.Project exposing (list, create, get, commits, commit, commitTasks, sync)
+module Request.Project exposing (list, create, get, commits, commit, commitTasks, sync, delete)
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
@@ -171,3 +171,16 @@ create config token =
             |> withBody body
             |> withExpect expect
             |> HttpBuilder.toRequest
+
+
+
+-- DELETE --
+
+
+delete : Project.Id -> AuthToken -> Http.Request ()
+delete id token =
+    apiUrl (baseUrl ++ "/" ++ Project.idToString id)
+        |> HttpBuilder.delete
+        |> withAuthorization (Just token)
+        |> withExpect (Http.expectStringResponse (\_ -> Ok ()))
+        |> HttpBuilder.toRequest

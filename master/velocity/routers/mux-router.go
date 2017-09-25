@@ -30,7 +30,7 @@ func NewMuxRouter(controllers []Routable, logging bool) *MuxRouter {
 			"Authorization",
 			"Content-Type",
 		},
-		AllowedMethods: []string{"GET", "POST", "PUT"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
 		//Debug:          true,
 	}))
 

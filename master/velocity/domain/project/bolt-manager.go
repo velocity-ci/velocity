@@ -54,6 +54,28 @@ func (m *BoltManager) Save(p *domain.Project) error {
 
 	return nil
 }
+func (m *BoltManager) DeleteById(ID string) error {
+
+	tx, err := m.bolt.Begin(true)
+
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+
+	if err := projectsBucket.DeleteBucket([]byte(ID)); err != nil {
+		return fmt.Errorf("Project not found: %s", ID)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (m *BoltManager) FindByID(ID string) (*domain.Project, error) {
 	tx, err := m.bolt.Begin(false)

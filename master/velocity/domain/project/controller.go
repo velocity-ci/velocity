@@ -43,6 +43,11 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.getProjectHandler)),
 	)).Methods("GET")
 
+	router.Handle("/v1/projects/{id}", negroni.New(
+		middlewares.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.deleteProjectHandler)),
+	)).Methods("DELETE")
+
 	router.Handle("/v1/projects", negroni.New(
 		middlewares.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.postProjectsHandler)),
@@ -93,6 +98,20 @@ func (c Controller) getProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	projects := c.manager.FindAll()
 
 	c.render.JSON(w, http.StatusOK, projects)
+}
+
+func (c Controller) deleteProjectHandler(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+
+	err := c.manager.DeleteById(vars["id"])
+
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	c.render.JSON(w, http.StatusNoContent, nil)
 }
 
 func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) {

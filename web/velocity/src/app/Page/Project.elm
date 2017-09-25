@@ -217,7 +217,7 @@ viewSubPage session model =
             Overview ->
                 let
                     content =
-                        Overview.view model.project
+                        Overview.view project
                             |> frame (sidebar OverviewPage)
                 in
                     ( content, breadcrumb (text "") [] )
@@ -225,7 +225,7 @@ viewSubPage session model =
             Commits subModel ->
                 let
                     content =
-                        Commits.view model.project subModel
+                        Commits.view project subModel
                             |> frame (sidebar CommitsPage)
                             |> Html.map CommitsMsg
 
@@ -255,7 +255,7 @@ viewSubPage session model =
             Settings subModel ->
                 let
                     content =
-                        Settings.view subModel
+                        Settings.view project subModel
                             |> frame (sidebar SettingsPage)
                             |> Html.map SettingsMsg
 
@@ -339,7 +339,7 @@ setRoute session maybeRoute model =
             Just (ProjectRoute.Settings) ->
                 case session.user of
                     Just user ->
-                        { model | subPageState = Loaded (Settings (Settings.init model.project)) } => Cmd.none
+                        { model | subPageState = Loaded (Settings (Settings.initialModel)) } => Cmd.none
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -375,6 +375,9 @@ updateSubPage session subPage msg model =
         case ( msg, subPage ) of
             ( SetRoute route, _ ) ->
                 setRoute session route model
+
+            ( SettingsMsg subMsg, Settings subModel ) ->
+                toPage Settings SettingsMsg (Settings.update model.project session) subMsg subModel
 
             ( CommitsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Commits subModel) } => Cmd.none
