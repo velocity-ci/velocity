@@ -133,22 +133,6 @@ sidebarLink isActive route linkContent =
         ]
 
 
-
---
---viewBreadcrumb : Project -> String -> Html Msg -> Html Msg
---viewBreadcrumb project activeItem extraItems =
---    div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container", style [ ( "height", "50px" ) ] ]
---        [ div [ class "p-2" ]
---            [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ]
---                [ li [ class "breadcrumb-item" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
---                , li [ class "breadcrumb-item active" ] [ text project.name ]
---                , li [ class "breadcrumb-item active" ] [ text activeItem ]
---                ]
---            ]
---        , extraItems
---        ]
-
-
 viewBreadcrumb : Project -> Html Msg -> List ( Route, String ) -> Html Msg
 viewBreadcrumb project additionalElements items =
     let
