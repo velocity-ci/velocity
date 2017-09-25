@@ -7,7 +7,7 @@ import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Page.Helpers exposing (formatDate, sortByDatetime)
+import Page.Helpers exposing (formatDate, formatTime, sortByDatetime)
 import Request.Project
 import Util exposing ((=>))
 import Task exposing (Task)
@@ -15,6 +15,7 @@ import Views.Page as Page
 import Http
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
+import Dict exposing (Dict)
 
 
 -- MODEL --
@@ -53,34 +54,60 @@ init session id =
 -- VIEW --
 
 
+commitListToDict : List Commit -> Dict String (List Commit)
+commitListToDict commits =
+    let
+        reducer commit dict =
+            let
+                date =
+                    formatDate commit.date
+
+                insert =
+                    case Dict.get date dict of
+                        Just exists ->
+                            commit :: exists
+
+                        Nothing ->
+                            [ commit ]
+            in
+                Dict.insert date insert dict
+    in
+        List.foldl reducer Dict.empty commits
+
+
 view : Project -> Model -> Html Msg
 view project model =
-    div []
-        [ viewCommitList project model.commits ]
+    commitListToDict model.commits
+        |> viewCommitListContainer project
 
 
-viewBreadcrumbExtraItems : Model -> Html Msg
-viewBreadcrumbExtraItems model =
-    div [ class "ml-auto p-2" ]
-        [ button
-            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled model.submitting ]
-            [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
-        ]
+viewCommitListContainer : Project -> Dict String (List Commit) -> Html Msg
+viewCommitListContainer project dict =
+    dict
+        |> Dict.toList
+        |> List.reverse
+        |> List.map (viewCommitList project)
+        |> div []
 
 
-viewCommitList : Project -> List Commit -> Html Msg
-viewCommitList project commits =
-    sortByDatetime .date commits
-        |> List.map (viewCommitListItem project.id)
-        |> div [ class "list-group" ]
+viewCommitList : Project -> ( String, List Commit ) -> Html Msg
+viewCommitList project ( date, commits ) =
+    let
+        commitListItems =
+            sortByDatetime .date commits
+                |> List.map (viewCommitListItem project.id)
+    in
+        div [ class "first-row" ]
+            [ h6 [ class "mb-2 text-muted" ] [ text date ]
+            , div [ class "card" ]
+                [ div [ class "list-group list-group-flush" ] commitListItems
+                ]
+            ]
 
 
 viewCommitListItem : Project.Id -> Commit -> Html Msg
 viewCommitListItem id commit =
     let
-        authorAndDate =
-            [ strong [] [ text commit.author ], text (" commited on " ++ formatDate commit.date) ]
-
         truncatedHash =
             Commit.truncateHash commit.hash
 
@@ -92,13 +119,22 @@ viewCommitListItem id commit =
                 [ h5 [ class "mb-1" ] [ text commit.message ]
                 , small [] [ text truncatedHash ]
                 ]
-            , small [] authorAndDate
+            , small [] [ strong [] [ text commit.author ], text (" commited at " ++ formatTime commit.date) ]
             ]
 
 
 breadcrumb : Project -> List ( Route, String )
 breadcrumb project =
     [ ( Route.Project ProjectRoute.Commits project.id, "Commits" ) ]
+
+
+viewBreadcrumbExtraItems : Model -> Html Msg
+viewBreadcrumbExtraItems model =
+    div [ class "ml-auto p-2" ]
+        [ button
+            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled model.submitting ]
+            [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
+        ]
 
 
 

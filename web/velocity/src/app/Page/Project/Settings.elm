@@ -26,7 +26,7 @@ init project =
 
 view : Model -> Html Msg
 view model =
-    div [] [ text "Setting page" ]
+    div [] [ text "Setting page. This will contain a way to update private key or name, or delete the project." ]
 
 
 breadcrumb : Project -> List ( Route, String )
