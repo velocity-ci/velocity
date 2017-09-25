@@ -16,19 +16,18 @@ import Route
 -- MODEL --
 
 
+type ConfirmDeleteState
+    = Open Bool String
+    | Closed
+
+
 type alias Model =
-    { deleting : Bool
-    , deleteConfirmationToggled : Bool
-    , deleteConfirmProjectName : String
-    }
+    ConfirmDeleteState
 
 
 initialModel : Model
 initialModel =
-    { deleting = False
-    , deleteConfirmationToggled = False
-    , deleteConfirmProjectName = ""
-    }
+    Closed
 
 
 
@@ -45,10 +44,12 @@ viewDangerArea : Project -> Model -> Html Msg
 viewDangerArea project model =
     let
         cardBody =
-            if model.deleteConfirmationToggled then
-                viewDeleteConfirmation project.name model.deleteConfirmProjectName
-            else
-                viewPreDeleteConfirmation model
+            case model of
+                Closed ->
+                    viewPreDeleteConfirmation model
+
+                Open deleting deleteConfirmProjectName ->
+                    viewDeleteConfirmation project.name deleteConfirmProjectName deleting
     in
         div [ class "card border-danger mb-3" ]
             [ div [ class "card-body" ]
@@ -67,15 +68,14 @@ viewPreDeleteConfirmation model =
         , button
             [ type_ "button"
             , class "btn btn-outline-danger"
-            , onClick (ToggleDeleteConfirmation True)
-            , disabled model.deleting
+            , onClick (SetDeleteState (Open False ""))
             ]
             [ text "Delete project" ]
         ]
 
 
-viewDeleteConfirmation : String -> String -> Html Msg
-viewDeleteConfirmation projectName confirmValue =
+viewDeleteConfirmation : String -> String -> Bool -> Html Msg
+viewDeleteConfirmation projectName confirmValue submitting =
     let
         disclaimer =
             div []
@@ -89,7 +89,8 @@ viewDeleteConfirmation projectName confirmValue =
                     , button
                         [ type_ "button"
                         , class "btn btn-link btn-cancel-delete"
-                        , onClick (ToggleDeleteConfirmation False)
+                        , onClick (SetDeleteState Closed)
+                        , disabled submitting
                         ]
                         [ text "click here to cancel." ]
                     ]
@@ -102,14 +103,15 @@ viewDeleteConfirmation projectName confirmValue =
                     [ class "form-control"
                     , type_ "text"
                     , value confirmValue
-                    , onInput SetConfirmProjectName
+                    , onInput ((Open False) >> SetDeleteState)
+                    , disabled submitting
                     ]
                     []
                 , span [ class "input-group-btn" ]
                     [ button
                         [ class "btn btn-danger"
                         , type_ "button"
-                        , disabled (projectName /= confirmValue)
+                        , disabled ((projectName /= confirmValue) || submitting)
                         , onClick SubmitProjectDelete
                         ]
                         [ text "Delete project" ]
@@ -128,26 +130,14 @@ breadcrumb project =
 
 
 type Msg
-    = ToggleDeleteConfirmation Bool
-    | SubmitProjectDelete
+    = SubmitProjectDelete
     | ProjectDeleted (Result Http.Error ())
-    | SetConfirmProjectName String
+    | SetDeleteState ConfirmDeleteState
 
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     case msg of
-        ToggleDeleteConfirmation state ->
-            { model
-                | deleteConfirmationToggled = state
-                , deleteConfirmProjectName = ""
-            }
-                => Cmd.none
-
-        SetConfirmProjectName name ->
-            { model | deleteConfirmProjectName = name }
-                => Cmd.none
-
         SubmitProjectDelete ->
             let
                 cmdFromAuth authToken =
@@ -160,13 +150,21 @@ update project session msg model =
                         |> Session.attempt "delete project" cmdFromAuth
                         |> Tuple.second
             in
-                { model | deleting = True }
-                    => cmd
+                case model of
+                    Open _ value ->
+                        Open True value => cmd
+
+                    Closed ->
+                        Open True "" => cmd
 
         ProjectDeleted (Ok _) ->
-            { model | deleting = False }
-                => Route.modifyUrl Route.Projects
+            Open True "" => Route.modifyUrl Route.Projects
 
         ProjectDeleted (Err _) ->
-            { model | deleting = False }
-                => Cmd.none
+            Open True "" => Cmd.none
+
+        SetDeleteState Closed ->
+            Closed => Cmd.none
+
+        SetDeleteState (Open submitting confirmText) ->
+            Open submitting confirmText => Cmd.none
