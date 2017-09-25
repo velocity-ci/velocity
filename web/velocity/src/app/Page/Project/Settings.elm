@@ -163,8 +163,10 @@ update project session msg model =
         ProjectDeleted (Err _) ->
             Open True "" => Cmd.none
 
-        SetDeleteState Closed ->
-            Closed => Cmd.none
+        SetDeleteState state ->
+            case state of
+                Closed ->
+                    Closed => Cmd.none
 
-        SetDeleteState (Open submitting confirmText) ->
-            Open submitting confirmText => Cmd.none
+                Open submitting confirmText ->
+                    Open submitting confirmText => Cmd.none
