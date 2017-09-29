@@ -131,15 +131,16 @@ func sync(p *domain.Project, m *BoltManager) {
 			},
 		}
 
-		filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
-			if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
-				taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
-				task := task.ResolveTaskFromYAML(string(taskYml), gitParams)
-				m.SaveTaskForCommitInProject(&task, &c, p)
-			}
-			return nil
-		})
-
+		if _, err := os.Stat(fmt.Sprintf("%s/tasks/", dir)); err == nil {
+			filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
+				if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
+					taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
+					task := task.ResolveTaskFromYAML(string(taskYml), gitParams)
+					m.SaveTaskForCommitInProject(&task, &c, p)
+				}
+				return nil
+			})
+		}
 	}
 
 	p.UpdatedAt = time.Now()
