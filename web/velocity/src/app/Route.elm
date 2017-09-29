@@ -6,6 +6,7 @@ import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Data.Project as Project
 import Data.Commit as Commit
+import Data.Task as ProjectTask
 import Page.Project.Route as ProjectRoute exposing (Route(..))
 
 
@@ -29,6 +30,7 @@ route =
         , Url.map (Project Overview) (s "projects" </> Project.idParser)
         , Url.map (Project Commits) (s "projects" </> Project.idParser </> s "commits")
         , Url.map (\id hash -> Project (Commit hash) id) (s "projects" </> Project.idParser </> s "commits" </> Commit.hashParser)
+        , Url.map (\id hash name -> Project (Task hash name) id) (s "projects" </> Project.idParser </> s "commits" </> Commit.hashParser </> s "tasks" </> ProjectTask.nameParser)
         , Url.map (Project Settings) (s "projects" </> Project.idParser </> s "settings")
         ]
 

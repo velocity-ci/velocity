@@ -161,12 +161,7 @@ update project session msg model =
             Open True "" => Route.modifyUrl Route.Projects
 
         ProjectDeleted (Err _) ->
-            Open True "" => Cmd.none
+            Open False "" => Cmd.none
 
         SetDeleteState state ->
-            case state of
-                Closed ->
-                    Closed => Cmd.none
-
-                Open submitting confirmText ->
-                    Open submitting confirmText => Cmd.none
+            state => Cmd.none

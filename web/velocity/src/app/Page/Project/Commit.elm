@@ -55,15 +55,15 @@ init session id hash =
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Project -> Model -> Html Msg
+view project model =
     let
         commit =
             model.commit
     in
         div []
             [ div [ class "card" ] [ div [ class "card-body" ] [ viewCommitDetails commit ] ]
-            , viewTaskList model.tasks
+            , viewTaskList project commit model.tasks
             ]
 
 
@@ -85,11 +85,11 @@ viewCommitDetails commit =
             ]
 
 
-viewTaskList : List ProjectTask.Task -> Html Msg
-viewTaskList tasks =
+viewTaskList : Project -> Commit -> List ProjectTask.Task -> Html Msg
+viewTaskList project commit tasks =
     let
         taskList =
-            List.map viewTaskListItem tasks
+            List.map (viewTaskListItem project commit) tasks
                 |> div [ class "list-group list-group-flush" ]
     in
         div [ class "card first-row" ]
@@ -98,12 +98,18 @@ viewTaskList tasks =
             ]
 
 
-viewTaskListItem : ProjectTask.Task -> Html Msg
-viewTaskListItem task =
-    a [ class "list-group-item list-group-item-action flex-column align-items-start", href "#" ]
-        [ div [ class "d-flex w-100 justify-content-between" ] [ h5 [ class "mb-1" ] [ text task.name ] ]
-        , p [ class "mb-1" ] [ text task.description ]
-        ]
+viewTaskListItem : Project -> Commit -> ProjectTask.Task -> Html Msg
+viewTaskListItem project commit task =
+    let
+        route =
+            Route.Project (ProjectRoute.Task commit.hash task.name) project.id
+    in
+        a [ class "list-group-item list-group-item-action flex-column align-items-center", Route.href route ]
+            [ div [ class "d-flex w-100 justify-content-between" ]
+                [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ]
+                ]
+            , p [ class "mb-1" ] [ text task.description ]
+            ]
 
 
 breadcrumb : Project -> Commit -> List ( Route, String )

@@ -17,6 +17,7 @@ import Page.Project.Commits as Commits
 import Page.Project.Settings as Settings
 import Page.Project.Commit as Commit
 import Page.Project.Overview as Overview
+import Page.Project.Task as CommitTask
 
 
 -- SUB PAGES --
@@ -27,6 +28,7 @@ type SubPage
     | Overview
     | Commits Commits.Model
     | Commit Commit.Model
+    | CommitTask CommitTask.Model
     | Settings Settings.Model
     | Errored PageLoadError
 
@@ -242,12 +244,25 @@ viewSubPage session model =
             Commit subModel ->
                 let
                     content =
-                        Commit.view subModel
+                        Commit.view project subModel
                             |> frame (sidebar CommitsPage)
                             |> Html.map CommitMsg
 
                     crumb =
                         Commit.breadcrumb project subModel.commit
+                            |> breadcrumb (text "")
+                in
+                    ( content, crumb )
+
+            CommitTask subModel ->
+                let
+                    content =
+                        CommitTask.view subModel
+                            |> frame (sidebar CommitsPage)
+                            |> Html.map CommitTaskMsg
+
+                    crumb =
+                        CommitTask.breadcrumb project subModel.commit subModel.task
                             |> breadcrumb (text "")
                 in
                     ( content, crumb )
@@ -285,6 +300,8 @@ type Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
     | CommitMsg Commit.Msg
     | CommitLoaded (Result PageLoadError Commit.Model)
+    | CommitTaskMsg CommitTask.Msg
+    | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
     | SettingsMsg Settings.Msg
 
 
@@ -332,6 +349,14 @@ setRoute session maybeRoute model =
                 case session.user of
                     Just user ->
                         transition CommitLoaded (Commit.init session model.project.id hash)
+
+                    Nothing ->
+                        errored Page.Project "Uhoh"
+
+            Just (ProjectRoute.Task hash name) ->
+                case session.user of
+                    Just user ->
+                        transition CommitTaskLoaded (CommitTask.init session model.project.id hash name)
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -396,6 +421,15 @@ updateSubPage session subPage msg model =
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 toPage Commit CommitMsg (Commit.update model.project session) subMsg subModel
+
+            ( CommitTaskLoaded (Ok subModel), _ ) ->
+                { model | subPageState = Loaded (CommitTask subModel) } => Cmd.none
+
+            ( CommitTaskLoaded (Err error), _ ) ->
+                { model | subPageState = Loaded (Errored error) } => Cmd.none
+
+            ( CommitTaskMsg subMsg, CommitTask subModel ) ->
+                toPage CommitTask CommitTaskMsg (CommitTask.update model.project session) subMsg subModel
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
