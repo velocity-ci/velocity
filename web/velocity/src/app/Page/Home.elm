@@ -45,7 +45,7 @@ init session =
 view : Session -> Model -> Html Msg
 view session model =
     div [ class "container-fluid" ]
-        [ div [ class "row first-row" ]
+        [ div [ class "row default-margin-top" ]
             [ div [ class "col-12 col-md-6" ]
                 [ div [ class "card" ]
                     [ h4 [ class "card-header" ]

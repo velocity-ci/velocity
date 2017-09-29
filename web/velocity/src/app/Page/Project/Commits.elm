@@ -97,7 +97,7 @@ viewCommitList project ( date, commits ) =
             sortByDatetime .date commits
                 |> List.map (viewCommitListItem project.id)
     in
-        div [ class "first-row" ]
+        div [ class "default-margin-bottom" ]
             [ h6 [ class "mb-2 text-muted" ] [ text date ]
             , div [ class "card" ]
                 [ div [ class "list-group list-group-flush" ] commitListItems

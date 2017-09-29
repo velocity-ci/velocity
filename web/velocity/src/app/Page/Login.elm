@@ -68,7 +68,7 @@ initialModel =
 view : Session -> Model -> Html Msg
 view session model =
     div [ class "container-fluid" ]
-        [ div [ class "row justify-content-md-center first-row" ]
+        [ div [ class "row justify-content-md-center default-margin-bottom" ]
             [ div [ class "col col-md-6" ]
                 [ div [ class "card" ]
                     [ div [ class "card-body" ]

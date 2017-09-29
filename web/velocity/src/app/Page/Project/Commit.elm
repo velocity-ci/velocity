@@ -92,7 +92,7 @@ viewTaskList project commit tasks =
             List.map (viewTaskListItem project commit) tasks
                 |> div [ class "list-group list-group-flush" ]
     in
-        div [ class "card first-row" ]
+        div [ class "card default-margin-top" ]
             [ h5 [ class "card-header" ] [ text "Tasks" ]
             , taskList
             ]

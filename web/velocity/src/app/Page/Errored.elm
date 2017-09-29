@@ -35,7 +35,7 @@ pageLoadError activePage errorMessage =
 view : Session -> PageLoadError -> Html msg
 view session (PageLoadError model) =
     div [ class "container-fluid" ]
-        [ div [ class "row first-row" ]
+        [ div [ class "row default-margin-bottom" ]
             [ div [ class "col-12" ]
                 [ h1 [ class "display-4" ] [ text "Error Loading Page" ] ]
             ]

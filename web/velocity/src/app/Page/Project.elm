@@ -155,7 +155,7 @@ viewBreadcrumb project additionalElements items =
         itemElements =
             List.indexedMap breadcrumbItem allItems
     in
-        div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container", style [ ( "height", "50px" ) ] ]
+        div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container" ]
             [ div [ class "p-2" ]
                 [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ] itemElements ]
             , additionalElements
@@ -285,7 +285,7 @@ frame : Html msg -> Html msg -> Html msg
 frame sidebar content =
     div [ class "row" ]
         [ sidebar
-        , div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3" ] [ content ]
+        , div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3 project-content-container" ] [ content ]
         ]
 
 

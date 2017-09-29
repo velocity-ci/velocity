@@ -128,20 +128,33 @@ h1 {
   border-radius: 0;
 }
 
-.first-row {
+.default-margin-bottom {
+  margin-bottom: 15px;
+}
+
+.default-margin-top {
   margin-top: 15px;
 }
 
 .breadcrumb-container {
-  background-color: rgba(52, 58, 64, 0.9) !important;
+  background-color: #4E545A !important;
+  position: fixed;
+  height: 50px;
+  width: 100%;
+  z-index: 2;
+
   .breadcrumb {
-    background-color: rgba(52, 58, 64, 0.1) !important;
+    background-color: #4E545A !important;
 
     a {
       color: white;
     }
 
   }
+}
+
+.project-content-container {
+  margin-top: 50px;
 }
 
 .btn-cancel-delete {

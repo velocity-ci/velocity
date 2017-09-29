@@ -98,7 +98,7 @@ viewBuildStep i buildStep =
                 , dd [] [ text buildStep.dockerfile ]
                 ]
     in
-        div [ class "card first-row" ]
+        div [ class "card default-margin-bottom" ]
             [ div [ class "card-header" ]
                 [ h5 [ class "mb-0" ]
                     [ text (toString i ++ ". " ++ buildStep.description) ]
@@ -120,15 +120,17 @@ viewRunStep i runStep =
 
         envTable =
             table [ class "table" ]
-                (List.map
-                    (\( k, v ) ->
-                        tr []
-                            [ th [] [ text k ]
-                            , td [] [ text v ]
-                            ]
+                [ tbody []
+                    (List.map
+                        (\( k, v ) ->
+                            tr []
+                                [ th [] [ text k ]
+                                , td [] [ text v ]
+                                ]
+                        )
+                        runStep.environment
                     )
-                    runStep.environment
-                )
+                ]
 
         ignoreExitCode =
             runStep.ignoreExitCode
@@ -149,7 +151,7 @@ viewRunStep i runStep =
                 , dd [] [ text command ]
                 ]
     in
-        div [ class "card first-row" ]
+        div [ class "card default-margin-bottom" ]
             [ div [ class "card-header" ]
                 [ h5 [ class "mb-0" ]
                     [ text (toString i ++ ". " ++ runStep.description) ]

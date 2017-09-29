@@ -126,7 +126,7 @@ viewProjectFormContainer model =
             , ( "fa-minus", not model.formCollapsed )
             ]
     in
-        div [ class "row first-row" ]
+        div [ class "row default-margin-top" ]
             [ div [ class "col-12" ]
                 [ div [ class "card" ]
                     [ h4 [ class "card-header" ]
@@ -234,7 +234,7 @@ viewProjectList projects =
         latestProjects =
             sortByDatetime .updatedAt projects
     in
-        div [ class "row first-row" ]
+        div [ class "row default-margin-top" ]
             [ div [ class "col-12" ]
                 [ div [ class "card" ]
                     [ h4 [ class "card-header" ] [ text ("Projects (" ++ projectAmount ++ ")") ]
