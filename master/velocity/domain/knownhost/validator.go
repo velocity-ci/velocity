@@ -9,7 +9,7 @@ import (
 	validator "gopkg.in/go-playground/validator.v9"
 )
 
-func ValidateKnownHost(fl validator.FieldLevel) bool {
+func ValidateKnownHostValid(fl validator.FieldLevel) bool {
 
 	if fl.Field().Type().Name() != "string" {
 		return false
@@ -22,17 +22,39 @@ func ValidateKnownHost(fl validator.FieldLevel) bool {
 		return false
 	}
 
+	return true
+
+}
+
+func registerFuncValid(ut ut.Translator) error {
+	return ut.Add("knownHostValid", "{0} is not a valid key!", true)
+}
+
+func translationFuncValid(ut ut.Translator, fe validator.FieldError) string {
+	t, _ := ut.T("knownHostValid", fe.Field())
+
+	return t
+}
+
+func ValidateKnownHostUnique(fl validator.FieldLevel) bool {
+
+	if fl.Field().Type().Name() != "string" {
+		return false
+	}
+
+	knownHost := fl.Field().String()
+
 	m := NewManager(log.New(os.Stdout, "[files]", log.Lshortfile))
 
 	return !m.Exists(knownHost)
 }
 
-func registerFunc(ut ut.Translator) error {
-	return ut.Add("knownHost", "{0} already exists!", true)
+func registerFuncUnique(ut ut.Translator) error {
+	return ut.Add("knownHostUnique", "{0} already exists!", true)
 }
 
-func translationFunc(ut ut.Translator, fe validator.FieldError) string {
-	t, _ := ut.T("knownHost", fe.Field())
+func translationFuncUnique(ut ut.Translator, fe validator.FieldError) string {
+	t, _ := ut.T("knownHostUnique", fe.Field())
 
 	return t
 }

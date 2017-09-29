@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
@@ -12,17 +13,16 @@ import (
 )
 
 type BoltManager struct {
-	boltLogger *log.Logger
-	bolt       *bolt.DB
+	logger *log.Logger
+	bolt   *bolt.DB
 }
 
 func NewBoltManager(
-	boltLogger *log.Logger,
 	bolt *bolt.DB,
 ) *BoltManager {
 	return &BoltManager{
-		boltLogger: boltLogger,
-		bolt:       bolt,
+		logger: log.New(os.Stdout, "[bolt-project]", log.Lshortfile),
+		bolt:   bolt,
 	}
 }
 
@@ -33,7 +33,7 @@ func (m *BoltManager) Save(p *domain.Project) error {
 	}
 	defer tx.Rollback()
 
-	m.boltLogger.Printf("saving project: %s", p.ID)
+	m.logger.Printf("saving project: %s", p.ID)
 
 	projectsBucket, err := tx.CreateBucketIfNotExists([]byte("projects"))
 	projectsBucket = tx.Bucket([]byte("projects"))
@@ -238,7 +238,7 @@ func (m *BoltManager) SaveCommitForProject(p *domain.Project, c *domain.Commit) 
 		return err
 	}
 
-	m.boltLogger.Printf("Saved commit %s for %s", c.Hash, p.ID)
+	m.logger.Printf("Saved commit %s for %s", c.Hash, p.ID)
 
 	return nil
 }
@@ -287,7 +287,7 @@ func (m *BoltManager) SaveTaskForCommitInProject(t *task.Task, c *domain.Commit,
 		return err
 	}
 
-	m.boltLogger.Printf("Saved task %s for %s in %s", t.Name, c.Hash, p.ID)
+	m.logger.Printf("Saved task %s for %s in %s", t.Name, c.Hash, p.ID)
 
 	return nil
 }

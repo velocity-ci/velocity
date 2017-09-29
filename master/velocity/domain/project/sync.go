@@ -14,29 +14,52 @@ import (
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/domain/task"
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
 	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
-func sync(p *domain.Project, m *BoltManager) {
-	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", p.ID))
+func clone(name string, repositoryAddress string, key string) (*git.Repository, string, error) {
+	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", idFromName(name)))
 	if err != nil {
 		log.Fatal(err)
+		return nil, "", err
 	}
 
-	defer os.RemoveAll(dir) // clean up
+	isGit := repositoryAddress[:3] == "git"
 
-	// Clones the repository into the given dir, just as a normal git clone does
-	signer, _ := ssh.ParsePrivateKey([]byte(p.PrivateKey))
-	auth := &gitssh.PublicKeys{User: "git", Signer: signer}
-	repo, err := git.PlainClone(dir, false, &git.CloneOptions{
-		URL:   p.Repository,
+	var auth transport.AuthMethod
+
+	if isGit {
+		log.Printf("git repository: %s", repositoryAddress)
+		signer, err := ssh.ParsePrivateKey([]byte(key))
+		if err != nil {
+			os.RemoveAll(dir)
+			return nil, "", err
+		}
+		auth = &gitssh.PublicKeys{User: "git", Signer: signer}
+	}
+
+	repo, err := git.PlainClone(dir, true, &git.CloneOptions{
+		URL:   repositoryAddress,
 		Depth: 1,
 		Auth:  auth,
 	})
 
 	if err != nil {
-		log.Fatal(err)
+		os.RemoveAll(dir)
+		return nil, "", err
 	}
+
+	return repo, dir, nil
+}
+
+func sync(p *domain.Project, m *BoltManager) {
+	repo, dir, err := clone(p.Name, p.Repository, p.PrivateKey)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	defer os.RemoveAll(dir) // clean up
 
 	refIter, err := repo.References()
 	w, err := repo.Worktree()

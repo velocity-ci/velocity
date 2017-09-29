@@ -5,14 +5,16 @@ import (
 	"io"
 	"strings"
 
-	ut "github.com/go-playground/universal-translator"
-	validator "gopkg.in/go-playground/validator.v9"
-
 	"github.com/velocity-ci/velocity/master/velocity/domain"
+	"github.com/velocity-ci/velocity/master/velocity/middlewares"
 )
 
-func FromRequest(b io.Reader, validate *validator.Validate, trans ut.Translator) (*domain.KnownHost, error) {
-	reqKnownHost := domain.RequestKnownHost{}
+type requestKnownHost struct {
+	Entry string `json:"entry" validate:"required,knownHostValid,knownHostUnique,min=10"`
+}
+
+func FromRequest(b io.Reader) (*domain.KnownHost, error) {
+	reqKnownHost := requestKnownHost{}
 
 	err := json.NewDecoder(b).Decode(&reqKnownHost)
 	if err != nil {
@@ -21,8 +23,13 @@ func FromRequest(b io.Reader, validate *validator.Validate, trans ut.Translator)
 
 	reqKnownHost.Entry = strings.TrimSpace(reqKnownHost.Entry)
 
-	validate.RegisterValidation("knownHost", ValidateKnownHost)
-	validate.RegisterTranslation("knownHost", trans, registerFunc, translationFunc)
+	validate, trans := middlewares.GetValidator()
+
+	validate.RegisterValidation("knownHostValid", ValidateKnownHostValid)
+	validate.RegisterTranslation("knownHostValid", trans, registerFuncValid, translationFuncValid)
+
+	validate.RegisterValidation("knownHostUnique", ValidateKnownHostUnique)
+	validate.RegisterTranslation("knownHostUnique", trans, registerFuncUnique, translationFuncUnique)
 
 	err = validate.Struct(reqKnownHost)
 
@@ -30,5 +37,7 @@ func FromRequest(b io.Reader, validate *validator.Validate, trans ut.Translator)
 		return nil, err
 	}
 
-	return reqKnownHost.ToKnownHost(), nil
+	return &domain.KnownHost{
+		Entry: reqKnownHost.Entry,
+	}, nil
 }

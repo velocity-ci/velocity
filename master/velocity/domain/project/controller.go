@@ -123,20 +123,15 @@ func (c Controller) deleteProjectHandler(w http.ResponseWriter, r *http.Request)
 func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	// username := middlewares.UsernameFromContext(r.Context())
 
-	p, err := FromRequest(r.Body)
+	boltProject, err := FromRequest(r.Body)
 	if err != nil {
-		c.render.JSON(w, http.StatusBadRequest, nil)
-		return
-	}
-	valid, errs := ValidatePOST(p, c.manager)
-	if !valid {
-		c.render.JSON(w, http.StatusBadRequest, errs)
+		middlewares.HandleRequestError(err, w, c.render)
 		return
 	}
 
-	c.manager.Save(p)
+	c.manager.Save(boltProject)
 
-	c.render.JSON(w, http.StatusCreated, p)
+	c.render.JSON(w, http.StatusCreated, boltProject.ToResponseProject())
 }
 
 func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {

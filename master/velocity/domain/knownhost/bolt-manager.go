@@ -3,6 +3,7 @@ package knownhost
 import (
 	"encoding/json"
 	"log"
+	"os"
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
@@ -10,18 +11,17 @@ import (
 )
 
 type BoltManager struct {
-	boltLogger  *log.Logger
+	logger      *log.Logger
 	bolt        *bolt.DB
 	fileManager *Manager
 }
 
 func NewBoltManager(
-	boltLogger *log.Logger,
 	bolt *bolt.DB,
 	fileManager *Manager,
 ) *BoltManager {
 	m := &BoltManager{
-		boltLogger:  boltLogger,
+		logger:      log.New(os.Stdout, "[bolt-knownhost]", log.Lshortfile),
 		bolt:        bolt,
 		fileManager: fileManager,
 	}
@@ -46,7 +46,7 @@ func (m *BoltManager) Save(h *domain.KnownHost) error {
 	}
 	defer tx.Rollback()
 
-	m.boltLogger.Printf("saving known host: %s", h.Entry)
+	m.logger.Printf("saving known host: %s", h.Entry)
 
 	knownHostsBucket, err := tx.CreateBucketIfNotExists([]byte("known-hosts"))
 	if err != nil {

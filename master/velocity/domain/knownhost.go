@@ -2,10 +2,6 @@ package domain
 
 import "golang.org/x/crypto/ssh"
 
-type RequestKnownHost struct {
-	Entry string `json:"entry" validate:"required,knownHost"`
-}
-
 type KnownHost struct {
 	Entry string `json:"entry"`
 }
@@ -15,10 +11,6 @@ type ResponseKnownHost struct {
 	Comment           string   `json:"comment"`
 	SHA256Fingerprint string   `json:"sha256"`
 	MD5Fingerprint    string   `json:"md5"`
-}
-
-func (k *RequestKnownHost) ToKnownHost() *KnownHost {
-	return &KnownHost{Entry: k.Entry}
 }
 
 func (k *KnownHost) ToResponseKnownHost() *ResponseKnownHost {

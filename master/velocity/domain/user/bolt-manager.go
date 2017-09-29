@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
@@ -27,11 +28,10 @@ func createAdminUser(m *BoltManager) {
 }
 
 func NewBoltManager(
-	boltLogger *log.Logger,
 	bolt *bolt.DB,
 ) *BoltManager {
 	m := &BoltManager{
-		logger: boltLogger,
+		logger: log.New(os.Stdout, "[bolt-user]", log.Lshortfile),
 		bolt:   bolt,
 	}
 	createAdminUser(m)

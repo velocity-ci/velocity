@@ -13,7 +13,6 @@ import (
 	"github.com/velocity-ci/velocity/master/velocity/domain/knownhost"
 	"github.com/velocity-ci/velocity/master/velocity/domain/project"
 	"github.com/velocity-ci/velocity/master/velocity/domain/user"
-	"github.com/velocity-ci/velocity/master/velocity/middlewares"
 	"github.com/velocity-ci/velocity/master/velocity/persisters"
 	"github.com/velocity-ci/velocity/master/velocity/routers"
 )
@@ -30,20 +29,17 @@ func NewVelocityAPI() App {
 	velocityAPI := &VelocityAPI{}
 
 	controllerLogger := log.New(os.Stdout, "[controller]", log.Lshortfile)
-	boltLogger := log.New(os.Stdout, "[bolt]", log.Lshortfile)
 	fileLogger := log.New(os.Stdout, "[files]", log.Lshortfile)
 	renderer := render.New()
-	validator, translator := middlewares.NewValidator()
-
-	velocityAPI.bolt = persisters.NewBoltDB(boltLogger)
+	velocityAPI.bolt = persisters.GetBoltDB()
 
 	knownhostManager := knownhost.NewManager(fileLogger)
 
-	userBoltManager := user.NewBoltManager(boltLogger, velocityAPI.bolt)
-	projectBoltManager := project.NewBoltManager(boltLogger, velocityAPI.bolt)
-	knownhostBoltManager := knownhost.NewBoltManager(boltLogger, velocityAPI.bolt, knownhostManager)
+	userBoltManager := user.NewBoltManager(velocityAPI.bolt)
+	projectBoltManager := project.NewBoltManager(velocityAPI.bolt)
+	knownhostBoltManager := knownhost.NewBoltManager(velocityAPI.bolt, knownhostManager)
 
-	knownhostController := knownhost.NewController(controllerLogger, renderer, validator, translator, knownhostBoltManager)
+	knownhostController := knownhost.NewController(controllerLogger, renderer, knownhostBoltManager)
 	authController := auth.NewController(controllerLogger, renderer, userBoltManager)
 	projectController := project.NewController(controllerLogger, renderer, projectBoltManager)
 

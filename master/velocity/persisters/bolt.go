@@ -2,17 +2,31 @@ package persisters
 
 import (
 	"log"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
 )
 
-func NewBoltDB(logger *log.Logger) *bolt.DB {
+func newBoltDB(logger *log.Logger) *bolt.DB {
 
 	db, err := bolt.Open("cache.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	return db
+}
+
+var boltDB *bolt.DB
+var once sync.Once
+
+func GetBoltDB() *bolt.DB {
+	once.Do(func() {
+		boltLogger := log.New(os.Stdout, "[bolt]", log.Lshortfile)
+		boltDB = newBoltDB(boltLogger)
+	})
+
+	return boltDB
 }

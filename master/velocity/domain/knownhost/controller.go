@@ -5,38 +5,30 @@ import (
 	"log"
 	"net/http"
 
-	ut "github.com/go-playground/universal-translator"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
 	"github.com/urfave/negroni"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/middlewares"
-	validator "gopkg.in/go-playground/validator.v9"
 )
 
 // Controller - Handles authentication
 type Controller struct {
-	logger     *log.Logger
-	render     *render.Render
-	validator  *validator.Validate
-	translator ut.Translator
-	manager    *BoltManager
+	logger  *log.Logger
+	render  *render.Render
+	manager *BoltManager
 }
 
 // NewController - returns a new Controller for Authentication.
 func NewController(
 	controllerLogger *log.Logger,
 	renderer *render.Render,
-	validator *validator.Validate,
-	translator ut.Translator,
 	manager *BoltManager,
 ) *Controller {
 	return &Controller{
-		logger:     controllerLogger,
-		render:     renderer,
-		validator:  validator,
-		translator: translator,
-		manager:    manager,
+		logger:  controllerLogger,
+		render:  renderer,
+		manager: manager,
 	}
 }
 
@@ -60,15 +52,9 @@ func (c Controller) Setup(router *mux.Router) {
 
 func (c Controller) postKnownHostsHandler(w http.ResponseWriter, r *http.Request) {
 
-	boltKnownHost, err := FromRequest(r.Body, c.validator, c.translator)
-
+	boltKnownHost, err := FromRequest(r.Body)
 	if err != nil {
-		if _, ok := err.(validator.ValidationErrors); !ok {
-			c.render.JSON(w, http.StatusBadRequest, "Invalid payload.")
-			return
-		}
-
-		c.render.JSON(w, http.StatusBadRequest, err.(validator.ValidationErrors).Translate(c.translator))
+		middlewares.HandleRequestError(err, w, c.render)
 		return
 	}
 
