@@ -18,7 +18,7 @@ import (
 	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
-func clone(name string, repositoryAddress string, key string) (*git.Repository, string, error) {
+func clone(name string, repositoryAddress string, key string, bare bool) (*git.Repository, string, error) {
 	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", idFromName(name)))
 	if err != nil {
 		log.Fatal(err)
@@ -39,7 +39,7 @@ func clone(name string, repositoryAddress string, key string) (*git.Repository, 
 		auth = &gitssh.PublicKeys{User: "git", Signer: signer}
 	}
 
-	repo, err := git.PlainClone(dir, true, &git.CloneOptions{
+	repo, err := git.PlainClone(dir, bare, &git.CloneOptions{
 		URL:   repositoryAddress,
 		Depth: 1,
 		Auth:  auth,
@@ -54,7 +54,7 @@ func clone(name string, repositoryAddress string, key string) (*git.Repository, 
 }
 
 func sync(p *domain.Project, m *BoltManager) {
-	repo, dir, err := clone(p.Name, p.Repository, p.PrivateKey)
+	repo, dir, err := clone(p.Name, p.Repository, p.PrivateKey, false)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -62,7 +62,15 @@ func sync(p *domain.Project, m *BoltManager) {
 	defer os.RemoveAll(dir) // clean up
 
 	refIter, err := repo.References()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 	w, err := repo.Worktree()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 	for {
 		r, err := refIter.Next()
 		if err != nil {

@@ -70,7 +70,7 @@ func translationFuncPrivateKey(ut ut.Translator, fe validator.FieldError) string
 func ValidateProjectRepository(sl validator.StructLevel) {
 	project := sl.Current().Interface().(requestProject)
 
-	_, dir, err := clone(project.Name, project.Repository, project.PrivateKey)
+	_, dir, err := clone(project.Name, project.Repository, project.PrivateKey, true)
 
 	if err != nil {
 		log.Println(err)
