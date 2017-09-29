@@ -336,3 +336,49 @@ func (m *BoltManager) GetTasksForCommitInProject(c *domain.Commit, p *domain.Pro
 
 	return tasks
 }
+
+func (m *BoltManager) GetTaskForCommitInProject(c *domain.Commit, p *domain.Project, name string) (*task.Task, error) {
+
+	tx, err := m.bolt.Begin(false)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	if projectsBucket == nil {
+		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
+	}
+
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	if projectsBucket == nil {
+		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
+	}
+
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	if commitsBucket == nil {
+		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
+	}
+
+	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
+	if commitBucket == nil {
+		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
+	}
+
+	tasksBucket := commitBucket.Bucket([]byte("tasks"))
+	if tasksBucket == nil {
+		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
+	}
+
+	t := tasksBucket.Get([]byte(name))
+
+	task := task.NewTask()
+	err = json.Unmarshal(t, &task)
+
+	if err != nil {
+		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
+	}
+
+	return &task, nil
+
+}
