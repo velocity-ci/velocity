@@ -3,8 +3,7 @@ package project
 import (
 	"log"
 	"os"
-
-	"golang.org/x/crypto/ssh"
+	"reflect"
 
 	ut "github.com/go-playground/universal-translator"
 	"github.com/velocity-ci/velocity/master/velocity/persisters"
@@ -40,40 +39,16 @@ func translationFuncUnique(ut ut.Translator, fe validator.FieldError) string {
 	return t
 }
 
-func ValidatePrivateKey(fl validator.FieldLevel) bool {
-
-	if fl.Field().Type().Name() != "string" {
-		return false
-	}
-
-	privateKey := fl.Field().String()
-
-	_, err := ssh.ParsePrivateKey([]byte(privateKey))
-
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func registerFuncPrivateKey(ut ut.Translator) error {
-	return ut.Add("privateKey", "{0} is not a valid SSH private key!", true)
-}
-
-func translationFuncPrivateKey(ut ut.Translator, fe validator.FieldError) string {
-	t, _ := ut.T("privateKey", fe.Field())
-
-	return t
-}
-
 func ValidateProjectRepository(sl validator.StructLevel) {
 	project := sl.Current().Interface().(requestProject)
 
 	_, dir, err := clone(project.Name, project.Repository, project.PrivateKey, true)
 
 	if err != nil {
-		log.Println(err)
+		log.Println(err, reflect.TypeOf(err))
+		if _, ok := err.(SSHKeyError); ok {
+			sl.ReportError(project.PrivateKey, "key", "key", "key", "")
+		}
 		sl.ReportError(project.Repository, "repository", "repository", "repository", "")
 	}
 	os.RemoveAll(dir)
@@ -85,6 +60,16 @@ func registerFuncRepository(ut ut.Translator) error {
 
 func translationFuncRepository(ut ut.Translator, fe validator.FieldError) string {
 	t, _ := ut.T("repository", fe.Field())
+
+	return t
+}
+
+func registerFuncKey(ut ut.Translator) error {
+	return ut.Add("key", "Invalid SSH Key", true)
+}
+
+func translationFuncKey(ut ut.Translator, fe validator.FieldError) string {
+	t, _ := ut.T("key", fe.Field())
 
 	return t
 }

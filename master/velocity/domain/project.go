@@ -9,7 +9,6 @@ type ResponseProject struct {
 
 	Name       string `json:"name"`
 	Repository string `json:"repository"`
-	PrivateKey string `json:"key"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -34,7 +33,6 @@ func (p *Project) ToResponseProject() *ResponseProject {
 		ID:            p.ID,
 		Name:          p.Name,
 		Repository:    p.Repository,
-		PrivateKey:    p.PrivateKey,
 		CreatedAt:     p.CreatedAt,
 		UpdatedAt:     p.UpdatedAt,
 		Synchronising: p.Synchronising,

@@ -34,7 +34,7 @@ func clone(name string, repositoryAddress string, key string, bare bool) (*git.R
 		signer, err := ssh.ParsePrivateKey([]byte(key))
 		if err != nil {
 			os.RemoveAll(dir)
-			return nil, "", err
+			return nil, "", SSHKeyError(err.Error())
 		}
 		auth = &gitssh.PublicKeys{User: "git", Signer: signer}
 	}
@@ -51,6 +51,12 @@ func clone(name string, repositoryAddress string, key string, bare bool) (*git.R
 	}
 
 	return repo, dir, nil
+}
+
+type SSHKeyError string
+
+func (s SSHKeyError) Error() string {
+	return string(s)
 }
 
 func sync(p *domain.Project, m *BoltManager) {

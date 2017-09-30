@@ -14,7 +14,7 @@ type requestProject struct {
 	ID         string `json:"-"`
 	Name       string `json:"name" validate:"required,min=3,max=128,projectUnique"`
 	Repository string `json:"repository" validate:"required,min=8,max=128"`
-	PrivateKey string `json:"key" validate:"privateKey"`
+	PrivateKey string `json:"key"`
 }
 
 func idFromName(name string) string {
@@ -39,11 +39,9 @@ func FromRequest(b io.ReadCloser) (*domain.Project, error) {
 	validate.RegisterValidation("projectUnique", ValidateProjectUnique)
 	validate.RegisterTranslation("projectUnique", trans, registerFuncUnique, translationFuncUnique)
 
-	validate.RegisterValidation("privateKey", ValidatePrivateKey)
-	validate.RegisterTranslation("privateKey", trans, registerFuncPrivateKey, translationFuncPrivateKey)
-
 	validate.RegisterStructValidation(ValidateProjectRepository, requestProject{})
 	validate.RegisterTranslation("repository", trans, registerFuncRepository, translationFuncRepository)
+	validate.RegisterTranslation("key", trans, registerFuncKey, translationFuncKey)
 
 	err = validate.Struct(reqProject)
 
