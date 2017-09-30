@@ -60,6 +60,8 @@ func (m *JWT) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Handl
 		ctx = context.WithValue(ctx, requestUsername, claims["username"])
 	} else {
 		fmt.Println(err)
+		r := render.New()
+		r.JSON(rw, http.StatusUnauthorized, "Token invalid.")
 		return
 	}
 	next(rw, r.WithContext(ctx))
