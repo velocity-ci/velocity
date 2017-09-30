@@ -90,7 +90,10 @@ func sync(p *domain.Project, m *BoltManager) {
 			message = mParts[1]
 		}
 
+		branch := strings.Join(strings.Split(r.Name().Short(), "/")[1:], "/")
+
 		c := domain.Commit{
+			Branch:  branch,
 			Hash:    commit.Hash.String(),
 			Message: strings.TrimSpace(message),
 			Author:  commit.Author.Email,
@@ -109,7 +112,6 @@ func sync(p *domain.Project, m *BoltManager) {
 
 		SHA := r.Hash().String()
 		shortSHA := SHA[:7]
-		branch := r.Name().Short()
 		describe := shortSHA
 
 		gitParams := []task.Parameter{

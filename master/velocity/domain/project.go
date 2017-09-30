@@ -47,6 +47,7 @@ type Build struct {
 }
 
 type Commit struct {
+	Branch  string    `json:"branch"`
 	Hash    string    `json:"hash"`
 	Author  string    `json:"author"`
 	Date    time.Time `json:"date"`
