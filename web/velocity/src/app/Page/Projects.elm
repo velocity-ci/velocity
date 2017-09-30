@@ -175,9 +175,11 @@ viewProjectForm model =
             (List.map viewGlobalError globalErrors
                 ++ [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
                         [ Form.input
-                            "name"
-                            "Name"
-                            (errors form.name)
+                            { name = "name"
+                            , label = "Name"
+                            , help = Nothing
+                            , errors = errors form.name
+                            }
                             [ placeholder "Name"
                             , attribute "required" ""
                             , value form.name.value
@@ -187,9 +189,11 @@ viewProjectForm model =
                             ]
                             []
                         , Form.input
-                            "repository"
-                            "Repository address"
-                            (errors form.repository)
+                            { name = "repository"
+                            , label = "Repository address"
+                            , help = Nothing
+                            , errors = errors form.repository
+                            }
                             [ placeholder "Repository"
                             , attribute "required" ""
                             , value form.repository.value
@@ -199,9 +203,11 @@ viewProjectForm model =
                             ]
                             []
                         , Form.textarea
-                            "key"
-                            "Private key"
-                            (errors form.privateKey)
+                            { name = "key"
+                            , label = "Private key"
+                            , help = Nothing
+                            , errors = errors form.privateKey
+                            }
                             [ placeholder "Private key"
                             , attribute "required" ""
                             , rows 3

@@ -1,40 +1,49 @@
 module Views.Form exposing (viewErrors, input, textarea, password, viewSpinner)
 
-import Html exposing (fieldset, ul, li, Html, Attribute, text, div, label, span, i)
+import Html exposing (fieldset, ul, li, Html, Attribute, text, div, label, span, i, small)
 import Html.Attributes exposing (class, type_, for, id)
 
 
 password :
-    String
-    -> String
-    -> List ( field, String )
+    { r
+        | name : String
+        , label : String
+        , help : Maybe String
+        , errors : List ( field, String )
+    }
     -> List (Attribute msg)
     -> List (Html msg)
     -> Html msg
-password name labelText errors attrs =
-    control name labelText errors Html.input ([ type_ "password" ] ++ attrs)
+password { name, label, help, errors } attrs =
+    control name label errors help Html.input ([ type_ "password" ] ++ attrs)
 
 
 input :
-    String
-    -> String
-    -> List ( field, String )
+    { r
+        | name : String
+        , label : String
+        , help : Maybe String
+        , errors : List ( field, String )
+    }
     -> List (Attribute msg)
     -> List (Html msg)
     -> Html msg
-input name labelText errors attrs =
-    control name labelText errors Html.input ([ type_ "text" ] ++ attrs)
+input { name, label, help, errors } attrs =
+    control name label errors help Html.input ([ type_ "text" ] ++ attrs)
 
 
 textarea :
-    String
-    -> String
-    -> List ( field, String )
+    { r
+        | name : String
+        , label : String
+        , help : Maybe String
+        , errors : List ( field, String )
+    }
     -> List (Attribute msg)
     -> List (Html msg)
     -> Html msg
-textarea name labelText errors attrs =
-    control name labelText errors Html.textarea attrs
+textarea { name, label, help, errors } attrs =
+    control name label errors help Html.textarea attrs
 
 
 viewErrors : List ( a, String ) -> Html msg
@@ -65,14 +74,25 @@ control :
     String
     -> String
     -> List ( field, String )
+    -> Maybe String
     -> (List (Attribute msg) -> List (Html msg) -> Html msg)
     -> List (Attribute msg)
     -> List (Html msg)
     -> Html msg
-control name labelText errors element attributes children =
-    div [ class "form-group" ]
-        ([ label [ for name ] [ text labelText ]
-         , element (class "form-control" :: id name :: attributes) children
-         ]
-            ++ List.map viewErrorFeedback errors
-        )
+control name labelText errors maybeHelp element attributes children =
+    let
+        help =
+            case maybeHelp of
+                Just helpText ->
+                    small [ class "form-text text-muted" ] [ text helpText ]
+
+                Nothing ->
+                    text ""
+    in
+        div [ class "form-group" ]
+            ([ label [ for name ] [ text labelText ]
+             , element (class "form-control" :: id name :: attributes) children
+             , help
+             ]
+                ++ List.map viewErrorFeedback errors
+            )

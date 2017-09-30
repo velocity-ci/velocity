@@ -100,9 +100,11 @@ viewForm model =
     in
         Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
             [ Form.input
-                "username"
-                "Username"
-                []
+                { name = "username"
+                , label = "Username"
+                , help = Nothing
+                , errors = []
+                }
                 [ classList <| inputClassList model.username
                 , placeholder "Username"
                 , attribute "required" ""
@@ -111,9 +113,11 @@ viewForm model =
                 ]
                 []
             , Form.password
-                "password"
-                "Password"
-                []
+                { name = "password"
+                , label = "Password"
+                , help = Nothing
+                , errors = []
+                }
                 [ classList <| inputClassList model.password
                 , placeholder "Password"
                 , attribute "required" ""

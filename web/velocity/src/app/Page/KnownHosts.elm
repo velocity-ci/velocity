@@ -154,9 +154,11 @@ viewKnownHostForm model =
             (List.map viewGlobalError globalErrors
                 ++ [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
                         [ Form.textarea
-                            "scanned_key"
-                            "Scanned key"
-                            (errors form.scannedKey)
+                            { name = "scanned_key"
+                            , label = "Scanned key"
+                            , help = Nothing
+                            , errors = errors form.scannedKey
+                            }
                             [ placeholder "Scanned key (ssh-keyscan <host>)"
                             , attribute "required" ""
                             , rows 3
