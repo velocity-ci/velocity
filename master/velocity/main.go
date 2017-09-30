@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/velocity-ci/velocity/master/velocity/app"
 )
 
 func main() {
@@ -41,29 +43,23 @@ func main() {
 		}
 	}()
 
-	var app App
+	var a app.App
 
 	// if os.Getenv("TYPE") == "API" {
-	app = NewVelocityAPI()
+	a = app.New()
 	// } else if os.Getenv("TYPE") == "WORKER" {
 	// app = NewPrivNegWorker(os.Getenv("QUEUE"))
 	// } else {
 	// panic(fmt.Sprintf("Invalid backend type: %s. Must be api|worker", os.Getenv("TYPE")))
 	// }
-	go app.Start()
+	go a.Start()
 
 	fmt.Println("Waiting for finish")
 	// wait for finishUP channel write to close the app down
 	<-finishUP
-	fmt.Println("Stopping Privacy Negotiator App")
-	app.Stop()
+	fmt.Println("Stopping Velocity App")
+	a.Stop()
 	// write to the done channel to signal we are done.
 	done <- struct{}{}
 	os.Exit(<-returnCode)
-}
-
-// App - For starting and stopping gracefully.
-type App interface {
-	Start()
-	Stop()
 }

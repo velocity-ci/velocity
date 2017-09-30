@@ -6,10 +6,12 @@ services:
     build:
       context: .
       dockerfile: dev.Dockerfile
-    command: /bin/sh -c "eval `ssh-agent` && go test -cover `glide novendor`"
+    command: /bin/sh -c "eval `ssh-agent` && goconvey -host='0.0.0.0'"
     environment:
       ADMIN_PASSWORD: admin1234
       JWT_SECRET: testing
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/master/"
     working_dir: /go/src/github.com/velocity-ci/velocity/master/velocity
+    ports:
+      - 8080:8080

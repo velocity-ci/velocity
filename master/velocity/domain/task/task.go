@@ -24,6 +24,11 @@ func (t *Task) SetEmitter(e func(string)) {
 	}
 }
 
+func (t *Task) String() string {
+	j, _ := json.Marshal(t)
+	return string(j)
+}
+
 func NewTask() Task {
 	return Task{
 		Name:        "",

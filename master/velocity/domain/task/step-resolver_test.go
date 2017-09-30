@@ -6,20 +6,26 @@ import (
 )
 
 func TestResolveStepFromYAML(t *testing.T) {
-	runStep := `type: run
+
+	stepSpec := []string{
+		`
+type: run
 description: Initialise Terraform
 image: hashicorp/terraform
 working_dir: ./api
 command: ["terraform", "init"]
 environment:
   TFVAR_ENVIRONMENT: ${e}
-`
-
-	step := ResolveStepFromYAML(runStep)
-
-	log.Println(step)
-
-	if step.GetType() != "run" {
-		t.Fail()
+`,
 	}
+
+	for _, step := range stepSpec {
+		s := ResolveStepFromYAML(step)
+
+		if s.GetType() != "run" {
+			log.Println(s)
+			t.Fail()
+		}
+	}
+
 }

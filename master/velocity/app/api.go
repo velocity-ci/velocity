@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -24,8 +24,14 @@ type VelocityAPI struct {
 	bolt   *bolt.DB
 }
 
-// NewVelocityAPI - Returns a new Velocity API app
-func NewVelocityAPI() App {
+// App - For starting and stopping gracefully.
+type App interface {
+	Start()
+	Stop()
+}
+
+// New - Returns a new Velocity API app
+func New() App {
 	velocityAPI := &VelocityAPI{}
 
 	controllerLogger := log.New(os.Stdout, "[controller]", log.Lshortfile)

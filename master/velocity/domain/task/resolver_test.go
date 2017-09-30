@@ -2,11 +2,22 @@ package task
 
 import (
 	"log"
+	"reflect"
 	"testing"
 )
 
-func TestResolveStepFromYAML(t *testing.T) {
-	taskYaml := `name: Deploy
+type taskTestSpec struct {
+	val               string
+	derivedParameters []Parameter
+	expected          Task
+}
+
+func TestResolveTaskFromYAML(t *testing.T) {
+
+	taskSpecs := []taskTestSpec{
+		taskTestSpec{
+			val: `
+name: Deploy
 description: Deploys application
 
 parameters:
@@ -28,25 +39,63 @@ steps:
     command: ["terraform", "plan"]
     environment:
       TFVAR_ENVIRONMENT: ${e}
-`
+      TFVAR_IMAGE_TAG: ${GIT_SHA}
+`,
+			derivedParameters: []Parameter{
+				Parameter{
+					Name:  "GIT_SHA",
+					Value: "test_SHA",
+				},
+			},
+			expected: Task{
+				Name:        "Deploy",
+				Description: "Deploys application",
+				Parameters: []Parameter{
+					Parameter{
+						Name:         "e",
+						Value:        "testing",
+						OtherOptions: []string{"production"},
+						Secret:       false,
+					},
+				},
+				Steps: []Step{
+					&DockerRun{
+						BaseStep: BaseStep{
+							Type:        "run",
+							Description: "Initialise Terraform",
+						},
+						Image:          "hashicorp/terraform",
+						Command:        []string{"terraform", "init"},
+						Environment:    map[string]string{"TFVAR_ENVIRONMENT": "${e}"},
+						WorkingDir:     "",
+						MountPoint:     "",
+						IgnoreExitCode: false,
+					},
+					&DockerRun{
+						BaseStep: BaseStep{
+							Type:        "run",
+							Description: "Plan Terraform",
+						},
+						Image:          "hashicorp/terraform",
+						Command:        []string{"terraform", "plan"},
+						Environment:    map[string]string{"TFVAR_ENVIRONMENT": "${e}", "TFVAR_IMAGE_TAG": "test_SHA"},
+						WorkingDir:     "",
+						MountPoint:     "",
+						IgnoreExitCode: false,
+					},
+				},
+			},
+		},
+	}
 
-	task := ResolveTaskFromYAML(taskYaml)
-
-	log.Println(task)
-
-	if task.Name != "Deploy" ||
-		task.Description != "Deploys application" ||
-		len(task.Parameters) != 1 ||
-		task.Parameters[0].Name != "e" ||
-		task.Parameters[0].Value != "testing" ||
-		len(task.Parameters[0].OtherOptions) != 1 ||
-		task.Parameters[0].OtherOptions[0] != "production" ||
-		len(task.Steps) != 2 ||
-		task.Steps[0].GetType() != "run" ||
-		task.Steps[0].GetDescription() != "Initialise Terraform" ||
-		task.Steps[1].GetType() != "run" ||
-		task.Steps[1].GetDescription() != "Plan Terraform" {
-		t.Fail()
+	for _, taskSpec := range taskSpecs {
+		ta := ResolveTaskFromYAML(taskSpec.val, taskSpec.derivedParameters)
+		if !reflect.DeepEqual(ta, taskSpec.expected) {
+			log.Println(taskSpec.expected)
+			log.Println("!=")
+			log.Println(ta)
+			t.Fail()
+		}
 	}
 
 }

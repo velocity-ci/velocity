@@ -19,7 +19,12 @@ type BoltManager struct {
 func createAdminUser(m *BoltManager) {
 	_, err := m.FindByUsername("admin")
 	if err != nil {
-		password := utils.GenerateRandomString(16)
+		var password string
+		if os.Getenv("ADMIN_PASSWORD") != "" {
+			password = os.Getenv("ADMIN_PASSWORD")
+		} else {
+			password = utils.GenerateRandomString(16)
+		}
 		user := &domain.BoltUser{Username: "admin"}
 		user.HashPassword(password)
 		m.Save(user)

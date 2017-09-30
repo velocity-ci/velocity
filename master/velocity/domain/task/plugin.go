@@ -29,7 +29,7 @@ func (p Plugin) GetDetails() string {
 	return fmt.Sprintf("image: %s dind: %v", p.Image, p.DockerInDocker)
 }
 
-func (p *Plugin) Execute() error {
+func (p *Plugin) Execute(params []Parameter) error {
 
 	env := []string{}
 	for k, v := range p.Environment {
@@ -57,7 +57,7 @@ func (p *Plugin) Execute() error {
 		resolvePullImage(p.Image),
 		config,
 		hostConfig,
-		p.Parameters,
+		params,
 		p.Emit,
 	)
 

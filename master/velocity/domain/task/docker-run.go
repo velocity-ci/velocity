@@ -1,6 +1,7 @@
 package task
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -50,7 +51,7 @@ func (dR DockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *DockerRun) Execute() error {
+func (dR *DockerRun) Execute(params []Parameter) error {
 
 	dR.Emit(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description))
 
@@ -86,7 +87,7 @@ func (dR *DockerRun) Execute() error {
 		resolvePullImage(dR.Image),
 		config,
 		hostConfig,
-		dR.Parameters,
+		params,
 		dR.Emit,
 	)
 
@@ -136,8 +137,7 @@ func (dR DockerRun) Validate(params []Parameter) error {
 }
 
 func (dR *DockerRun) SetParams(params []Parameter) error {
-	dR.Parameters = params
-	for _, param := range dR.Parameters {
+	for _, param := range params {
 		dR.Image = strings.Replace(dR.Image, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
 		dR.WorkingDir = strings.Replace(dR.WorkingDir, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
 
@@ -158,6 +158,11 @@ func (dR *DockerRun) SetParams(params []Parameter) error {
 		dR.Environment = env
 	}
 	return nil
+}
+
+func (dR *DockerRun) String() string {
+	j, _ := json.Marshal(dR)
+	return string(j)
 }
 
 func isAllInParams(matches [][]string, params []Parameter) bool {
