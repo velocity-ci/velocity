@@ -74,7 +74,7 @@ func ValidateProjectRepository(sl validator.StructLevel) {
 
 	if err != nil {
 		log.Println(err)
-		sl.ReportError(project.Repository, "Repository", "repository", "repository", "")
+		sl.ReportError(project.Repository, "repository", "repository", "repository", "")
 	}
 	os.RemoveAll(dir)
 }
