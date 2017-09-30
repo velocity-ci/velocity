@@ -240,7 +240,7 @@ serverErrorToFormError ( fieldNameString, errorString ) =
     let
         field =
             case fieldNameString of
-                "scannedKey" ->
+                "entry" ->
                     ScannedKey
 
                 _ ->
@@ -310,7 +310,7 @@ update session msg model =
                         case err of
                             Http.BadStatus response ->
                                 response.body
-                                    |> decodeString (field "errors" errorsDecoder)
+                                    |> decodeString errorsDecoder
                                     |> Result.withDefault []
 
                             _ ->
@@ -350,7 +350,7 @@ validate =
 errorsDecoder : Decoder (List ( String, String ))
 errorsDecoder =
     decode (\scannedKey -> List.concat [ scannedKey ])
-        |> optionalError "key"
+        |> optionalError "entry"
 
 
 optionalError : String -> Decoder (List ( String, String ) -> a) -> Decoder a

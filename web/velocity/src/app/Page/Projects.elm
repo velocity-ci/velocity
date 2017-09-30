@@ -396,7 +396,7 @@ update session msg model =
                         case err of
                             Http.BadStatus response ->
                                 response.body
-                                    |> decodeString (field "errors" errorsDecoder)
+                                    |> decodeString errorsDecoder
                                     |> Result.withDefault []
 
                             _ ->
