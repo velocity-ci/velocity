@@ -39,6 +39,7 @@ func ResolveTaskFromYAML(y string, additionalParams []Parameter) Task {
 		if err != nil {
 			panic(err)
 		}
+		s.SetParams(additionalParams)
 		task.Steps = append(task.Steps, s)
 	}
 	return task
