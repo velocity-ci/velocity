@@ -33,8 +33,8 @@ func main() {
 		// iterate through tasks in memory and list them.
 		for _, task := range tasks {
 			fmt.Printf("%s: %s (", task.Name, task.Description)
-			for _, parameter := range task.Parameters {
-				fmt.Printf(" %s= %s ", parameter.Name, parameter.Value)
+			for paramName, parameter := range task.Parameters {
+				fmt.Printf(" %s= %s ", paramName, parameter.Value)
 			}
 			fmt.Println(")")
 			for _, step := range task.Steps {
@@ -66,7 +66,7 @@ func getTasksFromDirectory(dir string, gitParams []domain.Parameter) []domain.Ta
 	return tasks
 }
 
-func run(taskName string, gitParams []domain.Parameter) {
+func run(taskName string, gitParams map[string]domain.Parameter) {
 	tasks := getTasksFromDirectory("./tasks/", gitParams)
 
 	var task *domain.Task
@@ -86,19 +86,19 @@ func run(taskName string, gitParams []domain.Parameter) {
 
 	// Resolve parameters
 	reader := bufio.NewReader(os.Stdin)
-	resolvedParams := []domain.Parameter{}
-	for _, p := range task.Parameters {
+	resolvedParams := map[string]domain.Parameter{}
+	for paramName, p := range task.Parameters {
 		// get real value for parameter (ask or from env)
 		inputText := ""
 		for len(strings.TrimSpace(inputText)) < 1 {
-			fmt.Printf("Enter a value for %s (default: %s): ", p.Name, p.Value)
+			fmt.Printf("Enter a value for %s (default: %s): ", paramName, p.Value)
 			inputText, _ = reader.ReadString('\n')
 		}
 		p.Value = strings.TrimSpace(inputText)
-		resolvedParams = append(resolvedParams, p)
+		resolvedParams[paramName] = p
+		task.Parameters[paramName] = p
 	}
 
-	task.Parameters = append(resolvedParams, gitParams...)
 	task.UpdateParams()
 	task.SetEmitter(func(s string) { fmt.Printf("    %s\n", s) })
 
@@ -163,21 +163,17 @@ func getGitParams() []domain.Parameter {
 		describe,
 	)
 
-	return []domain.Parameter{
-		domain.Parameter{
-			Name:  "GIT_SHA",
+	return map[string]domain.Parameter{
+		"GIT_SHA": domain.Parameter{
 			Value: SHA,
 		},
-		domain.Parameter{
-			Name:  "GIT_SHORT_SHA",
+		"GIT_SHORT_SHA": domain.Parameter{
 			Value: shortSHA,
 		},
-		domain.Parameter{
-			Name:  "GIT_BRANCH",
+		"GIT_BRANCH": domain.Parameter{
 			Value: branch,
 		},
-		domain.Parameter{
-			Name:  "GIT_DESCRIBE",
+		"GIT_DESCRIBE": domain.Parameter{
 			Value: describe,
 		},
 	}
