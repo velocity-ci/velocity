@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
 	"github.com/urfave/negroni"
+	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/middlewares"
 )
 
@@ -96,14 +97,19 @@ func (c Controller) getProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.render.JSON(w, http.StatusOK, p)
+	c.render.JSON(w, http.StatusOK, p.ToResponseProject())
 }
 
 func (c Controller) getProjectsHandler(w http.ResponseWriter, r *http.Request) {
 
 	projects := c.manager.FindAll()
 
-	c.render.JSON(w, http.StatusOK, projects)
+	responseProjects := []*domain.ResponseProject{}
+	for _, p := range projects {
+		responseProjects = append(responseProjects, p.ToResponseProject())
+	}
+
+	c.render.JSON(w, http.StatusOK, responseProjects)
 }
 
 func (c Controller) deleteProjectHandler(w http.ResponseWriter, r *http.Request) {
