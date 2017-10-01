@@ -1,4 +1,4 @@
-module Data.Project exposing (Project, decoder, idParser, idToString, Id)
+module Data.Project exposing (Project, decoder, idParser, idToString, Id(..))
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
