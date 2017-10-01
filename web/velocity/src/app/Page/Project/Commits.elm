@@ -16,6 +16,9 @@ import Http
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Dict exposing (Dict)
+import Time.DateTime as DateTime exposing (DateTime)
+import Time.Date as Date exposing (Date)
+import Page.Helpers exposing (formatDate)
 
 
 -- MODEL --
@@ -54,13 +57,15 @@ init session id =
 -- VIEW --
 
 
-commitListToDict : List Commit -> Dict String (List Commit)
+commitListToDict : List Commit -> Dict ( Int, Int, Int ) (List Commit)
 commitListToDict commits =
     let
         reducer commit dict =
             let
                 date =
-                    formatDate commit.date
+                    commit.date
+                        |> DateTime.date
+                        |> Date.toTuple
 
                 insert =
                     case Dict.get date dict of
@@ -81,24 +86,38 @@ view project model =
         |> viewCommitListContainer project
 
 
-viewCommitListContainer : Project -> Dict String (List Commit) -> Html Msg
+viewCommitListContainer : Project -> Dict ( Int, Int, Int ) (List Commit) -> Html Msg
 viewCommitListContainer project dict =
-    dict
-        |> Dict.toList
-        |> List.reverse
-        |> List.map (viewCommitList project)
-        |> div []
+    let
+        listItemToDate dateListItem =
+            dateListItem
+                |> Tuple.first
+                |> Date.fromTuple
+
+        sortDateList a b =
+            listItemToDate a
+                |> Date.compare (listItemToDate b)
+    in
+        dict
+            |> Dict.toList
+            |> List.sortWith sortDateList
+            |> List.map (viewCommitList project)
+            |> div []
 
 
-viewCommitList : Project -> ( String, List Commit ) -> Html Msg
-viewCommitList project ( date, commits ) =
+viewCommitList : Project -> ( ( Int, Int, Int ), List Commit ) -> Html Msg
+viewCommitList project ( dateTuple, commits ) =
     let
         commitListItems =
             sortByDatetime .date commits
                 |> List.map (viewCommitListItem project.id)
+
+        formattedDate =
+            Date.fromTuple dateTuple
+                |> formatDate
     in
         div [ class "default-margin-bottom" ]
-            [ h6 [ class "mb-2 text-muted" ] [ text date ]
+            [ h6 [ class "mb-2 text-muted" ] [ text formattedDate ]
             , div [ class "card" ]
                 [ div [ class "list-group list-group-flush" ] commitListItems
                 ]

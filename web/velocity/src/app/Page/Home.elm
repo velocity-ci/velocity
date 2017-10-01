@@ -16,6 +16,7 @@ import Request.Project
 import Page.Helpers exposing (formatDate, sortByDatetime)
 import Route
 import Page.Project.Route as ProjectRoute
+import Time.DateTime as DateTime
 
 
 -- MODEL --
@@ -108,7 +109,7 @@ viewProjectListItem project =
             [ h5 [ class "mb-1" ]
                 [ a [ Route.href (Route.Project ProjectRoute.Overview project.id) ] [ text project.name ] ]
             , small []
-                [ text (formatDate project.updatedAt) ]
+                [ text (formatDate (DateTime.date project.updatedAt)) ]
             ]
         , small []
             [ text project.repository ]

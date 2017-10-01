@@ -39,6 +39,13 @@ type alias RunStep =
     }
 
 
+type alias Parameter =
+    { name : String
+    , default : Maybe String
+    , secret : Bool
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -49,6 +56,14 @@ decoder =
         |> required "name" (Decode.map Name Decode.string)
         |> optional "description" Decode.string ""
         |> optional "steps" (Decode.list stepDecoder) []
+
+
+parameterDecoder : Decoder Parameter
+parameterDecoder =
+    decode Parameter
+        |> required "name" Decode.string
+        |> optional "default" (Decode.nullable Decode.string) Nothing
+        |> optional "secret" Decode.bool False
 
 
 stepDecoder : Decoder Step

@@ -2,10 +2,8 @@ module Page.Project.Overview exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Page.Helpers exposing (formatDateTime)
-import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 
 

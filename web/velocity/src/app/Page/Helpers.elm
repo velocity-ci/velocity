@@ -12,16 +12,17 @@ module Page.Helpers
 
 import Validate exposing (Validator, ifInvalid)
 import Time.DateTime as DateTime exposing (DateTime)
+import Time.Date as Date exposing (Date)
 
 
 -- DATES --
 
 
-formatDate : DateTime -> String
-formatDate dateTime =
+formatDate : Date -> String
+formatDate date =
     let
-        ( year, month, day, _, _, _, _ ) =
-            DateTime.toTuple dateTime
+        ( year, month, day ) =
+            Date.toTuple date
     in
         appendZero day ++ "/" ++ appendZero month ++ "/" ++ toString year
 
@@ -37,7 +38,7 @@ formatTime dateTime =
 
 formatDateTime : DateTime -> String
 formatDateTime dateTime =
-    (formatDate dateTime) ++ " " ++ (formatTime dateTime)
+    (formatDate (DateTime.date dateTime)) ++ " " ++ (formatTime dateTime)
 
 
 sortByDatetime : (a -> DateTime) -> List a -> List a
