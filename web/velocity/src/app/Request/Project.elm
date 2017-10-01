@@ -166,7 +166,7 @@ type alias CreateConfig record =
     { record
         | name : String
         , repository : String
-        , privateKey : String
+        , privateKey : Maybe String
     }
 
 
@@ -177,15 +177,22 @@ create config token =
             Project.decoder
                 |> Http.expectJson
 
+        baseProject =
+            [ "name" => Encode.string config.name
+            , "repository" => Encode.string config.repository
+            ]
+
         project =
-            Encode.object
-                [ "name" => Encode.string config.name
-                , "repository" => Encode.string config.repository
-                , "key" => Encode.string config.privateKey
-                ]
+            case config.privateKey of
+                Just privateKey ->
+                    ( "key", Encode.string privateKey ) :: baseProject
+
+                Nothing ->
+                    baseProject
 
         body =
             project
+                |> Encode.object
                 |> Http.jsonBody
     in
         apiUrl baseUrl

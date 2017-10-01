@@ -1,7 +1,7 @@
 module Data.Project exposing (Project, decoder, idParser, idToString, Id)
 
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required)
+import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
 import Time.DateTime as DateTime exposing (DateTime)
 import Data.Helpers exposing (stringToDateTime)
 import UrlParser
@@ -9,7 +9,7 @@ import UrlParser
 
 type alias Project =
     { id : Id
-    , key : String
+    , key : Maybe String
     , name : String
     , repository : String
     , createdAt : DateTime
@@ -25,7 +25,7 @@ decoder : Decoder Project
 decoder =
     decode Project
         |> required "id" (Decode.map Id Decode.string)
-        |> required "key" Decode.string
+        |> optional "key" (Decode.nullable Decode.string) Nothing
         |> required "name" Decode.string
         |> required "repository" Decode.string
         |> required "createdAt" stringToDateTime

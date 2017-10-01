@@ -150,6 +150,11 @@ viewGlobalError error =
     div [ class "alert alert-danger" ] [ text (Tuple.second error) ]
 
 
+isSshAddress : String -> Bool
+isSshAddress address =
+    String.slice 0 3 address == "git"
+
+
 viewProjectForm : Model -> Html Msg
 viewProjectForm model =
     let
@@ -168,8 +173,17 @@ viewProjectForm model =
             else
                 []
 
+        publicRepository =
+            not (isSshAddress form.repository.value)
+
         globalErrors =
             List.filter (\e -> (Tuple.first e) == Form) combinedErrors
+
+        privateKeyHelpText =
+            if publicRepository then
+                Just "Not required for public repositories."
+            else
+                Just "The private key required to access this repository."
     in
         div [ class "card-body" ]
             (List.map viewGlobalError globalErrors
@@ -180,8 +194,7 @@ viewProjectForm model =
                             , help = Nothing
                             , errors = errors form.name
                             }
-                            [ placeholder "Name"
-                            , attribute "required" ""
+                            [ attribute "required" ""
                             , value form.name.value
                             , onInput SetName
                             , classList <| inputClassList form.name
@@ -191,11 +204,10 @@ viewProjectForm model =
                         , Form.input
                             { name = "repository"
                             , label = "Repository address"
-                            , help = Nothing
+                            , help = Just "If the repository is private you should use the SSH address, otherwise use the HTTPS address."
                             , errors = errors form.repository
                             }
-                            [ placeholder "Repository"
-                            , attribute "required" ""
+                            [ attribute "required" ""
                             , value form.repository.value
                             , onInput SetRepository
                             , classList <| inputClassList form.repository
@@ -205,16 +217,20 @@ viewProjectForm model =
                         , Form.textarea
                             { name = "key"
                             , label = "Private key"
-                            , help = Nothing
+                            , help = privateKeyHelpText
                             , errors = errors form.privateKey
                             }
-                            [ placeholder "Private key"
-                            , attribute "required" ""
-                            , rows 3
+                            [ attribute "required" ""
+                            , rows
+                                (if publicRepository then
+                                    1
+                                 else
+                                    5
+                                )
                             , value form.privateKey.value
                             , onInput SetPrivateKey
                             , classList <| inputClassList form.privateKey
-                            , disabled model.submitting
+                            , disabled (model.submitting || publicRepository)
                             ]
                             []
                         , button
@@ -222,7 +238,7 @@ viewProjectForm model =
                             , type_ "submit"
                             , disabled ((not <| List.isEmpty model.errors) || model.submitting)
                             ]
-                            [ text "Submit" ]
+                            [ text "Create" ]
                         , Util.viewIf model.submitting Form.viewSpinner
                         ]
                    ]
@@ -329,10 +345,16 @@ update session msg model =
                 case validate form of
                     [] ->
                         let
+                            privateKey =
+                                if isSshAddress form.repository.value then
+                                    Just form.privateKey.value
+                                else
+                                    Nothing
+
                             submitValues =
                                 { name = form.name.value
                                 , repository = form.repository.value
-                                , privateKey = form.privateKey.value
+                                , privateKey = privateKey
                                 }
 
                             cmdFromAuth authToken =
@@ -434,13 +456,20 @@ type alias Error =
 
 validate : Validator ( Field, String ) ProjectForm
 validate =
-    Validate.all
-        [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
-        , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
-        , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
-        , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
-        , (.privateKey >> .value) >> (ifBelowLength 8) (PrivateKey => "Private key must be over 7 characters.")
-        ]
+    let
+        privateKeyValidator ( privateKey, repository ) =
+            if isSshAddress repository.value then
+                String.length privateKey.value < 8
+            else
+                False
+    in
+        Validate.all
+            [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
+            , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
+            , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
+            , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
+            , (\f -> ( f.privateKey, f.repository )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
+            ]
 
 
 errorsDecoder : Decoder (List ( String, String ))
