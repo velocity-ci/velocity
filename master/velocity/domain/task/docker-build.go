@@ -36,7 +36,7 @@ func (dB DockerBuild) GetDetails() string {
 	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }
 
-func (dB *DockerBuild) Execute(params []Parameter) error {
+func (dB *DockerBuild) Execute(params map[string]Parameter) error {
 	dB.Emit(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description))
 
 	return buildContainer(
@@ -48,19 +48,19 @@ func (dB *DockerBuild) Execute(params []Parameter) error {
 	)
 }
 
-func (dB *DockerBuild) Validate(params []Parameter) error {
+func (dB *DockerBuild) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dB *DockerBuild) SetParams(params []Parameter) error {
-	for _, param := range params {
-		dB.Context = strings.Replace(dB.Context, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
-		dB.Dockerfile = strings.Replace(dB.Dockerfile, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
+func (dB *DockerBuild) SetParams(params map[string]Parameter) error {
+	for paramName, param := range params {
+		dB.Context = strings.Replace(dB.Context, fmt.Sprintf("${%s}", paramName), param.Value, -1)
+		dB.Dockerfile = strings.Replace(dB.Dockerfile, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 
 		tags := []string{}
 
 		for _, t := range dB.Tags {
-			tags = append(tags, strings.Replace(t, fmt.Sprintf("${%s}", param.Name), param.Value, -1))
+			tags = append(tags, strings.Replace(t, fmt.Sprintf("${%s}", paramName), param.Value, -1))
 		}
 		dB.Tags = tags
 	}

@@ -6,10 +6,10 @@ import (
 )
 
 type Task struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	Parameters  []Parameter `json:"parameters"`
-	Steps       []Step      `json:"steps"`
+	Name        string               `json:"name"`
+	Description string               `json:"description"`
+	Parameters  map[string]Parameter `json:"parameters"`
+	Steps       []Step               `json:"steps"`
 }
 
 func (t *Task) UpdateParams() {
@@ -33,7 +33,7 @@ func NewTask() Task {
 	return Task{
 		Name:        "",
 		Description: "",
-		Parameters:  []Parameter{},
+		Parameters:  map[string]Parameter{},
 		Steps:       []Step{},
 	}
 }
@@ -59,16 +59,17 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	}
 
 	// Deserialize Parameters
-	var rawParameters []*json.RawMessage
+	var rawParameters map[string]*json.RawMessage
 	err = json.Unmarshal(*objMap["parameters"], &rawParameters)
 	if err != nil {
 		return err
 	}
-	t.Parameters = make([]Parameter, len(rawParameters))
-	for index, rawMessage := range rawParameters {
+	t.Parameters = make(map[string]Parameter)
+	for paramName, rawMessage := range rawParameters {
 		var p Parameter
 		err = json.Unmarshal(*rawMessage, &p)
-		t.Parameters[index] = p
+		p.Name = paramName
+		t.Parameters[paramName] = p
 	}
 
 	// Deserialize Steps by type

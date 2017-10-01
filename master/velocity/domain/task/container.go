@@ -23,7 +23,7 @@ func runContainer(
 	pullImage string,
 	config *container.Config,
 	hostConfig *container.HostConfig,
-	parameters []Parameter,
+	parameters map[string]Parameter,
 	emit func(string),
 ) (int, error) {
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func runContainer(
 	return c.State.ExitCode, nil
 }
 
-func buildContainer(buildContext string, dockerfile string, tags []string, parameters []Parameter, emit func(string)) error {
+func buildContainer(buildContext string, dockerfile string, tags []string, parameters map[string]Parameter, emit func(string)) error {
 	ctx := context.Background()
 
 	cwd, _ := os.Getwd()
@@ -101,7 +101,7 @@ func buildContainer(buildContext string, dockerfile string, tags []string, param
 	return nil
 }
 
-func handleOutput(body io.ReadCloser, parameters []Parameter, emit func(string)) {
+func handleOutput(body io.ReadCloser, parameters map[string]Parameter, emit func(string)) {
 	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()

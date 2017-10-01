@@ -51,7 +51,7 @@ func (dR DockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *DockerRun) Execute(params []Parameter) error {
+func (dR *DockerRun) Execute(params map[string]Parameter) error {
 
 	dR.Emit(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description))
 
@@ -105,7 +105,7 @@ func (dR *DockerRun) Execute(params []Parameter) error {
 
 }
 
-func (dR DockerRun) Validate(params []Parameter) error {
+func (dR DockerRun) Validate(params map[string]Parameter) error {
 	re := regexp.MustCompile("\\$\\{(.+)\\}")
 
 	requiredParams := re.FindAllStringSubmatch(dR.Image, -1)
@@ -136,22 +136,22 @@ func (dR DockerRun) Validate(params []Parameter) error {
 	return nil
 }
 
-func (dR *DockerRun) SetParams(params []Parameter) error {
-	for _, param := range params {
-		dR.Image = strings.Replace(dR.Image, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
-		dR.WorkingDir = strings.Replace(dR.WorkingDir, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
+func (dR *DockerRun) SetParams(params map[string]Parameter) error {
+	for paramName, param := range params {
+		dR.Image = strings.Replace(dR.Image, fmt.Sprintf("${%s}", paramName), param.Value, -1)
+		dR.WorkingDir = strings.Replace(dR.WorkingDir, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 
 		cmd := []string{}
 		for _, c := range dR.Command {
-			correctedCmd := strings.Replace(c, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
+			correctedCmd := strings.Replace(c, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 			cmd = append(cmd, correctedCmd)
 		}
 		dR.Command = cmd
 
 		env := map[string]string{}
 		for key, val := range dR.Environment {
-			correctedKey := strings.Replace(key, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
-			correctedVal := strings.Replace(val, fmt.Sprintf("${%s}", param.Name), param.Value, -1)
+			correctedKey := strings.Replace(key, fmt.Sprintf("${%s}", paramName), param.Value, -1)
+			correctedVal := strings.Replace(val, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 			env[correctedKey] = correctedVal
 		}
 
@@ -165,11 +165,11 @@ func (dR *DockerRun) String() string {
 	return string(j)
 }
 
-func isAllInParams(matches [][]string, params []Parameter) bool {
+func isAllInParams(matches [][]string, params map[string]Parameter) bool {
 	for _, match := range matches {
 		found := false
-		for _, param := range params {
-			if param.Name == match[1] {
+		for paramName, _ := range params {
+			if paramName == match[1] {
 				found = true
 				break
 			}

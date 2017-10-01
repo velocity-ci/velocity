@@ -29,7 +29,7 @@ func (p Plugin) GetDetails() string {
 	return fmt.Sprintf("image: %s dind: %v", p.Image, p.DockerInDocker)
 }
 
-func (p *Plugin) Execute(params []Parameter) error {
+func (p *Plugin) Execute(params map[string]Parameter) error {
 
 	env := []string{}
 	for k, v := range p.Environment {
@@ -74,12 +74,12 @@ func (p *Plugin) Execute(params []Parameter) error {
 	return nil
 }
 
-func (p Plugin) Validate(params []Parameter) error {
+func (p Plugin) Validate(params map[string]Parameter) error {
 
 	return nil
 }
 
-func (p *Plugin) SetParams(params []Parameter) error {
+func (p *Plugin) SetParams(params map[string]Parameter) error {
 
 	return nil
 }

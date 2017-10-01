@@ -8,7 +8,7 @@ import (
 
 type taskTestSpec struct {
 	val               string
-	derivedParameters []Parameter
+	derivedParameters map[string]Parameter
 	expected          Task
 }
 
@@ -21,7 +21,7 @@ name: Deploy
 description: Deploys application
 
 parameters:
-  - name: e
+  e:
     default: testing
     other_options:
       - production
@@ -41,8 +41,8 @@ steps:
       TFVAR_ENVIRONMENT: ${e}
       TFVAR_IMAGE_TAG: ${GIT_SHA}
 `,
-			derivedParameters: []Parameter{
-				Parameter{
+			derivedParameters: map[string]Parameter{
+				"GIT_SHA": Parameter{
 					Name:  "GIT_SHA",
 					Value: "test_SHA",
 				},
@@ -50,9 +50,8 @@ steps:
 			expected: Task{
 				Name:        "Deploy",
 				Description: "Deploys application",
-				Parameters: []Parameter{
-					Parameter{
-						Name:         "e",
+				Parameters: map[string]Parameter{
+					"e": Parameter{
 						Value:        "testing",
 						OtherOptions: []string{"production"},
 						Secret:       false,
@@ -90,10 +89,11 @@ steps:
 
 	for _, taskSpec := range taskSpecs {
 		ta := ResolveTaskFromYAML(taskSpec.val, taskSpec.derivedParameters)
+		log.Println(ta.String())
 		if !reflect.DeepEqual(ta, taskSpec.expected) {
-			log.Println(taskSpec.expected)
+			log.Println(taskSpec.expected.String())
 			log.Println("!=")
-			log.Println(ta)
+			log.Println(ta.String())
 			t.Fail()
 		}
 	}

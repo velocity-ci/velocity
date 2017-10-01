@@ -7,15 +7,15 @@ import (
 type yamlTask struct {
 	Name        string                   `yaml:"name"`
 	Description string                   `yaml:"description"`
-	Parameters  []Parameter              `yaml:"parameters"`
+	Parameters  map[string]Parameter     `yaml:"parameters"`
 	Steps       []map[string]interface{} `yaml:"steps"`
 }
 
-func ResolveTaskFromYAML(y string, additionalParams []Parameter) Task {
+func ResolveTaskFromYAML(y string, additionalParams map[string]Parameter) Task {
 	yTask := yamlTask{
 		Name:        "",
 		Description: "",
-		Parameters:  []Parameter{},
+		Parameters:  map[string]Parameter{},
 	}
 	err := yaml.Unmarshal([]byte(y), &yTask)
 	if err != nil {
@@ -29,13 +29,21 @@ func ResolveTaskFromYAML(y string, additionalParams []Parameter) Task {
 		Steps:       []Step{},
 	}
 
+	allParams := map[string]Parameter{}
+	for k, v := range task.Parameters {
+		allParams[k] = v
+	}
+	for k, v := range additionalParams {
+		allParams[k] = v
+	}
+
 	for _, yStep := range yTask.Steps {
 		mStep, err := yaml.Marshal(yStep)
 		if err != nil {
 			panic(err)
 		}
 		s := ResolveStepFromYAML(string(mStep[:]))
-		err = s.Validate(append(task.Parameters, additionalParams...))
+		err = s.Validate(allParams)
 		if err != nil {
 			panic(err)
 		}

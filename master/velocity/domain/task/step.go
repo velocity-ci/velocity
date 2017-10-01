@@ -1,12 +1,12 @@
 package task
 
 type Step interface {
-	Execute([]Parameter) error
+	Execute(map[string]Parameter) error
 	GetType() string
 	GetDescription() string
 	GetDetails() string
-	Validate([]Parameter) error
-	SetParams([]Parameter) error
+	Validate(map[string]Parameter) error
+	SetParams(map[string]Parameter) error
 	SetEmitter(func(string))
 }
 

@@ -120,21 +120,17 @@ func sync(p *domain.Project, m *BoltManager) {
 		shortSHA := SHA[:7]
 		describe := shortSHA
 
-		gitParams := []task.Parameter{
-			task.Parameter{
-				Name:  "GIT_SHA",
+		gitParams := map[string]task.Parameter{
+			"GIT_SHA": task.Parameter{
 				Value: SHA,
 			},
-			task.Parameter{
-				Name:  "GIT_SHORT_SHA",
+			"GIT_SHORT_SHA": task.Parameter{
 				Value: shortSHA,
 			},
-			task.Parameter{
-				Name:  "GIT_BRANCH",
+			"GIT_BRANCH": task.Parameter{
 				Value: branch,
 			},
-			task.Parameter{
-				Name:  "GIT_DESCRIBE",
+			"GIT_DESCRIBE": task.Parameter{
 				Value: describe,
 			},
 		}
