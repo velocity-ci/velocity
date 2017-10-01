@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/velocity-ci/velocity/master/velocity/domain"
 	"github.com/velocity-ci/velocity/master/velocity/domain/task"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -51,8 +50,8 @@ func main() {
 	}
 }
 
-func getTasksFromDirectory(dir string, gitParams []domain.Parameter) []domain.Task {
-	tasks := []domain.Task{}
+func getTasksFromDirectory(dir string, gitParams map[string]task.Parameter) []task.Task {
+	tasks := []task.Task{}
 
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
@@ -66,28 +65,28 @@ func getTasksFromDirectory(dir string, gitParams []domain.Parameter) []domain.Ta
 	return tasks
 }
 
-func run(taskName string, gitParams map[string]domain.Parameter) {
+func run(taskName string, gitParams map[string]task.Parameter) {
 	tasks := getTasksFromDirectory("./tasks/", gitParams)
 
-	var task *domain.Task
+	var t *task.Task
 	// find Task requested
-	for _, t := range tasks {
-		if t.Name == taskName {
-			task = &t
+	for _, tsk := range tasks {
+		if tsk.Name == taskName {
+			t = &tsk
 			break
 		}
 	}
 
-	if task == nil {
+	if t == nil {
 		panic(fmt.Sprintf("Task %s not found\n%s", taskName, tasks))
 	}
 
-	fmt.Printf("Running task: %s (from: %s)\n", task.Name, taskName)
+	fmt.Printf("Running task: %s (from: %s)\n", t.Name, taskName)
 
 	// Resolve parameters
 	reader := bufio.NewReader(os.Stdin)
-	resolvedParams := map[string]domain.Parameter{}
-	for paramName, p := range task.Parameters {
+	resolvedParams := map[string]task.Parameter{}
+	for paramName, p := range t.Parameters {
 		// get real value for parameter (ask or from env)
 		inputText := ""
 		for len(strings.TrimSpace(inputText)) < 1 {
@@ -96,19 +95,19 @@ func run(taskName string, gitParams map[string]domain.Parameter) {
 		}
 		p.Value = strings.TrimSpace(inputText)
 		resolvedParams[paramName] = p
-		task.Parameters[paramName] = p
+		t.Parameters[paramName] = p
 	}
 
-	task.UpdateParams()
-	task.SetEmitter(func(s string) { fmt.Printf("    %s\n", s) })
+	t.UpdateParams()
+	t.SetEmitter(func(s string) { fmt.Printf("    %s\n", s) })
 
 	// Run each step unless they fail (optional)
-	for _, step := range task.Steps {
-		step.Execute()
+	for _, step := range t.Steps {
+		step.Execute(t.Parameters)
 	}
 }
 
-func getGitParams() []domain.Parameter {
+func getGitParams() map[string]task.Parameter {
 	path, _ := os.Getwd()
 
 	// We instance a new repository targeting the given path (the .git folder)
@@ -163,17 +162,17 @@ func getGitParams() []domain.Parameter {
 		describe,
 	)
 
-	return map[string]domain.Parameter{
-		"GIT_SHA": domain.Parameter{
+	return map[string]task.Parameter{
+		"GIT_SHA": task.Parameter{
 			Value: SHA,
 		},
-		"GIT_SHORT_SHA": domain.Parameter{
+		"GIT_SHORT_SHA": task.Parameter{
 			Value: shortSHA,
 		},
-		"GIT_BRANCH": domain.Parameter{
+		"GIT_BRANCH": task.Parameter{
 			Value: branch,
 		},
-		"GIT_DESCRIBE": domain.Parameter{
+		"GIT_DESCRIBE": task.Parameter{
 			Value: describe,
 		},
 	}
