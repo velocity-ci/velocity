@@ -1,9 +1,5 @@
 module Page.Project.Route exposing (Route(..), routeToPieces)
 
-import UrlParser as Url exposing (parseHash, s, (</>), string, oneOf, Parser)
-import Navigation exposing (Location)
-import Html.Attributes as Attr
-import Data.Project as Project exposing (Project)
 import Data.Commit as Commit
 import Data.Task as ProjectTask
 

@@ -2,11 +2,11 @@ module Page.Project.Task exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
-import Data.Task as ProjectTask exposing (Step(..), BuildStep, RunStep)
+import Data.Task as ProjectTask exposing (Step(..), BuildStep, RunStep, Parameter)
 import Request.Project
 import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
@@ -16,6 +16,7 @@ import Util exposing ((=>))
 import Page.Project.Route as ProjectRoute
 import Route exposing (Route)
 import Page.Project.Commit as Commit
+import Views.Form as Form
 
 
 -- MODEL --
@@ -25,6 +26,14 @@ type alias Model =
     { commit : Commit
     , task : ProjectTask.Task
     , toggledStep : Maybe Step
+    , form : List FormField
+    }
+
+
+type alias FormField =
+    { value : String
+    , dirty : Bool
+    , field : String
     }
 
 
@@ -50,16 +59,21 @@ init session id hash name =
         initialModel commit task =
             let
                 toggledStep =
-                    task.steps
-                        |> List.head
+                    Nothing
             in
                 { commit = commit
                 , task = task
                 , toggledStep = toggledStep
+                , form = List.map newField task.parameters
                 }
     in
         Task.map2 initialModel loadCommit loadTask
             |> Task.mapError handleLoadError
+
+
+newField : Parameter -> FormField
+newField parameter =
+    FormField (Maybe.withDefault "" parameter.default) False parameter.name
 
 
 
@@ -68,8 +82,48 @@ init session id hash name =
 
 view : Model -> Html Msg
 view model =
-    viewStepList model.task.steps model.toggledStep
-        |> div []
+    let
+        task =
+            model.task
+
+        stepList =
+            viewStepList task.steps model.toggledStep
+
+        buildForm =
+            div [ class "card" ]
+                [ div [ class "card-body" ] <| viewBuildForm (ProjectTask.nameToString task.name) model.form
+                ]
+    in
+        div [ class "row" ]
+            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ] [ buildForm ]
+            , div [ class "col-sm-12 col-md-12 col-lg-12" ] stepList
+            ]
+
+
+viewBuildForm : String -> List FormField -> List (Html Msg)
+viewBuildForm taskName fields =
+    let
+        fieldInput field =
+            Form.input
+                { name = field.field
+                , label = field.field
+                , help = Nothing
+                , errors = []
+                }
+                [ attribute "required" ""
+                , value field.value
+                , onInput (OnInput field)
+                ]
+                []
+    in
+        [ h4 [] [ text taskName ]
+        , Html.form [ attribute "novalidate" "" ] <| List.map fieldInput fields
+        , button
+            [ class "btn btn-primary"
+            , type_ "submit"
+            ]
+            [ text "Start task" ]
+        ]
 
 
 viewStepList : List Step -> Maybe Step -> List (Html Msg)
@@ -199,7 +253,7 @@ viewStepCollapse step title toggled contents =
             ]
     in
         div [ class "card" ]
-            [ div [ class "card-header d-flex justify-content-between align-items-center", onClick msg ]
+            [ div [ class "card-header collapse-header d-flex justify-content-between align-items-center", onClick msg ]
                 [ h5 [ class "mb-0" ] [ text title ]
                 , button
                     [ type_ "button"
@@ -231,6 +285,7 @@ breadcrumb project commit task =
 
 type Msg
     = ToggleStep (Maybe Step)
+    | OnInput FormField String
 
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -239,3 +294,21 @@ update project session msg model =
         ToggleStep maybeStep ->
             { model | toggledStep = maybeStep }
                 => Cmd.none
+
+        OnInput field value ->
+            let
+                form =
+                    List.map
+                        (\f ->
+                            if f == field then
+                                { field
+                                    | value = value
+                                    , dirty = True
+                                }
+                            else
+                                field
+                        )
+                        model.form
+            in
+                { model | form = form }
+                    => Cmd.none

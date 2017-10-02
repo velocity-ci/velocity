@@ -12,6 +12,7 @@ type alias Task =
     { name : Name
     , description : String
     , steps : List Step
+    , parameters : List Parameter
     }
 
 
@@ -56,6 +57,13 @@ decoder =
         |> required "name" (Decode.map Name Decode.string)
         |> optional "description" Decode.string ""
         |> optional "steps" (Decode.list stepDecoder) []
+        |> optional "parameters" parameterKeyValuePairDecoder []
+
+
+parameterKeyValuePairDecoder : Decoder (List Parameter)
+parameterKeyValuePairDecoder =
+    Decode.keyValuePairs parameterDecoder
+        |> Decode.andThen (List.map Tuple.second >> Decode.succeed)
 
 
 parameterDecoder : Decoder Parameter

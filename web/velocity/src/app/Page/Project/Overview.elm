@@ -4,7 +4,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Data.Project as Project exposing (Project)
 import Page.Helpers exposing (formatDateTime)
-import Page.Project.Route as ProjectRoute
 
 
 -- VIEW --
