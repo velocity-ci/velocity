@@ -162,3 +162,9 @@ h1 {
   line-height: inherit;
   vertical-align: inherit;
 }
+
+.text-overflow {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

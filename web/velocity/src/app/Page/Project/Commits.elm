@@ -135,7 +135,7 @@ viewCommitListItem id commit =
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
-                [ h5 [ class "mb-1" ] [ text commit.message ]
+                [ h5 [ class "mb-1 text-overflow" ] [ text commit.message ]
                 , small [] [ text truncatedHash ]
                 ]
             , small [] [ strong [] [ text commit.author ], text (" commited at " ++ formatTime commit.date) ]
