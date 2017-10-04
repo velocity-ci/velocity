@@ -454,7 +454,7 @@ type alias Error =
     ( Field, String )
 
 
-validate : Validator ( Field, String ) ProjectForm
+validate : Validator Error ProjectForm
 validate =
     let
         privateKeyValidator ( privateKey, repository ) =

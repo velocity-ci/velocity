@@ -17,6 +17,8 @@ import Page.Project.Route as ProjectRoute
 import Route exposing (Route)
 import Page.Project.Commit as Commit
 import Views.Form as Form
+import Validate exposing (..)
+import Page.Helpers exposing (validClasses)
 
 
 -- MODEL --
@@ -27,6 +29,7 @@ type alias Model =
     , task : ProjectTask.Task
     , toggledStep : Maybe Step
     , form : List FormField
+    , errors : List Error
     }
 
 
@@ -60,11 +63,18 @@ init session id hash name =
             let
                 toggledStep =
                     Nothing
+
+                form =
+                    List.map newField task.parameters
+
+                errors =
+                    List.concatMap validator form
             in
                 { commit = commit
                 , task = task
                 , toggledStep = toggledStep
-                , form = List.map newField task.parameters
+                , form = form
+                , errors = errors
                 }
     in
         Task.map2 initialModel loadCommit loadTask
@@ -73,7 +83,14 @@ init session id hash name =
 
 newField : Parameter -> FormField
 newField parameter =
-    FormField (Maybe.withDefault "" parameter.default) False parameter.name
+    let
+        value =
+            Maybe.withDefault "" parameter.default
+
+        dirty =
+            String.length value > 0
+    in
+        FormField value dirty parameter.name
 
 
 
@@ -91,7 +108,8 @@ view model =
 
         buildForm =
             div [ class "card" ]
-                [ div [ class "card-body" ] <| viewBuildForm (ProjectTask.nameToString task.name) model.form
+                [ div [ class "card-body" ] <|
+                    viewBuildForm (ProjectTask.nameToString task.name) model.form model.errors
                 ]
     in
         div [ class "row" ]
@@ -100,27 +118,30 @@ view model =
             ]
 
 
-viewBuildForm : String -> List FormField -> List (Html Msg)
-viewBuildForm taskName fields =
+viewBuildForm : String -> List FormField -> List Error -> List (Html Msg)
+viewBuildForm taskName fields errors =
     let
         fieldInput field =
             Form.input
                 { name = field.field
                 , label = field.field
                 , help = Nothing
-                , errors = []
+                , errors = List.filter (\e -> Tuple.first e == field.field) errors
                 }
                 [ attribute "required" ""
                 , value field.value
                 , onInput (OnInput field)
+                , classList (validClasses errors field)
                 ]
                 []
     in
         [ h4 [] [ text taskName ]
-        , Html.form [ attribute "novalidate" "" ] <| List.map fieldInput fields
+        , Html.form [ attribute "novalidate" "" ] <|
+            List.map fieldInput fields
         , button
             [ class "btn btn-primary"
             , type_ "submit"
+            , disabled <| not (List.isEmpty errors)
             ]
             [ text "Start task" ]
         ]
@@ -309,6 +330,29 @@ update project session msg model =
                                 field
                         )
                         model.form
+
+                errors =
+                    List.concatMap validator form
             in
-                { model | form = form }
+                { model
+                    | form = form
+                    , errors = errors
+                }
                     => Cmd.none
+
+
+
+-- VALIDATION --
+
+
+type alias Error =
+    ( String, String )
+
+
+validator : Validator Error FormField
+validator =
+    Validate.all
+        [ (\{ field, value } ->
+            (value |> ifBlank (field => "Field cannot be blank"))
+          )
+        ]
