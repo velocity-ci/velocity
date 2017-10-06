@@ -1,24 +1,24 @@
 module Page.Project.Task exposing (..)
 
+import Data.Commit as Commit exposing (Commit)
+import Data.Project as Project exposing (Project)
+import Data.Session as Session exposing (Session)
+import Data.Task as ProjectTask exposing (BuildStep, Parameter, RunStep, Step(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
-import Data.Commit as Commit exposing (Commit)
-import Data.Session as Session exposing (Session)
-import Data.Project as Project exposing (Project)
-import Data.Task as ProjectTask exposing (Step(..), BuildStep, RunStep, Parameter)
-import Request.Project
 import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Views.Page as Page
+import Page.Helpers exposing (validClasses)
+import Page.Project.Commit as Commit
+import Page.Project.Route as ProjectRoute
+import Request.Project
+import Route exposing (Route)
 import Task exposing (Task)
 import Util exposing ((=>))
-import Page.Project.Route as ProjectRoute
-import Route exposing (Route)
-import Page.Project.Commit as Commit
-import Views.Form as Form
 import Validate exposing (..)
-import Page.Helpers exposing (validClasses)
+import Views.Form as Form
+import Views.Page as Page
 
 
 -- MODEL --
@@ -70,15 +70,15 @@ init session id hash name =
                 errors =
                     List.concatMap validator form
             in
-                { commit = commit
-                , task = task
-                , toggledStep = toggledStep
-                , form = form
-                , errors = errors
-                }
+            { commit = commit
+            , task = task
+            , toggledStep = toggledStep
+            , form = form
+            , errors = errors
+            }
     in
-        Task.map2 initialModel loadCommit loadTask
-            |> Task.mapError handleLoadError
+    Task.map2 initialModel loadCommit loadTask
+        |> Task.mapError handleLoadError
 
 
 newField : Parameter -> FormField
@@ -90,7 +90,7 @@ newField parameter =
         dirty =
             String.length value > 0
     in
-        FormField value dirty parameter.name
+    FormField value dirty parameter.name
 
 
 
@@ -112,10 +112,10 @@ view model =
                     viewBuildForm (ProjectTask.nameToString task.name) model.form model.errors
                 ]
     in
-        div [ class "row" ]
-            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ] [ buildForm ]
-            , div [ class "col-sm-12 col-md-12 col-lg-12" ] stepList
-            ]
+    div [ class "row" ]
+        [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ] [ buildForm ]
+        , div [ class "col-sm-12 col-md-12 col-lg-12" ] stepList
+        ]
 
 
 viewBuildForm : String -> List FormField -> List Error -> List (Html Msg)
@@ -135,16 +135,16 @@ viewBuildForm taskName fields errors =
                 ]
                 []
     in
-        [ h4 [] [ text taskName ]
-        , Html.form [ attribute "novalidate" "" ] <|
-            List.map fieldInput fields
-        , button
-            [ class "btn btn-primary"
-            , type_ "submit"
-            , disabled <| not (List.isEmpty errors)
-            ]
-            [ text "Start task" ]
+    [ h4 [] [ text taskName ]
+    , Html.form [ attribute "novalidate" "" ] <|
+        List.map fieldInput fields
+    , button
+        [ class "btn btn-primary"
+        , type_ "submit"
+        , disabled <| not (List.isEmpty errors)
         ]
+        [ text "Start task" ]
+    ]
 
 
 viewStepList : List Step -> Maybe Step -> List (Html Msg)
@@ -161,20 +161,20 @@ viewStepList steps toggledStep =
                 buildStep =
                     viewBuildStep stepNum
             in
-                case ( step, toggledStep ) of
-                    ( Run run, Just (Run toggled) ) ->
-                        runStep run (run == toggled)
+            case ( step, toggledStep ) of
+                ( Run run, Just (Run toggled) ) ->
+                    runStep run (run == toggled)
 
-                    ( Build build, Just (Build toggled) ) ->
-                        buildStep build (build == toggled)
+                ( Build build, Just (Build toggled) ) ->
+                    buildStep build (build == toggled)
 
-                    ( Run run, _ ) ->
-                        runStep run False
+                ( Run run, _ ) ->
+                    runStep run False
 
-                    ( Build build, _ ) ->
-                        buildStep build False
+                ( Build build, _ ) ->
+                    buildStep build False
     in
-        List.indexedMap stepView steps
+    List.indexedMap stepView steps
 
 
 viewBuildStep : Int -> BuildStep -> Bool -> Html Msg
@@ -201,12 +201,12 @@ viewBuildStep i buildStep toggled =
         title =
             toString i ++ ". " ++ buildStep.description
     in
-        viewStepCollapse (Build buildStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ rightDl ]
-                ]
+    viewStepCollapse (Build buildStep) title toggled <|
+        [ div [ class "row" ]
+            [ div [ class "col-md-6" ] [ leftDl ]
+            , div [ class "col-md-6" ] [ rightDl ]
             ]
+        ]
 
 
 viewRunStep : Int -> RunStep -> Bool -> Html Msg
@@ -251,12 +251,12 @@ viewRunStep i runStep toggled =
         title =
             toString i ++ ". " ++ runStep.description
     in
-        viewStepCollapse (Run runStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ envTable ]
-                ]
+    viewStepCollapse (Run runStep) title toggled <|
+        [ div [ class "row" ]
+            [ div [ class "col-md-6" ] [ leftDl ]
+            , div [ class "col-md-6" ] [ envTable ]
             ]
+        ]
 
 
 viewStepCollapse : Step -> String -> Bool -> List (Html Msg) -> Html Msg
@@ -273,23 +273,23 @@ viewStepCollapse step title toggled contents =
             , ( "fa-caret-square-o-up", not toggled )
             ]
     in
-        div [ class "card" ]
-            [ div [ class "card-header collapse-header d-flex justify-content-between align-items-center", onClick msg ]
-                [ h5 [ class "mb-0" ] [ text title ]
-                , button
-                    [ type_ "button"
-                    , class "btn"
-                    ]
-                    [ i [ class "fa", classList caretClassList ] []
-                    ]
+    div [ class "card" ]
+        [ div [ class "card-header collapse-header d-flex justify-content-between align-items-center", onClick msg ]
+            [ h5 [ class "mb-0" ] [ text title ]
+            , button
+                [ type_ "button"
+                , class "btn"
                 ]
-            , div
-                [ class "collapse"
-                , classList [ ( "show", toggled ) ]
-                ]
-                [ div [ class "card-body" ] contents
+                [ i [ class "fa", classList caretClassList ] []
                 ]
             ]
+        , div
+            [ class "collapse"
+            , classList [ ( "show", toggled ) ]
+            ]
+            [ div [ class "card-body" ] contents
+            ]
+        ]
 
 
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route, String )
@@ -327,18 +327,18 @@ update project session msg model =
                                     , dirty = True
                                 }
                             else
-                                field
+                                f
                         )
                         model.form
 
                 errors =
                     List.concatMap validator form
             in
-                { model
-                    | form = form
-                    , errors = errors
-                }
-                    => Cmd.none
+            { model
+                | form = form
+                , errors = errors
+            }
+                => Cmd.none
 
 
 
@@ -352,7 +352,6 @@ type alias Error =
 validator : Validator Error FormField
 validator =
     Validate.all
-        [ (\{ field, value } ->
-            (value |> ifBlank (field => "Field cannot be blank"))
-          )
+        [ \{ field, value } ->
+            value |> ifBlank (field => "Field cannot be blank")
         ]
