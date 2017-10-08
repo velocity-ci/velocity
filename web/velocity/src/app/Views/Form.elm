@@ -1,4 +1,4 @@
-module Views.Form exposing (viewErrors, input, textarea, password, viewSpinner)
+module Views.Form exposing (viewErrors, input, select, textarea, password, viewSpinner)
 
 import Html exposing (fieldset, ul, li, Html, Attribute, text, div, label, span, i, small)
 import Html.Attributes exposing (class, type_, for, id)
@@ -30,6 +30,20 @@ input :
     -> Html msg
 input { name, label, help, errors } attrs =
     control name label errors help Html.input ([ type_ "text" ] ++ attrs)
+
+
+select :
+    { r
+        | name : String
+        , label : String
+        , help : Maybe String
+        , errors : List ( field, String )
+    }
+    -> List (Attribute msg)
+    -> List (Html msg)
+    -> Html msg
+select { name, label, help, errors } attrs =
+    control name label errors help Html.select ([] ++ attrs)
 
 
 textarea :

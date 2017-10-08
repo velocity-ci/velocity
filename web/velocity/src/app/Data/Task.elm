@@ -1,7 +1,7 @@
 module Data.Task exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (decode, required, optional)
+import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import UrlParser
 
 
@@ -40,10 +40,23 @@ type alias RunStep =
     }
 
 
-type alias Parameter =
+type Parameter
+    = StringParam StringParameter
+    | ChoiceParam ChoiceParameter
+
+
+type alias StringParameter =
     { name : String
     , default : Maybe String
     , secret : Bool
+    }
+
+
+type alias ChoiceParameter =
+    { name : String
+    , default : Maybe String
+    , secret : Bool
+    , options : List String
     }
 
 
@@ -62,16 +75,42 @@ decoder =
 
 parameterKeyValuePairDecoder : Decoder (List Parameter)
 parameterKeyValuePairDecoder =
-    Decode.keyValuePairs parameterDecoder
+    Decode.keyValuePairs parameterOptionsDecoder
         |> Decode.andThen (List.map Tuple.second >> Decode.succeed)
 
 
-parameterDecoder : Decoder Parameter
-parameterDecoder =
-    decode Parameter
+stringParameterDecoder : Decoder StringParameter
+stringParameterDecoder =
+    decode StringParameter
         |> required "name" Decode.string
         |> optional "default" (Decode.nullable Decode.string) Nothing
         |> optional "secret" Decode.bool False
+
+
+choiceParameterDecoder : Decoder ChoiceParameter
+choiceParameterDecoder =
+    decode ChoiceParameter
+        |> required "name" Decode.string
+        |> optional "default" (Decode.nullable Decode.string) Nothing
+        |> optional "secret" Decode.bool False
+        |> required "otherOptions" (Decode.list Decode.string)
+
+
+parameterOptionsDecoder : Decoder Parameter
+parameterOptionsDecoder =
+    Decode.string
+        |> Decode.list
+        |> Decode.nullable
+        |> Decode.field "otherOptions"
+        |> Decode.andThen
+            (\otherOptions ->
+                case otherOptions of
+                    Nothing ->
+                        Decode.map StringParam stringParameterDecoder
+
+                    Just options ->
+                        Decode.map ChoiceParam choiceParameterDecoder
+            )
 
 
 stepDecoder : Decoder Step
