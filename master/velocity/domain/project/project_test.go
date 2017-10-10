@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/velocity-ci/velocity/master/velocity/app"
 	"github.com/velocity-ci/velocity/master/velocity/domain"
 )
@@ -31,17 +31,11 @@ func ServerTest(t *testing.T, f func(*testing.T, *http.Client, string)) {
 	f(t, c, s.URL)
 }
 
-func login(c *http.Client, baseURL string) {
+func login(t *testing.T, c *http.Client, baseURL string) {
 	j, _ := json.Marshal(map[string]string{"username": "admin", "password": "admin1234"})
 	resp, err := c.Post(fmt.Sprintf("%s/v1/auth", baseURL), "application/json", bytes.NewBuffer(j))
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	if resp.StatusCode != 201 {
-		log.Fatal("Could not log in")
-		return
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, resp.StatusCode, 201, "Could not log in.")
 
 	auth = &domain.UserAuth{}
 	json.NewDecoder(resp.Body).Decode(auth)
@@ -49,19 +43,20 @@ func login(c *http.Client, baseURL string) {
 
 func TestGetProjects(t *testing.T) {
 	ServerTest(t, func(t *testing.T, c *http.Client, baseURL string) {
-		login(c, baseURL)
+		login(t, c, baseURL)
 
 		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/projects", baseURL), nil)
 		req.Header.Set("Authorization", fmt.Sprintf("bearer %s", auth.Token))
 
 		resp, err := c.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			t.Fail()
-		}
-		if resp.StatusCode != 200 {
-			t.Fail()
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, resp.StatusCode, 200, "Could not retrieve projects.")
+
+		defer resp.Body.Close()
+		respProjects := []domain.ResponseProject{}
+		json.NewDecoder(resp.Body).Decode(&respProjects)
+
+		assert.Equal(t, len(respProjects), 0, "Too many projects returned.")
 	})
 }
 
@@ -70,19 +65,14 @@ func TestUnauthenticatedGetProjects(t *testing.T) {
 		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/projects", baseURL), nil)
 
 		resp, err := c.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			t.Fail()
-		}
-		if resp.StatusCode != 401 {
-			t.Fail()
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, resp.StatusCode, 401, "Unauthenticated access allowed.")
 	})
 }
 
 func TestPostProjectsHTTPSRepo(t *testing.T) {
 	ServerTest(t, func(t *testing.T, c *http.Client, baseURL string) {
-		login(c, baseURL)
+		login(t, c, baseURL)
 
 		j, _ := json.Marshal(map[string]string{
 			"name":       "velocity",
@@ -93,31 +83,30 @@ func TestPostProjectsHTTPSRepo(t *testing.T) {
 		req.Header.Set("Authorization", fmt.Sprintf("bearer %s", auth.Token))
 
 		resp, err := c.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			t.Fail()
-		}
-		if resp.StatusCode != 201 {
-			t.Fail()
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, resp.StatusCode, 201, "Could not create HTTP Project")
 
 		req, _ = http.NewRequest("GET", fmt.Sprintf("%s/v1/projects", baseURL), nil)
 		req.Header.Set("Authorization", fmt.Sprintf("bearer %s", auth.Token))
 
 		resp, err = c.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			t.Fail()
-		}
-		if resp.StatusCode != 200 {
-			t.Fail()
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, resp.StatusCode, 200, "Could not retrieve projects.")
+
+		defer resp.Body.Close()
+		respProjects := []domain.ResponseProject{}
+		json.NewDecoder(resp.Body).Decode(&respProjects)
+
+		assert.Equal(t, respProjects[0].ID, "velocity")
+		assert.Equal(t, respProjects[0].Name, "velocity")
+		assert.Equal(t, respProjects[0].Repository, "https://github.com/velocity-ci/velocity.git")
+		assert.Equal(t, respProjects[0].Synchronising, false)
 	})
 }
 
 func TestPostProjectsGITRepo(t *testing.T) {
 	ServerTest(t, func(t *testing.T, c *http.Client, baseURL string) {
-		login(c, baseURL)
+		login(t, c, baseURL)
 
 		j, _ := json.Marshal(map[string]string{
 			"entry": "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==",
@@ -127,13 +116,8 @@ func TestPostProjectsGITRepo(t *testing.T) {
 		req.Header.Set("Authorization", fmt.Sprintf("bearer %s", auth.Token))
 
 		resp, err := c.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			t.Fail()
-		}
-		if resp.StatusCode != 201 {
-			t.Fail()
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, resp.StatusCode, 201, "Could not create known host for github.com")
 
 		j, _ = json.Marshal(map[string]string{
 			"name":       "velocity",
@@ -195,24 +179,23 @@ hQG53FH+t3G8yeJhy2drCYjl9mO52fuLfApaalb/X6oW7+fQyh9nasr8TnE=
 		req.Header.Set("Authorization", fmt.Sprintf("bearer %s", auth.Token))
 
 		resp, err = c.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			t.Fail()
-		}
-		if resp.StatusCode != 201 {
-			t.Fail()
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, resp.StatusCode, 201, "Could not create GIT Project")
 
 		req, _ = http.NewRequest("GET", fmt.Sprintf("%s/v1/projects", baseURL), nil)
 		req.Header.Set("Authorization", fmt.Sprintf("bearer %s", auth.Token))
 
 		resp, err = c.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			t.Fail()
-		}
-		if resp.StatusCode != 200 {
-			t.Fail()
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, resp.StatusCode, 200, "Could not retrieve projects.")
+
+		defer resp.Body.Close()
+		respProjects := []domain.ResponseProject{}
+		json.NewDecoder(resp.Body).Decode(&respProjects)
+
+		assert.Equal(t, respProjects[0].ID, "velocity")
+		assert.Equal(t, respProjects[0].Name, "velocity")
+		assert.Equal(t, respProjects[0].Repository, "git@github.com:velocity-ci/velocity.git")
+		assert.Equal(t, respProjects[0].Synchronising, false)
 	})
 }

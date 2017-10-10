@@ -6,11 +6,15 @@ import (
 	"reflect"
 
 	ut "github.com/go-playground/universal-translator"
-	"github.com/velocity-ci/velocity/master/velocity/persisters"
+	"github.com/velocity-ci/velocity/master/velocity/project/git/repository"
 	validator "gopkg.in/go-playground/validator.v9"
 )
 
-func ValidateProjectUnique(fl validator.FieldLevel) bool {
+type Validator struct {
+	projectManager *BoltManager
+}
+
+func (v *Validator) ValidateProjectUnique(fl validator.FieldLevel) bool {
 
 	if fl.Field().Type().Name() != "string" {
 		return false
@@ -18,9 +22,7 @@ func ValidateProjectUnique(fl validator.FieldLevel) bool {
 
 	projectName := fl.Field().String()
 
-	m := NewBoltManager(persisters.GetBoltDB())
-
-	_, err := m.FindByID(idFromName(projectName))
+	_, err := v.projectManager.FindByID(idFromName(projectName))
 
 	if err != nil {
 		return true
@@ -40,9 +42,9 @@ func translationFuncUnique(ut ut.Translator, fe validator.FieldError) string {
 }
 
 func ValidateProjectRepository(sl validator.StructLevel) {
-	project := sl.Current().Interface().(requestProject)
+	project := sl.Current().Interface().(repository.Repository)
 
-	_, dir, err := Clone(project.Name, project.Repository, project.PrivateKey, true)
+	_, dir, err := Clone(project, true) // use struct to replace func in tests
 
 	if err != nil {
 		log.Println(err, reflect.TypeOf(err))

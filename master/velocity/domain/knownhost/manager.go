@@ -15,7 +15,7 @@ type Manager struct {
 	logger *log.Logger
 }
 
-func NewManager(fileLogger *log.Logger) *Manager {
+func NewManager() *Manager {
 	os.MkdirAll("/root/.ssh/", os.ModePerm)
 	f, err := os.OpenFile(knownHostsPath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -24,7 +24,7 @@ func NewManager(fileLogger *log.Logger) *Manager {
 	defer f.Close()
 
 	return &Manager{
-		logger: fileLogger,
+		logger: log.New(os.Stdout, "[file:knownhost]", log.Lshortfile),
 	}
 }
 

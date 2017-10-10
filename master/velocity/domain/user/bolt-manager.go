@@ -36,7 +36,7 @@ func NewBoltManager(
 	bolt *bolt.DB,
 ) *BoltManager {
 	m := &BoltManager{
-		logger: log.New(os.Stdout, "[bolt-user]", log.Lshortfile),
+		logger: log.New(os.Stdout, "[bolt:user]", log.Lshortfile),
 		bolt:   bolt,
 	}
 	createAdminUser(m)

@@ -1,9 +1,6 @@
 package knownhost
 
 import (
-	"log"
-	"os"
-
 	ut "github.com/go-playground/universal-translator"
 	"golang.org/x/crypto/ssh"
 	validator "gopkg.in/go-playground/validator.v9"
@@ -44,7 +41,7 @@ func ValidateKnownHostUnique(fl validator.FieldLevel) bool {
 
 	knownHost := fl.Field().String()
 
-	m := NewManager(log.New(os.Stdout, "[files]", log.Lshortfile))
+	m := NewManager()
 
 	return !m.Exists(knownHost)
 }

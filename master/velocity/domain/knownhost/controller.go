@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
@@ -21,13 +22,11 @@ type Controller struct {
 
 // NewController - returns a new Controller for Authentication.
 func NewController(
-	controllerLogger *log.Logger,
-	renderer *render.Render,
 	manager *BoltManager,
 ) *Controller {
 	return &Controller{
-		logger:  controllerLogger,
-		render:  renderer,
+		logger:  log.New(os.Stdout, "[controller:knownhost]", log.Lshortfile),
+		render:  render.New(),
 		manager: manager,
 	}
 }

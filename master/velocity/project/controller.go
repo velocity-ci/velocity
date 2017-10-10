@@ -22,6 +22,7 @@ type Controller struct {
 // NewController - Returns a new Controller for Projects.
 func NewController(
 	projectBoltManager *BoltManager,
+	projectResolver *Resolver,
 ) *Controller {
 	return &Controller{
 		logger:  log.New(os.Stdout, "[controller:project]", log.Lshortfile),

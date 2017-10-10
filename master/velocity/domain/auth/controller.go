@@ -3,6 +3,7 @@ package auth
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
@@ -18,13 +19,11 @@ type Controller struct {
 
 // NewController - returns a new Controller for Authentication.
 func NewController(
-	controllerLogger *log.Logger,
-	renderer *render.Render,
 	userBoltManager *user.BoltManager,
 ) *Controller {
 	return &Controller{
-		logger:  controllerLogger,
-		render:  renderer,
+		logger:  log.New(os.Stdout, "[controller:auth]", log.Lshortfile),
+		render:  render.New(),
 		manager: userBoltManager,
 	}
 }

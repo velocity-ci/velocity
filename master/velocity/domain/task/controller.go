@@ -1,0 +1,102 @@
+package task
+
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/gorilla/mux"
+	"github.com/unrolled/render"
+	"github.com/urfave/negroni"
+	"github.com/velocity-ci/velocity/master/velocity/domain/project"
+	"github.com/velocity-ci/velocity/master/velocity/middlewares"
+)
+
+// Controller - Handles Projects.
+type Controller struct {
+	logger         *log.Logger
+	render         *render.Render
+	manager        *BoltManager
+	projectManager *project.BoltManager
+}
+
+// NewController - Returns a new Controller for Tasks.
+func NewController(
+	commitBoltManager *BoltManager,
+	projectBoltManager *project.BoltManager,
+) *Controller {
+	return &Controller{
+		logger:         log.New(os.Stdout, "[controller:task]", log.Lshortfile),
+		render:         render.New(),
+		manager:        commitBoltManager,
+		projectManager: projectBoltManager,
+	}
+}
+
+// Setup - Sets up the routes for Tasks.
+func (c Controller) Setup(router *mux.Router) {
+
+	// GET /v1/projects/{projectID}/commits/{commitHash}/tasks
+	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/tasks", negroni.New(
+		middlewares.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTasksHandler)),
+	)).Methods("GET")
+
+	// GET /v1/projects/{projectID}/commits/{commitHash}/tasks/{taskName}
+	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/tasks/{taskName}", negroni.New(
+		middlewares.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskHandler)),
+	)).Methods("GET")
+
+	c.logger.Println("Set up Task controller.")
+}
+
+func (c Controller) getProjectCommitTasksHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["projectID"]
+	reqCommitID := reqVars["commitHash"]
+
+	project, err := c.projectManager.FindByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	commit, err := c.manager.GetCommitInProject(reqCommitID, project)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	tasks := c.manager.GetTasksForCommitInProject(commit, project)
+
+	c.render.JSON(w, http.StatusOK, tasks)
+}
+
+func (c Controller) getProjectCommitTaskHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["projectID"]
+	reqCommitID := reqVars["commitHash"]
+	reqTaskName := reqVars["taskName"]
+
+	project, err := c.projectManager.FindByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	commit, err := c.manager.GetCommitInProject(reqCommitID, project)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	task, err := c.manager.GetTaskForCommitInProject(commit, project, reqTaskName)
+
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, err)
+		return
+	}
+
+	c.render.JSON(w, http.StatusOK, task)
+}

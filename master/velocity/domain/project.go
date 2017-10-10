@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -50,4 +52,8 @@ type Commit struct {
 	Author  string    `json:"author"`
 	Date    time.Time `json:"date"`
 	Message string    `json:"message"`
+}
+
+func (c *Commit) OrderedID() string {
+	return strings.Join([]string{fmt.Sprintf("%v", c.Date.Unix()), c.Hash[:7]}, "-")
 }

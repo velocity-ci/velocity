@@ -5,11 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/unrolled/render"
 	"github.com/velocity-ci/velocity/master/velocity/domain/auth"
+	"github.com/velocity-ci/velocity/master/velocity/domain/commit"
 	"github.com/velocity-ci/velocity/master/velocity/domain/knownhost"
 	"github.com/velocity-ci/velocity/master/velocity/domain/project"
 	"github.com/velocity-ci/velocity/master/velocity/domain/user"
@@ -19,9 +20,10 @@ import (
 
 // VelocityAPI - The Velocity API app
 type VelocityAPI struct {
-	Router *routers.MuxRouter
-	server *http.Server
-	bolt   *bolt.DB
+	Router  *routers.MuxRouter
+	server  *http.Server
+	bolt    *bolt.DB
+	workers sync.WaitGroup
 }
 
 // App - For starting and stopping gracefully.
@@ -33,25 +35,24 @@ type App interface {
 // New - Returns a new Velocity API app
 func New() App {
 	velocityAPI := &VelocityAPI{}
-
-	controllerLogger := log.New(os.Stdout, "[controller]", log.Lshortfile)
-	fileLogger := log.New(os.Stdout, "[files]", log.Lshortfile)
-	renderer := render.New()
 	velocityAPI.bolt = persisters.GetBoltDB()
 
-	knownhostManager := knownhost.NewManager(fileLogger)
+	knownhostManager := knownhost.NewManager()
 
 	userBoltManager := user.NewBoltManager(velocityAPI.bolt)
 	projectBoltManager := project.NewBoltManager(velocityAPI.bolt)
+	commitBoltManager := commit.NewBoltManager(velocityAPI.bolt)
 	knownhostBoltManager := knownhost.NewBoltManager(velocityAPI.bolt, knownhostManager)
 
-	knownhostController := knownhost.NewController(controllerLogger, renderer, knownhostBoltManager)
-	authController := auth.NewController(controllerLogger, renderer, userBoltManager)
-	projectController := project.NewController(controllerLogger, renderer, projectBoltManager)
+	knownhostController := knownhost.NewController(knownhostBoltManager)
+	authController := auth.NewController(userBoltManager)
+	projectController := project.NewController(projectBoltManager)
+	commitController := commit.NewController(commitBoltManager, projectBoltManager)
 
 	velocityAPI.Router = routers.NewMuxRouter([]routers.Routable{
 		authController,
 		projectController,
+		commitController,
 		knownhostController,
 	}, true)
 
