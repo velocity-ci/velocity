@@ -15,7 +15,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/commit"
 	"github.com/velocity-ci/velocity/backend/api/knownhost"
 	"github.com/velocity-ci/velocity/backend/api/project"
-	"github.com/velocity-ci/velocity/backend/api/task"
 )
 
 func main() {
@@ -107,16 +106,11 @@ func NewVelocity() App {
 	commitManager := commit.NewManager(velocityAPI.bolt)
 	commitController := commit.NewController(commitManager, projectManager)
 
-	// Task
-	taskManager := task.NewManager(velocityAPI.bolt)
-	taskController := task.NewController(taskManager, projectManager, commitManager)
-
 	velocityAPI.Router = NewMuxRouter([]Routable{
 		authController,
 		knownHostController,
 		projectController,
 		commitController,
-		taskController,
 	}, true)
 
 	port := os.Getenv("PORT")

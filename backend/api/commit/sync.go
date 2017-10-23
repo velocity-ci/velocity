@@ -52,6 +52,10 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 		}
 
 		branch := strings.Join(strings.Split(r.Name().Short(), "/")[1:], "/")
+		err = commitManager.SaveBranchForProject(p, branch)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		c := Commit{
 			Branch:  branch,
@@ -61,7 +65,10 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 			Date:    commit.Committer.When,
 		}
 
-		commitManager.SaveCommitForProject(p, &c)
+		err = commitManager.SaveCommitForProject(p, &c)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		err = w.Checkout(&git.CheckoutOptions{
 			Hash: commit.Hash,
@@ -95,7 +102,10 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 				if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
 					taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
 					t := task.ResolveTaskFromYAML(string(taskYml), gitParams)
-					commitManager.SaveTaskForCommitInProject(&t, &c, p)
+					err = commitManager.SaveTaskForCommitInProject(&t, &c, p)
+					if err != nil {
+						log.Fatal(err)
+					}
 				}
 				return nil
 			})

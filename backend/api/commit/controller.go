@@ -22,13 +22,13 @@ type Controller struct {
 
 // NewController - Returns a new Controller for Projects.
 func NewController(
-	commitManager *Manager,
+	manager *Manager,
 	projectManager *project.Manager,
 ) *Controller {
 	return &Controller{
 		logger:         log.New(os.Stdout, "[controller:commit]", log.Lshortfile),
 		render:         render.New(),
-		manager:        commitManager,
+		manager:        manager,
 		projectManager: projectManager,
 	}
 }
@@ -47,6 +47,12 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.getProjectCommitHandler)),
 	)).Methods("GET")
 
+	// POST /v1/projects/{id}/sync
+	router.Handle("/v1/projects/{id}/sync", negroni.New(
+		auth.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.syncProjectHandler)),
+	)).Methods("POST")
+
 	// GET /v1/projects/{projectID}/commits/{commitHash}/tasks
 	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/tasks", negroni.New(
 		auth.NewJWT(c.render),
@@ -59,11 +65,11 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskHandler)),
 	)).Methods("GET")
 
-	// POST /v1/projects/{id}/sync
-	router.Handle("/v1/projects/{id}/sync", negroni.New(
+	// GET /v1/projects/{id}/branches
+	router.Handle("/v1/projects/{id}/branches", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.syncProjectHandler)),
-	)).Methods("POST")
+		negroni.Wrap(http.HandlerFunc(c.getBranchesHandler)),
+	)).Methods("GET")
 
 	c.logger.Println("Set up Commit controller.")
 }
@@ -101,6 +107,29 @@ func (c Controller) getProjectCommitHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	c.render.JSON(w, http.StatusOK, commit)
+}
+
+func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["id"]
+
+	p, err := c.projectManager.FindByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	// if p.Synchronising {
+	// 	c.render.JSON(w, http.StatusBadRequest, nil)
+	// 	return
+	// }
+
+	p.Synchronising = true
+	c.projectManager.Save(p)
+
+	go sync(p, c.projectManager, c.manager)
+
+	c.render.JSON(w, http.StatusCreated, p)
 }
 
 func (c Controller) getProjectCommitTasksHandler(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +182,7 @@ func (c Controller) getProjectCommitTaskHandler(w http.ResponseWriter, r *http.R
 	c.render.JSON(w, http.StatusOK, task)
 }
 
-func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getBranchesHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["id"]
 
@@ -163,15 +192,6 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Synchronising {
-		c.render.JSON(w, http.StatusBadRequest, nil)
-		return
-	}
-
-	p.Synchronising = true
-	c.projectManager.Save(p)
-
-	go sync(p, c.projectManager, c.manager)
-
-	c.render.JSON(w, http.StatusCreated, p)
+	branches := c.manager.FindAllBranchesForProject(p)
+	c.render.JSON(w, http.StatusOK, branches)
 }

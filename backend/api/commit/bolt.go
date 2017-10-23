@@ -2,7 +2,6 @@ package commit
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -34,14 +33,7 @@ func (m *Manager) GetCommitInProject(hash string, p *project.Project) (*Commit, 
 	defer tx.Rollback()
 
 	projectsBucket := tx.Bucket([]byte("projects"))
-	if projectsBucket == nil {
-		return nil, errors.New("Projects not found:")
-	}
 	projectBucket := projectsBucket.Bucket([]byte(p.ID))
-	if projectBucket == nil {
-		return nil, fmt.Errorf("Project not found: %s", p.ID)
-	}
-
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
 	if commitsBucket == nil {
 		return nil, fmt.Errorf("Could not find any commits for project: %s", p.ID)
@@ -105,6 +97,52 @@ func (m *Manager) FindAllCommitsForProject(p *project.Project, queryOpts *Commit
 	return commits
 }
 
+func (m *Manager) FindAllBranchesForProject(p *project.Project) []string {
+	branches := []string{}
+
+	tx, err := m.bolt.Begin(false)
+	if err != nil {
+		return branches
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	branchesBucket := projectBucket.Bucket([]byte("branches"))
+	if branchesBucket == nil {
+		return branches
+	}
+
+	c := branchesBucket.Cursor()
+	for k, _ := c.First(); k != nil; k, _ = c.Next() {
+		branches = append(branches, string(k))
+	}
+
+	return branches
+}
+
+func (m *Manager) SaveBranchForProject(p *project.Project, branch string) error {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	branchesBucket := projectBucket.Bucket([]byte("branches"))
+	if branchesBucket == nil {
+		branchesBucket, err = projectBucket.CreateBucket([]byte("branches"))
+		if err != nil {
+			return err
+		}
+	}
+
+	branchesBucket.Put([]byte(branch), nil)
+
+	return tx.Commit()
+}
+
 func (m *Manager) SaveCommitForProject(p *project.Project, c *Commit) error {
 	tx, err := m.bolt.Begin(true)
 	if err != nil {
@@ -113,14 +151,7 @@ func (m *Manager) SaveCommitForProject(p *project.Project, c *Commit) error {
 	defer tx.Rollback()
 
 	projectsBucket := tx.Bucket([]byte("projects"))
-	if projectsBucket == nil {
-		return errors.New("Projects not found:")
-	}
 	projectBucket := projectsBucket.Bucket([]byte(p.ID))
-	if projectBucket == nil {
-		return fmt.Errorf("Project not found: %s", p.ID)
-	}
-
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
 	if commitsBucket == nil {
 		commitsBucket, err = projectBucket.CreateBucket([]byte("commits"))
@@ -140,13 +171,9 @@ func (m *Manager) SaveCommitForProject(p *project.Project, c *Commit) error {
 	commitJSON, _ := json.Marshal(c)
 	commitBucket.Put([]byte("info"), commitJSON)
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
+	m.logger.Printf("Saving commit %s for %s", c.Hash, p.ID)
 
-	m.logger.Printf("Saved commit %s for %s", c.Hash, p.ID)
-
-	return nil
+	return tx.Commit()
 }
 
 func (m *Manager) SaveTaskForCommitInProject(t *task.Task, c *Commit, p *project.Project) error {
@@ -157,23 +184,9 @@ func (m *Manager) SaveTaskForCommitInProject(t *task.Task, c *Commit, p *project
 	defer tx.Rollback()
 
 	projectsBucket := tx.Bucket([]byte("projects"))
-	if projectsBucket == nil {
-		return errors.New("Projects not found:")
-	}
 	projectBucket := projectsBucket.Bucket([]byte(p.ID))
-	if projectBucket == nil {
-		return fmt.Errorf("Project not found: %s", p.ID)
-	}
-
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
-	if commitsBucket == nil {
-		return fmt.Errorf("Could not find any commits for project: %s", p.ID)
-	}
-
-	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
-	if commitBucket == nil {
-		return fmt.Errorf("Could not find project: %s, commit: %s", p.ID, c.Hash)
-	}
+	commitBucket := commitsBucket.Bucket([]byte(c.OrderedID()))
 
 	tasksBucket, err := commitBucket.CreateBucketIfNotExists([]byte("tasks"))
 	if err != nil {
@@ -208,24 +221,9 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ta
 	defer tx.Rollback()
 
 	projectsBucket := tx.Bucket([]byte("projects"))
-	if projectsBucket == nil {
-		return tasks
-	}
 	projectBucket := projectsBucket.Bucket([]byte(p.ID))
-	if projectBucket == nil {
-		return tasks
-	}
-
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
-	if commitsBucket == nil {
-		return tasks
-	}
-
 	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
-	if commitBucket == nil {
-		return tasks
-	}
-
 	tasksBucket := commitBucket.Bucket([]byte("tasks"))
 	if tasksBucket == nil {
 		return tasks
@@ -252,24 +250,9 @@ func (m *Manager) GetTaskForCommitInProject(c *Commit, p *project.Project, name 
 	defer tx.Rollback()
 
 	projectsBucket := tx.Bucket([]byte("projects"))
-	if projectsBucket == nil {
-		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
-	}
-
 	projectBucket := projectsBucket.Bucket([]byte(p.ID))
-	if projectsBucket == nil {
-		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
-	}
-
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
-	if commitsBucket == nil {
-		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
-	}
-
 	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
-	if commitBucket == nil {
-		return nil, fmt.Errorf("Could not find commit for project: %s", p.ID)
-	}
 
 	tasksBucket := commitBucket.Bucket([]byte("tasks"))
 	if tasksBucket == nil {
