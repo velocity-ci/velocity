@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    command: /bin/sh -c "eval `ssh-agent` && exec fresh"
+    restart: unless-stopped
+    volumes:
+      - "./:/go/src/github.com/velocity-ci/velocity/backend/"
+    working_dir: /go/src/github.com/velocity-ci/velocity/backend/api
+    environment:
+      JWT_SECRET: development
+      PORT: 80
+    ports:
+      - "80:80"

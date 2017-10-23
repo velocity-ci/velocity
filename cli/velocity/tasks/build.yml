@@ -1,8 +1,0 @@
-description: "Builds image"
-name: build
-steps: 
-  - type: build
-    dockerfile: test.Dockerfile
-    context: ./
-    tags:
-      - vel_test

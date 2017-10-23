@@ -1,33 +1,33 @@
-description: "Builds Master"
-name: build-master
+description: "Builds API"
+name: build-api
 steps: 
   - type: build
     description: Build development image
     dockerfile: dev.Dockerfile
-    context: ./master
+    context: ./backend
     tags:
-      - veloci/master-dev:latest
+      - veloci/backend-dev:latest
   
   - type: run
     description: Install dependencies
-    image: veloci/master-dev:latest
+    image: veloci/backend-dev:latest
     mount_point: /go/src/github.com/velocity-ci/velocity/
-    working_dir: master/velocity
+    working_dir: backend
     command: ["glide", "install", "--strip-vendor"]
 
   - type: run
     description: Build binary
     image: golang
     mount_point: /go/src/github.com/velocity-ci/velocity/
-    working_dir: master/velocity
+    working_dir: backend
     environment:
       GOOS: linux
       CGO_ENABLED: 0
-    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity"]
+    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity_api", "./api"]
 
   - type: build
     description: Build release image
-    dockerfile: app.Dockerfile
-    context: ./master
+    dockerfile: api.Dockerfile
+    context: ./backend
     tags:
-      - veloci/master:${GIT_DESCRIBE}
+      - veloci/api:${GIT_DESCRIBE}
