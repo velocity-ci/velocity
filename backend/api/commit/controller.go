@@ -84,7 +84,7 @@ func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	commits := c.manager.FindAllCommitsForProject(p, nil)
+	commits := c.manager.FindAllCommitsForProject(p, QueryOptsFromRequest(r))
 
 	c.render.JSON(w, http.StatusOK, commits)
 }
@@ -119,10 +119,13 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if p.Synchronising {
-	// 	c.render.JSON(w, http.StatusBadRequest, nil)
-	// 	return
-	// }
+	if p.Synchronising {
+		c.render.JSON(w, http.StatusBadRequest, map[string][]string{
+			"project": []string{"Already synchronising."},
+		},
+		)
+		return
+	}
 
 	p.Synchronising = true
 	c.projectManager.Save(p)

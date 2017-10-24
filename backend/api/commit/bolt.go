@@ -83,14 +83,22 @@ func (m *Manager) FindAllCommitsForProject(p *project.Project, queryOpts *Commit
 		return commits
 	}
 
+	skipCounter := 0
 	c := commitsBucket.Cursor()
-	for k, _ := c.First(); k != nil; k, _ = c.Next() {
+	for k, _ := c.Last(); k != nil; k, _ = c.Prev() {
 		cB := commitsBucket.Bucket(k)
 		v := cB.Get([]byte("info"))
 		commit := Commit{}
 		err := json.Unmarshal(v, &commit)
-		if err == nil {
-			commits = append(commits, commit)
+		if err == nil && (queryOpts.Branch == "" || commit.Branch == queryOpts.Branch) {
+			if skipCounter < (queryOpts.Page-1)*queryOpts.Amount {
+				skipCounter++
+			} else {
+				commits = append(commits, commit)
+			}
+		}
+		if len(commits) >= queryOpts.Amount {
+			break
 		}
 	}
 
