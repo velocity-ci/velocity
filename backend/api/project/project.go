@@ -15,6 +15,7 @@ type Project struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 
 	Synchronising bool `json:"synchronising"`
+	TotalCommits  uint `json:"totalCommits"`
 }
 
 func NewProject(name string, repository GitRepository) Project {
@@ -25,6 +26,7 @@ func NewProject(name string, repository GitRepository) Project {
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 		Synchronising: false,
+		TotalCommits:  0,
 	}
 }
 

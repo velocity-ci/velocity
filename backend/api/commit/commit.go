@@ -17,3 +17,8 @@ type Commit struct {
 func (c *Commit) OrderedID() string {
 	return strings.Join([]string{fmt.Sprintf("%v", c.Date.Unix()), c.Hash[:7]}, "-")
 }
+
+type CommitsResponse struct {
+	Total  uint     `json:"total"`
+	Result []Commit `json:"result"`
+}
