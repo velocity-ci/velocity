@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -36,34 +37,34 @@ func (m *JWT) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Handl
 	}
 
 	if err != nil {
+		log.Println(r.Header, r.URL.Query())
 		m.render.JSON(rw, http.StatusUnauthorized, nil)
 		return
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, m.render.JSON(rw, http.StatusUnauthorized, nil)
-			// return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			log.Println("invalid signing method")
+			return nil, errors.New("invalid signing method")
 		}
+
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println("Failed parsing")
+		m.render.JSON(rw, http.StatusUnauthorized, "Token invalid.")
 		return
 	}
 
 	ctx := r.Context()
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		// fmt.Println(claims)
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid &&
+		claims.VerifyIssuer("Velocity", true) {
+		log.Println(claims)
 		ctx = context.WithValue(ctx, requestUsername, claims["username"])
-	} else {
-		fmt.Println(err)
-		r := render.New()
-		r.JSON(rw, http.StatusUnauthorized, "Token invalid.")
-		return
 	}
+
 	next(rw, r.WithContext(ctx))
 }
 
@@ -87,7 +88,7 @@ func fromAuthHeader(r *http.Request) (string, error) {
 	// TODO: Make this a bit more robust, parsing-wise
 	authHeaderParts := strings.Split(authHeader, " ")
 	if len(authHeaderParts) != 2 || strings.ToLower(authHeaderParts[0]) != "bearer" {
-		return "", fmt.Errorf("Authorization header format must be Bearer {token}")
+		return "", fmt.Errorf("Authorization header format must be bearer {token}")
 	}
 
 	return authHeaderParts[1], nil

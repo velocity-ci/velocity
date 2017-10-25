@@ -24,10 +24,7 @@ func (u *User) ValidatePassword(password string) bool {
 }
 
 func (u *User) HashPassword(password string) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		panic(err)
-	}
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	u.HashedPassword = string(hashedPassword[:])
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+// Manager - Manages users to authenticate against
 type Manager struct {
 	logger *log.Logger
 	bolt   *bolt.DB
@@ -30,6 +31,7 @@ func createAdminUser(m *Manager) {
 	}
 }
 
+// NewManager - Returns a new auth manager
 func NewManager(
 	bolt *bolt.DB,
 ) *Manager {
@@ -41,6 +43,7 @@ func NewManager(
 	return m
 }
 
+// Save - Saves the given User to persistence
 func (m *Manager) Save(u *User) error {
 	tx, err := m.bolt.Begin(true)
 	if err != nil {
@@ -61,13 +64,10 @@ func (m *Manager) Save(u *User) error {
 	}
 	usersBucket.Put([]byte(u.Username), userJSON)
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
+// FindByUsername - Finds a User given by their username, returns an error if not found.
 func (m *Manager) FindByUsername(username string) (*User, error) {
 	tx, err := m.bolt.Begin(false)
 	if err != nil {
