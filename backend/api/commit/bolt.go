@@ -277,5 +277,29 @@ func (m *Manager) GetTaskForCommitInProject(c *Commit, p *project.Project, name 
 	}
 
 	return &task, nil
+}
 
+func (m *Manager) GetTotalCommitsForProject(p *project.Project) uint {
+	var count uint
+	count = 0
+
+	tx, err := m.bolt.Begin(false)
+	if err != nil {
+		return count
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	if commitsBucket == nil {
+		return count
+	}
+
+	c := commitsBucket.Cursor()
+	for k, _ := c.First(); k != nil; k, _ = c.Next() {
+		count++
+	}
+
+	return count
 }

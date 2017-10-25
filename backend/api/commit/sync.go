@@ -69,7 +69,6 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 		if err != nil {
 			log.Fatal(err)
 		}
-		p.TotalCommits++
 
 		err = w.Checkout(&git.CheckoutOptions{
 			Hash: commit.Hash,
@@ -113,6 +112,7 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 		}
 	}
 
+	p.TotalCommits = commitManager.GetTotalCommitsForProject(p)
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
 	projectManager.Save(p)
