@@ -62,8 +62,8 @@ commits : Project.Id -> Maybe AuthToken -> Http.Request (List Commit)
 commits id maybeToken =
     let
         expect =
-            Commit.decoder
-                |> Decode.list
+            Decode.list Commit.decoder
+                |> Decode.at [ "result" ]
                 |> Http.expectJson
     in
         apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/commits")
