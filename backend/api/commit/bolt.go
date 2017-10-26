@@ -231,7 +231,7 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ta
 	projectsBucket := tx.Bucket([]byte("projects"))
 	projectBucket := projectsBucket.Bucket([]byte(p.ID))
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
-	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
+	commitBucket := commitsBucket.Bucket([]byte(c.OrderedID()))
 	tasksBucket := commitBucket.Bucket([]byte("tasks"))
 	if tasksBucket == nil {
 		return tasks
@@ -260,7 +260,7 @@ func (m *Manager) GetTaskForCommitInProject(c *Commit, p *project.Project, name 
 	projectsBucket := tx.Bucket([]byte("projects"))
 	projectBucket := projectsBucket.Bucket([]byte(p.ID))
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
-	commitBucket := commitsBucket.Bucket([]byte(c.Hash))
+	commitBucket := commitsBucket.Bucket([]byte(c.OrderedID()))
 
 	tasksBucket := commitBucket.Bucket([]byte("tasks"))
 	if tasksBucket == nil {
