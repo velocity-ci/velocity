@@ -17,7 +17,7 @@ func NewAuthToken(user *User) *UserAuth {
 	now := time.Now()
 	expires := time.Now().Add(time.Hour * 24 * 2)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, VelocityClaims{
-		Userame: "Bob",
+		Userame: user.Username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expires.Unix(),
 			Issuer:    "Velocity",
