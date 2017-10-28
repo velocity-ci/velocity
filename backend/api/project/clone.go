@@ -2,9 +2,10 @@ package project
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -24,7 +25,11 @@ func NewSyncManager(cloneFunc func(p Project, bare bool) (*git.Repository, strin
 }
 
 func Clone(p Project, bare bool) (*git.Repository, string, error) {
-	dir, err := ioutil.TempDir("", fmt.Sprintf("velocity_%s", p.ID))
+	psuedoRandom := rand.NewSource(time.Now().UnixNano())
+	randNumber := rand.New(psuedoRandom)
+	dir := fmt.Sprintf("/opt/velocity/velocity_%s-%d", p.ID, randNumber.Int63())
+	os.RemoveAll(dir)
+	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
 		return nil, "", err

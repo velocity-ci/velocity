@@ -20,11 +20,12 @@ import (
 )
 
 func runContainer(
+	step uint64,
 	pullImage string,
 	config *container.Config,
 	hostConfig *container.HostConfig,
 	parameters map[string]Parameter,
-	emit func(string),
+	emit func(status string, step uint64, output string),
 ) (int, error) {
 	ctx := context.Background()
 	stdIn, stdOut, stdErr := term.StdStreams()
@@ -34,7 +35,7 @@ func runContainer(
 	pullResponse, pullErr := dockerCli.Client().ImagePull(ctx, pullImage, types.ImagePullOptions{})
 	if pullErr == nil {
 		defer pullResponse.Close()
-		handleOutput(pullResponse, parameters, emit)
+		handleOutput(pullResponse, step, parameters, emit)
 	}
 
 	createResponse, err := dockerCli.Client().ContainerCreate(ctx, config, hostConfig, nil, "")
@@ -48,7 +49,7 @@ func runContainer(
 	if err != nil {
 		return -1, err
 	}
-	handleOutput(logsResponse, parameters, emit)
+	handleOutput(logsResponse, step, parameters, emit)
 
 	c, _ := dockerCli.Client().ContainerInspect(ctx, createResponse.ID)
 	d, _ := time.ParseDuration("1m")
@@ -67,7 +68,7 @@ func runContainer(
 	return c.State.ExitCode, nil
 }
 
-func buildContainer(buildContext string, dockerfile string, tags []string, parameters map[string]Parameter, emit func(string)) error {
+func buildContainer(step uint64, buildContext string, dockerfile string, tags []string, parameters map[string]Parameter, emit func(status string, step uint64, output string)) error {
 	ctx := context.Background()
 
 	cwd, _ := os.Getwd()
@@ -75,6 +76,7 @@ func buildContainer(buildContext string, dockerfile string, tags []string, param
 
 	excludes, err := build.ReadDockerignore(buildContext)
 	if err != nil {
+		emit("failed", step, err.Error())
 		return err
 	}
 	buildCtx, err := archive.TarWithOptions(buildContext, &archive.TarOptions{
@@ -92,16 +94,17 @@ func buildContainer(buildContext string, dockerfile string, tags []string, param
 		Tags:       tags,
 	})
 	if err != nil {
-		panic(err)
+		emit("failed", step, err.Error())
+		return err
 	}
 	defer buildResponse.Body.Close()
 
-	handleOutput(buildResponse.Body, parameters, emit)
+	handleOutput(buildResponse.Body, step, parameters, emit)
 
 	return nil
 }
 
-func handleOutput(body io.ReadCloser, parameters map[string]Parameter, emit func(string)) {
+func handleOutput(body io.ReadCloser, step uint64, parameters map[string]Parameter, emit func(status string, step uint64, output string)) {
 	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
@@ -121,7 +124,7 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, emit func
 					o = strings.Replace(o, p.Value, "***", -1)
 				}
 			}
-			emit(o)
+			emit("running", step, o)
 		}
 	}
 }

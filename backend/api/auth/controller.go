@@ -54,7 +54,6 @@ func (c Controller) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := NewAuthToken(boltUser)
+	token := NewAuthToken(boltUser.Username)
 	c.render.JSON(w, http.StatusCreated, token)
-
 }

@@ -18,7 +18,7 @@ func (t *Task) UpdateParams() {
 	}
 }
 
-func (t *Task) SetEmitter(e func(string)) {
+func (t *Task) SetEmitter(e func(status string, step uint64, output string)) {
 	for _, s := range t.Steps {
 		s.SetEmitter(e)
 	}

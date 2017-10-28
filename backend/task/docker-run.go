@@ -35,7 +35,7 @@ func NewDockerRun() DockerRun {
 	}
 }
 
-func (dR *DockerRun) SetEmitter(e func(string)) {
+func (dR *DockerRun) SetEmitter(e func(status string, step uint64, output string)) {
 	dR.Emit = e
 }
 
@@ -51,9 +51,13 @@ func (dR DockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *DockerRun) Execute(params map[string]Parameter) error {
+func (dR *DockerRun) Execute(stepNumber uint64, params map[string]Parameter) error {
 
-	dR.Emit(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description))
+	dR.Emit(
+		"running",
+		stepNumber,
+		fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description),
+	)
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"
@@ -79,11 +83,12 @@ func (dR *DockerRun) Execute(params map[string]Parameter) error {
 
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:/%s", cwd, dR.MountPoint),
+			fmt.Sprintf("%s:%s", cwd, dR.MountPoint),
 		},
 	}
 
 	exitCode, err := runContainer(
+		stepNumber,
 		resolvePullImage(dR.Image),
 		config,
 		hostConfig,
@@ -96,11 +101,19 @@ func (dR *DockerRun) Execute(params map[string]Parameter) error {
 	}
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
-		dR.Emit(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode))
+		dR.Emit(
+			"failed",
+			stepNumber,
+			fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode),
+		)
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
-	dR.Emit(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode))
+	dR.Emit(
+		"success",
+		stepNumber,
+		fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode),
+	)
 	return nil
 
 }

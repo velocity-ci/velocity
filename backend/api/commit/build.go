@@ -1,6 +1,8 @@
 package commit
 
-import "github.com/velocity-ci/velocity/backend/task"
+import (
+	"github.com/velocity-ci/velocity/backend/task"
+)
 
 type RequestBuild struct {
 	TaskName   string             `json:"taskName"`
@@ -21,44 +23,38 @@ type ResponseBuild struct {
 }
 
 type Build struct {
-	ID         uint64     `json:"id"`
-	ProjectID  string     `json:"project"`
-	CommitHash string     `json:"commit"`
-	Task       *task.Task `json:"task"`
-	Status     string     `json:"status"`
+	ID     uint64     `json:"id"`
+	Task   *task.Task `json:"task"`
+	Status string     `json:"status"`
 }
 
 type QueuedBuild struct {
 	ProjectID  string `json:"project"`
 	CommitHash string `json:"commit"`
 	ID         uint64 `json:"id"`
-	Status     string `json:"status"`
 }
 
 func NewBuild(projectID string, commitHash string, t *task.Task) Build {
 	return Build{
-		ProjectID:  projectID,
-		CommitHash: commitHash,
-		Task:       t,
-		Status:     "waiting",
+		Task:   t,
+		Status: "waiting",
 	}
 }
 
-func NewResponseBuild(b *Build) *ResponseBuild {
+func NewResponseBuild(b *Build, projectID string, commitHash string) *ResponseBuild {
 	return &ResponseBuild{
 		ID:         b.ID,
-		ProjectID:  b.ProjectID,
-		CommitHash: b.CommitHash,
+		ProjectID:  projectID,
+		CommitHash: commitHash,
 		TaskName:   b.Task.Name,
 		Status:     b.Status,
 	}
 }
 
-func NewQueuedBuild(b *Build) *QueuedBuild {
+func NewQueuedBuild(b *Build, projectID string, commitHash string) *QueuedBuild {
 	return &QueuedBuild{
-		ProjectID:  b.ProjectID,
-		CommitHash: b.CommitHash,
+		ProjectID:  projectID,
+		CommitHash: commitHash,
 		ID:         b.ID,
-		Status:     b.Status,
 	}
 }

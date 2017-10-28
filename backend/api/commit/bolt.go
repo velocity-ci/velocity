@@ -27,7 +27,7 @@ func NewManager(
 	}
 }
 
-func (m *Manager) GetCommitInProject(hash string, p *project.Project) (*Commit, error) {
+func (m *Manager) GetCommitInProject(hash string, projectID string) (*Commit, error) {
 	tx, err := m.bolt.Begin(false)
 	if err != nil {
 		return nil, err
@@ -35,10 +35,10 @@ func (m *Manager) GetCommitInProject(hash string, p *project.Project) (*Commit, 
 	defer tx.Rollback()
 
 	projectsBucket := tx.Bucket([]byte("projects"))
-	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	projectBucket := projectsBucket.Bucket([]byte(projectID))
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
 	if commitsBucket == nil {
-		return nil, fmt.Errorf("Could not find any commits for project: %s", p.ID)
+		return nil, fmt.Errorf("Could not find any commits for project: %s", projectID)
 	}
 
 	cursor := commitsBucket.Cursor()
@@ -60,7 +60,7 @@ func (m *Manager) GetCommitInProject(hash string, p *project.Project) (*Commit, 
 		}
 	}
 
-	return nil, fmt.Errorf("Could not find project: %s, commit: %s", p.ID, hash)
+	return nil, fmt.Errorf("Could not find project: %s, commit: %s", projectID, hash)
 }
 
 type CommitQueryOpts struct {
@@ -306,7 +306,7 @@ func (m *Manager) GetTotalCommitsForProject(p *project.Project) uint {
 	return count
 }
 
-func (m *Manager) SaveBuild(b *Build, p *project.Project, c *Commit) error {
+func (m *Manager) SaveBuild(b *Build, projectID string, commitHash string) error {
 	tx, err := m.bolt.Begin(true)
 	if err != nil {
 		return err
@@ -314,9 +314,10 @@ func (m *Manager) SaveBuild(b *Build, p *project.Project, c *Commit) error {
 	defer tx.Rollback()
 
 	projectsBucket := tx.Bucket([]byte("projects"))
-	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	projectBucket := projectsBucket.Bucket([]byte(projectID))
 	commitsBucket := projectBucket.Bucket([]byte("commits"))
-	commitBucket := commitsBucket.Bucket([]byte(c.OrderedID()))
+	commit, _ := m.GetCommitInProject(commitHash, projectID)
+	commitBucket := commitsBucket.Bucket([]byte(commit.OrderedID()))
 
 	buildsBucket, err := commitBucket.CreateBucketIfNotExists([]byte("builds"))
 	if err != nil {
@@ -332,12 +333,12 @@ func (m *Manager) SaveBuild(b *Build, p *project.Project, c *Commit) error {
 	}
 	buildsBucket.Put(itob(b.ID), buildJSON)
 
-	m.logger.Printf("Saving build %d for %s in %s", b.ID, c.Hash, p.ID)
+	m.logger.Printf("Saving build %d for %s in %s", b.ID, commitHash, projectID)
 
 	return tx.Commit()
 }
 
-func (m *Manager) QueueBuild(b *Build) error {
+func (m *Manager) QueueBuild(b *QueuedBuild) error {
 	tx, err := m.bolt.Begin(true)
 	if err != nil {
 		return err
@@ -352,8 +353,7 @@ func (m *Manager) QueueBuild(b *Build) error {
 		}
 	}
 
-	queuedBuild := NewQueuedBuild(b)
-	queuedBuildJSON, err := json.Marshal(queuedBuild)
+	queuedBuildJSON, err := json.Marshal(b)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -386,7 +386,6 @@ func (m *Manager) GetNextBuildID(p *project.Project, c *Commit) uint64 {
 	}
 
 	id, _ := buildsBucket.NextSequence()
-	tx.Commit()
 	return id
 }
 
@@ -394,4 +393,86 @@ func itob(v uint64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, v)
 	return b
+}
+
+func (m *Manager) GetBuildFromQueuedBuild(queuedBuild *QueuedBuild) *Build {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(queuedBuild.ProjectID))
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	commit, _ := m.GetCommitInProject(queuedBuild.CommitHash, queuedBuild.ProjectID)
+	commitBucket := commitsBucket.Bucket([]byte(commit.OrderedID()))
+
+	buildsBucket, err := commitBucket.CreateBucketIfNotExists([]byte("builds"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if buildsBucket == nil {
+		buildsBucket = commitBucket.Bucket([]byte("builds"))
+	}
+
+	buildJSON := buildsBucket.Get(itob(queuedBuild.ID))
+
+	build := &Build{}
+	err = json.Unmarshal(buildJSON, build)
+
+	return build
+}
+
+func (m *Manager) GetBuild(projectID string, commitHash string, buildID uint64) *Build {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(projectID))
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	commit, _ := m.GetCommitInProject(commitHash, projectID)
+	commitBucket := commitsBucket.Bucket([]byte(commit.OrderedID()))
+
+	buildsBucket := commitBucket.Bucket([]byte("builds"))
+	if buildsBucket == nil {
+		return nil
+	}
+
+	buildJSON := buildsBucket.Get(itob(buildID))
+
+	build := &Build{}
+	err = json.Unmarshal(buildJSON, build)
+
+	return build
+}
+
+func (m *Manager) GetQueuedBuilds() []*QueuedBuild {
+
+	queuedBuilds := []*QueuedBuild{}
+
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		return queuedBuilds
+	}
+	defer tx.Rollback()
+
+	buildQueueBucket := tx.Bucket([]byte("buildQueue"))
+	if buildQueueBucket == nil {
+		return queuedBuilds
+	}
+
+	cursor := buildQueueBucket.Cursor()
+	for k, v := cursor.Last(); k != nil; k, v = cursor.Prev() {
+		queuedBuild := &QueuedBuild{}
+		err := json.Unmarshal(v, queuedBuild)
+		if err == nil {
+			queuedBuilds = append(queuedBuilds, queuedBuild)
+		}
+	}
+
+	return queuedBuilds
 }

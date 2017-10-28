@@ -13,7 +13,7 @@ type Plugin struct {
 	Environment    map[string]string `json:"environment" yaml:"environment"`
 }
 
-func (p *Plugin) SetEmitter(e func(string)) {
+func (p *Plugin) SetEmitter(e func(status string, step uint64, output string)) {
 	p.Emit = e
 }
 
@@ -29,7 +29,7 @@ func (p Plugin) GetDetails() string {
 	return fmt.Sprintf("image: %s dind: %v", p.Image, p.DockerInDocker)
 }
 
-func (p *Plugin) Execute(params map[string]Parameter) error {
+func (p *Plugin) Execute(stepNumber uint64, params map[string]Parameter) error {
 
 	env := []string{}
 	for k, v := range p.Environment {
@@ -54,6 +54,7 @@ func (p *Plugin) Execute(params map[string]Parameter) error {
 	}
 
 	exitCode, err := runContainer(
+		stepNumber,
 		resolvePullImage(p.Image),
 		config,
 		hostConfig,
@@ -66,11 +67,19 @@ func (p *Plugin) Execute(params map[string]Parameter) error {
 	}
 
 	if exitCode != 0 {
-		p.Emit(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode))
+		p.Emit(
+			"failed",
+			stepNumber,
+			fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode),
+		)
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
-	p.Emit(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode))
+	p.Emit(
+		"success",
+		stepNumber,
+		fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode),
+	)
 	return nil
 }
 

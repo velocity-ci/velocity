@@ -115,7 +115,7 @@ func (c Controller) getProjectCommitHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	commit, err := c.manager.GetCommitInProject(reqCommitID, project)
+	commit, err := c.manager.GetCommitInProject(reqCommitID, project.ID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
@@ -161,7 +161,7 @@ func (c Controller) getProjectCommitTasksHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	commit, err := c.manager.GetCommitInProject(reqCommitID, project)
+	commit, err := c.manager.GetCommitInProject(reqCommitID, project.ID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
@@ -184,7 +184,7 @@ func (c Controller) getProjectCommitTaskHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	commit, err := c.manager.GetCommitInProject(reqCommitID, project)
+	commit, err := c.manager.GetCommitInProject(reqCommitID, project.ID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
@@ -226,7 +226,7 @@ func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	commit, err := c.manager.GetCommitInProject(reqCommitID, project)
+	commit, err := c.manager.GetCommitInProject(reqCommitID, project.ID)
 	if err != nil {
 		log.Printf("Could not find commit %s", reqCommitID)
 		c.render.JSON(w, http.StatusNotFound, nil)
@@ -239,9 +239,10 @@ func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	c.manager.SaveBuild(build, project, commit)
+	c.manager.SaveBuild(build, project.ID, commit.Hash)
 
-	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
+	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build, project.ID, commit.Hash))
 
-	c.manager.QueueBuild(build)
+	queuedBuild := NewQueuedBuild(build, project.ID, commit.Hash)
+	c.manager.QueueBuild(queuedBuild)
 }

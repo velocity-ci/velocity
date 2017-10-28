@@ -10,7 +10,7 @@ type DockerCompose struct {
 	Contents    dockerComposeYaml
 }
 
-func (dC *DockerCompose) SetEmitter(e func(string)) {
+func (dC *DockerCompose) SetEmitter(e func(status string, step uint64, output string)) {
 	dC.Emit = e
 }
 
