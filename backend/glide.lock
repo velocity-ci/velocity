@@ -1,5 +1,5 @@
-hash: 2b61df758eead6f2e7337c636e54e56ea33fb22adaa646afc3111d2cf7a73700
-updated: 2017-10-23T01:30:06.346376569+01:00
+hash: a2d46fbdbb34d929eeadcc70960e2da5ea49cbebb890ffa234fe4a7a1147ebc6
+updated: 2017-10-28T23:31:16.940494436Z
 imports:
 - name: github.com/agl/ed25519
   version: 5312a61534124124185d41f09206b9fef1d88403
@@ -196,7 +196,7 @@ imports:
 - name: github.com/xanzy/ssh-agent
   version: ba9c9e33906f58169366275e3450db66139a31a9
 - name: golang.org/x/crypto
-  version: edd5e9b0879d13ee6970a50153d85b8fec9f7686
+  version: 2509b142fb2b797aa7587dad548f113b2c0f20ce
   subpackages:
   - bcrypt
   - blowfish
@@ -209,18 +209,18 @@ imports:
   - ssh/knownhosts
   - ssh/terminal
 - name: golang.org/x/net
-  version: cd69bc3fc700721b709c3a59e16e24c67b58f6ff
+  version: c73622c77280266305273cb545f54516ced95b93
   subpackages:
   - context
   - context/ctxhttp
   - proxy
 - name: golang.org/x/sys
-  version: 8dbc5d05d6edcc104950cc299a1ce6641235bc86
+  version: 661970f62f5897bc0cd5fdca7e087ba8a98a8fa1
   subpackages:
   - unix
   - windows
 - name: golang.org/x/text
-  version: c01e4764d870b77f8abe5096ee19ad20d80e8075
+  version: 6eab0e8f74e86c598ec3b6fad4888e0c11482d48
   subpackages:
   - transform
   - unicode/norm
@@ -229,7 +229,7 @@ imports:
   subpackages:
   - rate
 - name: gopkg.in/go-playground/validator.v9
-  version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
+  version: 1304298bf10d085adec514b076772a79c9cadb6b
   subpackages:
   - translations/en
 - name: gopkg.in/src-d/go-billy.v3
@@ -285,4 +285,16 @@ imports:
   version: 8a331561fe74dadba6edfc59f3be66c22c3b065d
 - name: gopkg.in/yaml.v2
   version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 2aa2c176b9dab406a6970f6a55f513e8a8c8b18f
+  subpackages:
+  - assert

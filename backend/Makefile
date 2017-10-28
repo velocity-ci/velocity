@@ -7,7 +7,7 @@ update:
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
 	golang \
-	/bin/sh -c "curl https://glide.sh/get | sh && glide update"
+	/bin/sh -c "curl https://glide.sh/get | sh && glide update --strip-vendor"
 
 install:
 	docker run --rm \

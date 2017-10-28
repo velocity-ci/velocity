@@ -22,5 +22,12 @@ import:
   - pkg/tlsconfig
   - builder/remotecontext/git
 - package: github.com/docker/cli
+  version: 3352c0e137e80b7e10fb0efc9812df7bca9497a2
+- package: github.com/docker/distribution
+  version: 7484e51bf6af0d3b1a849644cdaced3cfcf13617
+- package: github.com/docker/notary
+  version: fab4c6708bc200c4cfe56c74f902d6e8bb26c803
+- package: github.com/opencontainers/runc
+  version: 74a17296470088de3805e138d3d87c62e613dfc4
 - package: gopkg.in/src-d/go-git.v4
   version: ^4.0.0-rc9
