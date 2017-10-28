@@ -1,19 +1,19 @@
 description: "Builds CLI"
 name: build-cli
 steps: 
-  # - type: build
-  #   description: Build development image
-  #   dockerfile: dev.Dockerfile
-  #   context: ./backend
-  #   tags:
-  #     - veloci/backend-dev:latest
+  - type: build
+    description: Build development image
+    dockerfile: dev.Dockerfile
+    context: ./backend
+    tags:
+      - veloci/backend-dev:latest
   
-  # - type: run
-  #   description: Install dependencies
-  #   image: veloci/backend-dev:latest
-  #   mount_point: /go/src/github.com/velocity-ci/velocity/
-  #   working_dir: backend
-  #   command: ["glide", "install", "--strip-vendor"]
+  - type: run
+    description: Install dependencies
+    image: veloci/backend-dev:latest
+    mount_point: /go/src/github.com/velocity-ci/velocity/
+    working_dir: backend
+    command: ["glide", "install", "--strip-vendor"]
 
   - type: run
     description: Build binary
@@ -30,5 +30,5 @@ steps:
     dockerfile: cli.Dockerfile
     context: ./backend
     tags:
-      - veloci/cli:${GIT_DESCRIBE}
-      - veloci/cli:latest
+      - civelocity/cli:${GIT_DESCRIBE}
+      - civelocity/cli:latest

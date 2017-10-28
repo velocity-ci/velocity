@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# docker pull veloci/cli:latest
+docker pull civelocity/cli:latest
 
 docker run --rm \
 --volume $(pwd):/app \
@@ -8,4 +8,4 @@ docker run --rm \
 --workdir /app \
 --env SIB_CWD=$(pwd) \
 -it \
-veloci/cli:latest $1 $2
+civelocity/cli:latest $1 $2

@@ -30,4 +30,5 @@ steps:
     dockerfile: api.Dockerfile
     context: ./backend
     tags:
-      - veloci/api:${GIT_DESCRIBE}
+      - civelocity/api:${GIT_DESCRIBE}
+      - civelocity/api:latest
