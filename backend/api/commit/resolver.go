@@ -24,7 +24,7 @@ type Resolver struct {
 	// BuildValidator *BuildValidator
 }
 
-func (r *Resolver) QueryOptsFromRequest(r *http.Request) *CommitQueryOpts {
+func (res *Resolver) QueryOptsFromRequest(r *http.Request) *CommitQueryOpts {
 	reqQueries := r.URL.Query()
 
 	amount := 15
@@ -72,6 +72,8 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *Comm
 	setTaskParametersFromRequest(task, reqBuild.Parameters)
 
 	build := NewBuild(p.ID, c.Hash, task)
+
+	build.ID = r.CommitManager.GetNextBuildID(p, c)
 
 	return &build, nil
 }

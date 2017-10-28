@@ -75,8 +75,8 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.getBranchesHandler)),
 	)).Methods("GET")
 
-	// POST /v1/projects/{id}/builds
-	router.Handle("/v1/projects/{id}/commits/{commitHash}/builds", negroni.New(
+	// POST /v1/projects/{id}/commits/{commitHash}/builds
+	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds", negroni.New(
 		auth.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.postProjectCommitBuildsHandler)),
 	)).Methods("POST")
@@ -221,12 +221,14 @@ func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *htt
 
 	project, err := c.projectManager.FindByID(reqProjectID)
 	if err != nil {
+		log.Printf("Could not find project %s", reqProjectID)
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
 
 	commit, err := c.manager.GetCommitInProject(reqCommitID, project)
 	if err != nil {
+		log.Printf("Could not find commit %s", reqCommitID)
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
@@ -237,7 +239,7 @@ func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	c.manager.SaveBuild(build)
+	c.manager.SaveBuild(build, project, commit)
 
 	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
 

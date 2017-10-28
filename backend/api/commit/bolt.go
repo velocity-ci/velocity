@@ -1,10 +1,12 @@
 package commit
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/backend/api/project"
@@ -302,4 +304,94 @@ func (m *Manager) GetTotalCommitsForProject(p *project.Project) uint {
 	}
 
 	return count
+}
+
+func (m *Manager) SaveBuild(b *Build, p *project.Project, c *Commit) error {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	commitBucket := commitsBucket.Bucket([]byte(c.OrderedID()))
+
+	buildsBucket, err := commitBucket.CreateBucketIfNotExists([]byte("builds"))
+	if err != nil {
+		return err
+	}
+	if buildsBucket == nil {
+		buildsBucket = commitBucket.Bucket([]byte("builds"))
+	}
+
+	buildJSON, err := json.Marshal(b)
+	if err != nil {
+		fmt.Println(err)
+	}
+	buildsBucket.Put(itob(b.ID), buildJSON)
+
+	m.logger.Printf("Saving build %d for %s in %s", b.ID, c.Hash, p.ID)
+
+	return tx.Commit()
+}
+
+func (m *Manager) QueueBuild(b *Build) error {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	buildQueueBucket := tx.Bucket([]byte("buildQueue"))
+	if buildQueueBucket == nil {
+		buildQueueBucket, err = tx.CreateBucket([]byte("buildQueue"))
+		if err != nil {
+			return err
+		}
+	}
+
+	queuedBuild := NewQueuedBuild(b)
+	queuedBuildJSON, err := json.Marshal(queuedBuild)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	now := uint64(time.Now().Unix())
+
+	buildQueueBucket.Put(itob(now), queuedBuildJSON)
+
+	return tx.Commit()
+}
+
+func (m *Manager) GetNextBuildID(p *project.Project, c *Commit) uint64 {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(p.ID))
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	commitBucket := commitsBucket.Bucket([]byte(c.OrderedID()))
+
+	buildsBucket, err := commitBucket.CreateBucketIfNotExists([]byte("builds"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if buildsBucket == nil {
+		buildsBucket = commitBucket.Bucket([]byte("builds"))
+	}
+
+	id, _ := buildsBucket.NextSequence()
+	tx.Commit()
+	return id
+}
+
+func itob(v uint64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, v)
+	return b
 }

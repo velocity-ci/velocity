@@ -104,7 +104,8 @@ func NewVelocity() App {
 
 	// Commit
 	commitManager := commit.NewManager(velocityAPI.bolt)
-	commitController := commit.NewController(commitManager, projectManager)
+	commitResolver := commit.NewResolver(commitManager)
+	commitController := commit.NewController(commitManager, projectManager, commitResolver)
 
 	velocityAPI.Router = NewMuxRouter([]Routable{
 		authController,
