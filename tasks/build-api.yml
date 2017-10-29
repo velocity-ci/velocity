@@ -1,5 +1,5 @@
-description: "Builds CLI"
-name: build-cli
+description: "Builds API"
+name: build-api
 steps: 
   - type: build
     description: Build development image
@@ -23,12 +23,12 @@ steps:
     environment:
       GOOS: linux
       CGO_ENABLED: 0
-    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity_cli", "./cli"]
+    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity_api", "./api"]
 
   - type: build
     description: Build release image
-    dockerfile: cli.Dockerfile
+    dockerfile: api.Dockerfile
     context: ./backend
     tags:
-      - civelocity/cli:${GIT_DESCRIBE}
-      - civelocity/cli:latest
+      - civelocity/api:${GIT_DESCRIBE}
+      - civelocity/api:latest

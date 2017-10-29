@@ -1,16 +1,16 @@
-description: "Builds API"
-name: build-api
+description: "Builds Slave"
+name: build-slave
 steps: 
   - type: build
     description: Build development image
     dockerfile: dev.Dockerfile
     context: ./backend
     tags:
-      - veloci/backend-dev:latest
+      - civelocity/dev:latest
   
   - type: run
     description: Install dependencies
-    image: veloci/backend-dev:latest
+    image: civelocity/dev:latest
     mount_point: /go/src/github.com/velocity-ci/velocity/
     working_dir: backend
     command: ["glide", "install", "--strip-vendor"]
@@ -23,12 +23,12 @@ steps:
     environment:
       GOOS: linux
       CGO_ENABLED: 0
-    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity_api", "./api"]
+    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity_slave", "./slave"]
 
   - type: build
     description: Build release image
-    dockerfile: api.Dockerfile
+    dockerfile: slave.Dockerfile
     context: ./backend
     tags:
-      - civelocity/api:${GIT_DESCRIBE}
-      - civelocity/api:latest
+      - civelocity/slave:${GIT_DESCRIBE}
+      - civelocity/slave:latest
