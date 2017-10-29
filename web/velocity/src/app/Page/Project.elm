@@ -19,8 +19,10 @@ import Page.Project.Settings as Settings
 import Page.Project.Commit as Commit
 import Page.Project.Overview as Overview
 import Page.Project.Task as CommitTask
+import Views.Helpers exposing (onPreventDefaultClick)
 
 
+--import Navigation exposing (newUrl)
 -- SUB PAGES --
 
 
@@ -55,7 +57,7 @@ initialSubPage =
     Blank
 
 
-init : Session -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init : Session -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), ExternalMsg )
 init session id maybeRoute =
     let
         maybeAuthToken =
@@ -89,7 +91,7 @@ init session id maybeRoute =
                                 |> Task.succeed
 
                         Nothing ->
-                            ( successModel, Cmd.none )
+                            ( ( successModel, Cmd.none ), NoOp )
                                 |> Task.succeed
                 )
             |> Task.mapError handleLoadError
@@ -106,7 +108,6 @@ type ActiveSubPage
     | SettingsPage
 
 
-view : Session -> Model -> Html Msg
 view session model =
     let
         ( subPageFrame, breadcrumb ) =
@@ -118,7 +119,6 @@ view session model =
             ]
 
 
-viewSidebar : Project -> ActiveSubPage -> Html msg
 viewSidebar project subPage =
     nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
@@ -126,7 +126,7 @@ viewSidebar project subPage =
                 (Route.Project project.id ProjectRoute.Overview)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
             , sidebarLink (subPage == CommitsPage)
-                (Route.Project project.id (ProjectRoute.Commits Nothing))
+                (Route.Project project.id (ProjectRoute.Commits Nothing Nothing))
                 [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
             , sidebarLink (subPage == SettingsPage)
                 (Route.Project project.id ProjectRoute.Settings)
@@ -135,15 +135,18 @@ viewSidebar project subPage =
         ]
 
 
-sidebarLink : Bool -> Route -> List (Html msg) -> Html msg
 sidebarLink isActive route linkContent =
     li [ class "nav-item" ]
-        [ a [ class "nav-link", Route.href route, classList [ ( "active", isActive ) ] ]
+        [ a
+            [ class "nav-link"
+            , Route.href route
+            , classList [ ( "active", isActive ) ]
+              --            , onPreventDefaultClick (NewUrl (Route.routeToString route))
+            ]
             (linkContent ++ [ Util.viewIf isActive (span [ class "sr-only" ] [ text "(current)" ]) ])
         ]
 
 
-viewBreadcrumb : Project -> Html Msg -> List ( Route, String ) -> Html Msg
 viewBreadcrumb project additionalElements items =
     let
         fixedItems =
@@ -170,7 +173,6 @@ viewBreadcrumb project additionalElements items =
             ]
 
 
-viewBreadcrumbItem : Bool -> ( Route, String ) -> Html msg
 viewBreadcrumbItem active ( route, name ) =
     let
         children =
@@ -187,7 +189,6 @@ viewBreadcrumbItem active ( route, name ) =
             [ children ]
 
 
-viewSubPage : Session -> Model -> ( Html Msg, Html Msg )
 viewSubPage session model =
     let
         page =
@@ -292,7 +293,6 @@ viewSubPage session model =
                     ( content, crumb )
 
 
-frame : Html msg -> Html msg -> Html msg
 frame sidebar content =
     div [ class "row" ]
         [ sidebar
@@ -305,7 +305,7 @@ frame sidebar content =
 
 
 type Msg
-    = NoOp
+    = NewUrl String
     | SetRoute (Maybe ProjectRoute.Route)
     | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
@@ -314,6 +314,11 @@ type Msg
     | CommitTaskMsg CommitTask.Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
     | SettingsMsg Settings.Msg
+
+
+type ExternalMsg
+    = NoOp
+    | NewRoute String
 
 
 getSubPage : SubPageState -> SubPage
@@ -348,10 +353,11 @@ setRoute session maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (ProjectRoute.Commits maybeBranch) ->
+            Just (ProjectRoute.Commits maybeBranch maybePage) ->
                 case session.user of
                     Just user ->
-                        transition CommitsLoaded (Commits.init session model.project.id maybeBranch)
+                        Commits.init session model.project.id maybeBranch maybePage
+                            |> transition CommitsLoaded
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -390,12 +396,12 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     updateSubPage session (getSubPage model.subPageState) msg model
 
 
-updateSubPage : Session -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
+updateSubPage : Session -> SubPage -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 updateSubPage session subPage msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -409,39 +415,63 @@ updateSubPage session subPage msg model =
             pageErrored model
     in
         case ( msg, subPage ) of
+            ( NewUrl url, _ ) ->
+                model
+                    => Cmd.none
+                    => NewRoute url
+
             ( SetRoute route, _ ) ->
                 setRoute session route model
+                    => NoOp
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update model.project session) subMsg subModel
+                    => NoOp
 
             ( CommitsLoaded (Ok subModel), _ ) ->
-                { model | subPageState = Loaded (Commits subModel) } => Cmd.none
+                { model | subPageState = Loaded (Commits subModel) }
+                    => Cmd.none
+                    => NoOp
 
             ( CommitsLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) } => Cmd.none
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
+                    => NoOp
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
+                    => NoOp
 
             ( CommitLoaded (Ok subModel), _ ) ->
-                { model | subPageState = Loaded (Commit subModel) } => Cmd.none
+                { model | subPageState = Loaded (Commit subModel) }
+                    => Cmd.none
+                    => NoOp
 
             ( CommitLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) } => Cmd.none
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
+                    => NoOp
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 toPage Commit CommitMsg (Commit.update model.project session) subMsg subModel
+                    => NoOp
 
             ( CommitTaskLoaded (Ok subModel), _ ) ->
-                { model | subPageState = Loaded (CommitTask subModel) } => Cmd.none
+                { model | subPageState = Loaded (CommitTask subModel) }
+                    => Cmd.none
+                    => NoOp
 
             ( CommitTaskLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) } => Cmd.none
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
+                    => NoOp
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 toPage CommitTask CommitTaskMsg (CommitTask.update model.project session) subMsg subModel
+                    => NoOp
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through" model) => Cmd.none
+                (Debug.log "Fell through" model)
+                    => Cmd.none
+                    => NoOp

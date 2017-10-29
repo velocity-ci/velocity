@@ -164,7 +164,7 @@ type Msg
     | LoginMsg Login.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
-    | ProjectLoaded (Result PageLoadError ( Project.Model, Cmd Project.Msg ))
+    | ProjectLoaded (Result PageLoadError ( ( Project.Model, Cmd Project.Msg ), Project.ExternalMsg ))
     | ProjectMsg Project.Msg
     | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
     | KnownHostsMsg KnownHosts.Msg
@@ -227,11 +227,15 @@ setRoute maybeRoute model =
                     loadFreshPage =
                         Just subRoute
                             |> Project.init model.session id
-                            |> transition ProjectLoaded
+                            |> transitionProject ProjectLoaded
+
+                    transitionProject toMsg task =
+                        { model | pageState = TransitioningFrom (getPage model.pageState) }
+                            => Task.attempt toMsg task
 
                     transitionSubPage subModel =
                         let
-                            ( newModel, newMsg ) =
+                            ( ( newModel, newMsg ), _ ) =
                                 subModel
                                     |> Project.update model.session (Project.SetRoute (Just subRoute))
                         in
@@ -355,7 +359,7 @@ updatePage page msg model =
             ( KnownHostsMsg subMsg, KnownHosts subModel ) ->
                 toPage KnownHosts KnownHostsMsg (KnownHosts.update session) subMsg subModel
 
-            ( ProjectLoaded (Ok ( subModel, subMsg )), _ ) ->
+            ( ProjectLoaded (Ok ( ( subModel, subMsg ), _ )), _ ) ->
                 { model | pageState = Loaded (Project subModel) }
                     => Cmd.map ProjectMsg subMsg
 
@@ -363,7 +367,11 @@ updatePage page msg model =
                 { model | pageState = Loaded (Errored error) } => Cmd.none
 
             ( ProjectMsg subMsg, Project subModel ) ->
-                toPage Project ProjectMsg (Project.update session) subMsg subModel
+                let
+                    ( ( newModel, newCmd ), _ ) =
+                        Project.update session subMsg subModel
+                in
+                    ( { model | pageState = Loaded (Project newModel) }, Cmd.map ProjectMsg newCmd )
 
             ( _, NotFound ) ->
                 -- Disregard incoming messages when we're on the

@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on, targetValue)
 import Data.Commit as Commit exposing (Commit)
+import Data.CommitResults as CommitResults exposing (Results)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
@@ -29,25 +30,30 @@ import Json.Decode as Decode
 type alias Model =
     { commits : List Commit
     , total : Int
+    , page : Int
     , submitting : Bool
     , branch : Maybe Branch
     }
 
 
-init : Session -> Project.Id -> Maybe Branch -> Task PageLoadError Model
-init session id maybeBranch =
+init : Session -> Project.Id -> Maybe Branch -> Maybe Int -> Task PageLoadError Model
+init session id maybeBranch maybePage =
     let
+        defaultPage =
+            Maybe.withDefault 1 maybePage
+
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadCommits =
             maybeAuthToken
-                |> Request.Project.commits id maybeBranch
+                |> Request.Project.commits id maybeBranch perPage defaultPage
                 |> Http.toTask
 
         initialModel { results, total } =
             { commits = results
             , total = total
+            , page = defaultPage
             , submitting = False
             , branch = maybeBranch
             }
@@ -59,8 +65,27 @@ init session id maybeBranch =
             |> Task.mapError handleLoadError
 
 
+perPage : Int
+perPage =
+    2
+
+
 
 -- VIEW --
+
+
+view : Project -> List Branch -> Model -> Html Msg
+view project branches model =
+    let
+        commits =
+            commitListToDict model.commits
+                |> viewCommitListContainer project
+    in
+        div []
+            [ viewCommitToolbar model.branch branches
+            , commits
+            , pagination model.page model.total project model.branch
+            ]
 
 
 commitListToDict : List Commit -> Dict ( Int, Int, Int ) (List Commit)
@@ -84,19 +109,6 @@ commitListToDict commits =
                 Dict.insert date insert dict
     in
         List.foldl reducer Dict.empty commits
-
-
-view : Project -> List Branch -> Model -> Html Msg
-view project branches model =
-    let
-        commits =
-            commitListToDict model.commits
-                |> viewCommitListContainer project
-    in
-        div []
-            [ viewCommitToolbar model.branch branches
-            , commits
-            ]
 
 
 viewCommitToolbar : Maybe Branch -> List Branch -> Html Msg
@@ -178,7 +190,7 @@ viewCommitListItem id commit =
 
 breadcrumb : Project -> List ( Route, String )
 breadcrumb project =
-    [ ( Route.Project project.id (ProjectRoute.Commits Nothing), "Commits" ) ]
+    [ ( Route.Project project.id (ProjectRoute.Commits Nothing Nothing), "Commits" ) ]
 
 
 viewBreadcrumbExtraItems : Model -> Html Msg
@@ -190,14 +202,44 @@ viewBreadcrumbExtraItems model =
         ]
 
 
+pagination : Int -> Int -> Project -> Maybe Branch -> Html Msg
+pagination activePage total project maybeBranch =
+    let
+        totalPages =
+            ceiling (toFloat total / toFloat perPage)
+    in
+        if totalPages > 1 then
+            List.range 1 totalPages
+                |> List.map (\page -> pageLink page (page == activePage) project maybeBranch)
+                |> ul [ class "pagination" ]
+        else
+            Html.text ""
+
+
+pageLink : Int -> Bool -> Project -> Maybe Branch -> Html Msg
+pageLink page isActive project maybeBranch =
+    let
+        route =
+            Route.Project project.id <| ProjectRoute.Commits maybeBranch (Just page)
+    in
+        li [ classList [ "page-item" => True, "active" => isActive ] ]
+            [ a
+                [ class "page-link"
+                , Route.href route
+                ]
+                [ text (toString page) ]
+            ]
+
+
 
 -- UPDATE --
 
 
 type Msg
     = SubmitSync
-    | SyncCompleted (Result Http.Error Request.Project.CommitResults)
+    | SyncCompleted (Result Http.Error Results)
     | FilterBranch (Maybe Branch.Name)
+    | SelectPage Int
 
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -206,7 +248,8 @@ update project session msg model =
         SubmitSync ->
             let
                 getCommits authToken =
-                    Request.Project.commits project.id model.branch (Just authToken)
+                    Just authToken
+                        |> Request.Project.commits project.id model.branch perPage model.page
                         |> Http.toTask
 
                 cmdFromAuth authToken =
@@ -234,6 +277,23 @@ update project session msg model =
         SyncCompleted (Err err) ->
             { model | submitting = False } => Cmd.none
 
+        SelectPage page ->
+            let
+                uriEncoded =
+                    model.branch
+                        |> Maybe.andThen
+                            (\(Branch.Name slug) ->
+                                slug
+                                    |> Http.encodeUri
+                                    |> Branch.Name
+                                    |> Just
+                            )
+
+                newRoute =
+                    Route.Project project.id <| ProjectRoute.Commits uriEncoded (Just page)
+            in
+                model => Route.modifyUrl newRoute
+
         FilterBranch maybeBranch ->
             let
                 uriEncoded =
@@ -247,6 +307,6 @@ update project session msg model =
                             )
 
                 newRoute =
-                    Route.Project project.id <| ProjectRoute.Commits uriEncoded
+                    Route.Project project.id <| ProjectRoute.Commits uriEncoded (Just model.page)
             in
                 model => Route.modifyUrl newRoute
