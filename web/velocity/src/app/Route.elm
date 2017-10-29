@@ -5,9 +5,7 @@ import Navigation exposing (Location)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Data.Project as Project
-import Data.Commit as Commit
-import Data.Task as ProjectTask
-import Page.Project.Route as ProjectRoute exposing (Route(..))
+import Page.Project.Route as ProjectRoute
 
 
 type Route
@@ -15,7 +13,7 @@ type Route
     | Login
     | Logout
     | Projects
-    | Project ProjectRoute.Route Project.Id
+    | Project Project.Id ProjectRoute.Route
     | KnownHosts
 
 
@@ -27,11 +25,8 @@ route =
         , Url.map Logout (s "logout")
         , Url.map Projects (s "projects")
         , Url.map KnownHosts (s "known-hosts")
-        , Url.map (Project Overview) (s "projects" </> Project.idParser)
-        , Url.map (Project Commits) (s "projects" </> Project.idParser </> s "commits")
-        , Url.map (\id hash -> Project (Commit hash) id) (s "projects" </> Project.idParser </> s "commits" </> Commit.hashParser)
-        , Url.map (\id hash name -> Project (Task hash name) id) (s "projects" </> Project.idParser </> s "commits" </> Commit.hashParser </> s "tasks" </> ProjectTask.nameParser)
-        , Url.map (Project Settings) (s "projects" </> Project.idParser </> s "settings")
+        , Url.map (\id -> Project id <| ProjectRoute.Overview) (s "projects" </> Project.idParser)
+        , Url.map Project (s "projects" </> Project.idParser </> ProjectRoute.route)
         ]
 
 
@@ -56,7 +51,7 @@ routeToString page =
                 Projects ->
                     [ "projects" ]
 
-                Project child id ->
+                Project id child ->
                     [ "projects", Project.idToString id ] ++ (ProjectRoute.routeToPieces child)
 
                 KnownHosts ->
@@ -84,4 +79,4 @@ fromLocation location =
     if String.isEmpty location.hash then
         Just Home
     else
-        parseHash route location
+        parseHash route (Debug.log "location" location)

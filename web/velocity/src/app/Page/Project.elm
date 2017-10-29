@@ -5,6 +5,7 @@ import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
 import Task exposing (Task)
 import Data.Session as Session exposing (Session)
+import Data.Branch as Branch exposing (Branch)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Views.Page as Page
@@ -115,13 +116,13 @@ viewSidebar project subPage =
     nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
             [ sidebarLink (subPage == OverviewPage)
-                (Route.Project ProjectRoute.Overview project.id)
+                (Route.Project project.id ProjectRoute.Overview)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
             , sidebarLink (subPage == CommitsPage)
-                (Route.Project ProjectRoute.Commits project.id)
+                (Route.Project project.id (ProjectRoute.Commits (Branch.Name "all")))
                 [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
             , sidebarLink (subPage == SettingsPage)
-                (Route.Project ProjectRoute.Settings project.id)
+                (Route.Project project.id ProjectRoute.Settings)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [], text " Settings" ]
             ]
         ]
@@ -140,7 +141,7 @@ viewBreadcrumb project additionalElements items =
     let
         fixedItems =
             [ ( Route.Projects, "Projects" )
-            , ( Route.Project (ProjectRoute.Overview) project.id, project.name )
+            , ( Route.Project project.id ProjectRoute.Overview, project.name )
             ]
 
         allItems =
@@ -337,7 +338,7 @@ setRoute session maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (ProjectRoute.Commits) ->
+            Just (ProjectRoute.Commits _) ->
                 case session.user of
                     Just user ->
                         transition CommitsLoaded (Commits.init session model.project.id)

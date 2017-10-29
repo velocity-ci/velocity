@@ -222,7 +222,7 @@ setRoute maybeRoute model =
                     Nothing ->
                         errored Page.KnownHosts "You must be signed in to access your known hosts."
 
-            Just (Route.Project subRoute id) ->
+            Just (Route.Project id subRoute) ->
                 let
                     loadFreshPage =
                         Just subRoute

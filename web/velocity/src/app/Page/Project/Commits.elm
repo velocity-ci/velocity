@@ -6,6 +6,7 @@ import Html.Events exposing (onClick)
 import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
+import Data.Branch as Branch exposing (Branch)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, formatTime, sortByDatetime)
 import Request.Project
@@ -26,6 +27,7 @@ import Page.Helpers exposing (formatDate)
 
 type alias Model =
     { commits : List Commit
+    , branches : List Branch
     , submitting : Bool
     }
 
@@ -43,6 +45,7 @@ init session id =
 
         initialModel commits =
             { commits = commits
+            , branches = []
             , submitting = False
             }
 
@@ -82,8 +85,35 @@ commitListToDict commits =
 
 view : Project -> Model -> Html Msg
 view project model =
-    commitListToDict model.commits
-        |> viewCommitListContainer project
+    let
+        commits =
+            commitListToDict model.commits
+                |> viewCommitListContainer project
+    in
+        div []
+            [ viewCommitToolbar
+            , commits
+            ]
+
+
+viewCommitToolbar : Html Msg
+viewCommitToolbar =
+    nav [ class "navbar" ]
+        [ Html.form [ class "form-inline" ]
+            [ select [ class "form-control", id "exampleFormControlSelect1" ]
+                [ option []
+                    [ text "feature/refactor-new-thing" ]
+                , option []
+                    [ text "2" ]
+                , option []
+                    [ text "3" ]
+                , option []
+                    [ text "4" ]
+                , option []
+                    [ text "5" ]
+                ]
+            ]
+        ]
 
 
 viewCommitListContainer : Project -> Dict ( Int, Int, Int ) (List Commit) -> Html Msg
@@ -131,7 +161,7 @@ viewCommitListItem id commit =
             Commit.truncateHash commit.hash
 
         route =
-            Route.Project (ProjectRoute.Commit commit.hash) id
+            Route.Project id (ProjectRoute.Commit commit.hash)
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
@@ -144,7 +174,7 @@ viewCommitListItem id commit =
 
 breadcrumb : Project -> List ( Route, String )
 breadcrumb project =
-    [ ( Route.Project ProjectRoute.Commits project.id, "Commits" ) ]
+    [ ( Route.Project project.id (ProjectRoute.Commits (Branch.Name "all")), "Commits" ) ]
 
 
 viewBreadcrumbExtraItems : Model -> Html Msg

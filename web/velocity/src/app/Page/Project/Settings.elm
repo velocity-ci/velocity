@@ -122,7 +122,7 @@ viewDeleteConfirmation projectName confirmValue submitting =
 
 breadcrumb : Project -> List ( Route, String )
 breadcrumb project =
-    [ ( Route.Project ProjectRoute.Settings project.id, "Settings" ) ]
+    [ ( Route.Project project.id ProjectRoute.Settings, "Settings" ) ]
 
 
 

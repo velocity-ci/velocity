@@ -69,8 +69,7 @@ viewSignIn : ActivePage -> Maybe User -> List (Html msg)
 viewSignIn page user =
     case user of
         Nothing ->
-            [ navbarLink (page == Login) Route.Login [ text "Sign in" ]
-            ]
+            []
 
         Just user ->
             [ navbarLink (page == Projects) Route.Projects [ text "Projects" ]

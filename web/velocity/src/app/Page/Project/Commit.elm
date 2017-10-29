@@ -101,7 +101,7 @@ viewTaskListItem : Project -> Commit -> ProjectTask.Task -> Html Msg
 viewTaskListItem project commit task =
     let
         route =
-            Route.Project (ProjectRoute.Task commit.hash task.name) project.id
+            Route.Project project.id (ProjectRoute.Task commit.hash task.name)
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-center", Route.href route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
@@ -115,7 +115,7 @@ breadcrumb : Project -> Commit -> List ( Route, String )
 breadcrumb project commit =
     List.concat
         [ Commits.breadcrumb project
-        , [ ( Route.Project (ProjectRoute.Commit commit.hash) project.id, Commit.truncateHash commit.hash ) ]
+        , [ ( Route.Project project.id (ProjectRoute.Commit commit.hash), Commit.truncateHash commit.hash ) ]
         ]
 
 

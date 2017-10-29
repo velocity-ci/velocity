@@ -356,7 +356,7 @@ breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route, String )
 breadcrumb project commit task =
     List.concat
         [ Commit.breadcrumb project commit
-        , [ ( Route.Project (ProjectRoute.Task commit.hash task.name) project.id, ProjectTask.nameToString task.name ) ]
+        , [ ( Route.Project project.id (ProjectRoute.Task commit.hash task.name), ProjectTask.nameToString task.name ) ]
         ]
 
 

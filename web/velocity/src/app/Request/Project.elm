@@ -4,6 +4,7 @@ import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
 import Data.Commit as Commit exposing (Commit)
 import Data.Task as Task exposing (Task)
+import Data.Branch as Branch exposing (Branch)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
@@ -51,6 +52,24 @@ sync id token =
             |> HttpBuilder.post
             |> withAuthorization (Just token)
             |> withExpect expect
+            |> HttpBuilder.toRequest
+
+
+
+-- BRANCHES --
+
+
+branches : Project.Id -> Maybe AuthToken -> Http.Request (List Branch)
+branches id maybeToken =
+    let
+        expect =
+            Decode.list Branch.decoder
+                |> Http.expectJson
+    in
+        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/branches")
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
             |> HttpBuilder.toRequest
 
 

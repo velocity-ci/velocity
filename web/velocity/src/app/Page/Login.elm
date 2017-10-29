@@ -106,7 +106,6 @@ viewForm model =
                 , errors = []
                 }
                 [ classList <| inputClassList model.username
-                , placeholder "Username"
                 , attribute "required" ""
                 , onInput SetUsername
                 , value model.username.value
@@ -119,7 +118,6 @@ viewForm model =
                 , errors = []
                 }
                 [ classList <| inputClassList model.password
-                , placeholder "Password"
                 , attribute "required" ""
                 , onInput SetPassword
                 , value model.password.value
