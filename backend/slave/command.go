@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/velocity-ci/velocity/backend/api/project"
-	"github.com/velocity-ci/velocity/backend/task"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type CommandMessage struct {
@@ -16,10 +15,10 @@ type CommandMessage struct {
 type Message interface{}
 
 type BuildMessage struct {
-	Project    *project.Project `json:"project"`
-	CommitHash string           `json:"commit"`
-	BuildID    uint64           `json:"buildId"`
-	Task       *task.Task       `json:"task"`
+	Project    *velocity.Project `json:"project"`
+	CommitHash string            `json:"commit"`
+	BuildID    uint64            `json:"buildId"`
+	Task       *velocity.Task    `json:"task"`
 }
 
 func (c *CommandMessage) UnmarshalJSON(b []byte) error {

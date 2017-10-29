@@ -1,4 +1,4 @@
-package task
+package velocity
 
 // Emitter for forwarding bytes of output onwards
 type Emitter interface {

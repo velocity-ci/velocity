@@ -10,7 +10,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/backend/api/project"
-	"github.com/velocity-ci/velocity/backend/task"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type Manager struct {
@@ -186,7 +186,7 @@ func (m *Manager) SaveCommitForProject(p *project.Project, c *Commit) error {
 	return tx.Commit()
 }
 
-func (m *Manager) SaveTaskForCommitInProject(t *task.Task, c *Commit, p *project.Project) error {
+func (m *Manager) SaveTaskForCommitInProject(t *velocity.Task, c *Commit, p *project.Project) error {
 	tx, err := m.bolt.Begin(true)
 	if err != nil {
 		return err
@@ -221,8 +221,8 @@ func (m *Manager) SaveTaskForCommitInProject(t *task.Task, c *Commit, p *project
 	return nil
 }
 
-func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []task.Task {
-	tasks := []task.Task{}
+func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []velocity.Task {
+	tasks := []velocity.Task{}
 
 	tx, err := m.bolt.Begin(false)
 	if err != nil {
@@ -241,7 +241,7 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ta
 
 	cursor := tasksBucket.Cursor()
 	for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
-		task := task.NewTask()
+		task := velocity.NewTask()
 		err := json.Unmarshal(v, &task)
 		if err == nil {
 			tasks = append(tasks, task)
@@ -251,7 +251,7 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ta
 	return tasks
 }
 
-func (m *Manager) GetTaskForCommitInProject(c *Commit, p *project.Project, name string) (*task.Task, error) {
+func (m *Manager) GetTaskForCommitInProject(c *Commit, p *project.Project, name string) (*velocity.Task, error) {
 
 	tx, err := m.bolt.Begin(false)
 	if err != nil {
@@ -271,7 +271,7 @@ func (m *Manager) GetTaskForCommitInProject(c *Commit, p *project.Project, name 
 
 	t := tasksBucket.Get([]byte(name))
 
-	task := task.NewTask()
+	task := velocity.NewTask()
 	err = json.Unmarshal(t, &task)
 
 	if err != nil {

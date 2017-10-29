@@ -1,4 +1,4 @@
-package task
+package velocity
 
 type Parameter struct {
 	Name         string   `json:"name" yaml:"name"`

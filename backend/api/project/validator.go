@@ -7,7 +7,7 @@ import (
 
 	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/api/middleware"
-	"github.com/velocity-ci/velocity/backend/task"
+	"github.com/velocity-ci/velocity/backend/velocity"
 
 	ut "github.com/go-playground/universal-translator"
 	validator "gopkg.in/go-playground/validator.v9"
@@ -77,16 +77,16 @@ func translationFuncUnique(ut ut.Translator, fe validator.FieldError) string {
 func (v *Validator) ValidateProjectRepository(sl validator.StructLevel) {
 	p := sl.Current().Interface().(RequestProject)
 
-	apiProject := NewProject(p.Name, GitRepository{
+	apiProject := NewProject(p.Name, velocity.GitRepository{
 		Address:    p.Repository,
 		PrivateKey: p.PrivateKey,
 	})
 
-	_, dir, err := v.projectManager.SyncManager.Sync(apiProject, true, false, task.NewBlankWriter())
+	_, dir, err := v.projectManager.SyncManager.Sync(apiProject.ToTaskProject(), true, false, true, velocity.NewBlankWriter())
 
 	if err != nil {
 		log.Println(err, reflect.TypeOf(err))
-		if _, ok := err.(SSHKeyError); ok {
+		if _, ok := err.(velocity.SSHKeyError); ok {
 			sl.ReportError(p.PrivateKey, "key", "key", "key", "")
 		}
 		sl.ReportError(p.Repository, "repository", "repository", "repository", "")

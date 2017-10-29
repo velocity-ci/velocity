@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/velocity-ci/velocity/backend/api/project"
-	"github.com/velocity-ci/velocity/backend/task"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 func NewResolver(commitManager *Manager) *Resolver {
@@ -78,7 +78,7 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *Comm
 	return &build, nil
 }
 
-func setTaskParametersFromRequest(t *task.Task, reqParams []RequestParameter) {
+func setTaskParametersFromRequest(t *velocity.Task, reqParams []RequestParameter) {
 	for _, reqParam := range reqParams {
 		if param, ok := t.Parameters[reqParam.Name]; ok {
 			param.Value = reqParam.Value

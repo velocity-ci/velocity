@@ -1,4 +1,4 @@
-package task
+package velocity
 
 import (
 	yaml "gopkg.in/yaml.v2"

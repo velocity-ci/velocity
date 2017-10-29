@@ -54,6 +54,8 @@ build-slave:
 	docker build -t civelocity/slave:${GIT_VERSION} -f slave.Dockerfile .
 	docker tag civelocity/slave:${GIT_VERSION} civelocity/slave:latest
 
+build-all: build-api build-cli build-slave
+
 build-dev:
 	docker build -t civelocity/dev -f dev.Dockerfile .
 

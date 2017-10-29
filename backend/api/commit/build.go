@@ -3,7 +3,7 @@ package commit
 import (
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/task"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type RequestBuild struct {
@@ -25,10 +25,10 @@ type ResponseBuild struct {
 }
 
 type Build struct {
-	ID       uint64     `json:"id"`
-	Task     *task.Task `json:"task"`
-	Status   string     `json:"status"`
-	StepLogs []StepLog  `json:"logs"`
+	ID       uint64         `json:"id"`
+	Task     *velocity.Task `json:"task"`
+	Status   string         `json:"status"`
+	StepLogs []StepLog      `json:"logs"`
 }
 
 type StepLog struct {
@@ -47,7 +47,7 @@ type QueuedBuild struct {
 	ID         uint64 `json:"id"`
 }
 
-func NewBuild(projectID string, commitHash string, t *task.Task) Build {
+func NewBuild(projectID string, commitHash string, t *velocity.Task) Build {
 	return Build{
 		Task:     t,
 		Status:   "waiting",

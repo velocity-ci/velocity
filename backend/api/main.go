@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/api/slave"
+	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/backend/api/auth"
@@ -101,7 +102,7 @@ func NewVelocity() App {
 	knownHostController := knownhost.NewController(knownHostManager, knownHostResolver)
 
 	// Project
-	projectSyncManager := project.NewSyncManager(project.Clone)
+	projectSyncManager := project.NewSyncManager(velocity.GitClone)
 	projectManager := project.NewManager(projectSyncManager, velocityAPI.bolt)
 	projectValidator := project.NewValidator(validate, translator, projectManager)
 	projectResolver := project.NewResolver(projectValidator)

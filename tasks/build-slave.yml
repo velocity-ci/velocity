@@ -1,6 +1,9 @@
 description: "Builds Slave"
 name: build-slave
 steps: 
+  - type: clone
+    submodule: false
+
   - type: build
     description: Build development image
     dockerfile: dev.Dockerfile

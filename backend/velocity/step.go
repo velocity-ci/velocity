@@ -1,4 +1,4 @@
-package task
+package velocity
 
 type Step interface {
 	Execute(emitter Emitter, parameters map[string]Parameter) error

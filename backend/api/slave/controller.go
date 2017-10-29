@@ -120,7 +120,7 @@ func (c *Controller) monitor(s *Slave) {
 			s.State = "disconnected"
 			if s.Command != nil && s.Command.Command == "build" {
 				buildCommand := s.Command.Data.(BuildCommand)
-				build := c.commitManager.GetBuild(buildCommand.Project.ID, buildCommand.CommitHash, buildCommand.BuildID)
+				build := c.commitManager.GetBuild(buildCommand.Project.ID, buildCommand.CommitHash, buildCommand.Build.ID)
 				build.Status = "waiting"
 				build.StepLogs = []commit.StepLog{}
 				c.commitManager.SaveBuild(build, buildCommand.Project.ID, buildCommand.CommitHash)
@@ -147,7 +147,6 @@ func (c *Controller) monitor(s *Slave) {
 					Output:    lM.Output,
 				})
 			}
-			// c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
 			// TODO: Emit to websocket clients
 
 			if lM.Status == "failed" {
