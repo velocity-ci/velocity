@@ -122,6 +122,7 @@ func (c *Controller) monitor(s *Slave) {
 				buildCommand := s.Command.Data.(BuildCommand)
 				build := c.commitManager.GetBuild(buildCommand.Project.ID, buildCommand.CommitHash, buildCommand.BuildID)
 				build.Status = "waiting"
+				build.StepLogs = []commit.StepLog{}
 				c.commitManager.SaveBuild(build, buildCommand.Project.ID, buildCommand.CommitHash)
 			}
 			c.manager.Save(s)
