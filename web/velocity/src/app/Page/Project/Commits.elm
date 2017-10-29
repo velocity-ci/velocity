@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on, targetValue)
 import Data.Commit as Commit exposing (Commit)
+import Data.CommitResults as CommitResults exposing (Results)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
@@ -191,12 +192,39 @@ viewBreadcrumbExtraItems model =
 
 
 
+--pagination : Int -> Feed -> FeedSource -> Html Msg
+--pagination activePage feed feedSource =
+--    let
+--        articlesPerPage =
+--            limit feedSource
+--
+--        totalPages =
+--            ceiling (toFloat feed.articlesCount / toFloat articlesPerPage)
+--    in
+--        if totalPages > 1 then
+--            List.range 1 totalPages
+--                |> List.map (\page -> pageLink page (page == activePage))
+--                |> ul [ class "pagination" ]
+--        else
+--            Html.text ""
+--
+--
+--pageLink : Int -> Bool -> Html Msg
+--pageLink page isActive =
+--    li [ classList [ "page-item" => True, "active" => isActive ] ]
+--        [ a
+--            [ class "page-link"
+--            , href "javascript:void(0);"
+--            , onClick (SelectPage page)
+--            ]
+--            [ text (toString page) ]
+--        ]
 -- UPDATE --
 
 
 type Msg
     = SubmitSync
-    | SyncCompleted (Result Http.Error Request.Project.CommitResults)
+    | SyncCompleted (Result Http.Error Results)
     | FilterBranch (Maybe Branch.Name)
 
 

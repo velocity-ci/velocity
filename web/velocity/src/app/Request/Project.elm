@@ -3,7 +3,6 @@ module Request.Project
         ( list
         , create
         , get
-        , CommitResults
         , commits
         , commit
         , commitTasks
@@ -18,13 +17,13 @@ import Data.Project as Project exposing (Project)
 import Data.Commit as Commit exposing (Commit)
 import Data.Task as Task exposing (Task)
 import Data.Branch as Branch exposing (Branch)
+import Data.CommitResults as CommitResults
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Util exposing ((=>))
 import Http
-import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 
 
 baseUrl : String
@@ -91,19 +90,11 @@ branches id maybeToken =
 -- COMMITS --
 
 
-type alias CommitResults =
-    { results : List Commit
-    , total : Int
-    }
-
-
-commits : Project.Id -> Maybe Branch -> Maybe AuthToken -> Http.Request CommitResults
+commits : Project.Id -> Maybe Branch -> Maybe AuthToken -> Http.Request CommitResults.Results
 commits id maybeBranch maybeToken =
     let
         expect =
-            decode CommitResults
-                |> required "result" (Decode.list Commit.decoder)
-                |> required "total" Decode.int
+            CommitResults.decoder
                 |> Http.expectJson
 
         queryParams =
