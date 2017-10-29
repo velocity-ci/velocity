@@ -14,26 +14,30 @@ import (
 	"github.com/urfave/negroni"
 	"github.com/velocity-ci/velocity/backend/api/auth"
 	"github.com/velocity-ci/velocity/backend/api/commit"
+	apiWebsocket "github.com/velocity-ci/velocity/backend/api/websocket"
 )
 
 // Controller - Handles Slaves
 type Controller struct {
-	logger        *log.Logger
-	render        *render.Render
-	manager       *Manager
-	commitManager *commit.Manager
+	logger           *log.Logger
+	render           *render.Render
+	manager          *Manager
+	commitManager    *commit.Manager
+	websocketManager *apiWebsocket.Manager
 }
 
 // NewController - returns a new Controller for Slaves.
 func NewController(
 	slaveManager *Manager,
 	commitManager *commit.Manager,
+	websocketManager *apiWebsocket.Manager,
 ) *Controller {
 	return &Controller{
-		logger:        log.New(os.Stdout, "[controller:slave]", log.Lshortfile),
-		render:        render.New(),
-		manager:       slaveManager,
-		commitManager: commitManager,
+		logger:           log.New(os.Stdout, "[controller:slave]", log.Lshortfile),
+		render:           render.New(),
+		manager:          slaveManager,
+		commitManager:    commitManager,
+		websocketManager: websocketManager,
 	}
 }
 
@@ -133,6 +137,7 @@ func (c *Controller) monitor(s *Slave) {
 			lM := message.Data.(*LogMessage)
 			log.Println(lM.Step, lM.Status, lM.Output)
 			build := c.commitManager.GetBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
+			timestamp := time.Now()
 
 			if lM.Step > 0 && build.Task.Steps[lM.Step-1].GetType() == "compose" {
 			} else {
@@ -143,11 +148,10 @@ func (c *Controller) monitor(s *Slave) {
 				}
 				build.StepLogs[lM.Step].Status = lM.Status
 				build.StepLogs[lM.Step].Logs["container"] = append(build.StepLogs[lM.Step].Logs["container"], commit.Log{
-					Timestamp: time.Now(),
+					Timestamp: timestamp,
 					Output:    lM.Output,
 				})
 			}
-			// TODO: Emit to websocket clients
 
 			if lM.Status == "failed" {
 				build.Status = "failed"
@@ -168,6 +172,21 @@ func (c *Controller) monitor(s *Slave) {
 				}
 			}
 			c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+
+			// Emit to websocket clients
+			c.websocketManager.EmitAll(
+				&apiWebsocket.EmitMessage{
+					Subscription: fmt.Sprintf("project/%s/commits/%s/build/%d", lM.ProjectID, lM.CommitHash, lM.BuildID),
+					Data: apiWebsocket.BuildMessage{
+						Step:   lM.Step,
+						Status: lM.Status,
+						Log: apiWebsocket.LogMessage{
+							Timestamp: timestamp,
+							Output:    lM.Output,
+						},
+					},
+				},
+			)
 		}
 	}
 }

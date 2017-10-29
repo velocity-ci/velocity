@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/api/slave"
+	"github.com/velocity-ci/velocity/backend/api/websocket"
 	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/boltdb/bolt"
@@ -90,6 +91,10 @@ func NewVelocity() App {
 
 	validate, translator := newValidator()
 
+	// Client Websocket
+	websocketManager := websocket.NewManager()
+	websocketController := websocket.NewController(websocketManager)
+
 	// Auth
 	authManager := auth.NewManager(velocityAPI.bolt)
 	authController := auth.NewController(authManager)
@@ -115,7 +120,7 @@ func NewVelocity() App {
 
 	// Slave
 	slaveManager := slave.NewManager()
-	slaveController := slave.NewController(slaveManager, commitManager)
+	slaveController := slave.NewController(slaveManager, commitManager, websocketManager)
 
 	velocityAPI.buildScheduler = slave.NewBuildScheduler(commitManager, slaveManager, projectManager, &velocityAPI.workers)
 	go velocityAPI.buildScheduler.Run()
@@ -126,6 +131,7 @@ func NewVelocity() App {
 		projectController,
 		commitController,
 		slaveController,
+		websocketController,
 	}, true)
 
 	port := os.Getenv("PORT")

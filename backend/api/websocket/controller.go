@@ -47,8 +47,6 @@ var upgrader = websocket.Upgrader{
 
 func (c Controller) wsClientHandler(w http.ResponseWriter, r *http.Request) {
 
-	userName := auth.UsernameFromContext(r.Context())
-
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -75,8 +73,10 @@ func (c *Controller) monitor(client *Client) {
 			return
 		}
 
-		if message.Type == "log" {
-
+		if message.Type == "subscribe" {
+			client.Subscribe(message.Route)
+		} else if message.Type == "unsubscribe" {
+			client.Unsubscribe(message.Route)
 		}
 	}
 }
