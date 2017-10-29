@@ -1,4 +1,4 @@
-package task
+package velocity
 
 import (
 	"encoding/json"
@@ -15,12 +15,6 @@ type Task struct {
 func (t *Task) UpdateParams() {
 	for _, s := range t.Steps {
 		s.SetParams(t.Parameters)
-	}
-}
-
-func (t *Task) SetEmitter(e func(string)) {
-	for _, s := range t.Steps {
-		s.SetEmitter(e)
 	}
 }
 

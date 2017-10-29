@@ -1,11 +1,30 @@
 package commit
 
 import (
+	"encoding/json"
+	"io"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
+
+	"github.com/velocity-ci/velocity/backend/api/project"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
-func QueryOptsFromRequest(r *http.Request) *CommitQueryOpts {
+func NewResolver(commitManager *Manager) *Resolver {
+	return &Resolver{
+		CommitManager: commitManager,
+		// BuildValidator: buildValidator,
+	}
+}
+
+type Resolver struct {
+	CommitManager *Manager
+	// BuildValidator *BuildValidator
+}
+
+func (res *Resolver) QueryOptsFromRequest(r *http.Request) *CommitQueryOpts {
 	reqQueries := r.URL.Query()
 
 	amount := 15
@@ -22,5 +41,48 @@ func QueryOptsFromRequest(r *http.Request) *CommitQueryOpts {
 		Branch: reqQueries.Get("branch"),
 		Amount: amount,
 		Page:   page,
+	}
+}
+
+func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *Commit) (*Build, error) {
+	reqBuild := RequestBuild{}
+
+	err := json.NewDecoder(b).Decode(&reqBuild)
+	if err != nil {
+		return nil, err
+	}
+
+	reqBuild.TaskName = strings.TrimSpace(reqBuild.TaskName)
+	for i, rP := range reqBuild.Parameters {
+		reqBuild.Parameters[i].Value = strings.TrimSpace(rP.Value)
+	}
+
+	// err = r.buildValidator.Validate(&reqBuild)
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	task, err := r.CommitManager.GetTaskForCommitInProject(c, p, reqBuild.TaskName)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	setTaskParametersFromRequest(task, reqBuild.Parameters)
+
+	build := NewBuild(p.ID, c.Hash, task)
+
+	build.ID = r.CommitManager.GetNextBuildID(p, c)
+
+	return &build, nil
+}
+
+func setTaskParametersFromRequest(t *velocity.Task, reqParams []RequestParameter) {
+	for _, reqParam := range reqParams {
+		if param, ok := t.Parameters[reqParam.Name]; ok {
+			param.Value = reqParam.Value
+			t.Parameters[reqParam.Name] = param
+		}
 	}
 }

@@ -1,4 +1,4 @@
-package task
+package velocity
 
 import (
 	"encoding/json"
@@ -35,10 +35,6 @@ func NewDockerRun() DockerRun {
 	}
 }
 
-func (dR *DockerRun) SetEmitter(e func(string)) {
-	dR.Emit = e
-}
-
 func (dR DockerRun) GetType() string {
 	return "run"
 }
@@ -51,9 +47,9 @@ func (dR DockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *DockerRun) Execute(params map[string]Parameter) error {
+func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error {
 
-	dR.Emit(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description))
+	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description)))
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"
@@ -79,7 +75,7 @@ func (dR *DockerRun) Execute(params map[string]Parameter) error {
 
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:/%s", cwd, dR.MountPoint),
+			fmt.Sprintf("%s:%s", cwd, dR.MountPoint),
 		},
 	}
 
@@ -88,7 +84,7 @@ func (dR *DockerRun) Execute(params map[string]Parameter) error {
 		config,
 		hostConfig,
 		params,
-		dR.Emit,
+		emitter,
 	)
 
 	if err != nil {
@@ -96,11 +92,13 @@ func (dR *DockerRun) Execute(params map[string]Parameter) error {
 	}
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
-		dR.Emit(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode))
+		emitter.SetStatus("failed")
+		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
-	dR.Emit(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode))
+	emitter.SetStatus("success")
+	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
 	return nil
 
 }

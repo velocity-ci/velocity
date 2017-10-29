@@ -12,12 +12,12 @@ type VelocityClaims struct {
 	jwt.StandardClaims
 }
 
-// NewAuthToken - Returns a new AuthToken for a given User
-func NewAuthToken(user *User) *UserAuth {
+// NewAuthToken - Returns a new AuthToken for a given name
+func NewAuthToken(name string) *UserAuth {
 	now := time.Now()
 	expires := time.Now().Add(time.Hour * 24 * 2)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, VelocityClaims{
-		Userame: "Bob",
+		Userame: name,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expires.Unix(),
 			Issuer:    "Velocity",
@@ -27,7 +27,7 @@ func NewAuthToken(user *User) *UserAuth {
 	tokenString, _ := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 
 	return &UserAuth{
-		Username: user.Username,
+		Username: name,
 		Token:    tokenString,
 		Expires:  expires,
 	}

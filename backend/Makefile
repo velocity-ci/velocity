@@ -7,7 +7,7 @@ update:
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
 	golang \
-	/bin/sh -c "curl https://glide.sh/get | sh && glide update"
+	/bin/sh -c "curl https://glide.sh/get | sh && glide update --strip-vendor"
 
 install:
 	docker run --rm \
@@ -27,8 +27,8 @@ build-api:
 	golang \
 	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_api ./api"
 
-	docker build -t velocity-ci/velocity:api-${GIT_VERSION} -f api.Dockerfile .
-	docker tag velocity-ci/velocity:api-${GIT_VERSION} velocity-ci/velocity:api-latest
+	docker build -t civelocity/api:${GIT_VERSION} -f api.Dockerfile .
+	docker tag civelocity/api:${GIT_VERSION} civelocity/api:latest
 
 build-cli:
 	docker run --rm \
@@ -39,12 +39,25 @@ build-cli:
 	golang \
 	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_cli ./cli"
 
-	docker build -t velocity-ci/velocity:cli-${GIT_VERSION} -f cli.Dockerfile .
-	docker tag velocity-ci/velocity:cli-${GIT_VERSION} velocity-ci/velocity:cli-latest
+	docker build -t civelocity/cli:${GIT_VERSION} -f cli.Dockerfile .
+	docker tag civelocity/cli:${GIT_VERSION} civelocity/cli:latest
 
+build-slave:
+	docker run --rm \
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+ 	--env CGO_ENABLED=0 \
+ 	--env GOOS=linux \
+	golang \
+	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_slave ./slave"
+
+	docker build -t civelocity/slave:${GIT_VERSION} -f slave.Dockerfile .
+	docker tag civelocity/slave:${GIT_VERSION} civelocity/slave:latest
+
+build-all: build-api build-cli build-slave
 
 build-dev:
-	docker build -t velocity-ci/velocity:backend-dev -f dev.Dockerfile .
+	docker build -t civelocity/dev -f dev.Dockerfile .
 
 test: build-dev
 	$(eval NOVENDOR=$(shell docker run --rm \
@@ -56,18 +69,18 @@ test: build-dev
 	docker run --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	velocity-ci/velocity:backend-dev \
+	civelocity/dev \
 	go test -v -cover ${NOVENDOR}
 
 lint:
 	$(eval NOVENDOR=$(shell docker run --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	velocity-ci/velocity:backend-dev \
+	civelocity/dev \
 	glide novendor))
 
 	docker run --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	velocity-ci/velocity:backend-dev \
+	civelocity/dev \
 	golint -set_exit_status ${NOVENDOR}

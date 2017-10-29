@@ -9,4 +9,4 @@ chmod +x ~/.bin/velocity
 echo $PATH | grep ~/.bin >/dev/null || (PATH=$PATH:~/.bin && echo "" && echo "Please add ~/.bin to your PATH to make this permanent" && echo "export PATH=\$PATH:~/.bin" && echo "")
 
 # Download latest cli
-docker pull veloci/cli:latest
+docker pull civelocity/cli:latest

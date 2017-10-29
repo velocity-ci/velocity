@@ -1,4 +1,4 @@
-package task
+package velocity
 
 import (
 	yaml "gopkg.in/yaml.v2"
@@ -18,6 +18,8 @@ func ResolveStepFromYAML(y string) Step {
 		return resolveBuildStep(y)
 	case "plugin":
 		return resolvePluginStep(y)
+	case "clone":
+		return resolveCloneStep(y)
 	default:
 		return nil
 	}
@@ -43,6 +45,15 @@ func resolveBuildStep(y string) Step {
 
 func resolvePluginStep(y string) Step {
 	step := &Plugin{}
+	err := yaml.Unmarshal([]byte(y), &step)
+	if err != nil {
+		panic(err)
+	}
+	return step
+}
+
+func resolveCloneStep(y string) Step {
+	step := &Clone{}
 	err := yaml.Unmarshal([]byte(y), &step)
 	if err != nil {
 		panic(err)

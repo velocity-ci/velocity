@@ -1,4 +1,4 @@
-package task
+package velocity
 
 import (
 	"fmt"
@@ -8,10 +8,6 @@ type DockerCompose struct {
 	BaseStep
 	ComposeFile string `json:"composeFile" yaml:"compose_file"`
 	Contents    dockerComposeYaml
-}
-
-func (dC *DockerCompose) SetEmitter(e func(string)) {
-	dC.Emit = e
 }
 
 func (dC DockerCompose) GetType() string {
@@ -34,7 +30,7 @@ func (dC *DockerCompose) SetParams(params []Parameter) error {
 	return nil
 }
 
-func (dC *DockerCompose) Execute() error {
+func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) error {
 
 	return nil
 }

@@ -1,15 +1,14 @@
 package project
 
 import (
+	"encoding/json"
 	"time"
 
-	"github.com/gosimple/slug"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type Project struct {
-	ID         string        `json:"id"`
-	Name       string        `json:"name"`
-	Repository GitRepository `json:"repository"`
+	velocity.Project
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -18,11 +17,14 @@ type Project struct {
 	TotalCommits  uint `json:"totalCommits"`
 }
 
-func NewProject(name string, repository GitRepository) Project {
+func (p *Project) String() string {
+	b, _ := json.Marshal(p)
+	return string(b)
+}
+
+func NewProject(name string, repository velocity.GitRepository) Project {
 	return Project{
-		ID:            slug.Make(name),
-		Name:          name,
-		Repository:    repository,
+		Project:       velocity.NewProject(name, repository),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 		Synchronising: false,
@@ -30,9 +32,15 @@ func NewProject(name string, repository GitRepository) Project {
 	}
 }
 
-type GitRepository struct {
-	Address    string `json:"address"`
-	PrivateKey string `json:"privateKey"`
+func (p *Project) ToTaskProject() *velocity.Project {
+	return &velocity.Project{
+		ID:   p.ID,
+		Name: p.Name,
+		Repository: velocity.GitRepository{
+			Address:    p.Repository.Address,
+			PrivateKey: p.Repository.PrivateKey,
+		},
+	}
 }
 
 type RequestProject struct {

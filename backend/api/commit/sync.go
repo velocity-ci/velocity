@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/api/project"
-	"github.com/velocity-ci/velocity/backend/task"
+	"github.com/velocity-ci/velocity/backend/velocity"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
 func sync(p *project.Project, projectManager *project.Manager, commitManager *Manager) {
-	repo, dir, err := project.Clone(*p, false)
+	repo, dir, err := velocity.GitClone(p.ToTaskProject(), false, false, true, velocity.NewBlankWriter())
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -82,17 +82,17 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 		shortSHA := SHA[:7]
 		describe := shortSHA
 
-		gitParams := map[string]task.Parameter{
-			"GIT_SHA": task.Parameter{
+		gitParams := map[string]velocity.Parameter{
+			"GIT_SHA": velocity.Parameter{
 				Value: SHA,
 			},
-			"GIT_SHORT_SHA": task.Parameter{
+			"GIT_SHORT_SHA": velocity.Parameter{
 				Value: shortSHA,
 			},
-			"GIT_BRANCH": task.Parameter{
+			"GIT_BRANCH": velocity.Parameter{
 				Value: branch,
 			},
-			"GIT_DESCRIBE": task.Parameter{
+			"GIT_DESCRIBE": velocity.Parameter{
 				Value: describe,
 			},
 		}
@@ -101,7 +101,7 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 			filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
 				if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
 					taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
-					t := task.ResolveTaskFromYAML(string(taskYml), gitParams)
+					t := velocity.ResolveTaskFromYAML(string(taskYml), gitParams)
 					err = commitManager.SaveTaskForCommitInProject(&t, &c, p)
 					if err != nil {
 						log.Fatal(err)
