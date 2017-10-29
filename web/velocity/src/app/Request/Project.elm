@@ -1,4 +1,4 @@
-module Request.Project exposing (list, create, get, commits, commit, commitTasks, commitTask, sync, delete)
+module Request.Project exposing (list, create, get, commits, commit, commitTasks, commitTask, sync, delete, branches)
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
@@ -77,17 +77,26 @@ branches id maybeToken =
 -- COMMITS --
 
 
-commits : Project.Id -> Maybe AuthToken -> Http.Request (List Commit)
-commits id maybeToken =
+commits : Project.Id -> Maybe Branch -> Maybe AuthToken -> Http.Request (List Commit)
+commits id maybeBranch maybeToken =
     let
         expect =
             Decode.list Commit.decoder
                 |> Decode.at [ "result" ]
                 |> Http.expectJson
+
+        queryParams =
+            case maybeBranch of
+                Just (Branch.Name branch) ->
+                    [ ( "branch", branch ) ]
+
+                _ ->
+                    []
     in
         apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/commits")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
+            |> HttpBuilder.withQueryParams queryParams
             |> withAuthorization maybeToken
             |> HttpBuilder.toRequest
 

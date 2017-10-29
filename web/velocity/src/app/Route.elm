@@ -25,7 +25,7 @@ route =
         , Url.map Logout (s "logout")
         , Url.map Projects (s "projects")
         , Url.map KnownHosts (s "known-hosts")
-        , Url.map (\id -> Project id <| ProjectRoute.Overview) (s "projects" </> Project.idParser)
+        , Url.map (\id -> Project id ProjectRoute.default) (s "projects" </> Project.idParser)
         , Url.map Project (s "projects" </> Project.idParser </> ProjectRoute.route)
         ]
 

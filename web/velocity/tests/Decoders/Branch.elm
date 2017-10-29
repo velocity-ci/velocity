@@ -21,4 +21,5 @@ suite =
                     in
                         Expect.equal (Decode.decodeString Branch.decoder data) (Ok <| Branch.Name "develop")
             ]
+          --          , test "properly decodes "
         ]

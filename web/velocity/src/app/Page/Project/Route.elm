@@ -1,18 +1,22 @@
-module Page.Project.Route exposing (Route(..), routeToPieces, route)
+module Page.Project.Route exposing (Route(..), routeToPieces, route, default)
 
 import UrlParser as Url exposing (parseHash, s, (</>), string, oneOf, Parser)
 import Data.Commit as Commit
 import Data.Task as ProjectTask
 import Data.Branch as Branch
-import Util exposing ((=>))
 
 
 type Route
     = Overview
-    | Commits Branch.Name
+    | Commits (Maybe Branch.Name)
     | Commit Commit.Hash
     | Task Commit.Hash ProjectTask.Name
     | Settings
+
+
+default : Route
+default =
+    Overview
 
 
 route : Parser (Route -> b) b

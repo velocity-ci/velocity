@@ -2,7 +2,7 @@ module Page.Project.Commits exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, on, targetValue)
 import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
@@ -14,12 +14,13 @@ import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
 import Http
-import Route exposing (Route)
-import Page.Project.Route as ProjectRoute
 import Dict exposing (Dict)
 import Time.DateTime as DateTime exposing (DateTime)
 import Time.Date as Date exposing (Date)
 import Page.Helpers exposing (formatDate)
+import Route exposing (Route)
+import Page.Project.Route as ProjectRoute
+import Json.Decode as Decode
 
 
 -- MODEL --
@@ -27,26 +28,26 @@ import Page.Helpers exposing (formatDate)
 
 type alias Model =
     { commits : List Commit
-    , branches : List Branch
     , submitting : Bool
+    , branch : Maybe Branch
     }
 
 
-init : Session -> Project.Id -> Task PageLoadError Model
-init session id =
+init : Session -> Project.Id -> Maybe Branch -> Task PageLoadError Model
+init session id maybeBranch =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadCommits =
             maybeAuthToken
-                |> Request.Project.commits id
+                |> Request.Project.commits id maybeBranch
                 |> Http.toTask
 
         initialModel commits =
             { commits = commits
-            , branches = []
             , submitting = False
+            , branch = maybeBranch
             }
 
         handleLoadError _ =
@@ -83,37 +84,38 @@ commitListToDict commits =
         List.foldl reducer Dict.empty commits
 
 
-view : Project -> Model -> Html Msg
-view project model =
+view : Project -> List Branch -> Model -> Html Msg
+view project branches model =
     let
         commits =
             commitListToDict model.commits
                 |> viewCommitListContainer project
     in
         div []
-            [ viewCommitToolbar
+            [ viewCommitToolbar model.branch branches
             , commits
             ]
 
 
-viewCommitToolbar : Html Msg
-viewCommitToolbar =
-    nav [ class "navbar" ]
-        [ Html.form [ class "form-inline" ]
-            [ select [ class "form-control", id "exampleFormControlSelect1" ]
-                [ option []
-                    [ text "feature/refactor-new-thing" ]
-                , option []
-                    [ text "2" ]
-                , option []
-                    [ text "3" ]
-                , option []
-                    [ text "4" ]
-                , option []
-                    [ text "5" ]
-                ]
-            ]
-        ]
+viewCommitToolbar : Maybe Branch -> List Branch -> Html Msg
+viewCommitToolbar selectedBranch branches =
+    let
+        o b =
+            option
+                [ selected (b == selectedBranch) ]
+                [ text (Branch.nameToString b) ]
+
+        branchesSelect =
+            List.map Just branches
+                |> List.append [ Nothing ]
+                |> List.map o
+                |> select [ class "form-control", onChange ]
+
+        onChange =
+            on "change" (Decode.map FilterBranch Branch.selectDecoder)
+    in
+        nav [ class "navbar bg-light" ]
+            [ branchesSelect ]
 
 
 viewCommitListContainer : Project -> Dict ( Int, Int, Int ) (List Commit) -> Html Msg
@@ -132,7 +134,7 @@ viewCommitListContainer project dict =
             |> Dict.toList
             |> List.sortWith sortDateList
             |> List.map (viewCommitList project)
-            |> div []
+            |> div [ class "mt-3" ]
 
 
 viewCommitList : Project -> ( ( Int, Int, Int ), List Commit ) -> Html Msg
@@ -161,7 +163,7 @@ viewCommitListItem id commit =
             Commit.truncateHash commit.hash
 
         route =
-            Route.Project id (ProjectRoute.Commit commit.hash)
+            Route.Project id <| ProjectRoute.Commit commit.hash
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
@@ -174,7 +176,7 @@ viewCommitListItem id commit =
 
 breadcrumb : Project -> List ( Route, String )
 breadcrumb project =
-    [ ( Route.Project project.id (ProjectRoute.Commits (Branch.Name "all")), "Commits" ) ]
+    [ ( Route.Project project.id (ProjectRoute.Commits Nothing), "Commits" ) ]
 
 
 viewBreadcrumbExtraItems : Model -> Html Msg
@@ -193,6 +195,7 @@ viewBreadcrumbExtraItems model =
 type Msg
     = SubmitSync
     | SyncCompleted (Result Http.Error (List Commit))
+    | FilterBranch (Maybe Branch.Name)
 
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -201,7 +204,7 @@ update project session msg model =
         SubmitSync ->
             let
                 getCommits authToken =
-                    Request.Project.commits project.id (Just authToken)
+                    Request.Project.commits project.id model.branch (Just authToken)
                         |> Http.toTask
 
                 cmdFromAuth authToken =
@@ -227,3 +230,20 @@ update project session msg model =
 
         SyncCompleted (Err err) ->
             { model | submitting = False } => Cmd.none
+
+        FilterBranch maybeBranch ->
+            let
+                uriEncoded =
+                    maybeBranch
+                        |> Maybe.andThen
+                            (\(Branch.Name slug) ->
+                                slug
+                                    |> Http.encodeUri
+                                    |> Branch.Name
+                                    |> Just
+                            )
+
+                newRoute =
+                    Route.Project project.id <| ProjectRoute.Commits uriEncoded
+            in
+                model => Route.modifyUrl newRoute

@@ -1,10 +1,10 @@
 module Page.Project exposing (..)
 
-import Data.Project as Project exposing (Project)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
 import Task exposing (Task)
 import Data.Session as Session exposing (Session)
+import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -45,6 +45,7 @@ type SubPageState
 
 type alias Model =
     { project : Project
+    , branches : List Branch
     , subPageState : SubPageState
     }
 
@@ -65,15 +66,21 @@ init session id maybeRoute =
                 |> Request.Project.get id
                 |> Http.toTask
 
-        initialModel project =
+        loadBranches =
+            maybeAuthToken
+                |> Request.Project.branches id
+                |> Http.toTask
+
+        initialModel project branches =
             { project = project
+            , branches = branches
             , subPageState = Loaded initialSubPage
             }
 
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map initialModel loadProject
+        Task.map2 initialModel loadProject loadBranches
             |> Task.andThen
                 (\successModel ->
                     case maybeRoute of
@@ -119,7 +126,7 @@ viewSidebar project subPage =
                 (Route.Project project.id ProjectRoute.Overview)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
             , sidebarLink (subPage == CommitsPage)
-                (Route.Project project.id (ProjectRoute.Commits (Branch.Name "all")))
+                (Route.Project project.id (ProjectRoute.Commits Nothing))
                 [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
             , sidebarLink (subPage == SettingsPage)
                 (Route.Project project.id ProjectRoute.Settings)
@@ -194,6 +201,9 @@ viewSubPage session model =
         project =
             model.project
 
+        branches =
+            model.branches
+
         breadcrumb =
             viewBreadcrumb project
 
@@ -228,7 +238,7 @@ viewSubPage session model =
             Commits subModel ->
                 let
                     content =
-                        Commits.view project subModel
+                        Commits.view project branches subModel
                             |> frame (sidebar CommitsPage)
                             |> Html.map CommitsMsg
 
@@ -338,10 +348,10 @@ setRoute session maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (ProjectRoute.Commits _) ->
+            Just (ProjectRoute.Commits maybeBranch) ->
                 case session.user of
                     Just user ->
-                        transition CommitsLoaded (Commits.init session model.project.id)
+                        transition CommitsLoaded (Commits.init session model.project.id maybeBranch)
 
                     Nothing ->
                         errored Page.Project "Uhoh"
