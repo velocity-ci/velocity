@@ -28,6 +28,7 @@ import Json.Decode as Decode
 
 type alias Model =
     { commits : List Commit
+    , total : Int
     , submitting : Bool
     , branch : Maybe Branch
     }
@@ -44,8 +45,9 @@ init session id maybeBranch =
                 |> Request.Project.commits id maybeBranch
                 |> Http.toTask
 
-        initialModel commits =
-            { commits = commits
+        initialModel { results, total } =
+            { commits = results
+            , total = total
             , submitting = False
             , branch = maybeBranch
             }
@@ -194,7 +196,7 @@ viewBreadcrumbExtraItems model =
 
 type Msg
     = SubmitSync
-    | SyncCompleted (Result Http.Error (List Commit))
+    | SyncCompleted (Result Http.Error Request.Project.CommitResults)
     | FilterBranch (Maybe Branch.Name)
 
 
@@ -221,10 +223,11 @@ update project session msg model =
             in
                 { model | submitting = True } => cmd
 
-        SyncCompleted (Ok commits) ->
+        SyncCompleted (Ok { results, total }) ->
             { model
                 | submitting = False
-                , commits = commits
+                , commits = results
+                , total = total
             }
                 => Cmd.none
 
