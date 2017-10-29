@@ -15,7 +15,7 @@ import (
 )
 
 func sync(p *project.Project, projectManager *project.Manager, commitManager *Manager) {
-	repo, dir, err := project.Clone(*p, false, false)
+	repo, dir, err := project.Clone(*p, false, false, task.NewBlankWriter())
 	if err != nil {
 		log.Fatal(err)
 		return

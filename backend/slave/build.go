@@ -12,9 +12,17 @@ import (
 
 func runBuild(build *BuildMessage, ws *websocket.Conn) {
 	log.Printf("Cloning %s", build.Project.Repository.Address)
-	repo, dir, err := project.Clone(*build.Project, false, true)
+	emitter := NewSlaveWriter(
+		ws,
+		build.Project.ID,
+		build.CommitHash,
+		build.BuildID,
+	)
+	emitter.SetTotalSteps(uint64(len(build.Task.Steps) + 1))
+	// Cloning is step 0
+	repo, dir, err := project.Clone(*build.Project, false, true, emitter)
 	if err != nil {
-		log.Fatalf("18: %v", err)
+		log.Fatal(err)
 		return
 	}
 	log.Println("Done.")
@@ -22,7 +30,7 @@ func runBuild(build *BuildMessage, ws *websocket.Conn) {
 
 	w, err := repo.Worktree()
 	if err != nil {
-		log.Fatalf("25: %v", err)
+		log.Fatal(err)
 		return
 	}
 	log.Printf("Checking out %s", build.CommitHash)
@@ -30,41 +38,20 @@ func runBuild(build *BuildMessage, ws *websocket.Conn) {
 		Hash: plumbing.NewHash(build.CommitHash),
 	})
 	if err != nil {
-		log.Fatalf("32: %v", err)
+		log.Fatal(err)
 		return
 	}
 	log.Println("Done.")
 
 	os.Chdir(dir)
 
-	emit := func(status string, step uint64, output string) {
-		lM := LogMessage{
-			ProjectID:  build.Project.ID,
-			CommitHash: build.CommitHash,
-			BuildID:    build.BuildID,
-			Step:       step,
-			Status:     status,
-			Output:     output,
-		}
-		m := SlaveMessage{
-			Type: "log",
-			Data: lM,
-		}
-		err := ws.WriteJSON(m)
-		if err != nil {
-			log.Fatal(err)
-		}
-		// log.Printf("Emitted. Project: %s, Commit: %s, BuildID: %d Step: %d, Status: %s", lM.ProjectID, lM.CommitHash, lM.BuildID, lM.Step, lM.Status)
-	}
-
-	build.Task.SetEmitter(emit)
-	os.Chdir(dir)
 	for stepNumber, step := range build.Task.Steps {
-		err := step.Execute(uint64(stepNumber), build.Task.Parameters)
+		emitter.SetStep(uint64(stepNumber + 1))
+		emitter.SetStatus("running")
+		err := step.Execute(emitter, build.Task.Parameters)
 		if err != nil {
 			break
 		}
-		emit("success", uint64(stepNumber), "")
 	}
 }
 

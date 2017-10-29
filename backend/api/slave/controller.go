@@ -134,7 +134,7 @@ func (c *Controller) monitor(s *Slave) {
 			log.Println(lM.Step, lM.Status, lM.Output)
 			build := c.commitManager.GetBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
 
-			if build.Task.Steps[lM.Step].GetType() == "compose" {
+			if lM.Step > 0 && build.Task.Steps[lM.Step-1].GetType() == "compose" {
 			} else {
 				if build.StepLogs == nil {
 					build.StepLogs = []commit.StepLog{commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status}}
@@ -147,7 +147,7 @@ func (c *Controller) monitor(s *Slave) {
 					Output:    lM.Output,
 				})
 			}
-			c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+			// c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
 			// TODO: Emit to websocket clients
 
 			if lM.Status == "failed" {
@@ -158,7 +158,7 @@ func (c *Controller) monitor(s *Slave) {
 				s.Command = nil
 				c.manager.Save(s)
 			} else if lM.Status == "success" {
-				if int(lM.Step) == len(build.Task.Steps)-1 {
+				if int(lM.Step) == len(build.Task.Steps) {
 					// successfully finished build
 					build.Status = "success"
 					c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)

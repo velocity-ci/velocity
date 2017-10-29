@@ -20,12 +20,11 @@ import (
 )
 
 func runContainer(
-	step uint64,
 	pullImage string,
 	config *container.Config,
 	hostConfig *container.HostConfig,
 	parameters map[string]Parameter,
-	emit func(status string, step uint64, output string),
+	emitter Emitter,
 ) (int, error) {
 	ctx := context.Background()
 	stdIn, stdOut, stdErr := term.StdStreams()
@@ -35,7 +34,7 @@ func runContainer(
 	pullResponse, pullErr := dockerCli.Client().ImagePull(ctx, pullImage, types.ImagePullOptions{})
 	if pullErr == nil {
 		defer pullResponse.Close()
-		handleOutput(pullResponse, step, parameters, emit)
+		handleOutput(pullResponse, parameters, emitter)
 	}
 
 	createResponse, err := dockerCli.Client().ContainerCreate(ctx, config, hostConfig, nil, "")
@@ -49,7 +48,7 @@ func runContainer(
 	if err != nil {
 		return -1, err
 	}
-	handleOutput(logsResponse, step, parameters, emit)
+	handleOutput(logsResponse, parameters, emitter)
 
 	c, _ := dockerCli.Client().ContainerInspect(ctx, createResponse.ID)
 	d, _ := time.ParseDuration("1m")
@@ -68,7 +67,7 @@ func runContainer(
 	return c.State.ExitCode, nil
 }
 
-func buildContainer(step uint64, buildContext string, dockerfile string, tags []string, parameters map[string]Parameter, emit func(status string, step uint64, output string)) error {
+func buildContainer(buildContext string, dockerfile string, tags []string, parameters map[string]Parameter, emitter Emitter) error {
 	ctx := context.Background()
 
 	cwd, _ := os.Getwd()
@@ -76,7 +75,8 @@ func buildContainer(step uint64, buildContext string, dockerfile string, tags []
 
 	excludes, err := build.ReadDockerignore(buildContext)
 	if err != nil {
-		emit("failed", step, err.Error())
+		emitter.SetStatus("failed")
+		emitter.Write([]byte(err.Error()))
 		return err
 	}
 	buildCtx, err := archive.TarWithOptions(buildContext, &archive.TarOptions{
@@ -94,17 +94,18 @@ func buildContainer(step uint64, buildContext string, dockerfile string, tags []
 		Tags:       tags,
 	})
 	if err != nil {
-		emit("failed", step, err.Error())
+		emitter.SetStatus("failed")
+		emitter.Write([]byte(err.Error()))
 		return err
 	}
 	defer buildResponse.Body.Close()
 
-	handleOutput(buildResponse.Body, step, parameters, emit)
+	handleOutput(buildResponse.Body, parameters, emitter)
 
 	return nil
 }
 
-func handleOutput(body io.ReadCloser, step uint64, parameters map[string]Parameter, emit func(status string, step uint64, output string)) {
+func handleOutput(body io.ReadCloser, parameters map[string]Parameter, emitter Emitter) {
 	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
@@ -124,7 +125,7 @@ func handleOutput(body io.ReadCloser, step uint64, parameters map[string]Paramet
 					o = strings.Replace(o, p.Value, "***", -1)
 				}
 			}
-			emit("running", step, o)
+			emitter.Write([]byte(o))
 		}
 	}
 }

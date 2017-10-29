@@ -20,10 +20,6 @@ func NewDockerBuild() DockerBuild {
 	}
 }
 
-func (dB *DockerBuild) SetEmitter(e func(status string, step uint64, output string)) {
-	dB.Emit = e
-}
-
 func (dB DockerBuild) GetType() string {
 	return "build"
 }
@@ -36,20 +32,15 @@ func (dB DockerBuild) GetDetails() string {
 	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }
 
-func (dB *DockerBuild) Execute(stepNumber uint64, params map[string]Parameter) error {
-	dB.Emit(
-		"running",
-		stepNumber,
-		fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description),
-	)
+func (dB *DockerBuild) Execute(emitter Emitter, params map[string]Parameter) error {
+	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
 
 	return buildContainer(
-		stepNumber,
 		dB.Context,
 		dB.Dockerfile,
 		dB.Tags,
 		params,
-		dB.Emit,
+		emitter,
 	)
 }
 

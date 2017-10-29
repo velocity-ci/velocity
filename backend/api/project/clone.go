@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/task"
 	"golang.org/x/crypto/ssh"
 
 	git "gopkg.in/src-d/go-git.v4"
@@ -15,16 +16,16 @@ import (
 )
 
 type SyncManager struct {
-	Sync func(p Project, bare bool, full bool) (*git.Repository, string, error)
+	Sync func(p Project, bare bool, full bool, emitter task.Emitter) (*git.Repository, string, error)
 }
 
-func NewSyncManager(cloneFunc func(p Project, bare bool, full bool) (*git.Repository, string, error)) *SyncManager {
+func NewSyncManager(cloneFunc func(p Project, bare bool, full bool, emitter task.Emitter) (*git.Repository, string, error)) *SyncManager {
 	return &SyncManager{
 		Sync: cloneFunc,
 	}
 }
 
-func Clone(p Project, bare bool, full bool) (*git.Repository, string, error) {
+func Clone(p Project, bare bool, full bool, emitter task.Emitter) (*git.Repository, string, error) {
 	psuedoRandom := rand.NewSource(time.Now().UnixNano())
 	randNumber := rand.New(psuedoRandom)
 	dir := fmt.Sprintf("/opt/velocity/velocity_%s-%d", p.ID, randNumber.Int63())
@@ -49,9 +50,12 @@ func Clone(p Project, bare bool, full bool) (*git.Repository, string, error) {
 		auth = &gitssh.PublicKeys{User: "git", Signer: signer}
 	}
 
+	emitter.SetStep(0)
+	emitter.SetStatus("running")
 	cloneOpts := &git.CloneOptions{
-		URL:  p.Repository.Address,
-		Auth: auth,
+		URL:      p.Repository.Address,
+		Auth:     auth,
+		Progress: emitter,
 	}
 
 	if !full {

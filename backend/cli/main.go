@@ -103,13 +103,14 @@ func run(taskName string, gitParams map[string]task.Parameter) {
 	}
 
 	t.UpdateParams()
-	t.SetEmitter(func(status string, step uint64, output string) {
-		fmt.Printf("    %s\n", output)
-	})
 
+	emitter := NewCLIWriter()
+	emitter.SetTotalSteps(uint64(len(t.Steps)))
 	// Run each step unless they fail (optional)
 	for stepNumber, step := range t.Steps {
-		err := step.Execute(uint64(stepNumber), t.Parameters)
+		emitter.SetStep(uint64(stepNumber))
+		emitter.SetStatus("running")
+		err := step.Execute(emitter, t.Parameters)
 		if err != nil {
 			break
 		}

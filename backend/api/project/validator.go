@@ -7,6 +7,7 @@ import (
 
 	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/api/middleware"
+	"github.com/velocity-ci/velocity/backend/task"
 
 	ut "github.com/go-playground/universal-translator"
 	validator "gopkg.in/go-playground/validator.v9"
@@ -81,7 +82,7 @@ func (v *Validator) ValidateProjectRepository(sl validator.StructLevel) {
 		PrivateKey: p.PrivateKey,
 	})
 
-	_, dir, err := v.projectManager.SyncManager.Sync(apiProject, true, false)
+	_, dir, err := v.projectManager.SyncManager.Sync(apiProject, true, false, task.NewBlankWriter())
 
 	if err != nil {
 		log.Println(err, reflect.TypeOf(err))

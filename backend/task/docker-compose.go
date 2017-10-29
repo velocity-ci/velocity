@@ -10,10 +10,6 @@ type DockerCompose struct {
 	Contents    dockerComposeYaml
 }
 
-func (dC *DockerCompose) SetEmitter(e func(status string, step uint64, output string)) {
-	dC.Emit = e
-}
-
 func (dC DockerCompose) GetType() string {
 	return "compose"
 }
@@ -34,7 +30,7 @@ func (dC *DockerCompose) SetParams(params []Parameter) error {
 	return nil
 }
 
-func (dC *DockerCompose) Execute() error {
+func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) error {
 
 	return nil
 }

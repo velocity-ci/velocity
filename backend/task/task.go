@@ -18,12 +18,6 @@ func (t *Task) UpdateParams() {
 	}
 }
 
-func (t *Task) SetEmitter(e func(status string, step uint64, output string)) {
-	for _, s := range t.Steps {
-		s.SetEmitter(e)
-	}
-}
-
 func (t *Task) String() string {
 	j, _ := json.Marshal(t)
 	return string(j)
