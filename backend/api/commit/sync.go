@@ -15,7 +15,7 @@ import (
 )
 
 func sync(p *project.Project, projectManager *project.Manager, commitManager *Manager) {
-	repo, dir, err := project.Clone(*p, false)
+	repo, dir, err := project.Clone(*p, false, false)
 	if err != nil {
 		log.Fatal(err)
 		return

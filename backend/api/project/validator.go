@@ -81,7 +81,7 @@ func (v *Validator) ValidateProjectRepository(sl validator.StructLevel) {
 		PrivateKey: p.PrivateKey,
 	})
 
-	_, dir, err := v.projectManager.SyncManager.Sync(apiProject, true)
+	_, dir, err := v.projectManager.SyncManager.Sync(apiProject, true, false)
 
 	if err != nil {
 		log.Println(err, reflect.TypeOf(err))

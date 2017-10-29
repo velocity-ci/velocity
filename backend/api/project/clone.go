@@ -15,16 +15,16 @@ import (
 )
 
 type SyncManager struct {
-	Sync func(p Project, bare bool) (*git.Repository, string, error)
+	Sync func(p Project, bare bool, full bool) (*git.Repository, string, error)
 }
 
-func NewSyncManager(cloneFunc func(p Project, bare bool) (*git.Repository, string, error)) *SyncManager {
+func NewSyncManager(cloneFunc func(p Project, bare bool, full bool) (*git.Repository, string, error)) *SyncManager {
 	return &SyncManager{
 		Sync: cloneFunc,
 	}
 }
 
-func Clone(p Project, bare bool) (*git.Repository, string, error) {
+func Clone(p Project, bare bool, full bool) (*git.Repository, string, error) {
 	psuedoRandom := rand.NewSource(time.Now().UnixNano())
 	randNumber := rand.New(psuedoRandom)
 	dir := fmt.Sprintf("/opt/velocity/velocity_%s-%d", p.ID, randNumber.Int63())
@@ -49,11 +49,16 @@ func Clone(p Project, bare bool) (*git.Repository, string, error) {
 		auth = &gitssh.PublicKeys{User: "git", Signer: signer}
 	}
 
-	repo, err := git.PlainClone(dir, bare, &git.CloneOptions{
-		URL:   p.Repository.Address,
-		Depth: 1,
-		Auth:  auth,
-	})
+	cloneOpts := &git.CloneOptions{
+		URL:  p.Repository.Address,
+		Auth: auth,
+	}
+
+	if !full {
+		cloneOpts.Depth = 1
+	}
+
+	repo, err := git.PlainClone(dir, bare, cloneOpts)
 
 	if err != nil {
 		os.RemoveAll(dir)

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -13,37 +11,31 @@ import (
 )
 
 func runBuild(build *BuildMessage, ws *websocket.Conn) {
-	repo, dir, err := project.Clone(*build.Project, false)
+	log.Printf("Cloning %s", build.Project.Repository.Address)
+	repo, dir, err := project.Clone(*build.Project, false, true)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("18: %v", err)
 		return
 	}
+	log.Println("Done.")
 	defer os.RemoveAll(dir)
 
 	w, err := repo.Worktree()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("25: %v", err)
 		return
 	}
+	log.Printf("Checking out %s", build.CommitHash)
 	err = w.Checkout(&git.CheckoutOptions{
 		Hash: plumbing.NewHash(build.CommitHash),
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("32: %v", err)
+		return
 	}
-	log.Printf("Checked out %s", build.CommitHash)
-	s, _ := w.Status()
-	log.Printf(s.String())
+	log.Println("Done.")
 
 	os.Chdir(dir)
-	files, err := ioutil.ReadDir("./")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, f := range files {
-		fmt.Println(f.Name())
-	}
 
 	emit := func(status string, step uint64, output string) {
 		lM := LogMessage{

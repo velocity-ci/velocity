@@ -82,7 +82,7 @@ func run(taskName string, gitParams map[string]task.Parameter) {
 	}
 
 	if t == nil {
-		panic(fmt.Sprintf("Task %s not found\n%s", taskName, tasks))
+		panic(fmt.Sprintf("Task %s not found\n%v", taskName, tasks))
 	}
 
 	fmt.Printf("Running task: %s (from: %s)\n", t.Name, taskName)
@@ -103,11 +103,16 @@ func run(taskName string, gitParams map[string]task.Parameter) {
 	}
 
 	t.UpdateParams()
-	t.SetEmitter(func(s string) { fmt.Printf("    %s\n", s) })
+	t.SetEmitter(func(status string, step uint64, output string) {
+		fmt.Printf("    %s\n", output)
+	})
 
 	// Run each step unless they fail (optional)
-	for _, step := range t.Steps {
-		step.Execute(t.Parameters)
+	for stepNumber, step := range t.Steps {
+		err := step.Execute(uint64(stepNumber), t.Parameters)
+		if err != nil {
+			break
+		}
 	}
 }
 

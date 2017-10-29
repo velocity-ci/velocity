@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -16,6 +17,11 @@ type Project struct {
 
 	Synchronising bool `json:"synchronising"`
 	TotalCommits  uint `json:"totalCommits"`
+}
+
+func (p *Project) String() string {
+	b, _ := json.Marshal(p)
+	return string(b)
 }
 
 func NewProject(name string, repository GitRepository) Project {

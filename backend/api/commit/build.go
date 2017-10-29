@@ -1,6 +1,8 @@
 package commit
 
 import (
+	"time"
+
 	"github.com/velocity-ci/velocity/backend/task"
 )
 
@@ -23,9 +25,20 @@ type ResponseBuild struct {
 }
 
 type Build struct {
-	ID     uint64     `json:"id"`
-	Task   *task.Task `json:"task"`
-	Status string     `json:"status"`
+	ID       uint64     `json:"id"`
+	Task     *task.Task `json:"task"`
+	Status   string     `json:"status"`
+	StepLogs []StepLog  `json:"logs"`
+}
+
+type StepLog struct {
+	Logs   map[string][]Log `json:"containerLogs"` //containerName: logs
+	Status string           `json:"status"`
+}
+
+type Log struct {
+	Output    string    `json:"output"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type QueuedBuild struct {
@@ -36,8 +49,9 @@ type QueuedBuild struct {
 
 func NewBuild(projectID string, commitHash string, t *task.Task) Build {
 	return Build{
-		Task:   t,
-		Status: "waiting",
+		Task:     t,
+		Status:   "waiting",
+		StepLogs: []StepLog{},
 	}
 }
 

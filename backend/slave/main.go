@@ -115,6 +115,7 @@ func monitorCommands(ws *websocket.Conn) {
 		}
 
 		if command.Command == "build" {
+			log.Printf("Got Build: %v", command.Data)
 			runBuild(command.Data.(*BuildMessage), ws)
 		}
 	}

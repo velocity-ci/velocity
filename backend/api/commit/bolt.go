@@ -476,3 +476,31 @@ func (m *Manager) GetQueuedBuilds() []*QueuedBuild {
 
 	return queuedBuilds
 }
+
+func (m *Manager) RemoveQueuedBuild(projectID string, commitHash string, buildID uint64) {
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+
+	buildQueueBucket := tx.Bucket([]byte("buildQueue"))
+	if buildQueueBucket == nil {
+		return
+	}
+
+	cursor := buildQueueBucket.Cursor()
+	for k, v := cursor.Last(); k != nil; k, v = cursor.Prev() {
+		queuedBuild := &QueuedBuild{}
+		err := json.Unmarshal(v, queuedBuild)
+		if err == nil {
+			if queuedBuild.ProjectID == projectID &&
+				queuedBuild.CommitHash == commitHash &&
+				queuedBuild.ID == buildID {
+				buildQueueBucket.Delete(k)
+			}
+		}
+	}
+
+	tx.Commit()
+}

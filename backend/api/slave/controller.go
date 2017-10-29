@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -98,7 +99,6 @@ func (c Controller) wsSlavesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := c.manager.GetSlaveByID(slaveID)
-	log.Println(s)
 	s.SetWebSocket(ws)
 	s.State = "ready"
 
@@ -129,18 +129,45 @@ func (c *Controller) monitor(s *Slave) {
 		}
 
 		if message.Type == "log" {
-			// TODO: add timestamp
-			// TODO: write log to bolt and emit to any listening websocket clients
-			// TODO: Handle failures/success
 			lM := message.Data.(*LogMessage)
 			log.Println(lM.Step, lM.Status, lM.Output)
+			build := c.commitManager.GetBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
+
+			if build.Task.Steps[lM.Step].GetType() == "compose" {
+			} else {
+				if build.StepLogs == nil {
+					build.StepLogs = []commit.StepLog{commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status}}
+				} else if len(build.StepLogs) <= int(lM.Step) {
+					build.StepLogs = append(build.StepLogs, commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status})
+				}
+				build.StepLogs[lM.Step].Status = lM.Status
+				build.StepLogs[lM.Step].Logs["container"] = append(build.StepLogs[lM.Step].Logs["container"], commit.Log{
+					Timestamp: time.Now(),
+					Output:    lM.Output,
+				})
+			}
+			c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+			// TODO: Emit to websocket clients
 
 			if lM.Status == "failed" {
-
+				build.Status = "failed"
+				c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+				c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
+				s.State = "ready"
+				s.Command = nil
+				c.manager.Save(s)
 			} else if lM.Status == "success" {
-
+				if int(lM.Step) == len(build.Task.Steps)-1 {
+					// successfully finished build
+					build.Status = "success"
+					c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+					c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
+					s.State = "ready"
+					s.Command = nil
+					c.manager.Save(s)
+				}
 			}
-
+			c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
 		}
 	}
 }
