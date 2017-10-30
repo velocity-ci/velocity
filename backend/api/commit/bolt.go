@@ -226,6 +226,7 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ve
 
 	tx, err := m.bolt.Begin(false)
 	if err != nil {
+		log.Fatal(err)
 		return tasks
 	}
 	defer tx.Rollback()
@@ -245,6 +246,8 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ve
 		err := json.Unmarshal(v, &task)
 		if err == nil {
 			tasks = append(tasks, task)
+		} else {
+			log.Fatal(err)
 		}
 	}
 

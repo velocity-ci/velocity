@@ -20,8 +20,8 @@ type Clone struct {
 	Submodule bool `json:"submodule" yaml:"submodule"`
 }
 
-func NewClone() Clone {
-	return Clone{
+func NewClone() *Clone {
+	return &Clone{
 		Submodule: false,
 	}
 }
