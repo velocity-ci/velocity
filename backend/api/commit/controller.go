@@ -97,9 +97,10 @@ func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Requ
 	opts := c.resolver.QueryOptsFromRequest(r)
 
 	commits := c.manager.FindAllCommitsForProject(p, opts)
+	totalCommitsForQuery := c.manager.GetTotalCommitsForProject(p, opts)
 
 	c.render.JSON(w, http.StatusOK, CommitsResponse{
-		Total:  p.TotalCommits,
+		Total:  totalCommitsForQuery,
 		Result: commits,
 	})
 }

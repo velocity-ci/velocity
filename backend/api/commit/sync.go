@@ -112,7 +112,7 @@ func sync(p *project.Project, projectManager *project.Manager, commitManager *Ma
 		}
 	}
 
-	p.TotalCommits = commitManager.GetTotalCommitsForProject(p)
+	p.TotalCommits = commitManager.GetTotalCommitsForProject(p, &CommitQueryOpts{})
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
 	projectManager.Save(p)
