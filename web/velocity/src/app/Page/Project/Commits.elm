@@ -69,7 +69,7 @@ init session id maybeBranch maybePage =
 
 perPage : Int
 perPage =
-    2
+    10
 
 
 
