@@ -1,16 +1,15 @@
-module Views.Helpers exposing (onPreventDefaultClick)
+module Views.Helpers exposing (onClickPage)
 
 import Html.Attributes exposing (href)
 import Html.Events exposing (onWithOptions, defaultOptions)
 import Html exposing (Attribute)
 import Json.Decode exposing (Decoder)
+import Route exposing (Route)
 
 
---onClickPage : Attribute msg -> String -> List (Attribute msg)
---onClickPage msg url =
---    [ href url
---    , onPreventDefaultClick msg
---    ]
+onClickPage : (String -> msg) -> Route -> Attribute msg
+onClickPage msg route =
+    onPreventDefaultClick (msg (Route.routeToString route))
 
 
 onPreventDefaultClick : msg -> Attribute msg

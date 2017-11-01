@@ -17,7 +17,7 @@ import Page.Helpers exposing (formatDate, sortByDatetime)
 import Route
 import Page.Project.Route as ProjectRoute
 import Time.DateTime as DateTime
-import Views.Helpers exposing (onPreventDefaultClick)
+import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 
 
@@ -91,7 +91,7 @@ view session model =
                         [ class "card-header" ]
                         [ a
                             [ Route.href Route.Projects
-                            , onPreventDefaultClick (NewUrl <| Route.routeToString (Route.Projects))
+                            , onClickPage NewUrl Route.Projects
                             ]
                             [ text "Projects" ]
                         ]
@@ -122,12 +122,12 @@ viewProjectListItem project =
                 [ h5 [ class "mb-1" ]
                     [ a
                         [ Route.href route
-                        , onPreventDefaultClick (NewUrl <| Route.routeToString route)
+                        , onClickPage NewUrl route
                         ]
                         [ text project.name ]
                     ]
                 , small []
-                    [ text (formatDate (DateTime.date project.updatedAt)) ]
+                    [ DateTime.date project.updatedAt |> formatDate |> text ]
                 ]
             , small []
                 [ text project.repository ]
@@ -140,14 +140,10 @@ viewProjectListItem project =
 
 type Msg
     = NewUrl String
-    | NoOp
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     case msg of
-        NoOp ->
-            model => Cmd.none
-
         NewUrl url ->
             model => newUrl url

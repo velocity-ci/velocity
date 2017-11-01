@@ -22,6 +22,8 @@ import Page.Helpers exposing (formatDate)
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Json.Decode as Decode
+import Navigation
+import Views.Helpers exposing (onClickPage)
 
 
 -- MODEL --
@@ -179,7 +181,7 @@ viewCommitListItem id commit =
         route =
             Route.Project id <| ProjectRoute.Commit commit.hash
     in
-        a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route ]
+        a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route, onClickPage NewUrl route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
                 [ h5 [ class "mb-1 text-overflow" ] [ text commit.message ]
                 , small [] [ text truncatedHash ]
@@ -226,6 +228,7 @@ pageLink page isActive project maybeBranch =
             [ a
                 [ class "page-link"
                 , Route.href route
+                , onClickPage NewUrl route
                 ]
                 [ text (toString page) ]
             ]
@@ -240,11 +243,15 @@ type Msg
     | SyncCompleted (Result Http.Error Results)
     | FilterBranch (Maybe Branch.Name)
     | SelectPage Int
+    | NewUrl String
 
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     case msg of
+        NewUrl newUrl ->
+            model => Navigation.newUrl newUrl
+
         SubmitSync ->
             let
                 getCommits authToken =

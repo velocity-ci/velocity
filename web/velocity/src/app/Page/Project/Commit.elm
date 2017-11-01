@@ -16,6 +16,8 @@ import Views.Page as Page
 import Http
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
+import Navigation
+import Views.Helpers exposing (onClickPage)
 
 
 -- MODEL --
@@ -103,7 +105,7 @@ viewTaskListItem project commit task =
         route =
             Route.Project project.id (ProjectRoute.Task commit.hash task.name)
     in
-        a [ class "list-group-item list-group-item-action flex-column align-items-center", Route.href route ]
+        a [ class "list-group-item list-group-item-action flex-column align-items-center", Route.href route, onClickPage NewUrl route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
                 [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ]
                 ]
@@ -124,9 +126,11 @@ breadcrumb project commit =
 
 
 type Msg
-    = NoOp
+    = NewUrl String
 
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
-    model => Cmd.none
+    case msg of
+        NewUrl url ->
+            model => Navigation.newUrl url
