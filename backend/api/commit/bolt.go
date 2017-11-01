@@ -317,7 +317,7 @@ func (m *Manager) GetTotalCommitsForProject(p *project.Project, queryOpts *Commi
 		}
 	}
 
-	return count
+	return uint(int(count) + (queryOpts.Page-1)*queryOpts.Amount)
 }
 
 func (m *Manager) SaveBuild(b *Build, projectID string, commitHash string) error {
