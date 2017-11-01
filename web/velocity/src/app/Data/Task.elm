@@ -19,6 +19,13 @@ type alias Task =
 type Step
     = Build BuildStep
     | Run RunStep
+    | Clone CloneStep
+
+
+type alias CloneStep =
+    { description : String
+    , submodule : Bool
+    }
 
 
 type alias BuildStep =
@@ -125,6 +132,9 @@ stepDecoder =
                     "run" ->
                         Decode.map Run runStepDecoder
 
+                    "clone" ->
+                        Decode.map Clone cloneStepDecoder
+
                     unknownType ->
                         Decode.fail <| "Unknown type: " ++ unknownType
             )
@@ -149,6 +159,13 @@ runStepDecoder =
         |> required "image" Decode.string
         |> required "mountPoint" Decode.string
         |> required "workingDir" Decode.string
+
+
+cloneStepDecoder : Decoder CloneStep
+cloneStepDecoder =
+    decode CloneStep
+        |> required "description" Decode.string
+        |> required "submodule" Decode.bool
 
 
 
