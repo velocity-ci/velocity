@@ -12,8 +12,8 @@ type DockerBuild struct {
 	Tags       []string `json:"tags" yaml:"tags"`
 }
 
-func NewDockerBuild() DockerBuild {
-	return DockerBuild{
+func NewDockerBuild() *DockerBuild {
+	return &DockerBuild{
 		Dockerfile: "",
 		Context:    "",
 		Tags:       []string{},

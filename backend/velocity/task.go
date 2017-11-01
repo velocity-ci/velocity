@@ -80,23 +80,26 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 			return err
 		}
 
-		if m["type"] == "run" {
-			s := NewDockerRun()
-			err := json.Unmarshal(*rawMessage, &s)
-			if err != nil {
-				return err
-			}
-			t.Steps[index] = &s
-		} else if m["type"] == "build" {
-			s := NewDockerBuild()
-			err := json.Unmarshal(*rawMessage, &s)
-			if err != nil {
-				return err
-			}
-			t.Steps[index] = &s
-		} else {
+		var s Step
+		switch m["type"] {
+		case "run":
+			s = NewDockerRun()
+			break
+		case "build":
+			s = NewDockerBuild()
+			break
+		case "clone":
+			s = NewClone()
+			break
+		default:
 			return fmt.Errorf("unsupported type in json.Unmarshal: %s", m["type"])
 		}
+
+		err := json.Unmarshal(*rawMessage, s)
+		if err != nil {
+			return err
+		}
+		t.Steps[index] = s
 	}
 
 	return nil

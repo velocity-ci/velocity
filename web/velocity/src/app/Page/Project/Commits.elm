@@ -235,6 +235,33 @@ pageLink page isActive project maybeBranch =
 
 
 
+--pagination : Int -> Feed -> FeedSource -> Html Msg
+--pagination activePage feed feedSource =
+--    let
+--        articlesPerPage =
+--            limit feedSource
+--
+--        totalPages =
+--            ceiling (toFloat feed.articlesCount / toFloat articlesPerPage)
+--    in
+--        if totalPages > 1 then
+--            List.range 1 totalPages
+--                |> List.map (\page -> pageLink page (page == activePage))
+--                |> ul [ class "pagination" ]
+--        else
+--            Html.text ""
+--
+--
+--pageLink : Int -> Bool -> Html Msg
+--pageLink page isActive =
+--    li [ classList [ "page-item" => True, "active" => isActive ] ]
+--        [ a
+--            [ class "page-link"
+--            , href "javascript:void(0);"
+--            , onClick (SelectPage page)
+--            ]
+--            [ text (toString page) ]
+--        ]
 -- UPDATE --
 
 

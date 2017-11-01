@@ -27,25 +27,25 @@ func ResolveStepFromYAML(y string) Step {
 
 func resolveRunStep(y string) Step {
 	step := NewDockerRun()
-	err := yaml.Unmarshal([]byte(y), &step)
+	err := yaml.Unmarshal([]byte(y), step)
 	if err != nil {
 		panic(err)
 	}
-	return &step
+	return step
 }
 
 func resolveBuildStep(y string) Step {
 	step := NewDockerBuild()
-	err := yaml.Unmarshal([]byte(y), &step)
+	err := yaml.Unmarshal([]byte(y), step)
 	if err != nil {
 		panic(err)
 	}
-	return &step
+	return step
 }
 
 func resolvePluginStep(y string) Step {
 	step := &Plugin{}
-	err := yaml.Unmarshal([]byte(y), &step)
+	err := yaml.Unmarshal([]byte(y), step)
 	if err != nil {
 		panic(err)
 	}
@@ -54,7 +54,7 @@ func resolvePluginStep(y string) Step {
 
 func resolveCloneStep(y string) Step {
 	step := &Clone{}
-	err := yaml.Unmarshal([]byte(y), &step)
+	err := yaml.Unmarshal([]byte(y), step)
 	if err != nil {
 		panic(err)
 	}

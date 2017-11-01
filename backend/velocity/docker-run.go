@@ -24,8 +24,8 @@ type DockerRun struct {
 	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignore_exit"`
 }
 
-func NewDockerRun() DockerRun {
-	return DockerRun{
+func NewDockerRun() *DockerRun {
+	return &DockerRun{
 		Image:          "",
 		Command:        []string{},
 		Environment:    map[string]string{},

@@ -226,6 +226,7 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ve
 
 	tx, err := m.bolt.Begin(false)
 	if err != nil {
+		log.Fatal(err)
 		return tasks
 	}
 	defer tx.Rollback()
@@ -245,6 +246,8 @@ func (m *Manager) GetTasksForCommitInProject(c *Commit, p *project.Project) []ve
 		err := json.Unmarshal(v, &task)
 		if err == nil {
 			tasks = append(tasks, task)
+		} else {
+			log.Fatal(err)
 		}
 	}
 
@@ -281,7 +284,7 @@ func (m *Manager) GetTaskForCommitInProject(c *Commit, p *project.Project, name 
 	return &task, nil
 }
 
-func (m *Manager) GetTotalCommitsForProject(p *project.Project) uint {
+func (m *Manager) GetTotalCommitsForProject(p *project.Project, queryOpts *CommitQueryOpts) uint {
 	var count uint
 	count = 0
 
@@ -298,9 +301,20 @@ func (m *Manager) GetTotalCommitsForProject(p *project.Project) uint {
 		return count
 	}
 
+	skipCounter := 0
 	c := commitsBucket.Cursor()
-	for k, _ := c.First(); k != nil; k, _ = c.Next() {
-		count++
+	for k, _ := c.Last(); k != nil; k, _ = c.Prev() {
+		cB := commitsBucket.Bucket(k)
+		v := cB.Get([]byte("info"))
+		commit := Commit{}
+		err := json.Unmarshal(v, &commit)
+		if err == nil && (queryOpts.Branch == "" || commit.Branch == queryOpts.Branch) {
+			if skipCounter < (queryOpts.Page-1)*queryOpts.Amount {
+				skipCounter++
+			} else {
+				count++
+			}
+		}
 	}
 
 	return count
