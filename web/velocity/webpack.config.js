@@ -24,9 +24,6 @@ const commonConfig = {
             filename: 'index.html'
         })
     ],
-    devServer: {
-        stats: 'errors-only'
-    },
     module: {
         rules: [
             {
@@ -113,6 +110,15 @@ if (prod) {
                     loader: 'elm-hot-loader!elm-webpack-loader?verbose=true&warn=true&debug=true&pathToMake=./node_modules/.bin/elm-make'
                 }
             ]
+        },
+        devServer: {
+            hot: false,
+            stats: 'errors-only',
+            historyApiFallback: {
+                verbose: true,
+                disableDotRule: true,
+                index: `${publicPath}/index.html`
+            }
         }
     });
 

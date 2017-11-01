@@ -19,8 +19,11 @@ import Page.Project.Settings as Settings
 import Page.Project.Commit as Commit
 import Page.Project.Overview as Overview
 import Page.Project.Task as CommitTask
+import Views.Helpers exposing (onClickPage)
+import Navigation exposing (newUrl)
 
 
+--import Navigation exposing (newUrl)
 -- SUB PAGES --
 
 
@@ -118,7 +121,7 @@ view session model =
             ]
 
 
-viewSidebar : Project -> ActiveSubPage -> Html msg
+viewSidebar : Project -> ActiveSubPage -> Html Msg
 viewSidebar project subPage =
     nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
@@ -126,7 +129,7 @@ viewSidebar project subPage =
                 (Route.Project project.id ProjectRoute.Overview)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
             , sidebarLink (subPage == CommitsPage)
-                (Route.Project project.id (ProjectRoute.Commits Nothing))
+                (Route.Project project.id (ProjectRoute.Commits Nothing Nothing))
                 [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
             , sidebarLink (subPage == SettingsPage)
                 (Route.Project project.id ProjectRoute.Settings)
@@ -135,10 +138,15 @@ viewSidebar project subPage =
         ]
 
 
-sidebarLink : Bool -> Route -> List (Html msg) -> Html msg
+sidebarLink : Bool -> Route -> List (Html Msg) -> Html Msg
 sidebarLink isActive route linkContent =
     li [ class "nav-item" ]
-        [ a [ class "nav-link", Route.href route, classList [ ( "active", isActive ) ] ]
+        [ a
+            [ class "nav-link"
+            , Route.href route
+            , classList [ ( "active", isActive ) ]
+            , onClickPage NewUrl route
+            ]
             (linkContent ++ [ Util.viewIf isActive (span [ class "sr-only" ] [ text "(current)" ]) ])
         ]
 
@@ -170,7 +178,7 @@ viewBreadcrumb project additionalElements items =
             ]
 
 
-viewBreadcrumbItem : Bool -> ( Route, String ) -> Html msg
+viewBreadcrumbItem : Bool -> ( Route, String ) -> Html Msg
 viewBreadcrumbItem active ( route, name ) =
     let
         children =
@@ -181,6 +189,7 @@ viewBreadcrumbItem active ( route, name ) =
     in
         li
             [ Route.href route
+            , onClickPage NewUrl route
             , class "breadcrumb-item"
             , classList [ ( "active", active ) ]
             ]
@@ -239,8 +248,8 @@ viewSubPage session model =
                 let
                     content =
                         Commits.view project branches subModel
-                            |> frame (sidebar CommitsPage)
                             |> Html.map CommitsMsg
+                            |> frame (sidebar CommitsPage)
 
                     crumbExtraItems =
                         Commits.viewBreadcrumbExtraItems subModel
@@ -256,8 +265,8 @@ viewSubPage session model =
                 let
                     content =
                         Commit.view project subModel
-                            |> frame (sidebar CommitsPage)
                             |> Html.map CommitMsg
+                            |> frame (sidebar CommitsPage)
 
                     crumb =
                         Commit.breadcrumb project subModel.commit
@@ -269,8 +278,8 @@ viewSubPage session model =
                 let
                     content =
                         CommitTask.view subModel
-                            |> frame (sidebar CommitsPage)
                             |> Html.map CommitTaskMsg
+                            |> frame (sidebar CommitsPage)
 
                     crumb =
                         CommitTask.breadcrumb project subModel.commit subModel.task
@@ -282,8 +291,8 @@ viewSubPage session model =
                 let
                     content =
                         Settings.view project subModel
-                            |> frame (sidebar SettingsPage)
                             |> Html.map SettingsMsg
+                            |> frame (sidebar SettingsPage)
 
                     crumb =
                         Settings.breadcrumb project
@@ -305,7 +314,7 @@ frame sidebar content =
 
 
 type Msg
-    = NoOp
+    = NewUrl String
     | SetRoute (Maybe ProjectRoute.Route)
     | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
@@ -314,6 +323,7 @@ type Msg
     | CommitTaskMsg CommitTask.Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
     | SettingsMsg Settings.Msg
+    | NoOp
 
 
 getSubPage : SubPageState -> SubPage
@@ -348,10 +358,11 @@ setRoute session maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (ProjectRoute.Commits maybeBranch) ->
+            Just (ProjectRoute.Commits maybeBranch maybePage) ->
                 case session.user of
                     Just user ->
-                        transition CommitsLoaded (Commits.init session model.project.id maybeBranch)
+                        Commits.init session model.project.id maybeBranch maybePage
+                            |> transition CommitsLoaded
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -409,6 +420,9 @@ updateSubPage session subPage msg model =
             pageErrored model
     in
         case ( msg, subPage ) of
+            ( NewUrl url, _ ) ->
+                model => newUrl url
+
             ( SetRoute route, _ ) ->
                 setRoute session route model
 
@@ -416,32 +430,39 @@ updateSubPage session subPage msg model =
                 toPage Settings SettingsMsg (Settings.update model.project session) subMsg subModel
 
             ( CommitsLoaded (Ok subModel), _ ) ->
-                { model | subPageState = Loaded (Commits subModel) } => Cmd.none
+                { model | subPageState = Loaded (Commits subModel) }
+                    => Cmd.none
 
             ( CommitsLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) } => Cmd.none
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
 
             ( CommitLoaded (Ok subModel), _ ) ->
-                { model | subPageState = Loaded (Commit subModel) } => Cmd.none
+                { model | subPageState = Loaded (Commit subModel) }
+                    => Cmd.none
 
             ( CommitLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) } => Cmd.none
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 toPage Commit CommitMsg (Commit.update model.project session) subMsg subModel
 
             ( CommitTaskLoaded (Ok subModel), _ ) ->
-                { model | subPageState = Loaded (CommitTask subModel) } => Cmd.none
+                { model | subPageState = Loaded (CommitTask subModel) }
+                    => Cmd.none
 
             ( CommitTaskLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) } => Cmd.none
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 toPage CommitTask CommitTaskMsg (CommitTask.update model.project session) subMsg subModel
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through" model) => Cmd.none
+                (Debug.log "Fell through" model)
+                    => Cmd.none

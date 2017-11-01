@@ -1,11 +1,12 @@
-module Route exposing (Route(..), href, modifyUrl, fromLocation)
+module Route exposing (Route(..), href, modifyUrl, fromLocation, routeToString)
 
-import UrlParser as Url exposing (parseHash, s, (</>), string, oneOf, Parser)
+import UrlParser as Url exposing (parsePath, s, (</>), string, oneOf, Parser)
 import Navigation exposing (Location)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Data.Project as Project
 import Page.Project.Route as ProjectRoute
+import Util exposing ((=>))
 
 
 type Route
@@ -40,24 +41,43 @@ routeToString page =
         pieces =
             case page of
                 Home ->
-                    []
+                    [] => []
 
                 Login ->
-                    [ "sign-in" ]
+                    [ "sign-in" ] => []
 
                 Logout ->
-                    [ "logout" ]
+                    [ "logout" ] => []
 
                 Projects ->
-                    [ "projects" ]
+                    [ "projects" ] => []
 
                 Project id child ->
-                    [ "projects", Project.idToString id ] ++ (ProjectRoute.routeToPieces child)
+                    let
+                        ( subPath, subQuery ) =
+                            ProjectRoute.routeToPieces child
+                    in
+                        ( [ "projects", Project.idToString id ] ++ subPath, subQuery )
 
                 KnownHosts ->
-                    [ "known-hosts" ]
+                    [ "known-hosts" ] => []
+
+        path =
+            Tuple.first pieces
+                |> String.join "/"
+
+        queryString =
+            Tuple.second pieces
+                |> List.map (\( k, v ) -> k ++ "=" ++ v)
+                |> String.join "&"
+
+        routeString =
+            path
     in
-        "#/" ++ (String.join "/" pieces)
+        if String.length queryString > 0 then
+            routeString ++ "?" ++ queryString
+        else
+            routeString
 
 
 
@@ -76,7 +96,7 @@ modifyUrl =
 
 fromLocation : Location -> Maybe Route
 fromLocation location =
-    if String.isEmpty location.hash then
+    if String.isEmpty location.pathname then
         Just Home
     else
-        parseHash route (Debug.log "location" location)
+        parsePath route location

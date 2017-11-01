@@ -18,6 +18,7 @@ import Route exposing (Route)
 import Task
 import Util exposing ((=>))
 import Views.Page as Page exposing (ActivePage)
+import Page.Header as Header
 
 
 type Page
@@ -73,12 +74,49 @@ initialPage =
 
 view : Model -> Html Msg
 view model =
-    case model.pageState of
-        Loaded page ->
-            viewPage model.session False page
+    let
+        page =
+            viewPage model.session
 
-        TransitioningFrom page ->
-            viewPage model.session True page
+        header =
+            viewHeader model.session
+    in
+        case model.pageState of
+            Loaded activePage ->
+                div []
+                    [ header False activePage
+                    , page False activePage
+                    ]
+
+            TransitioningFrom activePage ->
+                div []
+                    [ header True activePage
+                    , page True activePage
+                    ]
+
+
+pageToActivePage : Page -> ActivePage
+pageToActivePage page =
+    case page of
+        Home _ ->
+            Page.Home
+
+        Projects _ ->
+            Page.Projects
+
+        Project _ ->
+            Page.Project
+
+        _ ->
+            Page.Other
+
+
+viewHeader : Session -> Bool -> Page -> Html Msg
+viewHeader session isLoading page =
+    page
+        |> pageToActivePage
+        |> Header.viewHeader session.user isLoading
+        |> Html.map HeaderMsg
 
 
 viewPage : Session -> Bool -> Page -> Html Msg
@@ -157,7 +195,8 @@ getPage pageState =
 
 
 type Msg
-    = SetRoute (Maybe Route)
+    = HeaderMsg Header.ExternalMsg
+    | SetRoute (Maybe Route)
     | HomeMsg Home.Msg
     | HomeLoaded (Result PageLoadError Home.Model)
     | SetUser (Maybe User)
@@ -290,6 +329,11 @@ updatePage page msg model =
             pageErrored model
     in
         case ( msg, page ) of
+            ( HeaderMsg subMsg, _ ) ->
+                case subMsg of
+                    Header.NewUrl newUrl ->
+                        model => Navigation.newUrl newUrl
+
             ( SetRoute route, _ ) ->
                 setRoute route model
 

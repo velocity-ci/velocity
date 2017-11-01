@@ -90,20 +90,38 @@ branches id maybeToken =
 -- COMMITS --
 
 
-commits : Project.Id -> Maybe Branch -> Maybe AuthToken -> Http.Request CommitResults.Results
-commits id maybeBranch maybeToken =
+commits :
+    Project.Id
+    -> Maybe Branch
+    -> Int
+    -> Int
+    -> Maybe AuthToken
+    -> Http.Request CommitResults.Results
+commits id maybeBranch amount page maybeToken =
     let
         expect =
             CommitResults.decoder
                 |> Http.expectJson
 
-        queryParams =
+        branchParam queryParams =
             case maybeBranch of
                 Just (Branch.Name branch) ->
-                    [ ( "branch", branch ) ]
+                    ( "branch", branch ) :: queryParams
 
                 _ ->
-                    []
+                    queryParams
+
+        amountParam queryParams =
+            ( "amount", toString amount ) :: queryParams
+
+        pageParam queryParams =
+            ( "page", toString page ) :: queryParams
+
+        queryParams =
+            []
+                |> branchParam
+                |> amountParam
+                |> pageParam
     in
         apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/commits")
             |> HttpBuilder.get

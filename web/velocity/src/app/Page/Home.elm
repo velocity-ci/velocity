@@ -17,6 +17,8 @@ import Page.Helpers exposing (formatDate, sortByDatetime)
 import Route
 import Page.Project.Route as ProjectRoute
 import Time.DateTime as DateTime
+import Views.Helpers exposing (onClickPage)
+import Navigation exposing (newUrl)
 
 
 -- MODEL --
@@ -85,7 +87,14 @@ view session model =
                 ]
             , div [ class "col-12 col-md-6" ]
                 [ div [ class "card" ]
-                    [ h4 [ class "card-header" ] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
+                    [ h4
+                        [ class "card-header" ]
+                        [ a
+                            [ Route.href Route.Projects
+                            , onClickPage NewUrl Route.Projects
+                            ]
+                            [ text "Projects" ]
+                        ]
                     , viewProjectList model.projects
                     ]
                 ]
@@ -104,16 +113,25 @@ viewProjectList projects =
 
 viewProjectListItem : Project -> Html Msg
 viewProjectListItem project =
-    li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-        [ div [ class "d-flex w-100 justify-content-between" ]
-            [ h5 [ class "mb-1" ]
-                [ a [ Route.href (Route.Project project.id ProjectRoute.Overview) ] [ text project.name ] ]
+    let
+        route =
+            Route.Project project.id ProjectRoute.Overview
+    in
+        li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
+            [ div [ class "d-flex w-100 justify-content-between" ]
+                [ h5 [ class "mb-1" ]
+                    [ a
+                        [ Route.href route
+                        , onClickPage NewUrl route
+                        ]
+                        [ text project.name ]
+                    ]
+                , small []
+                    [ DateTime.date project.updatedAt |> formatDate |> text ]
+                ]
             , small []
-                [ text (formatDate (DateTime.date project.updatedAt)) ]
+                [ text project.repository ]
             ]
-        , small []
-            [ text project.repository ]
-        ]
 
 
 
@@ -121,9 +139,11 @@ viewProjectListItem project =
 
 
 type Msg
-    = NoOp
+    = NewUrl String
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
-    model => Cmd.none
+    case msg of
+        NewUrl url ->
+            model => newUrl url

@@ -3,7 +3,7 @@ module Page.Project.Task exposing (..)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
-import Data.Task as ProjectTask exposing (BuildStep, RunStep, Step(..), Parameter(..))
+import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, Step(..), Parameter(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on)
@@ -220,6 +220,9 @@ viewStepList steps toggledStep =
 
                 buildStep =
                     viewBuildStep stepNum
+
+                cloneStep =
+                    viewCloneStep stepNum
             in
                 case ( step, toggledStep ) of
                     ( Run run, Just (Run toggled) ) ->
@@ -228,13 +231,29 @@ viewStepList steps toggledStep =
                     ( Build build, Just (Build toggled) ) ->
                         buildStep build (build == toggled)
 
+                    ( Clone clone, Just (Clone toggled) ) ->
+                        cloneStep clone (clone == toggled)
+
                     ( Run run, _ ) ->
                         runStep run False
 
                     ( Build build, _ ) ->
                         buildStep build False
+
+                    ( Clone clone, _ ) ->
+                        cloneStep clone False
     in
         List.indexedMap stepView steps
+
+
+viewCloneStep : Int -> CloneStep -> Bool -> Html Msg
+viewCloneStep i cloneStep toggled =
+    let
+        title =
+            toString i ++ ". (Clone)" ++ cloneStep.description
+    in
+        viewStepCollapse (Clone cloneStep) title toggled <|
+            []
 
 
 viewBuildStep : Int -> BuildStep -> Bool -> Html Msg

@@ -18,6 +18,8 @@ import Route
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
 import Page.Project.Route as ProjectRoute
+import Navigation
+import Views.Helpers exposing (onClickPage)
 
 
 -- MODEL --
@@ -268,16 +270,25 @@ viewProjectList projects =
 
 viewProjectListItem : Project -> Html Msg
 viewProjectListItem project =
-    li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-        [ div [ class "d-flex w-100 justify-content-between" ]
-            [ h5 [ class "mb-1" ]
-                [ a [ Route.href (Route.Project project.id ProjectRoute.Overview) ] [ text project.name ] ]
+    let
+        route =
+            Route.Project project.id ProjectRoute.Overview
+    in
+        li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
+            [ div [ class "d-flex w-100 justify-content-between" ]
+                [ h5 [ class "mb-1" ]
+                    [ a
+                        [ Route.href route
+                        , onClickPage NewUrl route
+                        ]
+                        [ text project.name ]
+                    ]
+                , small []
+                    [ text (formatDateTime project.updatedAt) ]
+                ]
             , small []
-                [ text (formatDateTime project.updatedAt) ]
+                [ text project.repository ]
             ]
-        , small []
-            [ text project.repository ]
-        ]
 
 
 
@@ -285,7 +296,8 @@ viewProjectListItem project =
 
 
 type Msg
-    = SubmitForm
+    = NewUrl String
+    | SubmitForm
     | SetFormCollapsed Bool
     | SetName String
     | SetRepository String
@@ -341,6 +353,9 @@ update session msg model =
             resetServerErrors model.serverErrors
     in
         case msg of
+            NewUrl url ->
+                model => Navigation.newUrl url
+
             SubmitForm ->
                 case validate form of
                     [] ->
