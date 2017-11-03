@@ -464,6 +464,40 @@ func (m *Manager) GetBuild(projectID string, commitHash string, buildID uint64) 
 	return build
 }
 
+func (m *Manager) GetBuilds(projectID string, commitHash string) []*Build {
+	builds := []*Build{}
+	tx, err := m.bolt.Begin(true)
+	if err != nil {
+		log.Fatal(err)
+		return builds
+	}
+	defer tx.Rollback()
+
+	projectsBucket := tx.Bucket([]byte("projects"))
+	projectBucket := projectsBucket.Bucket([]byte(projectID))
+	commitsBucket := projectBucket.Bucket([]byte("commits"))
+	commit, _ := m.GetCommitInProject(commitHash, projectID)
+	commitBucket := commitsBucket.Bucket([]byte(commit.OrderedID()))
+
+	buildsBucket := commitBucket.Bucket([]byte("builds"))
+	if buildsBucket == nil {
+		return builds
+	}
+
+	cursor := buildsBucket.Cursor()
+	for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
+		build := &Build{}
+		err := json.Unmarshal(v, build)
+		if err == nil {
+			builds = append(builds, build)
+		} else {
+			log.Fatal(err)
+		}
+	}
+
+	return builds
+}
+
 func (m *Manager) GetQueuedBuilds() []*QueuedBuild {
 
 	queuedBuilds := []*QueuedBuild{}
