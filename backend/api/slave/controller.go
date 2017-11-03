@@ -176,7 +176,7 @@ func (c *Controller) monitor(s *Slave) {
 			// Emit to websocket clients
 			c.websocketManager.EmitAll(
 				&apiWebsocket.EmitMessage{
-					Subscription: fmt.Sprintf("project/%s/commits/%s/build/%d", lM.ProjectID, lM.CommitHash, lM.BuildID),
+					Subscription: fmt.Sprintf("project/%s/commits/%s/builds/%d", lM.ProjectID, lM.CommitHash, lM.BuildID),
 					Data: apiWebsocket.BuildMessage{
 						Step:   lM.Step,
 						Status: lM.Status,
