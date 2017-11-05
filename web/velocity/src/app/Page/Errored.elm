@@ -4,7 +4,7 @@ module Page.Errored exposing (view, pageLoadError, PageLoadError)
 for example a Page Not Found error.
 -}
 
-import Html exposing (Html, main_, h1, h2, div, img, text, p)
+import Html exposing (..)
 import Html.Attributes exposing (class, tabindex, id, alt)
 import Data.Session as Session exposing (Session)
 import Views.Page as Page exposing (ActivePage)
@@ -34,13 +34,17 @@ pageLoadError activePage errorMessage =
 
 view : Session -> PageLoadError -> Html msg
 view session (PageLoadError model) =
-    div [ class "container-fluid" ]
+    div [ class "container mt-3" ]
         [ div [ class "row default-margin-bottom" ]
             [ div [ class "col-12" ]
-                [ h1 [ class "display-4" ] [ text "Error Loading Page" ] ]
+                [ h1 [ class "display-4 text-danger" ]
+                    [ i [ class "fa fa-exclamation-triangle" ] []
+                    , text " An error occurred."
+                    ]
+                ]
             ]
         , div [ class "row" ]
             [ div [ class "col-12" ]
-                [ h2 [ class "display-6" ] [ text model.errorMessage ] ]
+                [ samp [] [ text model.errorMessage ] ]
             ]
         ]

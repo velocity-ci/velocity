@@ -45,6 +45,9 @@ routeToPieces page =
             let
                 queryParams =
                     case maybePageNumber of
+                        Just 1 ->
+                            []
+
                         Just p ->
                             [ ( "page", toString p ) ]
 

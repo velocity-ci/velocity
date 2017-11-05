@@ -1,4 +1,4 @@
-module Data.AuthToken exposing (AuthToken, encode, decoder, withAuthorization)
+module Data.AuthToken exposing (AuthToken, encode, decoder, withAuthorization, tokenToString)
 
 import Json.Encode as Encode exposing (Value)
 import Json.Decode as Decode exposing (Decoder)
@@ -22,6 +22,15 @@ decoder : Decoder AuthToken
 decoder =
     Decode.string
         |> Decode.map AuthToken
+
+
+
+-- IDENTIFIERS --
+
+
+tokenToString : AuthToken -> String
+tokenToString (AuthToken token) =
+    token
 
 
 

@@ -19,6 +19,9 @@ import Task
 import Util exposing ((=>))
 import Views.Page as Page exposing (ActivePage)
 import Page.Header as Header
+import WebSocket
+import Json.Encode as Encode
+import Data.AuthToken as AuthToken
 
 
 type Page
@@ -172,7 +175,19 @@ viewPage session isLoading page =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.map SetUser sessionChange
+    let
+        session =
+            Sub.map SetUser sessionChange
+
+        socket =
+            case model.session.user of
+                Just user ->
+                    WebSocket.listen ("ws://localhost/v1/ws?authToken=" ++ (AuthToken.tokenToString user.token)) NewMessage
+
+                Nothing ->
+                    Sub.none
+    in
+        Sub.batch [ session, socket ]
 
 
 sessionChange : Sub (Maybe User)
@@ -207,6 +222,7 @@ type Msg
     | ProjectMsg Project.Msg
     | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
     | KnownHostsMsg KnownHosts.Msg
+    | NewMessage String
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )

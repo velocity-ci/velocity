@@ -395,112 +395,118 @@ type Msg
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
-    case msg of
-        ToggleStep maybeStep ->
-            { model | toggledStep = maybeStep }
-                => Cmd.none
+    let
+        projectId =
+            project.id
 
-        OnInput field value ->
-            let
-                updateField fieldType =
-                    case fieldType of
-                        Input f ->
-                            if f == field then
-                                Input
-                                    { field
-                                        | value = value
-                                        , dirty = True
-                                    }
-                            else
-                                fieldType
+        commitHash =
+            model.commit.hash
 
-                        _ ->
-                            fieldType
-
-                form =
-                    List.map updateField model.form
-
-                errors =
-                    List.concatMap validator form
-            in
-                { model
-                    | form = form
-                    , errors = errors
-                }
+        taskName =
+            model.task.name
+    in
+        case msg of
+            ToggleStep maybeStep ->
+                { model | toggledStep = maybeStep }
                     => Cmd.none
 
-        OnChange field maybeIndex ->
-            let
-                updateField fieldType =
-                    case ( fieldType, maybeIndex ) of
-                        ( Choice f, Just index ) ->
-                            if f == field then
-                                let
-                                    value =
-                                        f.options
-                                            |> List.indexedMap (,)
-                                            |> List.filter (\i -> Tuple.first i == index)
-                                            |> List.head
-                                            |> Maybe.map Tuple.second
-                                in
-                                    Choice
+            OnInput field value ->
+                let
+                    updateField fieldType =
+                        case fieldType of
+                            Input f ->
+                                if f == field then
+                                    Input
                                         { field
                                             | value = value
                                             , dirty = True
                                         }
-                            else
+                                else
+                                    fieldType
+
+                            _ ->
                                 fieldType
 
-                        _ ->
-                            fieldType
+                    form =
+                        List.map updateField model.form
 
-                form =
-                    List.map updateField model.form
+                    errors =
+                        List.concatMap validator form
+                in
+                    { model
+                        | form = form
+                        , errors = errors
+                    }
+                        => Cmd.none
 
-                errors =
-                    List.concatMap validator form
-            in
-                { model
-                    | form = form
-                    , errors = errors
-                }
-                    => Cmd.none
+            OnChange field maybeIndex ->
+                let
+                    updateField fieldType =
+                        case ( fieldType, maybeIndex ) of
+                            ( Choice f, Just index ) ->
+                                if f == field then
+                                    let
+                                        value =
+                                            f.options
+                                                |> List.indexedMap (,)
+                                                |> List.filter (\i -> Tuple.first i == index)
+                                                |> List.head
+                                                |> Maybe.map Tuple.second
+                                    in
+                                        Choice
+                                            { field
+                                                | value = value
+                                                , dirty = True
+                                            }
+                                else
+                                    fieldType
 
-        SubmitForm ->
-            let
-                stringParm { value, field } =
-                    field => value
+                            _ ->
+                                fieldType
 
-                cmdFromAuth authToken =
-                    authToken
-                        |> Request.Commit.createBuild project.id model.commit.hash model.task.name params
-                        |> Http.send BuildCreated
+                    form =
+                        List.map updateField model.form
 
-                cmd =
-                    session
-                        |> Session.attempt "create build" cmdFromAuth
-                        |> Tuple.second
+                    errors =
+                        List.concatMap validator form
+                in
+                    { model
+                        | form = form
+                        , errors = errors
+                    }
+                        => Cmd.none
 
-                mapFieldToParam field =
-                    case field of
-                        Input input ->
-                            Just (stringParm input)
+            SubmitForm ->
+                let
+                    stringParm { value, field } =
+                        field => value
 
-                        Choice choice ->
-                            case choice.value of
-                                Just value ->
-                                    Just (stringParm { value = value, field = choice.field })
+                    cmdFromAuth authToken =
+                        authToken
+                            |> Request.Commit.createBuild projectId commitHash taskName params
+                            |> Http.send BuildCreated
 
-                                Nothing ->
-                                    Nothing
+                    cmd =
+                        session
+                            |> Session.attempt "create build" cmdFromAuth
+                            |> Tuple.second
 
-                params =
-                    List.filterMap mapFieldToParam model.form
-            in
-                model => cmd
+                    mapFieldToParam field =
+                        case field of
+                            Input input ->
+                                Just (stringParm input)
 
-        BuildCreated _ ->
-            model => Cmd.none
+                            Choice choice ->
+                                choice.value
+                                    |> Maybe.map (\value -> stringParm { value = value, field = choice.field })
+
+                    params =
+                        List.filterMap mapFieldToParam model.form
+                in
+                    model => cmd
+
+            BuildCreated _ ->
+                model => Cmd.none
 
 
 
