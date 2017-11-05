@@ -1,6 +1,10 @@
 package knownhost
 
-import "golang.org/x/crypto/ssh"
+import (
+	"log"
+
+	"golang.org/x/crypto/ssh"
+)
 
 type KnownHost struct {
 	Entry string `json:"entry"`
@@ -18,7 +22,17 @@ type RequestKnownHost struct {
 }
 
 func NewResponseKnownHost(k *KnownHost) *ResponseKnownHost {
-	_, hosts, pubKey, comment, _, _ := ssh.ParseKnownHosts([]byte(k.Entry))
+	_, hosts, pubKey, comment, _, err := ssh.ParseKnownHosts([]byte(k.Entry))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if pubKey == nil {
+		return &ResponseKnownHost{
+			Hosts:   hosts,
+			Comment: comment,
+		}
+	}
 
 	return &ResponseKnownHost{
 		Hosts:             hosts,
