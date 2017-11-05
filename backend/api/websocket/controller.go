@@ -43,6 +43,9 @@ func (c Controller) Setup(router *mux.Router) {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func (c Controller) wsClientHandler(w http.ResponseWriter, r *http.Request) {
