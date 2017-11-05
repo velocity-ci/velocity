@@ -22,7 +22,7 @@ type alias Commit =
 decoder : Decoder Commit
 decoder =
     decode Commit
-        |> required "hash" (Decode.map Hash Decode.string)
+        |> required "hash" decodeHash
         |> required "author" Decode.string
         |> required "date" stringToDateTime
         |> required "message" Decode.string
@@ -44,6 +44,11 @@ hashParser =
 hashToString : Hash -> String
 hashToString (Hash slug) =
     slug
+
+
+decodeHash : Decoder Hash
+decodeHash =
+    Decode.map Hash Decode.string
 
 
 

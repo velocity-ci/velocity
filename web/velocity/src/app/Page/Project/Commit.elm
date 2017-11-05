@@ -6,10 +6,12 @@ import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Task as ProjectTask
+import Data.Build as Build exposing (Build)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
 import Page.Project.Commits as Commits
 import Request.Project
+import Request.Commit
 import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
@@ -26,6 +28,7 @@ import Views.Helpers exposing (onClickPage)
 type alias Model =
     { commit : Commit
     , tasks : List ProjectTask.Task
+    , builds : List Build
     }
 
 
@@ -37,18 +40,23 @@ init session id hash =
 
         loadCommit =
             maybeAuthToken
-                |> Request.Project.commit id hash
+                |> Request.Commit.get id hash
                 |> Http.toTask
 
         loadTasks =
             maybeAuthToken
-                |> Request.Project.commitTasks id hash
+                |> Request.Commit.tasks id hash
+                |> Http.toTask
+
+        loadBuilds =
+            maybeAuthToken
+                |> Request.Commit.builds id hash
                 |> Http.toTask
 
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map2 Model loadCommit loadTasks
+        Task.map3 Model loadCommit loadTasks loadBuilds
             |> Task.mapError handleLoadError
 
 

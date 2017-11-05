@@ -74,7 +74,7 @@ type alias ChoiceParameter =
 decoder : Decoder Task
 decoder =
     decode Task
-        |> required "name" (Decode.map Name Decode.string)
+        |> required "name" decodeName
         |> optional "description" Decode.string ""
         |> optional "steps" (Decode.list stepDecoder) []
         |> optional "parameters" parameterKeyValuePairDecoder []
@@ -135,8 +135,8 @@ stepDecoder =
                     "clone" ->
                         Decode.map Clone cloneStepDecoder
 
-                    unknownType ->
-                        Decode.fail <| "Unknown type: " ++ unknownType
+                    unknown ->
+                        Decode.fail <| "Unknown type: " ++ unknown
             )
 
 
@@ -174,6 +174,11 @@ cloneStepDecoder =
 
 type Name
     = Name String
+
+
+decodeName : Decoder Name
+decodeName =
+    Decode.map Name Decode.string
 
 
 nameParser : UrlParser.Parser (Name -> a) a

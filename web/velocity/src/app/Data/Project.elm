@@ -1,4 +1,4 @@
-module Data.Project exposing (Project, decoder, idParser, idToString, Id(..))
+module Data.Project exposing (Project, decoder, idParser, idToString, decodeId, Id(..))
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
@@ -24,7 +24,7 @@ type alias Project =
 decoder : Decoder Project
 decoder =
     decode Project
-        |> required "id" (Decode.map Id Decode.string)
+        |> required "id" decodeId
         |> optional "key" (Decode.nullable Decode.string) Nothing
         |> required "name" Decode.string
         |> required "repository" Decode.string
@@ -38,6 +38,11 @@ decoder =
 
 type Id
     = Id String
+
+
+decodeId : Decoder Id
+decodeId =
+    Decode.map Id Decode.string
 
 
 idParser : UrlParser.Parser (Id -> a) a

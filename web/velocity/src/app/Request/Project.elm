@@ -3,10 +3,6 @@ module Request.Project
         ( list
         , create
         , get
-        , commits
-        , commit
-        , commitTasks
-        , commitTask
         , sync
         , delete
         , branches
@@ -17,6 +13,7 @@ import Data.Project as Project exposing (Project)
 import Data.Commit as Commit exposing (Commit)
 import Data.Task as Task exposing (Task)
 import Data.Branch as Branch exposing (Branch)
+import Data.Build as Build exposing (Build)
 import Data.CommitResults as CommitResults
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -80,118 +77,6 @@ branches id maybeToken =
                 |> Http.expectJson
     in
         apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/branches")
-            |> HttpBuilder.get
-            |> HttpBuilder.withExpect expect
-            |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
-
-
-
--- COMMITS --
-
-
-commits :
-    Project.Id
-    -> Maybe Branch
-    -> Int
-    -> Int
-    -> Maybe AuthToken
-    -> Http.Request CommitResults.Results
-commits id maybeBranch amount page maybeToken =
-    let
-        expect =
-            CommitResults.decoder
-                |> Http.expectJson
-
-        branchParam queryParams =
-            case maybeBranch of
-                Just (Branch.Name branch) ->
-                    ( "branch", branch ) :: queryParams
-
-                _ ->
-                    queryParams
-
-        amountParam queryParams =
-            ( "amount", toString amount ) :: queryParams
-
-        pageParam queryParams =
-            ( "page", toString page ) :: queryParams
-
-        queryParams =
-            []
-                |> branchParam
-                |> amountParam
-                |> pageParam
-    in
-        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/commits")
-            |> HttpBuilder.get
-            |> HttpBuilder.withExpect expect
-            |> HttpBuilder.withQueryParams queryParams
-            |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
-
-
-commit : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request Commit
-commit id hash maybeToken =
-    let
-        expect =
-            Commit.decoder
-                |> Http.expectJson
-
-        urlPieces =
-            [ baseUrl
-            , Project.idToString id
-            , "commits"
-            , Commit.hashToString hash
-            ]
-    in
-        apiUrl (String.join "/" urlPieces)
-            |> HttpBuilder.get
-            |> HttpBuilder.withExpect expect
-            |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
-
-
-commitTasks : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (List Task)
-commitTasks id hash maybeToken =
-    let
-        expect =
-            Task.decoder
-                |> Decode.list
-                |> Http.expectJson
-
-        urlPieces =
-            [ baseUrl
-            , Project.idToString id
-            , "commits"
-            , Commit.hashToString hash
-            , "tasks"
-            ]
-    in
-        apiUrl (String.join "/" urlPieces)
-            |> HttpBuilder.get
-            |> HttpBuilder.withExpect expect
-            |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
-
-
-commitTask : Project.Id -> Commit.Hash -> Task.Name -> Maybe AuthToken -> Http.Request Task
-commitTask id hash name maybeToken =
-    let
-        expect =
-            Task.decoder
-                |> Http.expectJson
-
-        urlPieces =
-            [ baseUrl
-            , Project.idToString id
-            , "commits"
-            , Commit.hashToString hash
-            , "tasks"
-            , Task.nameToString name
-            ]
-    in
-        apiUrl (String.join "/" urlPieces)
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken

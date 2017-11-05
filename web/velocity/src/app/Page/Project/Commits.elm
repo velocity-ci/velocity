@@ -11,6 +11,7 @@ import Data.Branch as Branch exposing (Branch)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, formatTime, sortByDatetime)
 import Request.Project
+import Request.Commit
 import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
@@ -49,7 +50,7 @@ init session id maybeBranch maybePage =
 
         loadCommits =
             maybeAuthToken
-                |> Request.Project.commits id maybeBranch perPage defaultPage
+                |> Request.Commit.list id maybeBranch perPage defaultPage
                 |> Http.toTask
 
         initialModel { results, total } =
@@ -256,7 +257,7 @@ update project session msg model =
             let
                 getCommits authToken =
                     Just authToken
-                        |> Request.Project.commits project.id model.branch perPage model.page
+                        |> Request.Commit.list project.id model.branch perPage model.page
                         |> Http.toTask
 
                 cmdFromAuth authToken =

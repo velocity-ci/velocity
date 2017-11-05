@@ -3,16 +3,17 @@ module Page.Project.Task exposing (..)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
+import Data.Build
 import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, Step(..), Parameter(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput, on)
+import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses)
 import Page.Project.Commit as Commit
 import Page.Project.Route as ProjectRoute
-import Request.Project
+import Request.Commit
 import Route exposing (Route)
 import Task exposing (Task)
 import Util exposing ((=>))
@@ -63,12 +64,12 @@ init session id hash name =
 
         loadCommit =
             maybeAuthToken
-                |> Request.Project.commit id hash
+                |> Request.Commit.get id hash
                 |> Http.toTask
 
         loadTask =
             maybeAuthToken
-                |> Request.Project.commitTask id hash name
+                |> Request.Commit.task id hash name
                 |> Http.toTask
 
         handleLoadError _ =
@@ -196,14 +197,15 @@ viewBuildForm taskName fields errors =
                         []
     in
         [ h4 [] [ text taskName ]
-        , Html.form [ attribute "novalidate" "" ] <|
+        , Html.form [ attribute "novalidate" "", onSubmit SubmitForm ] <|
             List.map fieldInput fields
-        , button
-            [ class "btn btn-primary"
-            , type_ "submit"
-            , disabled <| not (List.isEmpty errors)
-            ]
-            [ text "Start task" ]
+                ++ [ button
+                        [ class "btn btn-primary"
+                        , type_ "submit"
+                        , disabled <| not (List.isEmpty errors)
+                        ]
+                        [ text "Start task" ]
+                   ]
         ]
 
 
@@ -250,7 +252,7 @@ viewCloneStep : Int -> CloneStep -> Bool -> Html Msg
 viewCloneStep i cloneStep toggled =
     let
         title =
-            toString i ++ ". (Clone)" ++ cloneStep.description
+            toString i ++ ". Clone" ++ cloneStep.description
     in
         viewStepCollapse (Clone cloneStep) title toggled <|
             []
@@ -387,6 +389,8 @@ type Msg
     = ToggleStep (Maybe Step)
     | OnInput InputFormField String
     | OnChange ChoiceFormField (Maybe Int)
+    | SubmitForm
+    | BuildCreated (Result Http.Error Data.Build.Build)
 
 
 update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -461,6 +465,42 @@ update project session msg model =
                     , errors = errors
                 }
                     => Cmd.none
+
+        SubmitForm ->
+            let
+                stringParm { value, field } =
+                    field => value
+
+                cmdFromAuth authToken =
+                    authToken
+                        |> Request.Commit.createBuild project.id model.commit.hash model.task.name params
+                        |> Http.send BuildCreated
+
+                cmd =
+                    session
+                        |> Session.attempt "create build" cmdFromAuth
+                        |> Tuple.second
+
+                mapFieldToParam field =
+                    case field of
+                        Input input ->
+                            Just (stringParm input)
+
+                        Choice choice ->
+                            case choice.value of
+                                Just value ->
+                                    Just (stringParm { value = value, field = choice.field })
+
+                                Nothing ->
+                                    Nothing
+
+                params =
+                    List.filterMap mapFieldToParam model.form
+            in
+                model => cmd
+
+        BuildCreated _ ->
+            model => Cmd.none
 
 
 
