@@ -5,13 +5,14 @@ import Data.Commit as Commit
 import Data.Task as ProjectTask
 import Data.Branch as Branch
 import Util exposing ((=>))
+import Page.Project.Commit.Route as CommitRoute
 
 
 type Route
     = Overview
     | Commits (Maybe Branch.Name) (Maybe Int)
-    | Commit Commit.Hash
-    | Task Commit.Hash ProjectTask.Name
+    | Commit Commit.Hash CommitRoute.Route
+      --    | Task Commit.Hash ProjectTask.Name
     | Settings
 
 
@@ -26,8 +27,8 @@ route =
         [ Url.map Overview (s "overview")
         , Url.map Settings (s "settings")
         , Url.map Commits (s "commits" </> Branch.nameParser <?> intParam "page")
-        , Url.map Commit (s "commit" </> Commit.hashParser)
-        , Url.map Task (s "commit" </> Commit.hashParser </> s "tasks" </> ProjectTask.nameParser)
+        , Url.map Commit (s "commit" </> Commit.hashParser </> CommitRoute.route)
+          --        , Url.map Task (s "commit" </> Commit.hashParser </> CommitRoute.route)
         ]
 
 
@@ -56,11 +57,15 @@ routeToPieces page =
             in
                 [ "commits", Branch.nameToString branchName ] => queryParams
 
-        Commit hash ->
-            [ "commit", Commit.hashToString hash ] => []
+        Commit hash child ->
+            let
+                ( subPath, subQuery ) =
+                    CommitRoute.routeToPieces child
+            in
+                [ "commit", Commit.hashToString hash ] ++ subPath => subQuery
 
-        Task hash name ->
-            [ "commit", Commit.hashToString hash, "tasks", ProjectTask.nameToString name ] => []
-
+        --
+        --        Task hash name ->
+        --            [ "commit", Commit.hashToString hash, "tasks", ProjectTask.nameToString name ] => []
         Settings ->
             [ "settings" ] => []

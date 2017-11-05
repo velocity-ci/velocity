@@ -18,12 +18,10 @@ import Page.Project.Commits as Commits
 import Page.Project.Settings as Settings
 import Page.Project.Commit as Commit
 import Page.Project.Overview as Overview
-import Page.Project.Task as CommitTask
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 
 
---import Navigation exposing (newUrl)
 -- SUB PAGES --
 
 
@@ -32,7 +30,6 @@ type SubPage
     | Overview
     | Commits Commits.Model
     | Commit Commit.Model
-    | CommitTask CommitTask.Model
     | Settings Settings.Model
     | Errored PageLoadError
 
@@ -200,12 +197,7 @@ viewSubPage : Session -> Model -> ( Html Msg, Html Msg )
 viewSubPage session model =
     let
         page =
-            case model.subPageState of
-                Loaded page ->
-                    page
-
-                TransitioningFrom page ->
-                    page
+            getSubPage model.subPageState
 
         project =
             model.project
@@ -274,19 +266,18 @@ viewSubPage session model =
                 in
                     ( content, crumb )
 
-            CommitTask subModel ->
-                let
-                    content =
-                        CommitTask.view subModel
-                            |> Html.map CommitTaskMsg
-                            |> frame (sidebar CommitsPage)
-
-                    crumb =
-                        CommitTask.breadcrumb project subModel.commit subModel.task
-                            |> breadcrumb (text "")
-                in
-                    ( content, crumb )
-
+            --            CommitTask subModel ->
+            --                let
+            --                    content =
+            --                        CommitTask.view subModel
+            --                            |> Html.map CommitTaskMsg
+            --                            |> frame (sidebar CommitsPage)
+            --
+            --                    crumb =
+            --                        CommitTask.breadcrumb project subModel.commit subModel.task
+            --                            |> breadcrumb (text "")
+            --                in
+            --                    ( content, crumb )
             Settings subModel ->
                 let
                     content =
@@ -319,9 +310,7 @@ type Msg
     | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
     | CommitMsg Commit.Msg
-    | CommitLoaded (Result PageLoadError Commit.Model)
-    | CommitTaskMsg CommitTask.Msg
-    | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
+    | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
     | SettingsMsg Settings.Msg
     | NoOp
 
@@ -367,21 +356,41 @@ setRoute session maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (ProjectRoute.Commit hash) ->
-                case session.user of
-                    Just user ->
-                        transition CommitLoaded (Commit.init session model.project.id hash)
+            Just (ProjectRoute.Commit hash maybeRoute) ->
+                let
+                    loadFreshPage =
+                        Just maybeRoute
+                            |> Commit.init session model.project hash
+                            |> transition CommitLoaded
 
-                    Nothing ->
-                        errored Page.Project "Uhoh"
+                    transitionSubPage subModel =
+                        let
+                            ( newModel, newMsg ) =
+                                subModel
+                                    |> Commit.update model.project session (Commit.SetRoute (Just maybeRoute))
+                        in
+                            { model | subPageState = Loaded (Commit newModel) }
+                                => Cmd.map CommitMsg newMsg
+                in
+                    case ( session.user, model.subPageState ) of
+                        ( Just _, Loaded page ) ->
+                            case page of
+                                -- If we're on the product page for the same product as the new route just load sub-page
+                                -- Otherwise load the project page fresh
+                                Commit subModel ->
+                                    if hash == subModel.commit.hash then
+                                        transitionSubPage subModel
+                                    else
+                                        loadFreshPage
 
-            Just (ProjectRoute.Task hash name) ->
-                case session.user of
-                    Just user ->
-                        transition CommitTaskLoaded (CommitTask.init session model.project.id hash name)
+                                _ ->
+                                    loadFreshPage
 
-                    Nothing ->
-                        errored Page.Project "Uhoh"
+                        ( Just _, TransitioningFrom _ ) ->
+                            loadFreshPage
+
+                        ( Nothing, _ ) ->
+                            errored Page.Project "Error loading commit"
 
             Just (ProjectRoute.Settings) ->
                 case session.user of
@@ -440,28 +449,26 @@ updateSubPage session subPage msg model =
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
 
-            ( CommitLoaded (Ok subModel), _ ) ->
+            ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
-                    => Cmd.none
+                    => Cmd.map CommitMsg subMsg
 
             ( CommitLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) }
-                    => Cmd.none
+                { model | subPageState = Loaded (Errored error) } => Cmd.none
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 toPage Commit CommitMsg (Commit.update model.project session) subMsg subModel
 
-            ( CommitTaskLoaded (Ok subModel), _ ) ->
-                { model | subPageState = Loaded (CommitTask subModel) }
-                    => Cmd.none
-
-            ( CommitTaskLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) }
-                    => Cmd.none
-
-            ( CommitTaskMsg subMsg, CommitTask subModel ) ->
-                toPage CommitTask CommitTaskMsg (CommitTask.update model.project session) subMsg subModel
-
+            --            ( CommitTaskLoaded (Ok subModel), _ ) ->
+            --                { model | subPageState = Loaded (CommitTask subModel) }
+            --                    => Cmd.none
+            --
+            --            ( CommitTaskLoaded (Err error), _ ) ->
+            --                { model | subPageState = Loaded (Errored error) }
+            --                    => Cmd.none
+            --
+            --            ( CommitTaskMsg subMsg, CommitTask subModel ) ->
+            --                toPage CommitTask CommitTaskMsg (CommitTask.update model.project session) subMsg subModel
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through" model)

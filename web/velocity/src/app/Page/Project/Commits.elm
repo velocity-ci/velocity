@@ -22,6 +22,7 @@ import Time.Date as Date exposing (Date)
 import Page.Helpers exposing (formatDate)
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
+import Page.Project.Commit.Route as CommitRoute
 import Json.Decode as Decode
 import Navigation
 import Views.Helpers exposing (onClickPage)
@@ -180,7 +181,7 @@ viewCommitListItem id commit =
             Commit.truncateHash commit.hash
 
         route =
-            Route.Project id <| ProjectRoute.Commit commit.hash
+            Route.Project id <| ProjectRoute.Commit commit.hash <| CommitRoute.Overview
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route, onClickPage NewUrl route ]
             [ div [ class "d-flex w-100 justify-content-between" ]

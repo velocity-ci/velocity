@@ -1,4 +1,4 @@
-module Page.Project.Task exposing (..)
+module Page.Project.Commit.Task exposing (..)
 
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
@@ -11,10 +11,7 @@ import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses)
-import Page.Project.Commit as Commit
-import Page.Project.Route as ProjectRoute
 import Request.Commit
-import Route exposing (Route)
 import Task exposing (Task)
 import Util exposing ((=>))
 import Validate exposing (..)
@@ -28,8 +25,7 @@ import Html.Events.Extra exposing (targetSelectedIndex)
 
 
 type alias Model =
-    { commit : Commit
-    , task : ProjectTask.Task
+    { task : ProjectTask.Task
     , toggledStep : Maybe Step
     , form : List Field
     , errors : List Error
@@ -62,11 +58,6 @@ init session id hash name =
         maybeAuthToken =
             Maybe.map .token session.user
 
-        loadCommit =
-            maybeAuthToken
-                |> Request.Commit.get id hash
-                |> Http.toTask
-
         loadTask =
             maybeAuthToken
                 |> Request.Commit.task id hash name
@@ -75,7 +66,7 @@ init session id hash name =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
 
-        initialModel commit task =
+        initialModel task =
             let
                 toggledStep =
                     Nothing
@@ -86,14 +77,13 @@ init session id hash name =
                 errors =
                     List.concatMap validator form
             in
-                { commit = commit
-                , task = task
+                { task = task
                 , toggledStep = toggledStep
                 , form = form
                 , errors = errors
                 }
     in
-        Task.map2 initialModel loadCommit loadTask
+        Task.map initialModel loadTask
             |> Task.mapError handleLoadError
 
 
@@ -373,15 +363,13 @@ viewStepCollapse step title toggled contents =
             ]
 
 
-breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route, String )
-breadcrumb project commit task =
-    List.concat
-        [ Commit.breadcrumb project commit
-        , [ ( Route.Project project.id (ProjectRoute.Task commit.hash task.name), ProjectTask.nameToString task.name ) ]
-        ]
 
-
-
+--breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route, String )
+--breadcrumb project commit task =
+--    List.concat
+--        [ Commit.breadcrumb project commit
+--        , [ ( Route.Project project.id (ProjectRoute.Task commit.hash task.name), ProjectTask.nameToString task.name ) ]
+--        ]
 -- UPDATE --
 
 
@@ -393,14 +381,14 @@ type Msg
     | BuildCreated (Result Http.Error Data.Build.Build)
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
-update project session msg model =
+update : Project -> Commit -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update project commit session msg model =
     let
         projectId =
             project.id
 
         commitHash =
-            model.commit.hash
+            commit.hash
 
         taskName =
             model.task.name
