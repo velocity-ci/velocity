@@ -19,6 +19,9 @@ import Views.Form as Form
 import Views.Page as Page
 import Json.Decode as Decode
 import Html.Events.Extra exposing (targetSelectedIndex)
+import Route
+import Page.Project.Route as ProjectRoute
+import Page.Project.Commit.Route as CommitRoute
 
 
 -- MODEL --
@@ -186,7 +189,10 @@ viewBuildForm taskName fields errors =
                         ]
                         []
     in
-        [ h4 [] [ text taskName ]
+        [ h4 []
+            [ a []
+                [ text taskName ]
+            ]
         , Html.form [ attribute "novalidate" "", onSubmit SubmitForm ] <|
             List.map fieldInput fields
                 ++ [ button
@@ -363,13 +369,15 @@ viewStepCollapse step title toggled contents =
             ]
 
 
+breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )
+breadcrumb project commit task =
+    [ ( CommitRoute.Task task.name |> ProjectRoute.Commit commit.hash |> Route.Project project.id
+      , ProjectTask.nameToString task.name
+      )
+    ]
 
---breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route, String )
---breadcrumb project commit task =
---    List.concat
---        [ Commit.breadcrumb project commit
---        , [ ( Route.Project project.id (ProjectRoute.Task commit.hash task.name), ProjectTask.nameToString task.name ) ]
---        ]
+
+
 -- UPDATE --
 
 

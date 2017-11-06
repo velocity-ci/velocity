@@ -210,13 +210,16 @@ viewSubPage session model =
 
         sidebar =
             viewSidebar project
+
+        pageFrame =
+            frame project
     in
         case page of
             Blank ->
                 let
                     content =
                         Html.text ""
-                            |> frame (sidebar OtherPage)
+                            |> pageFrame (sidebar OtherPage)
                 in
                     ( content, breadcrumb (text "") [] )
 
@@ -224,7 +227,7 @@ viewSubPage session model =
                 let
                     content =
                         Html.text "Errored"
-                            |> frame (sidebar OtherPage)
+                            |> pageFrame (sidebar OtherPage)
                 in
                     ( content, breadcrumb (text "") [] )
 
@@ -232,7 +235,7 @@ viewSubPage session model =
                 let
                     content =
                         Overview.view project
-                            |> frame (sidebar OverviewPage)
+                            |> pageFrame (sidebar OverviewPage)
                 in
                     ( content, breadcrumb (text "") [] )
 
@@ -241,7 +244,7 @@ viewSubPage session model =
                     content =
                         Commits.view project branches subModel
                             |> Html.map CommitsMsg
-                            |> frame (sidebar CommitsPage)
+                            |> pageFrame (sidebar CommitsPage)
 
                     crumbExtraItems =
                         Commits.viewBreadcrumbExtraItems subModel
@@ -258,32 +261,20 @@ viewSubPage session model =
                     content =
                         Commit.view project subModel
                             |> Html.map CommitMsg
-                            |> frame (sidebar CommitsPage)
+                            |> pageFrame (sidebar CommitsPage)
 
                     crumb =
-                        Commit.breadcrumb project subModel.commit
+                        Commit.breadcrumb project subModel.commit subModel.subPageState
                             |> breadcrumb (text "")
                 in
                     ( content, crumb )
 
-            --            CommitTask subModel ->
-            --                let
-            --                    content =
-            --                        CommitTask.view subModel
-            --                            |> Html.map CommitTaskMsg
-            --                            |> frame (sidebar CommitsPage)
-            --
-            --                    crumb =
-            --                        CommitTask.breadcrumb project subModel.commit subModel.task
-            --                            |> breadcrumb (text "")
-            --                in
-            --                    ( content, crumb )
             Settings subModel ->
                 let
                     content =
                         Settings.view project subModel
                             |> Html.map SettingsMsg
-                            |> frame (sidebar SettingsPage)
+                            |> pageFrame (sidebar SettingsPage)
 
                     crumb =
                         Settings.breadcrumb project
@@ -292,11 +283,14 @@ viewSubPage session model =
                     ( content, crumb )
 
 
-frame : Html msg -> Html msg -> Html msg
-frame sidebar content =
+frame : Project -> Html msg -> Html msg -> Html msg
+frame project sidebar content =
     div [ class "row" ]
         [ sidebar
-        , div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3 project-content-container" ] [ content ]
+        , div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3 project-content-container " ]
+            [ h1 [ class "display-6" ] [ text project.name ]
+            , content
+            ]
         ]
 
 
@@ -459,16 +453,6 @@ updateSubPage session subPage msg model =
             ( CommitMsg subMsg, Commit subModel ) ->
                 toPage Commit CommitMsg (Commit.update model.project session) subMsg subModel
 
-            --            ( CommitTaskLoaded (Ok subModel), _ ) ->
-            --                { model | subPageState = Loaded (CommitTask subModel) }
-            --                    => Cmd.none
-            --
-            --            ( CommitTaskLoaded (Err error), _ ) ->
-            --                { model | subPageState = Loaded (Errored error) }
-            --                    => Cmd.none
-            --
-            --            ( CommitTaskMsg subMsg, CommitTask subModel ) ->
-            --                toPage CommitTask CommitTaskMsg (CommitTask.update model.project session) subMsg subModel
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through" model)

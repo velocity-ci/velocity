@@ -113,22 +113,61 @@ view project model =
     case getSubPage model.subPageState of
         Overview _ ->
             Overview.view project model.commit model.tasks
+                |> frame model.commit
                 |> Html.map OverviewMsg
 
         CommitTask subModel ->
             CommitTask.view subModel
+                |> frame model.commit
                 |> Html.map CommitTaskMsg
 
         _ ->
             Html.text "Nope"
 
 
-breadcrumb : Project -> Commit -> List ( Route, String )
-breadcrumb project commit =
-    List.concat
-        [ Commits.breadcrumb project
-        , [ ( Route.Project project.id (ProjectRoute.Commit commit.hash CommitRoute.Overview), Commit.truncateHash commit.hash ) ]
-        ]
+frame : Commit -> Html msg -> Html msg
+frame commit content =
+    let
+        commitTitle =
+            commit.hash
+                |> Commit.truncateHash
+                |> String.append "Commit "
+                |> text
+
+        commitTitleStyle =
+            [ ( "position", "absolute" )
+            , ( "top", "2rem" )
+            , ( "right", "1rem" )
+            ]
+    in
+        div []
+            [ h2 [ style commitTitleStyle, class "display-7" ] [ commitTitle ]
+            , content
+            ]
+
+
+breadcrumb : Project -> Commit -> SubPageState -> List ( Route, String )
+breadcrumb project commit subPageState =
+    let
+        subPage =
+            getSubPage subPageState
+
+        subPageCrumb =
+            case subPage of
+                CommitTask subModel ->
+                    CommitTask.breadcrumb project commit subModel.task
+
+                _ ->
+                    []
+    in
+        List.concat
+            [ Commits.breadcrumb project
+            , [ ( CommitRoute.Overview |> ProjectRoute.Commit commit.hash |> Route.Project project.id
+                , Commit.truncateHash commit.hash
+                )
+              ]
+            , subPageCrumb
+            ]
 
 
 
