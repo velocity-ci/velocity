@@ -84,7 +84,7 @@ channels : PageState -> List (Channel Msg)
 channels pageState =
     case pageState of
         Loaded (Project subModel) ->
-            List.map (Channel.map ProjectMsg) (Debug.log "CHANNELS" (Project.channels subModel))
+            List.map (Channel.map ProjectMsg) (Project.channels subModel)
 
         _ ->
             Debug.log "no channels" []

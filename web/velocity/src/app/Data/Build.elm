@@ -39,6 +39,9 @@ statusDecoder =
                     "waiting" ->
                         Decode.succeed Waiting
 
+                    "failed" ->
+                        Decode.succeed Failed
+
                     unknown ->
                         Decode.fail <| "Unknown status: " ++ unknown
             )
@@ -50,6 +53,7 @@ statusDecoder =
 
 type Status
     = Waiting
+    | Failed
 
 
 type Id

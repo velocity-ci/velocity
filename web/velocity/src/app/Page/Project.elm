@@ -58,7 +58,7 @@ initialSubPage =
 
 channels : Model -> List (Channel Msg)
 channels { subPageState } =
-    case (Debug.log "SUBPAGE STATE" subPageState) of
+    case subPageState of
         Loaded (Commit subModel) ->
             List.map (Channel.map CommitMsg) (Commit.channels subModel)
 
