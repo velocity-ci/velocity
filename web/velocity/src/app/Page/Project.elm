@@ -20,6 +20,7 @@ import Page.Project.Commit as Commit
 import Page.Project.Overview as Overview
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
+import Socket.Channel as Channel exposing (Channel)
 
 
 -- SUB PAGES --
@@ -53,6 +54,19 @@ type alias Model =
 initialSubPage : SubPage
 initialSubPage =
     Blank
+
+
+channels : Model -> List (Channel Msg)
+channels { subPageState } =
+    case (Debug.log "SUBPAGE STATE" subPageState) of
+        Loaded (Commit subModel) ->
+            List.map (Channel.map CommitMsg) (Commit.channels subModel)
+
+        TransitioningFrom (Commit subModel) ->
+            List.map (Channel.map CommitMsg) (Commit.channels subModel)
+
+        _ ->
+            []
 
 
 init : Session -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )

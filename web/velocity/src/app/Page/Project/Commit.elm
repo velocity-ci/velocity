@@ -24,6 +24,7 @@ import Views.Helpers exposing (onClickPage)
 import Views.Page as Page exposing (ActivePage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
+import Socket.Channel as Channel exposing (Channel)
 
 
 -- SUB PAGES --
@@ -56,6 +57,21 @@ type alias Model =
 initialSubPage : SubPage
 initialSubPage =
     Blank
+
+
+channels : Model -> List (Channel Msg)
+channels { builds } =
+    let
+        buildChannelPath build =
+            [ "project"
+            , Project.idToString build.project
+            , "commits"
+            , Commit.hashToString build.commit
+            , "builds"
+            , Build.idToString build.id
+            ]
+    in
+        List.map (buildChannelPath >> String.join "/" >> Channel.init) builds
 
 
 init : Session -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( Model, Cmd Msg )

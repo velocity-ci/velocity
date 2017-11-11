@@ -54,3 +54,8 @@ type Status
 
 type Id
     = Id Int
+
+
+idToString : Id -> String
+idToString (Id id) =
+    toString id

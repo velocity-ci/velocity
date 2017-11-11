@@ -126,12 +126,9 @@ create config token =
             ]
 
         project =
-            case config.privateKey of
-                Just privateKey ->
-                    ( "key", Encode.string privateKey ) :: baseProject
-
-                Nothing ->
-                    baseProject
+            config.privateKey
+                |> Maybe.map (\privateKey -> ( "key", Encode.string privateKey ) :: baseProject)
+                |> Maybe.withDefault baseProject
 
         body =
             project

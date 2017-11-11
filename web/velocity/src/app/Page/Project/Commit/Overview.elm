@@ -49,11 +49,11 @@ viewCommitDetails commit =
         dl [ style [ ( "margin-bottom", "0" ) ] ]
             [ dt [] [ text "Message" ]
             , dd [] [ text commit.message ]
-            , dt [] [ text "Commit" ]
+            , dt [] [ i [ attribute "aria-hidden" "true", class "fa fa-file-code-o" ] [] ]
             , dd [] [ text hash ]
             , dt [] [ text "Author" ]
             , dd [] [ text commit.author ]
-            , dt [] [ text "Date" ]
+            , dt [] [ i [ attribute "aria-hidden" "true", class "fa fa-calendar" ] [] ]
             , dd [] [ text (formatDateTime commit.date) ]
             ]
 
