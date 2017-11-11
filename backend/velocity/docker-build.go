@@ -35,13 +35,23 @@ func (dB DockerBuild) GetDetails() string {
 func (dB *DockerBuild) Execute(emitter Emitter, params map[string]Parameter) error {
 	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
 
-	return buildContainer(
+	err := buildContainer(
 		dB.Context,
 		dB.Dockerfile,
 		dB.Tags,
 		params,
 		emitter,
 	)
+
+	if err != nil {
+		emitter.SetStatus("failed")
+		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+		return err
+	}
+
+	emitter.SetStatus("success")
+	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
+	return nil
 }
 
 func (dB *DockerBuild) Validate(params map[string]Parameter) error {
