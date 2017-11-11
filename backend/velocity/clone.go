@@ -92,7 +92,7 @@ func GitClone(
 ) (*git.Repository, string, error) {
 	psuedoRandom := rand.NewSource(time.Now().UnixNano())
 	randNumber := rand.New(psuedoRandom)
-	dir := fmt.Sprintf("/var/velocity-workspace/velocity_%s-%d", p.ID, randNumber.Int63())
+	dir := fmt.Sprintf("/tmp/velocity-workspace/velocity_%s-%d", p.ID, randNumber.Int63())
 	os.RemoveAll(dir)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
