@@ -161,7 +161,7 @@ func (c *Controller) monitor(s *Slave) {
 				s.Command = nil
 				c.manager.Save(s)
 			} else if lM.Status == "success" {
-				if int(lM.Step) == len(build.Task.Steps) {
+				if int(lM.Step) == len(build.Task.Steps)-1 {
 					// successfully finished build
 					build.Status = "success"
 					c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
