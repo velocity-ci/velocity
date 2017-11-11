@@ -91,10 +91,6 @@ func NewVelocity() App {
 
 	validate, translator := newValidator()
 
-	// Client Websocket
-	websocketManager := websocket.NewManager()
-	websocketController := websocket.NewController(websocketManager)
-
 	// Auth
 	authManager := auth.NewManager(velocityAPI.bolt)
 	authController := auth.NewController(authManager)
@@ -117,6 +113,10 @@ func NewVelocity() App {
 	commitManager := commit.NewManager(velocityAPI.bolt)
 	commitResolver := commit.NewResolver(commitManager)
 	commitController := commit.NewController(commitManager, projectManager, commitResolver)
+
+	// Client Websocket
+	websocketManager := websocket.NewManager()
+	websocketController := websocket.NewController(websocketManager, commitManager)
 
 	// Slave
 	slaveManager := slave.NewManager()
