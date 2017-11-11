@@ -398,9 +398,9 @@ func (m *Manager) GetNextBuildID(p *project.Project, c *Commit) uint64 {
 	if buildsBucket == nil {
 		buildsBucket = commitBucket.Bucket([]byte("builds"))
 	}
-
-	id, _ := buildsBucket.NextSequence()
-	return id
+	i, _ := buildsBucket.NextSequence()
+	tx.Commit()
+	return i
 }
 
 func itob(v uint64) []byte {
