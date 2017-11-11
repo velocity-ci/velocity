@@ -32,7 +32,7 @@ func (m *Manager) EmitAll(message *EmitMessage) {
 	for _, c := range m.clients {
 		for _, s := range c.subscriptions {
 			if s == message.Subscription {
-				err := c.ws.WriteJSON(m)
+				err := c.ws.WriteJSON(message)
 				if err != nil {
 					log.Fatal(err)
 				}
