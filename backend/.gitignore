@@ -4,4 +4,4 @@ dist
 tmp
 *.test
 *.db*
-velocity-data
+velocity-workspace

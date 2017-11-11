@@ -49,7 +49,7 @@ func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 		return err
 	}
 	log.Println("Done.")
-	defer os.RemoveAll(dir)
+	// defer os.RemoveAll(dir)
 
 	w, err := repo.Worktree()
 	if err != nil {

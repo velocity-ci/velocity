@@ -27,7 +27,7 @@ services:
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/backend/"
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./velocity-data/:/opt/velocity/"
+      - "./velocity-workspace:/opt/velocity/"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/slave
     links:
       - "api:api"
