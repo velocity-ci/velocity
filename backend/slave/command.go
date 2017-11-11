@@ -17,7 +17,7 @@ type Message interface{}
 type BuildMessage struct {
 	Project    *velocity.Project `json:"project"`
 	CommitHash string            `json:"commit"`
-	BuildID    uint64            `json:"buildId"`
+	BuildID    uint64            `json:"id"`
 	Task       *velocity.Task    `json:"task"`
 }
 
