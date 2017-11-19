@@ -16,7 +16,7 @@ import (
 type Controller struct {
 	logger   *log.Logger
 	render   *render.Render
-	manager  *Manager
+	manager  Repository
 	resolver *Resolver
 }
 
@@ -62,7 +62,7 @@ func (c Controller) Setup(router *mux.Router) {
 func (c Controller) getProjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	p, err := c.manager.FindByID(vars["id"])
+	p, err := c.manager.GetByID(vars["id"])
 
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
@@ -73,41 +73,42 @@ func (c Controller) getProjectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c Controller) getProjectsHandler(w http.ResponseWriter, r *http.Request) {
-
-	projects := c.manager.FindAll()
+	projects, count := c.manager.GetAll(Query{})
 
 	responseProjects := []*ResponseProject{}
 	for _, p := range projects {
-		responseProjects = append(responseProjects, NewResponseProject(&p))
+		responseProjects = append(responseProjects, NewResponseProject(p))
 	}
 
-	c.render.JSON(w, http.StatusOK, responseProjects)
+	c.render.JSON(w, http.StatusOK, &ManyResponse{
+		Total:  count,
+		Result: responseProjects,
+	})
 }
 
 func (c Controller) deleteProjectHandler(w http.ResponseWriter, r *http.Request) {
-
 	vars := mux.Vars(r)
-
-	err := c.manager.DeleteByID(vars["id"])
+	p, err := c.manager.GetByID(vars["id"])
 
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
 
+	c.manager.Delete(p)
 	c.render.JSON(w, http.StatusNoContent, nil)
 }
 
 func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	// username := middlewares.UsernameFromContext(r.Context())
 
-	boltProject, err := c.resolver.FromRequest(r.Body)
+	p, err := c.resolver.FromRequest(r.Body)
 	if err != nil {
 		middleware.HandleRequestError(err, w, c.render)
 		return
 	}
 
-	c.manager.Save(boltProject)
+	p = c.manager.Save(p)
 
-	c.render.JSON(w, http.StatusCreated, NewResponseProject(boltProject))
+	c.render.JSON(w, http.StatusCreated, NewResponseProject(p))
 }

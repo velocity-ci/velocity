@@ -4,17 +4,41 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/gosimple/slug"
 )
 
+// Repository - Implementing repositories will guarantee consistency between persistence objects and virtual objects.
+type Repository interface {
+	Save(p *Project) *Project
+	Delete(p *Project)
+	GetByID(ID string) (*Project, error)
+	GetAll(q Query) ([]*Project, uint64)
+}
 type Project struct {
-	velocity.Project
+	ID         string
+	Name       string
+	Repository GitRepository
 
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 
-	Synchronising bool `json:"synchronising"`
-	TotalCommits  uint `json:"totalCommits"`
+	Synchronising bool
+}
+
+type GitRepository struct {
+	Address    string `json:"address"`
+	PrivateKey string `json:"privateKey"`
+}
+
+type Query struct {
+	Amount        uint64
+	Page          uint64
+	Synchronising bool
+}
+
+type ManyResponse struct {
+	Total  uint64             `json:"total"`
+	Result []*ResponseProject `json:"result"`
 }
 
 func (p *Project) String() string {
@@ -22,24 +46,14 @@ func (p *Project) String() string {
 	return string(b)
 }
 
-func NewProject(name string, repository velocity.GitRepository) Project {
-	return Project{
-		Project:       velocity.NewProject(name, repository),
+func NewProject(name string, repository GitRepository) *Project {
+	return &Project{
+		ID:            slug.Make(name),
+		Name:          name,
+		Repository:    repository,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 		Synchronising: false,
-		TotalCommits:  0,
-	}
-}
-
-func (p *Project) ToTaskProject() *velocity.Project {
-	return &velocity.Project{
-		ID:   p.ID,
-		Name: p.Name,
-		Repository: velocity.GitRepository{
-			Address:    p.Repository.Address,
-			PrivateKey: p.Repository.PrivateKey,
-		},
 	}
 }
 

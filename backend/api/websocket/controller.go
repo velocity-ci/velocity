@@ -1,19 +1,16 @@
 package websocket
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/unrolled/render"
 	"github.com/urfave/negroni"
 	"github.com/velocity-ci/velocity/backend/api/auth"
-	"github.com/velocity-ci/velocity/backend/api/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 )
 
 // Controller - Handles Websockets
@@ -82,41 +79,41 @@ func (c *Controller) monitor(client *Client) {
 			return
 		}
 
-		if message.Type == "subscribe" {
-			client.Subscribe(message.Route)
-			if strings.Contains(message.Route, "builds/") {
-				routeParts := strings.Split(message.Route, "/")
-				projectID := routeParts[1]
-				commitHash := routeParts[3]
-				buildID := routeParts[5]
+		// if message.Type == "subscribe" {
+		// 	client.Subscribe(message.Route)
+		// 	if strings.Contains(message.Route, "builds/") {
+		// 		routeParts := strings.Split(message.Route, "/")
+		// 		projectID := routeParts[1]
+		// 		commitHash := routeParts[3]
+		// 		buildID := routeParts[5]
 
-				buildIDU, err := strconv.ParseUint(buildID, 10, 64)
-				if err != nil {
-					log.Fatal(err)
-				}
-				build := c.commitManager.GetBuild(projectID, commitHash, buildIDU)
-				for stepNumber, sL := range build.StepLogs {
-					for _, ls := range sL.Logs {
-						for _, l := range ls {
-							client.ws.WriteJSON(
-								&EmitMessage{
-									Subscription: fmt.Sprintf("project/%s/commits/%s/builds/%d", projectID, commitHash, buildIDU),
-									Data: BuildMessage{
-										Step:   uint64(stepNumber),
-										Status: sL.Status,
-										Log: LogMessage{
-											Timestamp: l.Timestamp,
-											Output:    l.Output,
-										},
-									},
-								},
-							)
-						}
-					}
-				}
-			}
-		} else if message.Type == "unsubscribe" {
-			client.Unsubscribe(message.Route)
-		}
+		// 		buildIDU, err := strconv.ParseUint(buildID, 10, 64)
+		// 		if err != nil {
+		// 			log.Fatal(err)
+		// 		}
+		// 		// build := c.commitManager.GetBuild(projectID, commitHash, buildIDU)
+		// 		// for stepNumber, sL := range build.StepLogs {
+		// 		// 	for _, ls := range sL.Logs {
+		// 		// 		for _, l := range ls {
+		// 		// 			client.ws.WriteJSON(
+		// 		// 				&EmitMessage{
+		// 		// 					Subscription: fmt.Sprintf("project/%s/commits/%s/builds/%d", projectID, commitHash, buildIDU),
+		// 		// 					Data: BuildMessage{
+		// 		// 						Step:   uint64(stepNumber),
+		// 		// 						Status: sL.Status,
+		// 		// 						Log: LogMessage{
+		// 		// 							Timestamp: l.Timestamp,
+		// 		// 							Output:    l.Output,
+		// 		// 						},
+		// 		// 					},
+		// 		// 				},
+		// 		// 			)
+		// 		// 		}
+		// 		// 	}
+		// 		// }
+		// 	}
+		// } else if message.Type == "unsubscribe" {
+		// 	client.Unsubscribe(message.Route)
+		// }
 	}
 }

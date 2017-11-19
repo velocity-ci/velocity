@@ -1,6 +1,6 @@
 package: github.com/velocity-ci/velocity/backend
 ignore:
- - github.com/velocity-ci/velocity
+- github.com/velocity-ci/velocity
 import:
 - package: github.com/dgrijalva/jwt-go
   version: ^3.0.0
@@ -31,3 +31,7 @@ import:
   version: 74a17296470088de3805e138d3d87c62e613dfc4
 - package: gopkg.in/src-d/go-git.v4
   version: ^4.0.0-rc9
+- package: github.com/jinzhu/gorm
+  version: ^1.0.0
+  subpackages:
+  - dialects/sqlite

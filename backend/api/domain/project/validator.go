@@ -55,7 +55,7 @@ func (v *Validator) ValidateProjectUnique(fl validator.FieldLevel) bool {
 
 	projectName := fl.Field().String()
 
-	_, err := v.projectManager.FindByID(slug.Make(projectName))
+	_, err := v.projectManager.GetByID(slug.Make(projectName))
 
 	if err != nil {
 		return true
@@ -77,12 +77,12 @@ func translationFuncUnique(ut ut.Translator, fe validator.FieldError) string {
 func (v *Validator) ValidateProjectRepository(sl validator.StructLevel) {
 	p := sl.Current().Interface().(RequestProject)
 
-	apiProject := NewProject(p.Name, velocity.GitRepository{
+	apiProject := NewProject(p.Name, GitRepository{
 		Address:    p.Repository,
 		PrivateKey: p.PrivateKey,
 	})
 
-	_, dir, err := v.projectManager.SyncManager.Sync(apiProject.ToTaskProject(), true, false, true, velocity.NewBlankWriter())
+	_, dir, err := v.projectManager.Sync(apiProject, true, false, true, velocity.NewBlankWriter())
 
 	if err != nil {
 		log.Println(err, reflect.TypeOf(err))

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
-
-	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 func NewResolver(projectValidator *Validator) *Resolver {
@@ -38,11 +36,11 @@ func (r *Resolver) FromRequest(b io.ReadCloser) (*Project, error) {
 
 	p := NewProject(
 		reqProject.Name,
-		velocity.GitRepository{
+		GitRepository{
 			Address:    reqProject.Repository,
 			PrivateKey: reqProject.PrivateKey,
 		},
 	)
 
-	return &p, nil
+	return p, nil
 }
