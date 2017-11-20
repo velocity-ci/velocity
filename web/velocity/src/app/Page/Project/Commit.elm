@@ -25,6 +25,7 @@ import Views.Page as Page exposing (ActivePage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
 import Socket.Channel as Channel exposing (Channel)
+import Socket.Socket as Socket exposing (Socket)
 
 
 -- SUB PAGES --
@@ -74,7 +75,7 @@ channels { builds } =
         List.map (buildChannelPath >> String.join "/" >> Channel.init) builds
 
 
-init : Session -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init : Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), ExternalMsg )
 init session project hash maybeRoute =
     let
         maybeAuthToken =
@@ -115,6 +116,7 @@ init session project hash maybeRoute =
 
                         Nothing ->
                             ( successModel, Cmd.none )
+                                => NoOp
                                 |> Task.succeed
                 )
             |> Task.mapError handleLoadError
@@ -198,6 +200,11 @@ type Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
 
 
+type ExternalMsg
+    = SetSocket (Socket Msg)
+    | NoOp
+
+
 getSubPage : SubPageState -> SubPage
 getSubPage subPageState =
     case subPageState of
@@ -217,7 +224,7 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-setRoute : Session -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
+setRoute : Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
 setRoute session project maybeRoute model =
     let
         transition toMsg task =
@@ -249,7 +256,7 @@ setRoute session project maybeRoute model =
                 { model | subPageState = Loaded Blank } => Cmd.none
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update project session msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -267,26 +274,34 @@ update project session msg model =
     in
         case ( msg, subPage ) of
             ( NewUrl url, _ ) ->
-                model => Navigation.newUrl url
+                model
+                    => Navigation.newUrl url
+                    => NoOp
 
             ( SetRoute route, _ ) ->
                 setRoute session project route model
+                    => NoOp
 
             ( OverviewMsg subMsg, Overview subModel ) ->
                 toPage Overview OverviewMsg (Overview.update project session) subMsg subModel
+                    => NoOp
 
             ( CommitTaskLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (CommitTask subModel) }
                     => Cmd.none
+                    => NoOp
 
             ( CommitTaskLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
+                    => NoOp
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 toPage CommitTask CommitTaskMsg (CommitTask.update project model.commit session) subMsg subModel
+                    => NoOp
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through" model)
                     => Cmd.none
+                    => NoOp

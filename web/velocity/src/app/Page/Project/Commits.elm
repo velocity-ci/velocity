@@ -40,7 +40,7 @@ type alias Model =
     }
 
 
-init : Session -> Project.Id -> Maybe Branch -> Maybe Int -> Task PageLoadError Model
+init : Session msg -> Project.Id -> Maybe Branch -> Maybe Int -> Task PageLoadError Model
 init session id maybeBranch maybePage =
     let
         defaultPage =
@@ -248,7 +248,7 @@ type Msg
     | NewUrl String
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     case msg of
         NewUrl newUrl ->

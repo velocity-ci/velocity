@@ -95,7 +95,7 @@ type Msg
     = NewUrl String
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     case msg of
         NewUrl url ->

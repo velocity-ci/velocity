@@ -21,6 +21,7 @@ import Page.Project.Overview as Overview
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Socket.Channel as Channel exposing (Channel)
+import Socket.Socket as Socket exposing (Socket)
 
 
 -- SUB PAGES --
@@ -69,7 +70,7 @@ channels { subPageState } =
             []
 
 
-init : Session -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init : Session msg -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), ExternalMsg )
 init session id maybeRoute =
     let
         maybeAuthToken =
@@ -91,6 +92,9 @@ init session id maybeRoute =
             , subPageState = Loaded initialSubPage
             }
 
+        --
+        --        newSocket =
+        --            List.map (Channel.map CommitMsg) (Commit.channels subModel)
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
@@ -104,6 +108,7 @@ init session id maybeRoute =
 
                         Nothing ->
                             ( successModel, Cmd.none )
+                                => NoOp
                                 |> Task.succeed
                 )
             |> Task.mapError handleLoadError
@@ -120,7 +125,7 @@ type ActiveSubPage
     | SettingsPage
 
 
-view : Session -> Model -> Html Msg
+view : Session msg -> Model -> Html Msg
 view session model =
     let
         ( subPageFrame, breadcrumb ) =
@@ -207,7 +212,7 @@ viewBreadcrumbItem active ( route, name ) =
             [ children ]
 
 
-viewSubPage : Session -> Model -> ( Html Msg, Html Msg )
+viewSubPage : Session msg -> Model -> ( Html Msg, Html Msg )
 viewSubPage session model =
     let
         page =
@@ -320,6 +325,10 @@ type Msg
     | CommitMsg Commit.Msg
     | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
     | SettingsMsg Settings.Msg
+
+
+type ExternalMsg
+    = SetSocket ( Socket Msg, Cmd (Socket.Msg Msg) )
     | NoOp
 
 
@@ -333,7 +342,7 @@ getSubPage subPageState =
             subPage
 
 
-setRoute : Session -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
+setRoute : Session msg -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
 setRoute session maybeRoute model =
     let
         transition toMsg task =
@@ -369,11 +378,12 @@ setRoute session maybeRoute model =
                     loadFreshPage =
                         Just maybeRoute
                             |> Commit.init session model.project hash
+                            |> Task.andThen (Tuple.first >> Task.succeed)
                             |> transition CommitLoaded
 
                     transitionSubPage subModel =
                         let
-                            ( newModel, newMsg ) =
+                            ( ( newModel, newMsg ), externalMsg ) =
                                 subModel
                                     |> Commit.update model.project session (Commit.SetRoute (Just maybeRoute))
                         in
@@ -418,12 +428,12 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     updateSubPage session (getSubPage model.subPageState) msg model
 
 
-updateSubPage : Session -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
+updateSubPage : Session msg -> SubPage -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 updateSubPage session subPage msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -438,36 +448,63 @@ updateSubPage session subPage msg model =
     in
         case ( msg, subPage ) of
             ( NewUrl url, _ ) ->
-                model => newUrl url
+                model
+                    => newUrl url
+                    => NoOp
 
             ( SetRoute route, _ ) ->
                 setRoute session route model
+                    => NoOp
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update model.project session) subMsg subModel
+                    => NoOp
 
             ( CommitsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Commits subModel) }
                     => Cmd.none
+                    => NoOp
 
             ( CommitsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
+                    => NoOp
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
+                    => NoOp
 
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
+                    => NoOp
 
             ( CommitLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) } => Cmd.none
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
+                    => NoOp
 
             ( CommitMsg subMsg, Commit subModel ) ->
-                toPage Commit CommitMsg (Commit.update model.project session) subMsg subModel
+                let
+                    ( ( newSubModel, newCmd ), externalMsg ) =
+                        Commit.update model.project session subMsg subModel
+
+                    newExternalMsg =
+                        case externalMsg of
+                            Commit.NoOp ->
+                                NoOp
+
+                            Commit.SetSocket socket ->
+                                SetSocket ( (Socket.map CommitMsg socket), Cmd.none )
+
+                    --                                SetSocket ( (Socket.map CommitMsg socket), Cmd.none )
+                in
+                    { model | subPageState = Loaded (Commit newSubModel) }
+                        ! [ Cmd.map CommitMsg newCmd ]
+                        => newExternalMsg
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through" model)
                     => Cmd.none
+                    => NoOp

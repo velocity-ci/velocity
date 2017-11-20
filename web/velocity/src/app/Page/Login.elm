@@ -65,7 +65,7 @@ initialModel =
 -- VIEW --
 
 
-view : Session -> Model -> Html Msg
+view : Session msg -> Model -> Html Msg
 view session model =
     div [ class "container-fluid" ]
         [ div [ class "row justify-content-md-center default-margin-top" ]

@@ -59,7 +59,7 @@ initialForm =
     }
 
 
-init : Session -> Task PageLoadError Model
+init : Session msg -> Task PageLoadError Model
 init session =
     let
         maybeAuthToken =
@@ -89,7 +89,7 @@ init session =
 -- VIEW --
 
 
-view : Session -> Model -> Html Msg
+view : Session msg -> Model -> Html Msg
 view session model =
     div [ class "container-fluid" ]
         [ viewKnownHostFormContainer model
@@ -251,7 +251,7 @@ serverErrorToFormError ( fieldNameString, errorString ) =
         field => errorString
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     let
         form =

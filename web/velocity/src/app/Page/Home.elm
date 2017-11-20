@@ -28,7 +28,7 @@ type alias Model =
     { projects : List Project }
 
 
-init : Session -> Task PageLoadError Model
+init : Session msg -> Task PageLoadError Model
 init session =
     let
         maybeAuthToken =
@@ -45,7 +45,7 @@ init session =
             |> Task.mapError handleLoadError
 
 
-view : Session -> Model -> Html Msg
+view : Session msg -> Model -> Html Msg
 view session model =
     div [ class "container-fluid" ]
         [ div [ class "row default-margin-top" ]
@@ -142,7 +142,7 @@ type Msg
     = NewUrl String
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     case msg of
         NewUrl url ->
