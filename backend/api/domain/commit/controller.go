@@ -50,18 +50,6 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.getProjectCommitHandler)),
 	)).Methods("GET")
 
-	// POST /v1/projects/{id}/commits/{commitHash}/builds
-	// router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds", negroni.New(
-	// 	auth.NewJWT(c.render),
-	// 	negroni.Wrap(http.HandlerFunc(c.postProjectCommitBuildsHandler)),
-	// )).Methods("POST")
-
-	// GET /v1/projects/{id}/commits/{commitHash}/builds
-	// router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds", negroni.New(
-	// 	auth.NewJWT(c.render),
-	// 	negroni.Wrap(http.HandlerFunc(c.getProjectCommitBuildsHandler)),
-	// )).Methods("GET")
-
 	c.logger.Println("Set up Commit controller.")
 }
 
@@ -109,65 +97,3 @@ func (c Controller) getProjectCommitHandler(w http.ResponseWriter, r *http.Reque
 
 	c.render.JSON(w, http.StatusOK, NewResponseCommit(commit))
 }
-
-// func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *http.Request) {
-// 	reqVars := mux.Vars(r)
-// 	reqProjectID := reqVars["projectID"]
-// 	reqCommitID := reqVars["commitHash"]
-
-// 	project, err := c.projectManager.FindByID(reqProjectID)
-// 	if err != nil {
-// 		log.Printf("Could not find project %s", reqProjectID)
-// 		c.render.JSON(w, http.StatusNotFound, nil)
-// 		return
-// 	}
-
-// 	commit, err := c.manager.GetCommitInProject(reqCommitID, project.ID)
-// 	if err != nil {
-// 		log.Printf("Could not find commit %s", reqCommitID)
-// 		c.render.JSON(w, http.StatusNotFound, nil)
-// 		return
-// 	}
-
-// 	build, err := c.resolver.BuildFromRequest(r.Body, project, commit)
-// 	if err != nil {
-// 		middleware.HandleRequestError(err, w, c.render)
-// 		return
-// 	}
-
-// 	c.manager.SaveBuild(build, project.ID, commit.Hash)
-
-// 	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build, project.ID, commit.Hash))
-
-// 	queuedBuild := NewQueuedBuild(build, project.ID, commit.Hash)
-// 	c.manager.QueueBuild(queuedBuild)
-// }
-
-// func (c Controller) getProjectCommitBuildsHandler(w http.ResponseWriter, r *http.Request) {
-// 	reqVars := mux.Vars(r)
-// 	reqProjectID := reqVars["projectID"]
-// 	reqCommitID := reqVars["commitHash"]
-
-// 	project, err := c.projectManager.FindByID(reqProjectID)
-// 	if err != nil {
-// 		log.Printf("Could not find project %s", reqProjectID)
-// 		c.render.JSON(w, http.StatusNotFound, nil)
-// 		return
-// 	}
-
-// 	commit, err := c.manager.GetCommitInProject(reqCommitID, project.ID)
-// 	if err != nil {
-// 		log.Printf("Could not find commit %s", reqCommitID)
-// 		c.render.JSON(w, http.StatusNotFound, nil)
-// 		return
-// 	}
-
-// 	builds := c.manager.GetBuilds(project.ID, commit.Hash)
-
-// 	respBuilds := []*ResponseBuild{}
-// 	for _, b := range builds {
-// 		respBuilds = append(respBuilds, NewResponseBuild(b, project.ID, commit.Hash))
-// 	}
-
-// 	c.render.JSON(w, http.StatusOK, respBuilds)
-// }
