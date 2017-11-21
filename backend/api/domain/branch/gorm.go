@@ -9,24 +9,30 @@ import (
 )
 
 type GORMBranch struct {
-	Name      string `gorm:"primary_key"`
-	ProjectID string `gorm:"primary_key"`
+	ID               string `gorm:"primary_key"`
+	Name             string
+	Project          project.GORMProject `gorm:"ForeignKey:ProjectReference"`
+	ProjectReference string
 }
 
 func (g GORMBranch) TableName() string {
 	return "branches"
 }
 
-func gormBranchFromProjectAndBranch(p *project.Project, b *Branch) *GORMBranch {
+func GORMBranchFromBranch(b *Branch) *GORMBranch {
 	return &GORMBranch{
-		Name:      b.Name,
-		ProjectID: p.ID,
+		ID:               b.ID,
+		Name:             b.Name,
+		Project:          *project.GORMProjectFromProject(&b.Project),
+		ProjectReference: b.Project.ID,
 	}
 }
 
-func branchFromGORMBranch(g *GORMBranch) *Branch {
+func BranchFromGORMBranch(g *GORMBranch) *Branch {
 	return &Branch{
-		Name: g.Name,
+		ID:      g.ID,
+		Name:    g.Name,
+		Project: *project.ProjectFromGORMProject(&g.Project),
 	}
 }
 
@@ -42,13 +48,13 @@ func newGORMRepository(db *gorm.DB) *gormRepository {
 	}
 }
 
-func (r *gormRepository) SaveToProject(p *project.Project, b *Branch) *Branch {
+func (r *gormRepository) Save(b *Branch) *Branch {
 	tx := r.gorm.Begin()
 
-	gormBranch := gormBranchFromProjectAndBranch(p, b)
+	gormBranch := GORMBranchFromBranch(b)
 
 	tx.
-		Where(GORMBranch{Name: gormBranch.Name, ProjectID: p.ID}).
+		Where(GORMBranch{ID: gormBranch.ID}).
 		Assign(gormBranch).
 		FirstOrCreate(gormBranch)
 
@@ -56,10 +62,10 @@ func (r *gormRepository) SaveToProject(p *project.Project, b *Branch) *Branch {
 	return b
 }
 
-func (r *gormRepository) DeleteFromProject(p *project.Project, b *Branch) {
+func (r *gormRepository) Delete(b *Branch) {
 	tx := r.gorm.Begin()
 
-	gormBranch := gormBranchFromProjectAndBranch(p, b)
+	gormBranch := GORMBranchFromBranch(b)
 
 	if err := tx.Delete(gormBranch).Error; err != nil {
 		tx.Rollback()
@@ -71,26 +77,33 @@ func (r *gormRepository) DeleteFromProject(p *project.Project, b *Branch) {
 func (r *gormRepository) GetByProjectAndName(p *project.Project, name string) (*Branch, error) {
 	gormBranch := &GORMBranch{}
 	if r.gorm.
-		Where(&GORMBranch{Name: name, ProjectID: p.ID}).
+		Preload("Project").
+		Where(&GORMBranch{
+			Name:             name,
+			ProjectReference: p.ID,
+		}).
 		First(gormBranch).RecordNotFound() {
 		log.Printf("Could not find Branch %s", name)
 		return nil, fmt.Errorf("could not find Branch %s", name)
 	}
 
-	return branchFromGORMBranch(gormBranch), nil
+	return BranchFromGORMBranch(gormBranch), nil
 }
 
 func (r *gormRepository) GetAllByProject(p *project.Project, q Query) ([]*Branch, uint64) {
 	gormBranches := []GORMBranch{}
 	var count uint64
 	r.gorm.
-		Where(&GORMBranch{ProjectID: p.ID}).
+		Preload("Project").
+		Where(&GORMBranch{
+			ProjectReference: p.ID,
+		}).
 		Find(&gormBranches).
 		Count(&count)
 
 	branches := []*Branch{}
 	for _, gBranch := range gormBranches {
-		branches = append(branches, branchFromGORMBranch(&gBranch))
+		branches = append(branches, BranchFromGORMBranch(&gBranch))
 	}
 
 	return branches, count

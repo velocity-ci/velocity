@@ -13,6 +13,7 @@ import (
 
 type GORMTask struct {
 	ID         string
+	ProjectID  string
 	CommitHash string
 	TaskConfig []byte // JSON of task name, parameters, steps etc.
 }

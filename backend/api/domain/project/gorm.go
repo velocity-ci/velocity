@@ -21,11 +21,10 @@ type GORMProject struct {
 	Synchronising bool
 }
 
-func gormProjectFromProject(p *Project) *GORMProject {
+func GORMProjectFromProject(p *Project) *GORMProject {
 	jsonRepo, err := json.Marshal(p.Repository)
 	if err != nil {
 		log.Fatal(err)
-		panic(err)
 	}
 	return &GORMProject{
 		ID:            p.ID,
@@ -37,12 +36,11 @@ func gormProjectFromProject(p *Project) *GORMProject {
 	}
 }
 
-func projectFromGORMProject(g *GORMProject) *Project {
+func ProjectFromGORMProject(g *GORMProject) *Project {
 	var repo GitRepository
 	err := json.Unmarshal(g.Repository, &repo)
 	if err != nil {
 		log.Fatal(err)
-		panic(err)
 	}
 	return &Project{
 		ID:            g.ID,
@@ -69,7 +67,7 @@ func newGORMRepository(db *gorm.DB) *gormRepository {
 func (r *gormRepository) Save(p *Project) *Project {
 	tx := r.gorm.Begin()
 
-	gormProject := gormProjectFromProject(p)
+	gormProject := GORMProjectFromProject(p)
 
 	tx.
 		Where(GORMProject{ID: p.ID}).
@@ -83,7 +81,7 @@ func (r *gormRepository) Save(p *Project) *Project {
 func (r *gormRepository) Delete(p *Project) {
 	tx := r.gorm.Begin()
 
-	gormProject := gormProjectFromProject(p)
+	gormProject := GORMProjectFromProject(p)
 
 	if err := tx.Delete(gormProject).Error; err != nil {
 		tx.Rollback()
@@ -100,7 +98,7 @@ func (r *gormRepository) GetByID(ID string) (*Project, error) {
 		return nil, fmt.Errorf("could not find Project %s", ID)
 	}
 
-	return projectFromGORMProject(gormProject), nil
+	return ProjectFromGORMProject(gormProject), nil
 }
 
 func (r *gormRepository) GetAll(q Query) ([]*Project, uint64) {
@@ -112,7 +110,7 @@ func (r *gormRepository) GetAll(q Query) ([]*Project, uint64) {
 
 	projects := []*Project{}
 	for _, gProject := range gormProjects {
-		projects = append(projects, projectFromGORMProject(&gProject))
+		projects = append(projects, ProjectFromGORMProject(&gProject))
 	}
 
 	return projects, count

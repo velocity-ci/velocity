@@ -62,10 +62,11 @@ func sync(
 
 		branchName := strings.Join(strings.Split(r.Name().Short(), "/")[1:], "/")
 		if branchName != "" {
-			b := branch.NewBranch(branchName)
-			branchManager.SaveToProject(p, b)
+			b := branch.NewBranch(p, branchName)
+			branchManager.Save(b)
 
 			c := commit.NewCommit(
+				p,
 				gitCommit.Hash.String(),
 				strings.TrimSpace(message),
 				gitCommit.Author.Email,
@@ -73,7 +74,7 @@ func sync(
 				*b,
 			)
 
-			commitManager.SaveToProject(p, c)
+			commitManager.Save(c)
 
 			err = w.Checkout(&git.CheckoutOptions{
 				Hash: gitCommit.Hash,

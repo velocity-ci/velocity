@@ -1,21 +1,30 @@
 package branch
 
-import "github.com/velocity-ci/velocity/backend/api/domain/project"
+import (
+	"strings"
+
+	"github.com/gosimple/slug"
+	"github.com/velocity-ci/velocity/backend/api/domain/project"
+)
 
 type Repository interface {
-	SaveToProject(p *project.Project, c *Branch) *Branch
-	DeleteFromProject(p *project.Project, c *Branch)
+	Save(b *Branch) *Branch
+	Delete(b *Branch)
 	GetByProjectAndName(p *project.Project, hash string) (*Branch, error)
 	GetAllByProject(p *project.Project, q Query) ([]*Branch, uint64)
 }
 
 type Branch struct {
-	Name string
+	ID      string
+	Name    string
+	Project project.Project
 }
 
-func NewBranch(name string) *Branch {
+func NewBranch(p *project.Project, name string) *Branch {
 	return &Branch{
-		Name: name,
+		ID:      slug.Make(strings.Join([]string{p.Name, name}, "_")),
+		Project: *p,
+		Name:    name,
 	}
 }
 

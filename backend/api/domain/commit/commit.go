@@ -1,15 +1,17 @@
 package commit
 
 import (
+	"strings"
 	"time"
 
+	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/api/domain/branch"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
 type Repository interface {
-	SaveToProject(p *project.Project, c *Commit) *Commit
-	DeleteFromProject(p *project.Project, c *Commit)
+	Save(c *Commit) *Commit
+	Delete(c *Commit)
 	GetByProjectAndHash(p *project.Project, hash string) (*Commit, error)
 	GetAllByProject(p *project.Project, q Query) ([]*Commit, uint64)
 }
@@ -22,6 +24,8 @@ type Query struct {
 }
 
 type Commit struct {
+	ID        string
+	Project   project.Project
 	Hash      string
 	Author    string
 	CreatedAt time.Time
@@ -30,6 +34,7 @@ type Commit struct {
 }
 
 func NewCommit(
+	p *project.Project,
 	hash string,
 	message string,
 	author string,
@@ -37,6 +42,8 @@ func NewCommit(
 	b branch.Branch,
 ) *Commit {
 	return &Commit{
+		ID:        slug.Make(strings.Join([]string{p.ID, hash[:7]}, "_")),
+		Project:   *p,
 		Hash:      hash,
 		Message:   message,
 		Author:    author,

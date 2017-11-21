@@ -22,17 +22,17 @@ type Controller struct {
 	manager        Repository
 	projectManager project.Repository
 	commitManager  commit.Repository
-	// resolver       *Resolver
+	resolver       *Resolver
 }
 
 // NewController - Returns a new Controller for Builds.
 func NewController(
-	manager *Manager,
+	buildResolver *Resolver,
 ) *Controller {
 	return &Controller{
-		logger:  log.New(os.Stdout, "[controller:commit]", log.Lshortfile),
-		render:  render.New(),
-		manager: manager,
+		logger:   log.New(os.Stdout, "[controller:commit]", log.Lshortfile),
+		render:   render.New(),
+		resolver: buildResolver,
 	}
 }
 

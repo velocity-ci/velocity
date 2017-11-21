@@ -17,13 +17,13 @@ func NewManager(
 	}
 }
 
-func (m *Manager) SaveToProject(p *project.Project, b *Branch) *Branch {
-	m.gormRepository.SaveToProject(p, b)
+func (m *Manager) Save(b *Branch) *Branch {
+	m.gormRepository.Save(b)
 	return b
 }
 
-func (m *Manager) DeleteFromProject(p *project.Project, b *Branch) {
-	m.gormRepository.DeleteFromProject(p, b)
+func (m *Manager) Delete(b *Branch) {
+	m.gormRepository.Delete(b)
 }
 
 func (m *Manager) GetByProjectAndName(p *project.Project, name string) (*Branch, error) {

@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
-	"github.com/velocity-ci/velocity/backend/project"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
@@ -17,6 +17,14 @@ type Repository interface {
 	GetAllByProject(p *project.Project, q Query) ([]*Build, uint64)
 	// Order timestamp descending
 	GetAllByProjectAndCommit(p *project.Project, c *commit.Commit) ([]*Build, uint64)
+
+	// BuildSteps
+	SaveBuildStep(bS *BuildStep) *BuildStep
+	GetBuildStepsForBuild(b *Build) ([]*BuildStep, uint64)
+
+	// OutputStreams
+	SaveOutputStream(oS *OutputStream) *OutputStream
+	GetOutputStreamsForBuildStep(bS *BuildStep) ([]*OutputStream, uint64)
 }
 
 type Query struct {
@@ -33,18 +41,19 @@ type Build struct {
 	Parameters []velocity.Parameter
 }
 
-// /v1/projects/velocity/commits/abcdef/builds/3/steps/2/containerTwo/logs OutputStream/Lines
+// /v1/projects/velocity/commits/abcdef/builds/<3>/steps/<2>/streams/<containerTwo>/logs OutputStream/Lines
 
 type BuildStep struct {
-	ID            string
-	Status        string
-	OutputStreams []OutputStream
+	ID     string
+	Build  Build
+	Status string
 }
 
 type OutputStream struct {
-	Name        string
-	BuildStepID string
-	Lines       []StreamLine
+	ID        string
+	BuildStep BuildStep
+	Name      string
+	Path      string
 }
 
 type StreamLine struct {
