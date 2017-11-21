@@ -109,7 +109,7 @@ func sync(
 						taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
 						t := velocity.ResolveTaskFromYAML(string(taskYml), gitParams)
 						apiTask := task.NewTask(p, c, t)
-						taskManager.SaveToProjectAndCommit(p, c, apiTask)
+						taskManager.Save(apiTask)
 					}
 					return nil
 				})

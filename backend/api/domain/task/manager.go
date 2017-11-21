@@ -18,13 +18,13 @@ func NewManager(
 	}
 }
 
-func (m *Manager) SaveToProjectAndCommit(p *project.Project, c *commit.Commit, t *Task) *Task {
-	m.gormRepository.SaveToProjectAndCommit(p, c, t)
+func (m *Manager) Save(t *Task) *Task {
+	m.gormRepository.Save(t)
 	return t
 }
 
-func (m *Manager) DeleteFromProjectAndCommit(p *project.Project, c *commit.Commit, t *Task) {
-	m.gormRepository.DeleteFromProjectAndCommit(p, c, t)
+func (m *Manager) Delete(t *Task) {
+	m.gormRepository.Delete(t)
 }
 
 func (m *Manager) GetByProjectAndCommitAndID(p *project.Project, c *commit.Commit, ID string) (*Task, error) {

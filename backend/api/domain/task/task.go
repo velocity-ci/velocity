@@ -9,15 +9,16 @@ import (
 )
 
 type Repository interface {
-	SaveToProjectAndCommit(p *project.Project, c *commit.Commit, t *Task) *Task
-	DeleteFromProjectAndCommit(p *project.Project, c *commit.Commit, t *Task)
+	Save(t *Task) *Task
+	Delete(t *Task)
 	GetByProjectAndCommitAndID(p *project.Project, c *commit.Commit, ID string) (*Task, error)
 	GetAllByProjectAndCommit(p *project.Project, c *commit.Commit, q Query) ([]*Task, uint64)
 }
 
 type Task struct {
-	ID    string
-	VTask velocity.Task
+	ID     string
+	Commit commit.Commit
+	VTask  velocity.Task
 }
 
 type Query struct {
@@ -32,7 +33,8 @@ type ManyResponse struct {
 
 func NewTask(p *project.Project, c *commit.Commit, vTask velocity.Task) *Task {
 	return &Task{
-		ID:    fmt.Sprintf("%s-%s-%s", p.ID, c.Hash[:7], vTask.Name),
-		VTask: vTask,
+		ID:     fmt.Sprintf("%s-%s-%s", p.ID, c.Hash[:7], vTask.Name),
+		Commit: *c,
+		VTask:  vTask,
 	}
 }

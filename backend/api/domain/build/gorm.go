@@ -46,11 +46,11 @@ func gormBuildFromBuild(b *Build) *GORMBuild {
 	}
 	return &GORMBuild{
 		ID:               b.ID,
-		Project:          project.GORMProjectFromProject(b.Project),
+		Project:          *project.GORMProjectFromProject(&b.Project),
 		ProjectReference: b.Project.ID,
-		Commit:           commit.GORMCommitFromCommit(b.Commit),
+		Commit:           *commit.GORMCommitFromCommit(&b.Commit),
 		CommitReference:  b.Commit.ID,
-		Task:             task.GORMTaskFromTask(b.Task),
+		Task:             *task.GORMTaskFromTask(&b.Task),
 		TaskReference:    b.Task.ID,
 		Parameters:       jsonParameters,
 		Status:           b.Status,

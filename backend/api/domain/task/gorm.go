@@ -12,33 +12,35 @@ import (
 )
 
 type GORMTask struct {
-	ID         string
-	ProjectID  string
-	CommitHash string
-	TaskConfig []byte // JSON of task name, parameters, steps etc.
+	ID              string
+	Commit          commit.GORMCommit `gorm:"ForeignKey:CommitReference"`
+	CommitReference string
+	TaskConfig      []byte // JSON of task name, parameters, steps etc.
 }
 
-func gormTaskFromProjectAndCommitAndTask(p *project.Project, c *commit.Commit, t *Task) *GORMTask {
+func GORMTaskFromTask(t *Task) *GORMTask {
 	taskConfig, err := json.Marshal(t.VTask)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return &GORMTask{
-		ID:         t.ID,
-		CommitHash: c.Hash,
-		TaskConfig: taskConfig,
+		ID:              t.ID,
+		Commit:          *commit.GORMCommitFromCommit(&t.Commit),
+		CommitReference: t.Commit.ID,
+		TaskConfig:      taskConfig,
 	}
 }
 
-func taskFromGORMTask(g *GORMTask) *Task {
+func TaskFromGORMTask(g *GORMTask) *Task {
 	var taskConfig velocity.Task
 	err := json.Unmarshal(g.TaskConfig, &taskConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return &Task{
-		ID:    g.ID,
-		VTask: taskConfig,
+		ID:     g.ID,
+		Commit: *commit.CommitFromGORMCommit(&g.Commit),
+		VTask:  taskConfig,
 	}
 }
 
@@ -54,10 +56,10 @@ func newGORMRepository(db *gorm.DB) *gormRepository {
 	}
 }
 
-func (r *gormRepository) SaveToProjectAndCommit(p *project.Project, c *commit.Commit, t *Task) *Task {
+func (r *gormRepository) Save(t *Task) *Task {
 	tx := r.gorm.Begin()
 
-	gormTask := gormTaskFromProjectAndCommitAndTask(p, c, t)
+	gormTask := GORMTaskFromTask(t)
 
 	tx.
 		Where(GORMTask{ID: t.ID}).
@@ -68,10 +70,10 @@ func (r *gormRepository) SaveToProjectAndCommit(p *project.Project, c *commit.Co
 	return t
 }
 
-func (r *gormRepository) DeleteFromProjectAndCommit(p *project.Project, c *commit.Commit, t *Task) {
+func (r *gormRepository) Delete(t *Task) {
 	tx := r.gorm.Begin()
 
-	gormTask := gormTaskFromProjectAndCommitAndTask(p, c, t)
+	gormTask := GORMTaskFromTask(t)
 
 	if err := tx.Delete(gormTask).Error; err != nil {
 		tx.Rollback()
@@ -93,7 +95,7 @@ func (r *gormRepository) GetByProjectAndCommitAndID(p *project.Project, c *commi
 		return nil, fmt.Errorf("could not find Task %s", ID)
 	}
 
-	return taskFromGORMTask(gormTask), nil
+	return TaskFromGORMTask(gormTask), nil
 }
 
 func (r *gormRepository) GetAllByProjectAndCommit(p *project.Project, c *commit.Commit, q Query) ([]*Task, uint64) {
@@ -108,7 +110,7 @@ func (r *gormRepository) GetAllByProjectAndCommit(p *project.Project, c *commit.
 
 	tasks := []*Task{}
 	for _, gTask := range gormTasks {
-		tasks = append(tasks, taskFromGORMTask(&gTask))
+		tasks = append(tasks, TaskFromGORMTask(&gTask))
 	}
 
 	return tasks, count
