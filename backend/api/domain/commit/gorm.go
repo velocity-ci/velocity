@@ -112,11 +112,11 @@ func (r *gormRepository) GetByProjectAndHash(p *project.Project, hash string) (*
 	}
 	if r.gorm.
 		Preload("Project").
+		Preload("Branches").
 		Where(&GORMCommit{
 			ProjectReference: p.ID,
 			Hash:             hash,
 		}).
-		Related(&gormCommit.Branches, "Branches").
 		First(&gormCommit).RecordNotFound() {
 		log.Printf("Could not find Commit %s", hash)
 		return nil, fmt.Errorf("could not find Commit %s", hash)

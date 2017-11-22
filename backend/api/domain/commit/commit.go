@@ -1,10 +1,9 @@
 package commit
 
 import (
-	"strings"
 	"time"
 
-	"github.com/gosimple/slug"
+	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/api/domain/branch"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
@@ -42,7 +41,7 @@ func NewCommit(
 	b branch.Branch,
 ) *Commit {
 	return &Commit{
-		ID:        slug.Make(strings.Join([]string{p.ID, hash[:7]}, "_")),
+		ID:        uuid.NewV3(uuid.NewV1(), hash).String(),
 		Project:   *p,
 		Hash:      hash,
 		Message:   message,
@@ -53,6 +52,7 @@ func NewCommit(
 }
 
 type ResponseCommit struct {
+	ID        string    `json:"id"`
 	Hash      string    `json:"hash"`
 	Author    string    `json:"author"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -67,6 +67,7 @@ func NewResponseCommit(c *Commit) *ResponseCommit {
 	}
 
 	return &ResponseCommit{
+		ID:        c.ID,
 		Hash:      c.Hash,
 		Author:    c.Author,
 		CreatedAt: c.CreatedAt,

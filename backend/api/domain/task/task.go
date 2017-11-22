@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/velocity"
@@ -33,7 +34,7 @@ type ManyResponse struct {
 
 func NewTask(p *project.Project, c *commit.Commit, vTask velocity.Task) *Task {
 	return &Task{
-		ID:     fmt.Sprintf("%s-%s-%s", p.ID, c.Hash[:7], vTask.Name),
+		ID:     uuid.NewV3(uuid.NewV1(), fmt.Sprintf("%s-%s", p.ID, c.Hash[:7])).String(),
 		Commit: *c,
 		VTask:  vTask,
 	}

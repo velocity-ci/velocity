@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	"github.com/docker/go/canonical/json"
+	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
-	"github.com/velocity-ci/velocity/backend/project"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type Resolver struct {
@@ -22,7 +24,7 @@ func NewResolver(taskManager *task.Manager) *Resolver {
 	}
 }
 
-func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *Commit) (*Build, error) {
+func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *commit.Commit) (*Build, error) {
 	reqBuild := RequestBuild{}
 
 	err := json.NewDecoder(b).Decode(&reqBuild)
@@ -30,7 +32,6 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *Comm
 		return nil, err
 	}
 
-	reqBuild.TaskName = strings.TrimSpace(reqBuild.TaskName)
 	for i, rP := range reqBuild.Parameters {
 		reqBuild.Parameters[i].Value = strings.TrimSpace(rP.Value)
 	}
@@ -41,27 +42,25 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *Comm
 	// 	return nil, err
 	// }
 
-	task, err := r.taskManager.GetByProjectAndCommitAndID(p, c, task.GenID(p, c, reqBuild.TaskName))
+	task, err := r.taskManager.GetByProjectAndCommitAndID(p, c, reqBuild.TaskID)
 
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
 
-	setTaskParametersFromRequest(task, reqBuild.Parameters)
+	setTaskParametersFromRequest(&task.VTask, reqBuild.Parameters)
 
-	build := NewBuild(p.ID, c.Hash, task)
+	build := NewBuild(p, c, task, task.VTask.Parameters)
 
-	build.ID = r.CommitManager.GetNextBuildID(p, c)
-
-	return &build, nil
+	return build, nil
 }
 
-// func setTaskParametersFromRequest(t *velocity.Task, reqParams []RequestParameter) {
-// 	for _, reqParam := range reqParams {
-// 		if param, ok := t.Parameters[reqParam.Name]; ok {
-// 			param.Value = reqParam.Value
-// 			t.Parameters[reqParam.Name] = param
-// 		}
-// 	}
-// }
+func setTaskParametersFromRequest(t *velocity.Task, reqParams []RequestParameter) {
+	for _, reqParam := range reqParams {
+		if param, ok := t.Parameters[reqParam.Name]; ok {
+			param.Value = reqParam.Value
+			t.Parameters[reqParam.Name] = param
+		}
+	}
+}

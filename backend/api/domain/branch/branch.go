@@ -1,9 +1,7 @@
 package branch
 
 import (
-	"strings"
-
-	"github.com/gosimple/slug"
+	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
@@ -22,7 +20,7 @@ type Branch struct {
 
 func NewBranch(p *project.Project, name string) *Branch {
 	return &Branch{
-		ID:      slug.Make(strings.Join([]string{p.Name, name}, "_")),
+		ID:      uuid.NewV3(uuid.NewV1(), p.ID).String(),
 		Project: *p,
 		Name:    name,
 	}

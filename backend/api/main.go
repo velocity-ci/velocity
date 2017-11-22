@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/api/domain/branch"
+	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
@@ -126,6 +127,11 @@ func NewVelocity() App {
 	taskManager := task.NewManager(gorm)
 	taskController := task.NewController(taskManager, projectManager, commitManager)
 
+	// Build
+	buildManager := build.NewManager(gorm)
+	buildResolver := build.NewResolver(taskManager)
+	buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager)
+
 	// Sync
 	syncController := sync.NewController(projectManager, commitManager, branchManager, taskManager)
 
@@ -147,6 +153,7 @@ func NewVelocity() App {
 		commitController,
 		branchController,
 		taskController,
+		buildController,
 		syncController,
 		// slaveController,
 		// websocketController,
