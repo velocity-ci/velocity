@@ -13,15 +13,11 @@ import (
 )
 
 type GORMBuild struct {
-	ID               string              `gorm:"primary_key"`
-	Project          project.GORMProject `gorm:"ForeignKey:ProjectReference"`
-	ProjectReference string
-	Commit           commit.GORMCommit `gorm:"ForeignKey:CommitReference"`
-	CommitReference  string
-	Task             task.GORMTask `gorm:"ForeignKey:TaskReference"`
-	TaskReference    string
-	Parameters       []byte // Parameters as JSON
-	Status           string
+	ID            string        `gorm:"primary_key"`
+	Task          task.GORMTask `gorm:"ForeignKey:TaskReference"`
+	TaskReference string
+	Parameters    []byte // Parameters as JSON
+	Status        string
 }
 
 type GORMBuildStep struct {
@@ -45,15 +41,11 @@ func GORMBuildFromBuild(b *Build) *GORMBuild {
 		log.Fatal(err)
 	}
 	return &GORMBuild{
-		ID:               b.ID,
-		Project:          *project.GORMProjectFromProject(&b.Project),
-		ProjectReference: b.Project.ID,
-		Commit:           *commit.GORMCommitFromCommit(&b.Commit),
-		CommitReference:  b.Commit.ID,
-		Task:             *task.GORMTaskFromTask(&b.Task),
-		TaskReference:    b.Task.ID,
-		Parameters:       jsonParameters,
-		Status:           b.Status,
+		ID:            b.ID,
+		Task:          *task.GORMTaskFromTask(&b.Task),
+		TaskReference: b.Task.ID,
+		Parameters:    jsonParameters,
+		Status:        b.Status,
 	}
 }
 
@@ -65,8 +57,6 @@ func BuildFromGORMBuild(gB *GORMBuild) *Build {
 	}
 	return &Build{
 		ID:         gB.ID,
-		Project:    *project.ProjectFromGORMProject(&gB.Project),
-		Commit:     *commit.CommitFromGORMCommit(&gB.Commit),
 		Task:       *task.TaskFromGORMTask(&gB.Task),
 		Parameters: parameters,
 		Status:     gB.Status,
@@ -138,9 +128,7 @@ func (r *gormRepository) GetBuildByProjectAndCommitAndID(p *project.Project, c *
 		Preload("Project").
 		Preload("Commit").
 		Where(&GORMBuild{
-			ProjectReference: p.ID,
-			CommitReference:  c.ID,
-			ID:               id,
+			ID: id,
 		}).
 		First(gormBuild).RecordNotFound() {
 		log.Printf("Could not find Build %s:%s:%s", p.ID, c.Hash, id)
@@ -153,10 +141,10 @@ func (r *gormRepository) GetBuildsByProject(p *project.Project, q Query) ([]*Bui
 	gormBuilds := []GORMBuild{}
 	var count uint64
 	r.gorm.
-		Preload("Project").
-		Preload("Commit").
 		Preload("Task").
-		Where(&GORMBuild{ProjectReference: p.ID}).
+		Preload("Task.Commit").
+		Preload("Task.Commit.Project").
+		Where(&project.GORMProject{ID: p.ID}).
 		Find(&gormBuilds).
 		Count(&count)
 
@@ -172,10 +160,11 @@ func (r *gormRepository) GetBuildsByProjectAndCommit(p *project.Project, c *comm
 	gormBuilds := []GORMBuild{}
 	var count uint64
 	r.gorm.
-		Preload("Project").
-		Preload("Commit").
 		Preload("Task").
-		Where(&GORMBuild{ProjectReference: p.ID, CommitReference: c.ID}).
+		Preload("Task.Commit").
+		Preload("Task.Commit.Project").
+		Where(&project.GORMProject{ID: p.ID}).
+		Where(&commit.GORMCommit{ID: c.ID}).
 		Find(&gormBuilds).
 		Count(&count)
 

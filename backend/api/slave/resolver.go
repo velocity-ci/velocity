@@ -1,17 +1,17 @@
 package slave
 
-// import (
-// 	"encoding/json"
-// 	"io"
-// )
+import (
+	"encoding/json"
+	"io"
+)
 
-// func FromRequest(b io.ReadCloser) (*RequestSlave, error) {
-// 	reqSlave := &RequestSlave{}
+func FromRequest(b io.ReadCloser) (*RequestSlave, error) {
+	reqSlave := &RequestSlave{}
 
-// 	err := json.NewDecoder(b).Decode(reqSlave)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	err := json.NewDecoder(b).Decode(reqSlave)
+	if err != nil {
+		return nil, err
+	}
 
-// 	return reqSlave, nil
-// }
+	return reqSlave, nil
+}

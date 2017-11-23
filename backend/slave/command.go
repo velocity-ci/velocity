@@ -4,22 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/api/domain/build"
 )
+
+type BuildCommand struct {
+	Build build.Build
+}
 
 type CommandMessage struct {
 	Command string  `json:"command"`
-	Data    Message `json:"data"`
+	Data    Command `json:"data"`
 }
 
-type Message interface{}
-
-type BuildMessage struct {
-	Project    *velocity.Project `json:"project"`
-	CommitHash string            `json:"commit"`
-	BuildID    uint64            `json:"id"`
-	Task       *velocity.Task    `json:"task"`
-}
+type Command interface{}
 
 func (c *CommandMessage) UnmarshalJSON(b []byte) error {
 	var objMap map[string]*json.RawMessage
@@ -43,7 +40,7 @@ func (c *CommandMessage) UnmarshalJSON(b []byte) error {
 	}
 
 	if c.Command == "build" {
-		d := BuildMessage{}
+		d := BuildCommand{}
 		err := json.Unmarshal(rawData, &d)
 		if err != nil {
 			return err

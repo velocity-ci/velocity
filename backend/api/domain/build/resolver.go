@@ -51,7 +51,7 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *comm
 
 	setTaskParametersFromRequest(&task.VTask, reqBuild.Parameters)
 
-	build := NewBuild(p, c, task, task.VTask.Parameters)
+	build := NewBuild(task, task.VTask.Parameters)
 
 	return build, nil
 }

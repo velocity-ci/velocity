@@ -15,6 +15,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/api/domain/user"
+	"github.com/velocity-ci/velocity/backend/api/slave"
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/backend/api/auth"
@@ -109,7 +110,6 @@ func NewVelocity() App {
 	// knownHostController := knownhost.NewController(knownHostManager, knownHostResolver)
 
 	// Project
-	// projectSyncManager := project.NewSyncManager(velocity.GitClone)
 	projectManager := project.NewManager(gorm, sync.GitClone)
 	projectValidator := project.NewValidator(validate, translator, projectManager)
 	projectResolver := project.NewResolver(projectValidator)
@@ -135,13 +135,13 @@ func NewVelocity() App {
 	// Sync
 	syncController := sync.NewController(projectManager, commitManager, branchManager, taskManager)
 
+	// Slave
+	slaveManager := slave.NewManager()
+	slaveController := slave.NewController(slaveManager, commitManager, websocketManager)
+
 	// Client Websocket
 	// websocketManager := websocket.NewManager()
 	// websocketController := websocket.NewController(websocketManager, commitManager)
-
-	// Slave
-	// slaveManager := slave.NewManager()
-	// slaveController := slave.NewController(slaveManager, commitManager, websocketManager)
 
 	// velocityAPI.buildScheduler = slave.NewBuildScheduler(commitManager, slaveManager, projectManager, &velocityAPI.workers)
 	// go velocityAPI.buildScheduler.Run()
@@ -155,7 +155,7 @@ func NewVelocity() App {
 		taskController,
 		buildController,
 		syncController,
-		// slaveController,
+		slaveController,
 		// websocketController,
 	}, true)
 

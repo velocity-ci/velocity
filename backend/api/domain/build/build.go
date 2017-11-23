@@ -1,7 +1,6 @@
 package build
 
 import (
-	"fmt"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -28,6 +27,7 @@ type Repository interface {
 	// OutputStreams
 	SaveOutputStream(oS *OutputStream) *OutputStream
 	GetOutputStreamsForBuildStep(bS *BuildStep) ([]*OutputStream, uint64)
+	GetOutputStreamByID(id string) (*OutputStream, error)
 }
 
 type Query struct {
@@ -37,22 +37,25 @@ type Query struct {
 
 type Build struct {
 	ID         string
-	Project    project.Project
-	Commit     commit.Commit
 	Task       task.Task
 	Status     string
 	Parameters map[string]velocity.Parameter
 }
 
-func NewBuild(p *project.Project, c *commit.Commit, t *task.Task, params map[string]velocity.Parameter) *Build {
+func NewBuild(t *task.Task, params map[string]velocity.Parameter) *Build {
 	return &Build{
-		ID:         uuid.NewV3(uuid.NewV1(), fmt.Sprintf("%s-%s-%s", p.ID, c.Hash[:7], t.ID)).String(),
-		Project:    *p,
-		Commit:     *c,
+		ID:         uuid.NewV3(uuid.NewV1(), t.ID).String(),
 		Task:       *t,
 		Status:     "",
 		Parameters: params,
 	}
+}
+
+type SlaveBuild struct {
+	ID         string                        `json:"id"`
+	Task       task.Task                     `json:"task"`
+	Status     string                        `json:"status"`
+	Parameters map[string]velocity.Parameter `json:"parameters"`
 }
 
 type BuildStep struct {
@@ -81,15 +84,32 @@ func NewOutputStream(bS *BuildStep, name string) *OutputStream {
 		ID:        uuid.NewV3(uuid.NewV1(), bS.ID).String(),
 		BuildStep: *bS,
 		Name:      name,
-		Path:      "",
+	}
+}
+
+type ResponseOutputStream struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func NewResponseOutputStream(oS *OutputStream) *ResponseOutputStream {
+	return &ResponseOutputStream{
+		ID:   oS.ID,
+		Name: oS.Name,
 	}
 }
 
 type StreamLine struct {
-	OutputStreamID string
-	LineNumber     uint64
-	Timestamp      time.Time
-	Output         string
+	OutputStream OutputStream
+	LineNumber   uint64
+	Timestamp    time.Time
+	Output       string
+}
+
+type ResponseStreamLine struct {
+	LineNumber uint64
+	Timestamp  time.Time
+	Output     string
 }
 
 type RequestBuild struct {
@@ -112,6 +132,11 @@ type BuildStepManyResponse struct {
 	Result []*ResponseBuildStep `json:"result"`
 }
 
+type OutputStreamManyResponse struct {
+	Total  uint64
+	Result []*ResponseOutputStream `json:"result"`
+}
+
 type ResponseBuild struct {
 	ID         string `json:"id"`
 	ProjectID  string `json:"project"`
@@ -123,8 +148,8 @@ type ResponseBuild struct {
 func NewResponseBuild(b *Build) *ResponseBuild {
 	return &ResponseBuild{
 		ID:         b.ID,
-		ProjectID:  b.Project.ID,
-		CommitHash: b.Commit.ID,
+		ProjectID:  b.Task.Commit.Project.ID,
+		CommitHash: b.Task.Commit.ID,
 		TaskID:     b.Task.ID,
 		Status:     b.Status,
 	}
