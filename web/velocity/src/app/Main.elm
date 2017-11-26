@@ -21,6 +21,7 @@ import Util exposing ((=>))
 import Views.Page as Page exposing (ActivePage)
 import Page.Header as Header
 import Socket.Socket as Socket exposing (Socket)
+import Socket.Channel as Channel exposing (Channel)
 
 
 type Page
@@ -80,17 +81,6 @@ decodeUserFromJson json =
 initialPage : Page
 initialPage =
     Blank
-
-
-
---channels : PageState -> List (Channel Msg)
---channels pageState =
---    case pageState of
---        Loaded (Project subModel) ->
---            List.map (Channel.map ProjectMsg) (Project.channels subModel)
---
---        _ ->
---            Debug.log "no channels" []
 
 
 initialSocket : AuthToken -> Socket Msg
@@ -248,6 +238,8 @@ type Msg
     | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
     | KnownHostsMsg KnownHosts.Msg
     | SocketMsg (Socket.Msg Msg)
+    | JoinChannel (Channel Msg)
+    | NoOp
 
 
 
@@ -311,7 +303,19 @@ setRoute maybeRoute model =
                     loadFreshPage =
                         Just subRoute
                             |> Project.init model.session id
-                            |> Task.andThen (Tuple.first >> Task.succeed)
+                            |> Task.andThen
+                                (\( ( model, cmd ), externalMsg ) ->
+                                    let
+                                        something =
+                                            case externalMsg of
+                                                Project.JoinChannel channel ->
+                                                    Nothing
+
+                                                _ ->
+                                                    Nothing
+                                    in
+                                        Task.succeed ( model, cmd )
+                                )
                             |> transition ProjectLoaded
 
                     transitionSubPage subModel =
@@ -368,19 +372,9 @@ updatePage page msg model =
             let
                 ( newModel, newCmd ) =
                     subUpdate subMsg subModel
-
-                --
-                --                ( socket, socketMsg ) =
-                --                    socketUpdates (Loaded (toModel newModel)) model.socket
             in
-                { model
-                    | pageState =
-                        Loaded (toModel newModel)
-                        --                    , socket = socket
-                }
-                    ! [ Cmd.map toMsg newCmd
-                        --                      , Cmd.map SocketMsg socketMsg
-                      ]
+                { model | pageState = Loaded (toModel newModel) }
+                    ! [ Cmd.map toMsg newCmd ]
 
         errored =
             pageErrored model
@@ -407,6 +401,27 @@ updatePage page msg model =
 
             ( SetRoute route, _ ) ->
                 setRoute route model
+
+            ( JoinChannel channel, _ ) ->
+                let
+                    session =
+                        model.session
+
+                    ( newSession, socketCmd ) =
+                        case session.socket of
+                            Just socket ->
+                                let
+                                    ( newSocket, socketCmd ) =
+                                        Socket.join channel socket
+                                in
+                                    { session | socket = Just newSocket }
+                                        => socketCmd
+
+                            Nothing ->
+                                session => Cmd.none
+                in
+                    { model | session = newSession }
+                        => Cmd.map SocketMsg socketCmd
 
             ( SetUser user, _ ) ->
                 let
@@ -485,17 +500,9 @@ updatePage page msg model =
                 let
                     pageState =
                         Loaded (Project subModel)
-
-                    --                    ( socket, socketMsg ) =
-                    --                        socketUpdates pageState model.socket
                 in
-                    { model
-                        | pageState =
-                            pageState
-                            --                        , socket = socket
-                    }
+                    { model | pageState = pageState }
                         ! [ Cmd.map ProjectMsg subMsg
-                            --                          , Cmd.map SocketMsg socketMsg
                           ]
 
             ( ProjectLoaded (Err error), _ ) ->
@@ -513,8 +520,21 @@ updatePage page msg model =
                                     => Cmd.none
 
                             Project.SetSocket ( socket, socketCmd_ ) ->
-                                { session | socket = Just (Socket.map ProjectMsg socket) }
-                                    => socketCmd_
+                                session
+                                    => Cmd.none
+
+                            Project.JoinChannel channel ->
+                                case session.socket of
+                                    Just socket ->
+                                        let
+                                            ( newSocket, socketCmd ) =
+                                                Socket.join (Channel.map ProjectMsg channel) socket
+                                        in
+                                            { session | socket = Just newSocket }
+                                                => socketCmd
+
+                                    Nothing ->
+                                        session => Cmd.none
                 in
                     { model
                         | pageState = Loaded (Project newSubModel)
@@ -534,22 +554,6 @@ updatePage page msg model =
 
 
 
---socketUpdates : PageState -> Maybe (Socket Msg) -> ( Maybe (Socket Msg), Cmd (Socket.Msg Msg) )
---socketUpdates pageState maybeSocket =
---    case maybeSocket of
---        Just socket ->
---            List.foldl
---                (\channel ( maybeSocket, cmd ) ->
---                    maybeSocket
---                        |> Socket.join channel
---                        |> Tuple.mapSecond (\msg -> Cmd.batch [ cmd, msg ])
---                )
---                ( socket, Cmd.none )
---                (channels pageState)
---                |> Tuple.mapFirst Just
---
---        Nothing ->
---            Nothing => Cmd.none
 -- MAIN --
 
 

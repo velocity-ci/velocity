@@ -92,9 +92,6 @@ init session id maybeRoute =
             , subPageState = Loaded initialSubPage
             }
 
-        --
-        --        newSocket =
-        --            List.map (Channel.map CommitMsg) (Commit.channels subModel)
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
@@ -108,7 +105,7 @@ init session id maybeRoute =
 
                         Nothing ->
                             ( successModel, Cmd.none )
-                                => NoOp
+                                => JoinChannel (Channel.init "hello")
                                 |> Task.succeed
                 )
             |> Task.mapError handleLoadError
@@ -329,6 +326,7 @@ type Msg
 
 type ExternalMsg
     = SetSocket ( Socket Msg, Cmd (Socket.Msg Msg) )
+    | JoinChannel (Channel.Channel Msg)
     | NoOp
 
 
@@ -378,7 +376,10 @@ setRoute session maybeRoute model =
                     loadFreshPage =
                         Just maybeRoute
                             |> Commit.init session model.project hash
-                            |> Task.andThen (Tuple.first >> Task.succeed)
+                            |> Task.andThen
+                                (\( ( model, cmd ), externalMsg ) ->
+                                    Task.succeed ( model, cmd )
+                                )
                             |> transition CommitLoaded
 
                     transitionSubPage subModel =
@@ -491,13 +492,14 @@ updateSubPage session subPage msg model =
 
                     newExternalMsg =
                         case externalMsg of
-                            Commit.NoOp ->
-                                NoOp
-
                             Commit.SetSocket socket ->
                                 SetSocket ( (Socket.map CommitMsg socket), Cmd.none )
 
-                    --                                SetSocket ( (Socket.map CommitMsg socket), Cmd.none )
+                            Commit.JoinChannel channel ->
+                                JoinChannel (Channel.map CommitMsg channel)
+
+                            _ ->
+                                NoOp
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
