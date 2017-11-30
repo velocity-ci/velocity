@@ -176,6 +176,44 @@ func (r *gormRepository) GetBuildsByProjectAndCommit(p *project.Project, c *comm
 	return builds, count
 }
 
+func (r *gormRepository) GetRunningBuilds() ([]*Build, uint64) {
+	gormBuilds := []GORMBuild{}
+	var count uint64
+	r.gorm.
+		Preload("Task").
+		Preload("Task.Commit").
+		Preload("Task.Commit.Project").
+		Where(&GORMBuild{Status: "running"}).
+		Find(&gormBuilds).
+		Count(&count)
+
+	builds := []*Build{}
+	for _, gBuild := range gormBuilds {
+		builds = append(builds, BuildFromGORMBuild(&gBuild))
+	}
+
+	return builds, count
+}
+
+func (r *gormRepository) GetWaitingBuilds() ([]*Build, uint64) {
+	gormBuilds := []GORMBuild{}
+	var count uint64
+	r.gorm.
+		Preload("Task").
+		Preload("Task.Commit").
+		Preload("Task.Commit.Project").
+		Where(&GORMBuild{Status: "waiting"}).
+		Find(&gormBuilds).
+		Count(&count)
+
+	builds := []*Build{}
+	for _, gBuild := range gormBuilds {
+		builds = append(builds, BuildFromGORMBuild(&gBuild))
+	}
+
+	return builds, count
+}
+
 func (r *gormRepository) SaveBuildStep(bS *BuildStep) *BuildStep {
 	tx := r.gorm.Begin()
 

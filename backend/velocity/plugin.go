@@ -13,6 +13,10 @@ type Plugin struct {
 	Environment    map[string]string `json:"environment" yaml:"environment"`
 }
 
+func (p Plugin) GetOutputStreams() []string {
+	return []string{"pluginName?"}
+}
+
 func (p Plugin) GetType() string {
 	return "plugin"
 }

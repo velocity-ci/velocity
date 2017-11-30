@@ -2,8 +2,6 @@ package slave
 
 import (
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
-	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type CommandMessage struct {
@@ -12,15 +10,14 @@ type CommandMessage struct {
 }
 
 type BuildCommand struct {
-	Build build.Build
+	Build build.Build `json:"build"`
 }
 
-func NewBuildCommand(p *project.Project, t *velocity.Task, commitHash string, buildId uint64) *CommandMessage {
+func NewBuildCommand(b *build.Build) *CommandMessage {
 	return &CommandMessage{
 		Command: "build",
 		Data: BuildCommand{
-			Task:  t,
-			Build: velocity.NewBuild(p.ToTaskProject(), commitHash, buildId),
+			Build: *b,
 		},
 	}
 }

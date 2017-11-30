@@ -92,16 +92,12 @@ func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *htt
 	reqCommitID := reqVars["commitHash"]
 
 	project, err := c.projectManager.GetByID(reqProjectID)
-	if err != nil {
-		log.Printf("Could not find project %s", reqProjectID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
 	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
-	if err != nil {
-		log.Printf("Could not find commit %s", reqCommitID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
@@ -125,16 +121,12 @@ func (c Controller) getProjectCommitBuildsHandler(w http.ResponseWriter, r *http
 	reqCommitID := reqVars["commitHash"]
 
 	project, err := c.projectManager.GetByID(reqProjectID)
-	if err != nil {
-		log.Printf("Could not find project %s", reqProjectID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
 	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
-	if err != nil {
-		log.Printf("Could not find commit %s", reqCommitID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
@@ -158,23 +150,17 @@ func (c Controller) getProjectCommitBuildHandler(w http.ResponseWriter, r *http.
 	reqBuildID := reqVars["buildID"]
 
 	project, err := c.projectManager.GetByID(reqProjectID)
-	if err != nil {
-		log.Printf("Could not find project %s", reqProjectID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
 	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
-	if err != nil {
-		log.Printf("Could not find commit %s", reqCommitID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
 	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
-	if err != nil {
-		log.Printf("Could not find build %s", reqBuildID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
 		return
 	}
 
@@ -188,23 +174,17 @@ func (c Controller) getProjectCommitBuildStepsHandler(w http.ResponseWriter, r *
 	reqBuildID := reqVars["buildID"]
 
 	project, err := c.projectManager.GetByID(reqProjectID)
-	if err != nil {
-		log.Printf("Could not find project %s", reqProjectID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
 	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
-	if err != nil {
-		log.Printf("Could not find commit %s", reqCommitID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
 	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
-	if err != nil {
-		log.Printf("Could not find build %s", reqBuildID)
-		c.render.JSON(w, http.StatusNotFound, nil)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
 		return
 	}
 
@@ -227,16 +207,24 @@ func (c Controller) getProjectCommitBuildStepHandler(w http.ResponseWriter, r *h
 	reqStepNumber := reqVars["stepNumber"]
 
 	project, err := c.projectManager.GetByID(reqProjectID)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
+		return
+	}
 
 	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
+		return
+	}
 
 	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
+		return
+	}
 
 	buildStep, err := c.manager.GetBuildStepByBuildAndID(build, reqStepNumber)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepNumber))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepNumber)) {
+		return
+	}
 
 	c.render.JSON(w, http.StatusOK, NewResponseBuildStep(buildStep))
 }
@@ -249,16 +237,24 @@ func (c Controller) getProjectCommitBuildStepStreamsHandler(w http.ResponseWrite
 	reqStepNumber := reqVars["stepNumber"]
 
 	project, err := c.projectManager.GetByID(reqProjectID)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
+		return
+	}
 
 	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
+		return
+	}
 
 	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
+		return
+	}
 
 	buildStep, err := c.manager.GetBuildStepByBuildAndID(build, reqStepNumber)
-	handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepNumber))
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepNumber)) {
+		return
+	}
 
 	outputStreams, count := c.manager.GetOutputStreamsForBuildStep(buildStep)
 

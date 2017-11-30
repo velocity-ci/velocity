@@ -1,12 +1,10 @@
 package slave
 
-import (
-	"github.com/velocity-ci/velocity/backend/api/domain/commit"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
-)
+import "github.com/velocity-ci/velocity/backend/api/domain/build"
 
 type Manager struct {
-	slaves map[string]*Slave
+	slaves       map[string]*Slave
+	buildManager build.Repository
 }
 
 func NewManager() *Manager {
@@ -46,12 +44,32 @@ func (m *Manager) GetSlaveByID(slaveID string) *Slave {
 	return nil
 }
 
-func (m *Manager) StartBuild(slaveID string, p *project.Project, commitHash string, build *commit.Build) {
+func (m *Manager) StartBuild(slave *Slave, b *build.Build) {
 	// TODO: Sync known hosts
-	slave := m.GetSlaveByID(slaveID)
 	slave.State = "busy"
-	slave.Command = NewBuildCommand(p, build.Task, commitHash, build.ID)
 	m.Save(slave)
+
+	build.Status = "running"
+	m.buildManager.SaveBuild(build)
+
+	buildSteps, count := m.buildManager.GetBuildStepsForBuild(b)
+	if count < 1 {
+		for i, s := range b.Task.VTask.Steps {
+			bS := build.NewBuildStep(
+				b,
+				i,
+				s.GetDescription(),
+			)
+			m.buildManager.SaveBuildStep(bS)
+
+			for _, oSName := range s.GetOutputStreams() {
+				oS := build.NewOutputStream(bS, oSName)
+				m.buildManager.SaveOutputStream(oS)
+			}
+			buildSteps = append(buildSteps, bS)
+		}
+	}
+	slave.Command = NewBuildCommand(b, buildSteps)
 
 	slave.ws.WriteJSON(slave.Command)
 }

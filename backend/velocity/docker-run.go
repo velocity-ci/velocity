@@ -24,6 +24,10 @@ type DockerRun struct {
 	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignore_exit"`
 }
 
+func (dR DockerRun) GetOutputStreams() []string {
+	return []string{"run"}
+}
+
 func NewDockerRun() *DockerRun {
 	return &DockerRun{
 		Image:          "",

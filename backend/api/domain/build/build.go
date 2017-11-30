@@ -18,6 +18,8 @@ type Repository interface {
 	GetBuildsByProject(p *project.Project, q Query) ([]*Build, uint64)
 	// Order timestamp descending
 	GetBuildsByProjectAndCommit(p *project.Project, c *commit.Commit) ([]*Build, uint64)
+	GetRunningBuilds() ([]*Build, uint64)
+	GetWaitingBuilds() ([]*Build, uint64)
 
 	// BuildSteps
 	SaveBuildStep(bS *BuildStep) *BuildStep
@@ -38,7 +40,7 @@ type Query struct {
 type Build struct {
 	ID         string
 	Task       task.Task
-	Status     string
+	Status     string // waiting, running, success, failed
 	Parameters map[string]velocity.Parameter
 }
 
@@ -46,7 +48,7 @@ func NewBuild(t *task.Task, params map[string]velocity.Parameter) *Build {
 	return &Build{
 		ID:         uuid.NewV3(uuid.NewV1(), t.ID).String(),
 		Task:       *t,
-		Status:     "",
+		Status:     "waiting",
 		Parameters: params,
 	}
 }
@@ -59,16 +61,22 @@ type SlaveBuild struct {
 }
 
 type BuildStep struct {
-	ID     string
-	Build  Build
-	Status string
+	ID          string
+	Number      uint64
+	Description string
+	Build       Build
+	Status      string // waiting, running, success, failed
+	Step        velocity.Step
 }
 
-func NewBuildStep(b *Build) *BuildStep {
+func NewBuildStep(b *Build, n uint64, desc string, step velocity.Step) *BuildStep {
 	return &BuildStep{
-		ID:     uuid.NewV3(uuid.NewV1(), b.ID).String(),
-		Build:  *b,
-		Status: "",
+		ID:          uuid.NewV3(uuid.NewV1(), b.ID).String(),
+		Build:       *b,
+		Status:      "waiting",
+		Number:      n,
+		Description: desc,
+		Step:        step,
 	}
 }
 
@@ -104,6 +112,15 @@ type StreamLine struct {
 	LineNumber   uint64
 	Timestamp    time.Time
 	Output       string
+}
+
+func NewStreamLine(oS *OutputStream, lineNumber uint64, timestamp time.Time, output string) *StreamLine {
+	return &StreamLine{
+		OutputStream: *oS,
+		LineNumber:   lineNumber,
+		Timestamp:    timestamp,
+		Output:       output,
+	}
 }
 
 type ResponseStreamLine struct {

@@ -7,6 +7,7 @@ type Step interface {
 	GetDetails() string
 	Validate(map[string]Parameter) error
 	SetParams(map[string]Parameter) error
+	GetOutputStreams() []string
 }
 
 type BaseStep struct {

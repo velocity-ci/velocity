@@ -20,6 +20,10 @@ func NewDockerBuild() *DockerBuild {
 	}
 }
 
+func (dB DockerBuild) GetOutputStreams() []string {
+	return []string{"build"}
+}
+
 func (dB DockerBuild) GetType() string {
 	return "build"
 }

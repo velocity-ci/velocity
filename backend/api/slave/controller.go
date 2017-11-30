@@ -133,15 +133,17 @@ func (c *Controller) monitor(s *Slave) {
 		}
 
 		if message.Type == "log" {
-			lM := message.Data.(*SlaveStreamLine)
-			outputStream, err := c.buildManager.GetOutputStreamByID(lM.OutputStreamID)
 			// TODO: Create build-step and outputstream IDs beforehand. Find way to communicate them to Slave.
+			lM := message.Data.(*SlaveStreamLine)
+			outputStream, err := c.buildManager.GetOutputStreamByID(lM.OutputStreamID) // TODO: Cache in memory
 			if err != nil {
-				log.Fatal("could not find output stream %s", lM.OutputStreamID)
+				log.Fatalf("could not find output stream %s", lM.OutputStreamID)
 			}
 
-			outputStrea
+			streamLine := build.NewStreamLine(outputStream, lM.LineNumber, time.Now(), lM.Output)
+			c.fileManager.Save(streamLine) // TODO: Future cache in memory and auto-flush
 
+			// OLD ---
 			log.Println(lM.Step, lM.Status, lM.Output)
 			build := c.commitManager.GetBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
 			timestamp := time.Now()
