@@ -3,61 +3,41 @@ package user
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/jinzhu/gorm"
 )
 
-type GORMUser struct {
-	Username       string `gorm:"primary_key"`
-	HashedPassword string
-}
-
-func gormUserFromUser(u *User) *GORMUser {
-	return &GORMUser{
-		Username:       u.Username,
-		HashedPassword: u.HashedPassword,
-	}
-}
-
-func userFromGORMUser(g *GORMUser) *User {
-	return &User{
-		Username:       g.Username,
-		HashedPassword: g.HashedPassword,
-	}
-}
-
 // Expose CRUD operations (implement interface?) Implement repository funcs, as they will be used when we have caching.
 type gormRepository struct {
-	gorm *gorm.DB
+	logger *log.Logger
+	gorm   *gorm.DB
 }
 
 func newGORMRepository(db *gorm.DB) *gormRepository {
-	db.AutoMigrate(GORMUser{})
+	db.AutoMigrate(User{})
 	return &gormRepository{
-		gorm: db,
+		logger: log.New(os.Stdout, "[gorm:user]", log.Lshortfile),
+		gorm:   db,
 	}
 }
 
-func (r *gormRepository) Save(u *User) *User {
+func (r *gormRepository) Save(u User) User {
 	tx := r.gorm.Begin()
 
-	gormUser := gormUserFromUser(u)
-
 	tx.
-		Where(GORMUser{Username: gormUser.Username}).
-		Assign(gormUser).
-		FirstOrCreate(gormUser)
+		Where(User{Username: u.Username}).
+		Assign(&u).
+		FirstOrCreate(&u)
 
 	tx.Commit()
 	return u
 }
 
-func (r *gormRepository) Delete(u *User) {
+func (r *gormRepository) Delete(u User) {
 	tx := r.gorm.Begin()
 
-	gormUser := gormUserFromUser(u)
-
-	if err := tx.Delete(gormUser).Error; err != nil {
+	if err := tx.Delete(u).Error; err != nil {
 		tx.Rollback()
 		log.Fatal(err)
 	}
@@ -65,25 +45,20 @@ func (r *gormRepository) Delete(u *User) {
 	tx.Commit()
 }
 
-func (r *gormRepository) GetByUsername(username string) (*User, error) {
-	gormUser := &GORMUser{}
-	if r.gorm.Where(&GORMUser{Username: username}).First(gormUser).RecordNotFound() {
+func (r *gormRepository) GetByUsername(username string) (User, error) {
+	u := User{}
+	if r.gorm.Where(&User{Username: username}).First(&u).RecordNotFound() {
 		log.Printf("Could not find User %s", username)
-		return nil, fmt.Errorf("could not find User %s", username)
+		return User{}, fmt.Errorf("could not find User %s", username)
 	}
 
-	return userFromGORMUser(gormUser), nil
+	return u, nil
 }
 
-func (r *gormRepository) GetAll(q Query) ([]*User, uint64) {
-	gormUsers := []*GORMUser{}
+func (r *gormRepository) GetAll(q Query) ([]User, uint64) {
+	users := []User{}
 	var count uint64
-	r.gorm.Find(gormUsers).Count(count)
-
-	users := []*User{}
-	for _, gUser := range gormUsers {
-		users = append(users, userFromGORMUser(gUser))
-	}
+	r.gorm.Find(&users).Count(count)
 
 	return users, count
 }

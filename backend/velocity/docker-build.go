@@ -17,19 +17,11 @@ func NewDockerBuild() *DockerBuild {
 		Dockerfile: "",
 		Context:    "",
 		Tags:       []string{},
+		BaseStep: BaseStep{
+			Type:          "build",
+			OutputStreams: []OutputStream{NewOutputStream("", "build")},
+		},
 	}
-}
-
-func (dB DockerBuild) GetOutputStreams() []string {
-	return []string{"build"}
-}
-
-func (dB DockerBuild) GetType() string {
-	return "build"
-}
-
-func (dB DockerBuild) GetDescription() string {
-	return dB.Description
 }
 
 func (dB DockerBuild) GetDetails() string {

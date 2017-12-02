@@ -2,7 +2,6 @@ package branch
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
 type Manager struct {
@@ -17,19 +16,19 @@ func NewManager(
 	}
 }
 
-func (m *Manager) Save(b *Branch) *Branch {
+func (m *Manager) Save(b Branch) Branch {
 	m.gormRepository.Save(b)
 	return b
 }
 
-func (m *Manager) Delete(b *Branch) {
+func (m *Manager) Delete(b Branch) {
 	m.gormRepository.Delete(b)
 }
 
-func (m *Manager) GetByProjectAndName(p *project.Project, name string) (*Branch, error) {
-	return m.gormRepository.GetByProjectAndName(p, name)
+func (m *Manager) GetByProjectIDAndName(projectID string, name string) (Branch, error) {
+	return m.gormRepository.GetByProjectIDAndName(projectID, name)
 }
 
-func (m *Manager) GetAllByProject(p *project.Project, q Query) ([]*Branch, uint64) {
-	return m.gormRepository.GetAllByProject(p, q)
+func (m *Manager) GetAllByProjectID(projectID string, q Query) ([]Branch, uint64) {
+	return m.gormRepository.GetAllByProjectID(projectID, q)
 }

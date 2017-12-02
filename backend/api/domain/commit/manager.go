@@ -17,19 +17,19 @@ func NewManager(
 	}
 }
 
-func (m *Manager) Save(c *Commit) *Commit {
+func (m *Manager) Save(c Commit) Commit {
 	m.gormRepository.Save(c)
 	return c
 }
 
-func (m *Manager) Delete(c *Commit) {
+func (m *Manager) Delete(c Commit) {
 	m.gormRepository.Delete(c)
 }
 
-func (m *Manager) GetByProjectAndHash(p *project.Project, hash string) (*Commit, error) {
+func (m *Manager) GetByProjectAndHash(p project.Project, hash string) (Commit, error) {
 	return m.gormRepository.GetByProjectAndHash(p, hash)
 }
 
-func (m *Manager) GetAllByProject(p *project.Project, q Query) ([]*Commit, uint64) {
+func (m *Manager) GetAllByProject(p project.Project, q Query) ([]Commit, uint64) {
 	return m.gormRepository.GetAllByProject(p, q)
 }

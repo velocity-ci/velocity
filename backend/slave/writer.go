@@ -2,37 +2,30 @@ package main
 
 import (
 	"github.com/gorilla/websocket"
+	"github.com/velocity-ci/velocity/backend/api/slave"
 )
 
 type SlaveWriter struct {
-	stepNumber uint64
-	totalSteps uint64
-	status     string
-	ws         *websocket.Conn
-	projectID  string
-	commitHash string
-	buildID    uint64
+	ws             *websocket.Conn
+	status         string
+	OutputStreamID string
+	LineNumber     uint64
 }
 
-func NewSlaveWriter(ws *websocket.Conn, projectID string, commitHash string, buildID uint64) *SlaveWriter {
+func NewSlaveWriter(ws *websocket.Conn) *SlaveWriter {
 	return &SlaveWriter{
-		ws:         ws,
-		projectID:  projectID,
-		commitHash: commitHash,
-		buildID:    buildID,
+		ws: ws,
 	}
 }
 
 func (w SlaveWriter) Write(p []byte) (n int, err error) {
-	lM := LogMessage{
-		ProjectID:  w.projectID,
-		CommitHash: w.commitHash,
-		BuildID:    w.buildID,
-		Step:       w.stepNumber,
-		Status:     w.status,
-		Output:     string(p),
+	lM := slave.SlaveBuildLogMessage{
+		OutputStreamID: w.OutputStreamID,
+		LineNumber:     w.LineNumber,
+		Status:         w.status,
+		Output:         string(p),
 	}
-	m := SlaveMessage{
+	m := slave.SlaveMessage{
 		Type: "log",
 		Data: lM,
 	}
@@ -43,14 +36,14 @@ func (w SlaveWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (w *SlaveWriter) SetStep(num uint64) {
-	w.stepNumber = num
+func (w *SlaveWriter) SetLineNumber(num uint64) {
+	w.LineNumber = num
 }
 
 func (w *SlaveWriter) SetStatus(s string) {
 	w.status = s
 }
 
-func (w *SlaveWriter) SetTotalSteps(t uint64) {
-	w.totalSteps = t
+func (w *SlaveWriter) SetOutputStreamID(id string) {
+	w.OutputStreamID = id
 }

@@ -19,19 +19,19 @@ services:
     ports:
       - "80:80"
 
-  # slave:
-  #   build:
-  #     context: .
-  #     dockerfile: dev.Dockerfile
-  #   command: /bin/sh -c "eval `ssh-agent` && exec fresh"
-  #   restart: unless-stopped
-  #   volumes:
-  #     - "./:/go/src/github.com/velocity-ci/velocity/backend/"
-  #     - "/var/run/docker.sock:/var/run/docker.sock"
-  #     - "/tmp/velocity-workspace/:/tmp/velocity-workspace/"
-  #   working_dir: /go/src/github.com/velocity-ci/velocity/backend/slave
-  #   links:
-  #     - "api:api"
-  #   environment:
-  #     MASTER_ADDRESS: http://api
-  #     SLAVE_SECRET: development
+  slave:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    command: /bin/sh -c "eval `ssh-agent` && exec fresh"
+    restart: unless-stopped
+    volumes:
+      - "./:/go/src/github.com/velocity-ci/velocity/backend/"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/tmp/velocity-workspace/:/tmp/velocity-workspace/"
+    working_dir: /go/src/github.com/velocity-ci/velocity/backend/slave
+    links:
+      - "api:api"
+    environment:
+      MASTER_ADDRESS: http://api
+      SLAVE_SECRET: development

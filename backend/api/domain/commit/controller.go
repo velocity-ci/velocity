@@ -67,7 +67,7 @@ func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Requ
 
 	commits, count := c.manager.GetAllByProject(p, opts)
 
-	respCommits := []*ResponseCommit{}
+	respCommits := []ResponseCommit{}
 	for _, c := range commits {
 		respCommits = append(respCommits, NewResponseCommit(c))
 	}

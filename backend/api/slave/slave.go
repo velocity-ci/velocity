@@ -3,7 +3,6 @@ package slave
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -16,14 +15,13 @@ type Slave struct {
 	ID      string
 	State   string // ready, busy, disconnected
 	ws      *websocket.Conn
-	Command *CommandMessage
+	Command CommandMessage
 }
 
-func NewSlave(ID string) *Slave {
-	return &Slave{
-		ID:      ID,
-		State:   "disconnected",
-		Command: nil,
+func NewSlave(ID string) Slave {
+	return Slave{
+		ID:    ID,
+		State: "disconnected",
 	}
 }
 
@@ -39,10 +37,10 @@ type SlaveMessage struct {
 type Message interface{}
 
 type SlaveStreamLine struct {
-	OutputStreamID string    `json:"outputStreamId"`
-	LineNumber     uint64    `json:"lineNumber"`
-	Timestamp      time.Time `json:"timestamp"`
-	Output         string    `json:"output"`
+	OutputStreamID string `json:"outputStreamId"`
+	Status         string `json:"status"`
+	LineNumber     uint64 `json:"lineNumber"`
+	Output         string `json:"output"`
 }
 
 func (c *SlaveMessage) UnmarshalJSON(b []byte) error {

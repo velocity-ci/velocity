@@ -2,13 +2,24 @@ package velocity
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
+	"os"
+	"time"
+
+	"github.com/gosimple/slug"
+	"golang.org/x/crypto/ssh"
+	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
+	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
 type Clone struct {
-	BaseStep   `yaml:",inline"`
-	Address    string `yaml:"-"`
-	PrivateKey string `yaml:"-"`
-	Submodule  bool   `json:"submodule" yaml:"submodule"`
+	BaseStep      `yaml:",inline"`
+	GitRepository *GitRepository `yaml:"-"`
+	CommitHash    string         `yaml:"-"`
+	Submodule     bool           `json:"submodule" yaml:"submodule"`
 }
 
 func NewClone() *Clone {
@@ -32,32 +43,32 @@ func (c Clone) GetDetails() string {
 func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, c.Description)))
 
-	// log.Printf("Cloning %s", c.RepositoryAddress)
+	log.Printf("Cloning %s", c.GitRepository.Address)
 
-	// repo, dir, err := GitClone(c.Build.Project, false, true, c.Submodule, emitter)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	return err
-	// }
-	// log.Println("Done.")
-	// // defer os.RemoveAll(dir)
+	repo, dir, err := GitClone(c.GitRepository, false, true, c.Submodule, emitter)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	log.Println("Done.")
+	// defer os.RemoveAll(dir)
 
-	// w, err := repo.Worktree()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	return err
-	// }
-	// log.Printf("Checking out %s", c.Build.CommitHash)
-	// err = w.Checkout(&git.CheckoutOptions{
-	// 	Hash: plumbing.NewHash(c.Build.CommitHash),
-	// })
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	return err
-	// }
-	// log.Println("Done.")
+	w, err := repo.Worktree()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	log.Printf("Checking out %s", c.CommitHash)
+	err = w.Checkout(&git.CheckoutOptions{
+		Hash: plumbing.NewHash(c.CommitHash),
+	})
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	log.Println("Done.")
 
-	// os.Chdir(dir)
+	os.Chdir(dir)
 	return nil
 }
 
@@ -69,13 +80,74 @@ func (c *Clone) SetParams(params map[string]Parameter) error {
 	return nil
 }
 
-// func (c *Clone) SetBuild(b *Build) error {
-// 	// c.Build = b
-// 	return nil
-// }
+func (c *Clone) SetGitRepositoryAndCommitHash(r *GitRepository, hash string) error {
+	c.GitRepository = r
+	c.CommitHash = hash
+	return nil
+}
 
 type SSHKeyError string
 
 func (s SSHKeyError) Error() string {
 	return string(s)
+}
+
+type GitRepository struct {
+	Address    string `json:"address"`
+	PrivateKey string `json:"privateKey"`
+}
+
+func GitClone(
+	r *GitRepository,
+	bare bool,
+	full bool,
+	submodule bool,
+	emitter Emitter,
+) (*git.Repository, string, error) {
+	psuedoRandom := rand.NewSource(time.Now().UnixNano())
+	randNumber := rand.New(psuedoRandom)
+	dir := fmt.Sprintf("/tmp/velocity-workspace/velocity_%s-%d", slug.Make(r.Address), randNumber.Int63())
+	os.RemoveAll(dir)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+		return nil, "", err
+	}
+
+	isGit := r.Address[:3] == "git"
+
+	var auth transport.AuthMethod
+
+	if isGit {
+		log.Printf("git repository: %s", r.Address)
+		signer, err := ssh.ParsePrivateKey([]byte(r.PrivateKey))
+		if err != nil {
+			os.RemoveAll(dir)
+			return nil, "", SSHKeyError(err.Error())
+		}
+		auth = &gitssh.PublicKeys{User: "git", Signer: signer}
+	}
+
+	cloneOpts := &git.CloneOptions{
+		URL:      r.Address,
+		Auth:     auth,
+		Progress: emitter,
+	}
+
+	if !full {
+		cloneOpts.Depth = 1
+	}
+
+	if submodule {
+		cloneOpts.RecurseSubmodules = 5
+	}
+
+	repo, err := git.PlainClone(dir, bare, cloneOpts)
+
+	if err != nil {
+		os.RemoveAll(dir)
+		return nil, "", err
+	}
+
+	return repo, dir, nil
 }

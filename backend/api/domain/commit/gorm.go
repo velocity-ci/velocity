@@ -3,11 +3,11 @@ package commit
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/api/domain/branch"
-
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/backend/api/domain/branch"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
@@ -26,15 +26,15 @@ func (g GORMCommit) TableName() string {
 	return "commits"
 }
 
-func GORMCommitFromCommit(c *Commit) *GORMCommit {
+func GORMCommitFromCommit(c Commit) GORMCommit {
 	gormBranches := []branch.GORMBranch{}
 	for _, b := range c.Branches {
-		gormBranches = append(gormBranches, *branch.GORMBranchFromBranch(&b))
+		gormBranches = append(gormBranches, branch.GORMBranchFromBranch(b))
 	}
-	return &GORMCommit{
+	return GORMCommit{
 		ID:               c.ID,
 		Hash:             c.Hash,
-		Project:          *project.GORMProjectFromProject(&c.Project),
+		Project:          project.GORMProjectFromProject(c.Project),
 		ProjectReference: c.Project.ID,
 		Author:           c.Author,
 		CreatedAt:        c.CreatedAt,
@@ -43,16 +43,16 @@ func GORMCommitFromCommit(c *Commit) *GORMCommit {
 	}
 }
 
-func CommitFromGORMCommit(g *GORMCommit) *Commit {
+func CommitFromGORMCommit(g GORMCommit) Commit {
 	branches := []branch.Branch{}
 	for _, gB := range g.Branches {
-		branches = append(branches, *branch.BranchFromGORMBranch(&gB))
+		branches = append(branches, branch.BranchFromGORMBranch(gB))
 	}
-	return &Commit{
+	return Commit{
 		ID:        g.ID,
 		Hash:      g.Hash,
 		Author:    g.Author,
-		Project:   *project.ProjectFromGORMProject(&g.Project),
+		Project:   project.ProjectFromGORMProject(g.Project),
 		CreatedAt: g.CreatedAt,
 		Message:   g.Message,
 		Branches:  branches,
@@ -61,17 +61,19 @@ func CommitFromGORMCommit(g *GORMCommit) *Commit {
 
 // Expose CRUD operations (implement interface?) Implement repository funcs, as they will be used when we have caching.
 type gormRepository struct {
-	gorm *gorm.DB
+	logger *log.Logger
+	gorm   *gorm.DB
 }
 
 func newGORMRepository(db *gorm.DB) *gormRepository {
 	db.AutoMigrate(GORMCommit{})
 	return &gormRepository{
-		gorm: db,
+		logger: log.New(os.Stdout, "[gorm:commit]", log.Lshortfile),
+		gorm:   db,
 	}
 }
 
-func (r *gormRepository) Save(c *Commit) *Commit {
+func (r *gormRepository) Save(c Commit) Commit {
 	tx := r.gorm.Begin()
 
 	gormCommit := GORMCommitFromCommit(c)
@@ -80,57 +82,51 @@ func (r *gormRepository) Save(c *Commit) *Commit {
 		ID: c.ID,
 	}).First(&GORMCommit{}).Error
 	if err != nil {
-		err = tx.Create(gormCommit).Error
+		err = tx.Create(&gormCommit).Error
 	} else {
-		tx.Save(gormCommit)
+		tx.Save(&gormCommit)
 	}
-
-	// tx.
-	// 	Where(GORMCommit{Hash: c.Hash, ProjectID: p.ID}).
-	// 	Assign(gormCommit).
-	// 	FirstOrCreate(gormCommit)
 
 	tx.Commit()
 	return c
 }
 
-func (r *gormRepository) Delete(c *Commit) {
+func (r *gormRepository) Delete(c Commit) {
 	tx := r.gorm.Begin()
 
 	gormCommit := GORMCommitFromCommit(c)
 
 	if err := tx.Delete(gormCommit).Error; err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		r.logger.Fatal(err)
 	}
 
 	tx.Commit()
 }
-func (r *gormRepository) GetByProjectAndHash(p *project.Project, hash string) (*Commit, error) {
+func (r *gormRepository) GetByProjectAndHash(p project.Project, hash string) (Commit, error) {
 	gormCommit := GORMCommit{
 		Branches: []branch.GORMBranch{},
 	}
 	if r.gorm.
 		Preload("Project").
-		Preload("Branches").
 		Where(&GORMCommit{
 			ProjectReference: p.ID,
 			Hash:             hash,
 		}).
+		Preload("Branches").
+		Preload("Branches.Project").
 		First(&gormCommit).RecordNotFound() {
-		log.Printf("Could not find Commit %s", hash)
-		return nil, fmt.Errorf("could not find Commit %s", hash)
+		r.logger.Printf("Could not find Commit %s", hash)
+		return Commit{}, fmt.Errorf("could not find Commit %s", hash)
 	}
 
-	return CommitFromGORMCommit(&gormCommit), nil
+	return CommitFromGORMCommit(gormCommit), nil
 }
 
-func (r *gormRepository) GetAllByProject(p *project.Project, q Query) ([]*Commit, uint64) {
+func (r *gormRepository) GetAllByProject(p project.Project, q Query) ([]Commit, uint64) {
 	gormCommits := []GORMCommit{}
 	var count uint64
 	db := r.gorm
-
-	log.Println(q)
 
 	db = db.
 		Preload("Project").
@@ -152,9 +148,9 @@ func (r *gormRepository) GetAllByProject(p *project.Project, q Query) ([]*Commit
 		Offset(int(q.Page - 1)).
 		Find(&gormCommits)
 
-	commits := []*Commit{}
+	commits := []Commit{}
 	for _, gCommit := range gormCommits {
-		commits = append(commits, CommitFromGORMCommit(&gCommit))
+		commits = append(commits, CommitFromGORMCommit(gCommit))
 	}
 
 	return commits, count

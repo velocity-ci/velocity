@@ -5,29 +5,25 @@ import (
 	"time"
 
 	"github.com/gosimple/slug"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 // Repository - Implementing repositories will guarantee consistency between persistence objects and virtual objects.
 type Repository interface {
-	Save(p *Project) *Project
-	Delete(p *Project)
-	GetByID(ID string) (*Project, error)
-	GetAll(q Query) ([]*Project, uint64)
+	Save(p Project) Project
+	Delete(p Project)
+	GetByID(ID string) (Project, error)
+	GetAll(q Query) ([]Project, uint64)
 }
 type Project struct {
-	ID         string
-	Name       string
-	Repository GitRepository
+	ID         string                 `json:"id" gorm:"primary_key"`
+	Name       string                 `json:"name" gorm:"unique_index"`
+	Repository velocity.GitRepository `json:"repository" gorm:"type:blob"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 
-	Synchronising bool
-}
-
-type GitRepository struct {
-	Address    string `json:"address"`
-	PrivateKey string `json:"privateKey"`
+	Synchronising bool `json:"synchronising"`
 }
 
 type Query struct {
@@ -37,8 +33,8 @@ type Query struct {
 }
 
 type ManyResponse struct {
-	Total  uint64             `json:"total"`
-	Result []*ResponseProject `json:"result"`
+	Total  uint64            `json:"total"`
+	Result []ResponseProject `json:"result"`
 }
 
 func (p *Project) String() string {
@@ -46,8 +42,8 @@ func (p *Project) String() string {
 	return string(b)
 }
 
-func NewProject(name string, repository GitRepository) *Project {
-	return &Project{
+func NewProject(name string, repository velocity.GitRepository) Project {
+	return Project{
 		ID:            slug.Make(name),
 		Name:          name,
 		Repository:    repository,
@@ -76,8 +72,8 @@ type ResponseProject struct {
 	Synchronising bool `json:"synchronising"`
 }
 
-func NewResponseProject(p *Project) *ResponseProject {
-	return &ResponseProject{
+func NewResponseProject(p Project) ResponseProject {
+	return ResponseProject{
 		ID:            p.ID,
 		Name:          p.Name,
 		Repository:    p.Repository.Address,

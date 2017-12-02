@@ -13,18 +13,6 @@ type Plugin struct {
 	Environment    map[string]string `json:"environment" yaml:"environment"`
 }
 
-func (p Plugin) GetOutputStreams() []string {
-	return []string{"pluginName?"}
-}
-
-func (p Plugin) GetType() string {
-	return "plugin"
-}
-
-func (p Plugin) GetDescription() string {
-	return p.Description
-}
-
 func (p Plugin) GetDetails() string {
 	return fmt.Sprintf("image: %s dind: %v", p.Image, p.DockerInDocker)
 }

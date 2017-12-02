@@ -5,10 +5,10 @@ import (
 )
 
 type Repository interface {
-	Save(u *User) *User
-	Delete(u *User)
-	GetByUsername(ID string) (*User, error)
-	GetAll(q Query) ([]*User, uint64)
+	Save(u User) User
+	Delete(u User)
+	GetByUsername(ID string) (User, error)
+	GetAll(q Query) ([]User, uint64)
 }
 
 type Query struct {
@@ -17,7 +17,7 @@ type Query struct {
 }
 
 type User struct {
-	Username       string `json:"username"`
+	Username       string `json:"username" gorm:"primary_key"`
 	HashedPassword string `json:"hashedPassword"`
 }
 

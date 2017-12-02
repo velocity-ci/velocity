@@ -14,7 +14,7 @@ func NewGORMDB() *gorm.DB {
 		panic("failed to connect database")
 	}
 
-	db.LogMode(true)
+	// db.LogMode(true)
 
 	return db
 }

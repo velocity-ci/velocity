@@ -54,9 +54,9 @@ func (c Controller) getBranchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	branches, count := c.manager.GetAllByProject(p, Query{})
+	branches, count := c.manager.GetAllByProjectID(p.ID, Query{})
 
-	respBranches := []*ResponseBranch{}
+	respBranches := []ResponseBranch{}
 
 	for _, b := range branches {
 		respBranches = append(respBranches, NewResponseBranch(b))

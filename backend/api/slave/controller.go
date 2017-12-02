@@ -14,7 +14,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/auth"
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
-	apiWebsocket "github.com/velocity-ci/velocity/backend/api/websocket"
 )
 
 // Controller - Handles Slaves
@@ -30,6 +29,7 @@ type Controller struct {
 // NewController - returns a new Controller for Slaves.
 func NewController(
 	slaveManager *Manager,
+	buildManager *build.Manager,
 	commitManager *commit.Manager,
 	// websocketManager *apiWebsocket.Manager,
 ) *Controller {
@@ -103,7 +103,7 @@ func (c Controller) wsSlavesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s := c.manager.GetSlaveByID(slaveID)
+	s, _ := c.manager.GetSlaveByID(slaveID)
 	s.SetWebSocket(ws)
 	s.State = "ready"
 
@@ -113,7 +113,7 @@ func (c Controller) wsSlavesHandler(w http.ResponseWriter, r *http.Request) {
 	go c.monitor(s)
 }
 
-func (c *Controller) monitor(s *Slave) {
+func (c *Controller) monitor(s Slave) {
 	for {
 		message := &SlaveMessage{}
 		err := s.ws.ReadJSON(message)
@@ -123,10 +123,11 @@ func (c *Controller) monitor(s *Slave) {
 			s.ws.Close()
 			s.ws = nil
 			s.State = "disconnected"
-			if s.Command != nil && s.Command.Command == "build" {
+			log.Println(s.Command)
+			if s.Command.Command == "build" {
 				buildCommand := s.Command.Data.(BuildCommand)
 				buildCommand.Build.Status = "waiting"
-				c.buildManager.SaveBuild(&buildCommand.Build)
+				c.buildManager.SaveBuild(buildCommand.Build)
 			}
 			c.manager.Save(s)
 			return
@@ -134,68 +135,68 @@ func (c *Controller) monitor(s *Slave) {
 
 		if message.Type == "log" {
 			// TODO: Create build-step and outputstream IDs beforehand. Find way to communicate them to Slave.
-			lM := message.Data.(*SlaveStreamLine)
+			lM := message.Data.(*SlaveBuildLogMessage)
 			outputStream, err := c.buildManager.GetOutputStreamByID(lM.OutputStreamID) // TODO: Cache in memory
 			if err != nil {
 				log.Fatalf("could not find output stream %s", lM.OutputStreamID)
 			}
 
 			streamLine := build.NewStreamLine(outputStream, lM.LineNumber, time.Now(), lM.Output)
-			c.fileManager.Save(streamLine) // TODO: Future cache in memory and auto-flush
+			c.buildManager.SaveStreamLine(streamLine) // TODO: Future cache in memory and auto-flush
 
 			// OLD ---
-			log.Println(lM.Step, lM.Status, lM.Output)
-			build := c.commitManager.GetBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
-			timestamp := time.Now()
+			// log.Println(lM.Step, lM.Status, lM.Output)
+			// build := c.commitManager.GetBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
+			// timestamp := time.Now()
 
-			if lM.Step > 0 && build.Task.Steps[lM.Step-1].GetType() == "compose" {
-			} else {
-				if build.StepLogs == nil {
-					build.StepLogs = []commit.StepLog{commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status}}
-				} else if len(build.StepLogs) <= int(lM.Step) {
-					build.StepLogs = append(build.StepLogs, commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status})
-				}
-				build.StepLogs[lM.Step].Status = lM.Status
-				build.StepLogs[lM.Step].Logs["container"] = append(build.StepLogs[lM.Step].Logs["container"], commit.Log{
-					Timestamp: timestamp,
-					Output:    lM.Output,
-				})
-			}
+			// if lM.Step > 0 && build.Task.Steps[lM.Step-1].GetType() == "compose" {
+			// } else {
+			// 	if build.StepLogs == nil {
+			// 		build.StepLogs = []commit.StepLog{commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status}}
+			// 	} else if len(build.StepLogs) <= int(lM.Step) {
+			// 		build.StepLogs = append(build.StepLogs, commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status})
+			// 	}
+			// 	build.StepLogs[lM.Step].Status = lM.Status
+			// 	build.StepLogs[lM.Step].Logs["container"] = append(build.StepLogs[lM.Step].Logs["container"], commit.Log{
+			// 		Timestamp: timestamp,
+			// 		Output:    lM.Output,
+			// 	})
+			// }
 
-			if lM.Status == "failed" {
-				build.Status = "failed"
-				c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
-				c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
-				s.State = "ready"
-				s.Command = nil
-				c.manager.Save(s)
-			} else if lM.Status == "success" {
-				if int(lM.Step) == len(build.Task.Steps)-1 {
-					// successfully finished build
-					build.Status = "success"
-					c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
-					c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
-					s.State = "ready"
-					s.Command = nil
-					c.manager.Save(s)
-				}
-			}
-			c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+			// if lM.Status == "failed" {
+			// 	build.Status = "failed"
+			// 	c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+			// 	c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
+			// 	s.State = "ready"
+			// 	s.Command = nil
+			// 	c.manager.Save(s)
+			// } else if lM.Status == "success" {
+			// 	if int(lM.Step) == len(build.Task.Steps)-1 {
+			// 		// successfully finished build
+			// 		build.Status = "success"
+			// 		c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
+			// 		c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
+			// 		s.State = "ready"
+			// 		s.Command = nil
+			// 		c.manager.Save(s)
+			// 	}
+			// }
+			// c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
 
-			// Emit to websocket clients
-			c.websocketManager.EmitAll(
-				&apiWebsocket.EmitMessage{
-					Subscription: fmt.Sprintf("project/%s/commits/%s/builds/%d", lM.ProjectID, lM.CommitHash, lM.BuildID),
-					Data: apiWebsocket.BuildMessage{
-						Step:   lM.Step,
-						Status: lM.Status,
-						Log: apiWebsocket.LogMessage{
-							Timestamp: timestamp,
-							Output:    lM.Output,
-						},
-					},
-				},
-			)
+			// // Emit to websocket clients
+			// c.websocketManager.EmitAll(
+			// 	&apiWebsocket.EmitMessage{
+			// 		Subscription: fmt.Sprintf("project/%s/commits/%s/builds/%d", lM.ProjectID, lM.CommitHash, lM.BuildID),
+			// 		Data: apiWebsocket.BuildMessage{
+			// 			Step:   lM.Step,
+			// 			Status: lM.Status,
+			// 			Log: apiWebsocket.LogMessage{
+			// 				Timestamp: timestamp,
+			// 				Output:    lM.Output,
+			// 			},
+			// 		},
+			// 	},
+			// )
 		}
 	}
 }

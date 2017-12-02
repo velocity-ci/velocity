@@ -18,13 +18,13 @@ import (
 )
 
 func sync(
-	p *project.Project,
+	p project.Project,
 	projectManager project.Repository,
 	commitManager commit.Repository,
 	branchManager branch.Repository,
 	taskManager task.Repository,
 ) {
-	repo, dir, err := GitClone(p, false, false, true, velocity.NewBlankWriter())
+	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankWriter())
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -71,7 +71,7 @@ func sync(
 				strings.TrimSpace(message),
 				gitCommit.Author.Email,
 				gitCommit.Committer.When,
-				*b,
+				b,
 			)
 
 			commitManager.Save(c)

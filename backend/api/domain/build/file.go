@@ -13,8 +13,8 @@ type fileManager struct {
 }
 
 // TODO: include query ability
-func (m *fileManager) GetByID(id string) []*StreamLine {
-	outputStream := []*StreamLine{}
+func (m *fileManager) GetByID(id string) []StreamLine {
+	outputStream := []StreamLine{}
 
 	filePath := fmt.Sprintf("/tmp/velocity-workspace/logs/%s", id)
 	file, err := os.Open(filePath)
@@ -33,7 +33,7 @@ func (m *fileManager) GetByID(id string) []*StreamLine {
 		}
 		fmt.Println(line.Output)
 
-		outputStream = append(outputStream, &line)
+		outputStream = append(outputStream, line)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -43,12 +43,12 @@ func (m *fileManager) GetByID(id string) []*StreamLine {
 	return outputStream
 }
 
-func (m *fileManager) Save(streamLine *StreamLine) *StreamLine {
+func (m *fileManager) SaveStreamLine(streamLine StreamLine) StreamLine {
 	filePath := fmt.Sprintf("/tmp/velocity-workspace/logs/%s", streamLine.OutputStream.ID)
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Fatal(err)
-		return nil
+		return streamLine
 	}
 	defer file.Close()
 	jsonLine, err := json.Marshal(ResponseStreamLine{

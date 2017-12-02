@@ -10,16 +10,13 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/api/domain/branch"
-	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
-	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/api/domain/user"
-	"github.com/velocity-ci/velocity/backend/api/slave"
+	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/backend/api/auth"
-	"github.com/velocity-ci/velocity/backend/api/sync"
 )
 
 func main() {
@@ -72,7 +69,7 @@ type VelocityAPI struct {
 	Router *MuxRouter
 	server *http.Server
 	bolt   *bolt.DB
-	// workers sync.WaitGroup
+	// workers        sync.WaitGroup
 	// buildScheduler *slave.BuildScheduler
 }
 
@@ -110,7 +107,7 @@ func NewVelocity() App {
 	// knownHostController := knownhost.NewController(knownHostManager, knownHostResolver)
 
 	// Project
-	projectManager := project.NewManager(gorm, sync.GitClone)
+	projectManager := project.NewManager(gorm, velocity.GitClone)
 	projectValidator := project.NewValidator(validate, translator, projectManager)
 	projectResolver := project.NewResolver(projectValidator)
 	projectController := project.NewController(projectManager, projectResolver)
@@ -124,26 +121,26 @@ func NewVelocity() App {
 	branchController := branch.NewController(branchManager, projectManager)
 
 	// Task
-	taskManager := task.NewManager(gorm)
-	taskController := task.NewController(taskManager, projectManager, commitManager)
+	// taskManager := task.NewManager(gorm)
+	// taskController := task.NewController(taskManager, projectManager, commitManager)
 
 	// Build
-	buildManager := build.NewManager(gorm)
-	buildResolver := build.NewResolver(taskManager)
-	buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager)
+	// buildManager := build.NewManager(gorm)
+	// buildResolver := build.NewResolver(taskManager)
+	// buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager)
 
-	// Sync
-	syncController := sync.NewController(projectManager, commitManager, branchManager, taskManager)
+	// // Sync
+	// syncController := apiSync.NewController(projectManager, commitManager, branchManager, taskManager)
 
-	// Slave
-	slaveManager := slave.NewManager()
-	slaveController := slave.NewController(slaveManager, commitManager, websocketManager)
+	// // Slave
+	// slaveManager := slave.NewManager(buildManager)
+	// slaveController := slave.NewController(slaveManager, buildManager, commitManager)
 
 	// Client Websocket
 	// websocketManager := websocket.NewManager()
 	// websocketController := websocket.NewController(websocketManager, commitManager)
 
-	// velocityAPI.buildScheduler = slave.NewBuildScheduler(commitManager, slaveManager, projectManager, &velocityAPI.workers)
+	// velocityAPI.buildScheduler = slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.workers)
 	// go velocityAPI.buildScheduler.Run()
 
 	velocityAPI.Router = NewMuxRouter([]Routable{

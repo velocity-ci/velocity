@@ -1,15 +1,24 @@
 package slave
 
-import "github.com/velocity-ci/velocity/backend/api/domain/build"
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/velocity-ci/velocity/backend/api/domain/build"
+)
 
 type Manager struct {
-	slaves       map[string]*Slave
+	logger       *log.Logger
+	slaves       map[string]Slave
 	buildManager build.Repository
 }
 
-func NewManager() *Manager {
+func NewManager(buildManager build.Repository) *Manager {
 	return &Manager{
-		slaves: map[string]*Slave{},
+		logger:       log.New(os.Stdout, "[manager:slave]", log.Lshortfile),
+		slaves:       map[string]Slave{},
+		buildManager: buildManager,
 	}
 }
 
@@ -29,41 +38,44 @@ func (m *Manager) WebSocketConnected(slaveID string) bool {
 	return false
 }
 
-func (m *Manager) GetSlaves() map[string]*Slave {
+func (m *Manager) GetSlaves() map[string]Slave {
 	return m.slaves
 }
 
-func (m *Manager) Save(s *Slave) {
+func (m *Manager) Save(s Slave) {
+	m.logger.Printf("saving slave: %s", s.ID)
 	m.slaves[s.ID] = s
+	m.logger.Printf("saved slave: %s\n", s.ID)
 }
 
-func (m *Manager) GetSlaveByID(slaveID string) *Slave {
+func (m *Manager) GetSlaveByID(slaveID string) (Slave, error) {
 	if m.Exists(slaveID) {
-		return m.slaves[slaveID]
+		return m.slaves[slaveID], nil
 	}
-	return nil
+	return Slave{}, fmt.Errorf("could not find slave %s", slaveID)
 }
 
-func (m *Manager) StartBuild(slave *Slave, b *build.Build) {
+func (m *Manager) StartBuild(slave Slave, b build.Build) {
 	// TODO: Sync known hosts
 	slave.State = "busy"
 	m.Save(slave)
+	m.logger.Printf("set slave %s as busy", slave.ID)
 
-	build.Status = "running"
-	m.buildManager.SaveBuild(build)
+	b.Status = "running"
+	m.buildManager.SaveBuild(b)
+	m.logger.Printf("set build %s as running", b.ID)
 
 	buildSteps, count := m.buildManager.GetBuildStepsForBuild(b)
 	if count < 1 {
+		m.logger.Printf("creating build steps for %s", b.ID)
 		for i, s := range b.Task.VTask.Steps {
 			bS := build.NewBuildStep(
 				b,
-				i,
-				s.GetDescription(),
+				uint64(i),
+				s,
 			)
 			m.buildManager.SaveBuildStep(bS)
-
-			for _, oSName := range s.GetOutputStreams() {
-				oS := build.NewOutputStream(bS, oSName)
+			for _, oS := range bS.Step.GetOutputStreams() {
 				m.buildManager.SaveOutputStream(oS)
 			}
 			buildSteps = append(buildSteps, bS)

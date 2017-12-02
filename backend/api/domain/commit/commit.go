@@ -5,14 +5,13 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/api/domain/branch"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
 type Repository interface {
-	Save(c *Commit) *Commit
-	Delete(c *Commit)
-	GetByProjectAndHash(p *project.Project, hash string) (*Commit, error)
-	GetAllByProject(p *project.Project, q Query) ([]*Commit, uint64)
+	Save(c Commit) Commit
+	Delete(c Commit)
+	GetByProjectIDAndCommitID(projectID string, commitID string) (Commit, error)
+	GetAllByProjectID(projectID string, q Query) ([]Commit, uint64)
 }
 
 type Query struct {
@@ -23,31 +22,31 @@ type Query struct {
 }
 
 type Commit struct {
-	ID        string
-	Project   project.Project
-	Hash      string
-	Author    string
-	CreatedAt time.Time
-	Message   string
-	Branches  []branch.Branch
+	ID        string          `json:"id" gorm:"primary_key"`
+	ProjectID string          `json:"projectId"`
+	Hash      string          `json:"hash"`
+	Author    string          `json:"author"`
+	CreatedAt time.Time       `json:"createdAt"`
+	Message   string          `json:"message"`
+	Branches  []branch.Branch `json:"branches" gorm:"many2many:commit_branches;AssociationForeignKey:ID;ForeignKey:ID"`
 }
 
 func NewCommit(
-	p *project.Project,
+	projectID string,
 	hash string,
 	message string,
 	author string,
 	date time.Time,
-	b branch.Branch,
-) *Commit {
-	return &Commit{
+	branches []branch.Branch,
+) Commit {
+	return Commit{
 		ID:        uuid.NewV3(uuid.NewV1(), hash).String(),
-		Project:   *p,
+		ProjectID: projectID,
 		Hash:      hash,
 		Message:   message,
 		Author:    author,
 		CreatedAt: date,
-		Branches:  []branch.Branch{b},
+		Branches:  branches,
 	}
 }
 
@@ -60,13 +59,13 @@ type ResponseCommit struct {
 	Branches  []string  `json:"branches"`
 }
 
-func NewResponseCommit(c *Commit) *ResponseCommit {
+func NewResponseCommit(c Commit) ResponseCommit {
 	branches := []string{}
 	for _, b := range c.Branches {
 		branches = append(branches, b.Name)
 	}
 
-	return &ResponseCommit{
+	return ResponseCommit{
 		ID:        c.ID,
 		Hash:      c.Hash,
 		Author:    c.Author,
@@ -77,6 +76,6 @@ func NewResponseCommit(c *Commit) *ResponseCommit {
 }
 
 type ManyResponse struct {
-	Total  uint64            `json:"total"`
-	Result []*ResponseCommit `json:"result"`
+	Total  uint64           `json:"total"`
+	Result []ResponseCommit `json:"result"`
 }

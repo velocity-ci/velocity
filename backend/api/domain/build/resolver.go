@@ -24,12 +24,12 @@ func NewResolver(taskManager *task.Manager) *Resolver {
 	}
 }
 
-func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *commit.Commit) (*Build, error) {
+func (r *Resolver) BuildFromRequest(b io.ReadCloser, p project.Project, c commit.Commit) (Build, error) {
 	reqBuild := RequestBuild{}
 
 	err := json.NewDecoder(b).Decode(&reqBuild)
 	if err != nil {
-		return nil, err
+		return Build{}, err
 	}
 
 	for i, rP := range reqBuild.Parameters {
@@ -46,7 +46,7 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, p *project.Project, c *comm
 
 	if err != nil {
 		log.Fatal(err)
-		return nil, err
+		return Build{}, err
 	}
 
 	setTaskParametersFromRequest(&task.VTask, reqBuild.Parameters)

@@ -9,12 +9,12 @@ import (
 type Manager struct {
 	gormRepository *gormRepository
 
-	Sync func(p *Project, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error)
+	Sync func(r *velocity.GitRepository, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error)
 }
 
 func NewManager(
 	db *gorm.DB,
-	syncFunc func(p *Project, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error),
+	syncFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error),
 ) *Manager {
 	return &Manager{
 		gormRepository: newGORMRepository(db),
@@ -22,19 +22,19 @@ func NewManager(
 	}
 }
 
-func (m *Manager) Save(p *Project) *Project {
+func (m *Manager) Save(p Project) Project {
 	m.gormRepository.Save(p)
 	return p
 }
 
-func (m *Manager) Delete(p *Project) {
+func (m *Manager) Delete(p Project) {
 	m.gormRepository.Delete(p)
 }
 
-func (m *Manager) GetByID(ID string) (*Project, error) {
+func (m *Manager) GetByID(ID string) (Project, error) {
 	return m.gormRepository.GetByID(ID)
 }
 
-func (m *Manager) GetAll(q Query) ([]*Project, uint64) {
+func (m *Manager) GetAll(q Query) ([]Project, uint64) {
 	return m.gormRepository.GetAll(q)
 }

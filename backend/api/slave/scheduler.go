@@ -6,26 +6,21 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
-	"github.com/velocity-ci/velocity/backend/api/domain/commit"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
 type BuildScheduler struct {
-	commitManager  *commit.Manager
-	buildManager   build.Repository
-	slaveManager   *Manager
-	projectManager *project.Manager
-	stop           bool
-	wg             *sync.WaitGroup
+	buildManager build.Repository
+	slaveManager *Manager
+	stop         bool
+	wg           *sync.WaitGroup
 }
 
-func NewBuildScheduler(commitManager *commit.Manager, slaveManager *Manager, projectManager *project.Manager, wg *sync.WaitGroup) *BuildScheduler {
+func NewBuildScheduler(slaveManager *Manager, buildManager *build.Manager, wg *sync.WaitGroup) *BuildScheduler {
 	return &BuildScheduler{
-		commitManager:  commitManager,
-		slaveManager:   slaveManager,
-		projectManager: projectManager,
-		stop:           false,
-		wg:             wg,
+		slaveManager: slaveManager,
+		buildManager: buildManager,
+		stop:         false,
+		wg:           wg,
 	}
 }
 
@@ -33,15 +28,16 @@ func NewBuildScheduler(commitManager *commit.Manager, slaveManager *Manager, pro
 func (bS *BuildScheduler) Run() {
 	bS.wg.Add(1)
 	// Requeue builds
-	for _, runningBuild := range bS.buildManager.GetRunningBuilds() {
+	runningBuilds, _ := bS.buildManager.GetRunningBuilds()
+	for _, runningBuild := range runningBuilds {
 		runningBuild.Status = "waiting"
 		bS.buildManager.SaveBuild(runningBuild)
 		log.Printf("Requeued: %s\n", runningBuild.ID)
 	}
 	log.Println("Started Build Scheduler")
 	for bS.stop == false {
-		waitingBuilds := bS.buildManager.GetWaitingBuilds()
-		log.Printf("Got %d waiting builds", len(queuedBuilds))
+		waitingBuilds, total := bS.buildManager.GetWaitingBuilds()
+		log.Printf("Got %d waiting builds", total)
 
 		for _, waitingBuild := range waitingBuilds {
 			log.Printf("%s: %s", waitingBuild.ID, waitingBuild.Status)

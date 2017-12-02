@@ -132,7 +132,7 @@ func (c Controller) getProjectCommitBuildsHandler(w http.ResponseWriter, r *http
 
 	builds, count := c.manager.GetBuildsByProjectAndCommit(project, commit)
 
-	respBuilds := []*ResponseBuild{}
+	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
 		respBuilds = append(respBuilds, NewResponseBuild(b))
 	}
@@ -189,7 +189,7 @@ func (c Controller) getProjectCommitBuildStepsHandler(w http.ResponseWriter, r *
 	}
 
 	buildSteps, count := c.manager.GetBuildStepsForBuild(build)
-	respBuildSteps := []*ResponseBuildStep{}
+	respBuildSteps := []ResponseBuildStep{}
 	for _, buildStep := range buildSteps {
 		respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep))
 	}
@@ -258,9 +258,9 @@ func (c Controller) getProjectCommitBuildStepStreamsHandler(w http.ResponseWrite
 
 	outputStreams, count := c.manager.GetOutputStreamsForBuildStep(buildStep)
 
-	respOutputStreams := []*ResponseOutputStream{}
+	respOutputStreams := []string{}
 	for _, outputStream := range outputStreams {
-		respOutputStreams = append(respOutputStreams, NewResponseOutputStream(outputStream))
+		respOutputStreams = append(respOutputStreams, outputStream.Name)
 	}
 
 	c.render.JSON(w, http.StatusOK, OutputStreamManyResponse{

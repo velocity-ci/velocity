@@ -4,12 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/velocity-ci/velocity/backend/api/domain/build"
+	"github.com/velocity-ci/velocity/backend/api/slave"
 )
-
-type BuildCommand struct {
-	Build build.Build
-}
 
 type CommandMessage struct {
 	Command string  `json:"command"`
@@ -40,7 +36,7 @@ func (c *CommandMessage) UnmarshalJSON(b []byte) error {
 	}
 
 	if c.Command == "build" {
-		d := BuildCommand{}
+		d := slave.BuildCommand{}
 		err := json.Unmarshal(rawData, &d)
 		if err != nil {
 			return err

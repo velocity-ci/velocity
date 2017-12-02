@@ -77,12 +77,12 @@ func translationFuncUnique(ut ut.Translator, fe validator.FieldError) string {
 func (v *Validator) ValidateProjectRepository(sl validator.StructLevel) {
 	p := sl.Current().Interface().(RequestProject)
 
-	apiProject := NewProject(p.Name, GitRepository{
+	apiProject := NewProject(p.Name, velocity.GitRepository{
 		Address:    p.Repository,
 		PrivateKey: p.PrivateKey,
 	})
 
-	_, dir, err := v.projectManager.Sync(apiProject, true, false, true, velocity.NewBlankWriter())
+	_, dir, err := v.projectManager.Sync(&apiProject.Repository, true, false, true, velocity.NewBlankWriter())
 
 	if err != nil {
 		log.Println(err, reflect.TypeOf(err))

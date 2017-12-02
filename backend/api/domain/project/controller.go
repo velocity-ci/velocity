@@ -75,7 +75,7 @@ func (c Controller) getProjectHandler(w http.ResponseWriter, r *http.Request) {
 func (c Controller) getProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	projects, count := c.manager.GetAll(Query{})
 
-	responseProjects := []*ResponseProject{}
+	responseProjects := []ResponseProject{}
 	for _, p := range projects {
 		responseProjects = append(responseProjects, NewResponseProject(p))
 	}

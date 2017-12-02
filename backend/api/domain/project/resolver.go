@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 func NewResolver(projectValidator *Validator) *Resolver {
@@ -16,12 +18,12 @@ type Resolver struct {
 	projectValidator *Validator
 }
 
-func (r *Resolver) FromRequest(b io.ReadCloser) (*Project, error) {
+func (r *Resolver) FromRequest(b io.ReadCloser) (Project, error) {
 	reqProject := RequestProject{}
 
 	err := json.NewDecoder(b).Decode(&reqProject)
 	if err != nil {
-		return nil, err
+		return Project{}, err
 	}
 
 	reqProject.Name = strings.TrimSpace(reqProject.Name)
@@ -31,12 +33,12 @@ func (r *Resolver) FromRequest(b io.ReadCloser) (*Project, error) {
 	err = r.projectValidator.Validate(&reqProject)
 
 	if err != nil {
-		return nil, err
+		return Project{}, err
 	}
 
 	p := NewProject(
 		reqProject.Name,
-		GitRepository{
+		velocity.GitRepository{
 			Address:    reqProject.Repository,
 			PrivateKey: reqProject.PrivateKey,
 		},
