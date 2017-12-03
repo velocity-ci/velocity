@@ -17,6 +17,10 @@ type gormTask struct {
 	VTask    []byte // JSON of task for storage
 }
 
+func (gormTask) TableName() string {
+	return "tasks"
+}
+
 func gormTaskFromTask(t Task) gormTask {
 	jsonTask, err := json.Marshal(t.Task)
 	if err != nil {
