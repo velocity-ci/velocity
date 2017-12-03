@@ -20,7 +20,6 @@ func runBuild(build *slave.BuildCommand, ws *websocket.Conn) {
 			)
 		}
 
-		emitter.SetStatus("running")
 		err := step.Execute(emitter, build.Build.Parameters)
 		if err != nil {
 			break

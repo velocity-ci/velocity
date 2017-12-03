@@ -17,6 +17,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/domain/user"
 	"github.com/velocity-ci/velocity/backend/api/slave"
 	apiSync "github.com/velocity-ci/velocity/backend/api/sync"
+	"github.com/velocity-ci/velocity/backend/api/websocket"
 	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/boltdb/bolt"
@@ -135,13 +136,13 @@ func NewVelocity() App {
 	// // Sync
 	syncController := apiSync.NewController(projectManager, commitManager, taskManager)
 
-	// // Slave
-	slaveManager := slave.NewManager(buildManager, taskManager, commitManager, projectManager)
-	slaveController := slave.NewController(slaveManager, buildManager, commitManager)
-
 	// Client Websocket
-	// websocketManager := websocket.NewManager()
-	// websocketController := websocket.NewController(websocketManager, commitManager)
+	websocketManager := websocket.NewManager()
+	websocketController := websocket.NewController(websocketManager)
+
+	// Slave
+	slaveManager := slave.NewManager(buildManager, taskManager, commitManager, projectManager)
+	slaveController := slave.NewController(slaveManager, buildManager, commitManager, websocketManager)
 
 	buildScheduler := slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.wg)
 	velocityAPI.workers = append(velocityAPI.workers, buildScheduler)
@@ -159,7 +160,7 @@ func NewVelocity() App {
 		buildController,
 		syncController,
 		slaveController,
-		// websocketController,
+		websocketController,
 	}, true)
 
 	port := os.Getenv("PORT")

@@ -14,16 +14,18 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/auth"
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	apiWebsocket "github.com/velocity-ci/velocity/backend/api/websocket"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 // Controller - Handles Slaves
 type Controller struct {
-	logger        *log.Logger
-	render        *render.Render
-	manager       *Manager
-	buildManager  build.Repository
-	commitManager *commit.Manager
-	// websocketManager *apiWebsocket.Manager
+	logger           *log.Logger
+	render           *render.Render
+	manager          *Manager
+	buildManager     build.Repository
+	commitManager    *commit.Manager
+	websocketManager *apiWebsocket.Manager
 }
 
 // NewController - returns a new Controller for Slaves.
@@ -31,15 +33,15 @@ func NewController(
 	slaveManager *Manager,
 	buildManager *build.Manager,
 	commitManager *commit.Manager,
-	// websocketManager *apiWebsocket.Manager,
+	websocketManager *apiWebsocket.Manager,
 ) *Controller {
 	return &Controller{
-		logger:        log.New(os.Stdout, "[controller:slave]", log.Lshortfile),
-		render:        render.New(),
-		manager:       slaveManager,
-		commitManager: commitManager,
-		buildManager:  buildManager,
-		// websocketManager: websocketManager,
+		logger:           log.New(os.Stdout, "[controller:slave]", log.Lshortfile),
+		render:           render.New(),
+		manager:          slaveManager,
+		commitManager:    commitManager,
+		buildManager:     buildManager,
+		websocketManager: websocketManager,
 	}
 }
 
@@ -135,15 +137,84 @@ func (c *Controller) monitor(s Slave) {
 		}
 
 		if message.Type == "log" {
-			// TODO: Create build-step and outputstream IDs beforehand. Find way to communicate them to Slave.
 			lM := message.Data.(*SlaveBuildLogMessage)
-			outputStream, err := c.buildManager.GetStreamByBuildStepIDAndStreamName(lM.BuildStepID, lM.StreamName) // TODO: Cache in memory
+			buildStep, err := c.buildManager.GetBuildStepByBuildStepID(lM.BuildStepID)
 			if err != nil {
-				log.Fatalf("could not find buildStep:stream %s:%s", lM.BuildStepID, lM.StreamName)
+				log.Printf("could not find buildStep %s", lM.BuildStepID)
+				return
+			}
+			b, err := c.buildManager.GetBuildByBuildID(buildStep.BuildID)
+			if err != nil {
+				log.Printf("could not find build %s", buildStep.BuildID)
+			}
+			outputStream, err := c.buildManager.GetStreamByBuildStepIDAndStreamName(buildStep.ID, lM.StreamName) // TODO: Cache in memory
+			if err != nil {
+				log.Printf("could not find buildStep:stream %s:%s", lM.BuildStepID, lM.StreamName)
+				return
 			}
 
 			streamLine := build.NewStreamLine(outputStream.ID, lM.LineNumber, time.Now(), lM.Output)
-			c.buildManager.SaveStreamLine(streamLine) // TODO: Future cache in memory and auto-flush
+			c.buildManager.SaveStreamLine(streamLine)
+			c.websocketManager.EmitAll(&apiWebsocket.PhoenixMessage{
+				Topic:   fmt.Sprintf("stream:%s", streamLine.BuildStepStreamID),
+				Event:   "new",
+				Payload: streamLine,
+			})
+			updateBuildStep := false
+			updateBuild := false
+			if buildStep.Status == velocity.StateWaiting {
+				buildStep.Status = lM.Status
+				buildStep.StartedAt = time.Now()
+				updateBuildStep = true
+			}
+			if b.Status == velocity.StateWaiting || b.StartedAt.IsZero() {
+				b.Status = lM.Status
+				b.StartedAt = time.Now()
+				updateBuild = true
+			}
+
+			if lM.Status == velocity.StateSuccess {
+				buildStep.Status = velocity.StateSuccess
+				buildStep.CompletedAt = time.Now()
+				updateBuildStep = true
+				_, total := c.buildManager.GetBuildStepsByBuildID(b.ID) // TODO: cache?
+				if buildStep.Number == total-1 {
+					b.Status = velocity.StateSuccess
+					b.CompletedAt = time.Now()
+					updateBuild = true
+				}
+			} else if lM.Status == velocity.StateFailed {
+				buildStep.Status = velocity.StateFailed
+				buildStep.CompletedAt = time.Now()
+				updateBuildStep = true
+				b.Status = velocity.StateFailed
+				b.CompletedAt = time.Now()
+				updateBuild = true
+			}
+
+			if updateBuildStep {
+				c.buildManager.SaveBuildStep(buildStep)
+				c.websocketManager.EmitAll(&apiWebsocket.PhoenixMessage{
+					Topic:   fmt.Sprintf("step:%s", buildStep.ID),
+					Event:   "modify",
+					Payload: buildStep,
+				})
+
+			}
+
+			if updateBuild {
+				c.buildManager.SaveBuild(b)
+				c.websocketManager.EmitAll(&apiWebsocket.PhoenixMessage{
+					Topic:   fmt.Sprintf("build:%s", b.ID),
+					Event:   "modify",
+					Payload: b,
+				})
+			}
+
+			// topics
+			// stream: uuid
+			// step: uuid
+			// build: uuid
 
 			// OLD ---
 			// log.Println(lM.Step, lM.Status, lM.Output)

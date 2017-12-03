@@ -38,13 +38,16 @@ func (c Clone) GetDetails() string {
 
 func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 	emitter.SetStreamName("clone")
+	emitter.SetStatus(StateRunning)
 	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, c.Description)))
 
-	log.Printf("Cloning %s", c.GitRepository.Address)
+	emitter.Write([]byte(fmt.Sprintf("Cloning %s", c.GitRepository.Address)))
 
 	repo, dir, err := GitClone(&c.GitRepository, false, true, c.Submodule, emitter)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		emitter.SetStatus(StateFailed)
+		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 	log.Println("Done.")
@@ -52,7 +55,9 @@ func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 
 	w, err := repo.Worktree()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		emitter.SetStatus(StateFailed)
+		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 	log.Printf("Checking out %s", c.CommitHash)
@@ -60,12 +65,16 @@ func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 		Hash: plumbing.NewHash(c.CommitHash),
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		emitter.SetStatus(StateFailed)
+		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 	log.Println("Done.")
 
 	os.Chdir(dir)
+	emitter.SetStatus(StateSuccess)
+	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
 	return nil
 }
 

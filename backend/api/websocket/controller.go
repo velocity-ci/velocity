@@ -10,24 +10,21 @@ import (
 	"github.com/unrolled/render"
 	"github.com/urfave/negroni"
 	"github.com/velocity-ci/velocity/backend/api/auth"
-	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 )
 
 // Controller - Handles Websockets
 type Controller struct {
-	logger        *log.Logger
-	render        *render.Render
-	manager       *Manager
-	commitManager *commit.Manager
+	logger  *log.Logger
+	render  *render.Render
+	manager *Manager
 }
 
 // NewController - returns a new Controller for client Websockets.
-func NewController(websocketManager *Manager, commitManager *commit.Manager) *Controller {
+func NewController(websocketManager *Manager) *Controller {
 	return &Controller{
-		logger:        log.New(os.Stdout, "[controller:websocket]", log.Lshortfile),
-		render:        render.New(),
-		manager:       websocketManager,
-		commitManager: commitManager,
+		logger:  log.New(os.Stdout, "[controller:websocket]", log.Lshortfile),
+		render:  render.New(),
+		manager: websocketManager,
 	}
 }
 
@@ -69,7 +66,7 @@ func (c Controller) wsClientHandler(w http.ResponseWriter, r *http.Request) {
 
 func (c *Controller) monitor(client *Client) {
 	for {
-		message := &ClientMessage{}
+		message := &PhoenixMessage{}
 		err := client.ws.ReadJSON(message)
 		if err != nil {
 			log.Println(err)
@@ -78,6 +75,7 @@ func (c *Controller) monitor(client *Client) {
 			c.manager.Remove(client)
 			return
 		}
+		client.HandleMessage(message)
 
 		// if message.Type == "subscribe" {
 		// 	client.Subscribe(message.Route)

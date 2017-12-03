@@ -12,6 +12,20 @@ type Step interface {
 	GetOutputStreams() []string
 }
 
+const (
+	successANSI = "\x1b[1m\x1b[40m\x1b[32m"
+	errorANSI   = "\x1b[1m\x1b[40m\x1b[31m"
+	infoANSI    = "\x1b[1m\x1b[40m\x1b[34m"
+)
+
+// Step state constants
+const (
+	StateWaiting = "waiting"
+	StateRunning = "running"
+	StateSuccess = "success"
+	StateFailed  = "failed"
+)
+
 type BaseStep struct {
 	Type          string   `json:"type" yaml:"type"`
 	Description   string   `json:"description" yaml:"description"`

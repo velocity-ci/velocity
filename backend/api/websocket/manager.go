@@ -28,13 +28,13 @@ func (m *Manager) GetClientByID(clientID string) *Client {
 	return m.clients[clientID]
 }
 
-func (m *Manager) EmitAll(message *EmitMessage) {
+func (m *Manager) EmitAll(message *PhoenixMessage) {
 	for _, c := range m.clients {
 		for _, s := range c.subscriptions {
-			if s == message.Subscription {
+			if s == message.Topic {
 				err := c.ws.WriteJSON(message)
 				if err != nil {
-					log.Fatal(err)
+					log.Println(err)
 				}
 			}
 		}

@@ -10,10 +10,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 )
 
-const successANSI = "\x1b[1m\x1b[40m\x1b[32m"
-const errorANSI = "\x1b[1m\x1b[40m\x1b[31m"
-const infoANSI = "\x1b[1m\x1b[40m\x1b[34m"
-
 type DockerRun struct {
 	BaseStep       `yaml:",inline"`
 	Image          string            `json:"image" yaml:"image"`
@@ -45,6 +41,7 @@ func (dR DockerRun) GetDetails() string {
 
 func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error {
 	emitter.SetStreamName("run")
+	emitter.SetStatus(StateRunning)
 	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description)))
 
 	if dR.MountPoint == "" {
@@ -88,12 +85,12 @@ func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error
 	}
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
-		emitter.SetStatus("failed")
+		emitter.SetStatus(StateFailed)
 		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
-	emitter.SetStatus("success")
+	emitter.SetStatus(StateSuccess)
 	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
 	return nil
 

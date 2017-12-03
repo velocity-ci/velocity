@@ -18,7 +18,7 @@ func (p Plugin) GetDetails() string {
 }
 
 func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
-
+	emitter.SetStatus(StateRunning)
 	env := []string{}
 	for k, v := range p.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
