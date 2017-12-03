@@ -25,7 +25,7 @@ func NewBuildScheduler(slaveManager *Manager, buildManager *build.Manager, wg *s
 }
 
 // TODO: Generate and persist BuildSteps and OutputStreams.
-func (bS *BuildScheduler) Run() {
+func (bS *BuildScheduler) StartWorker() {
 	bS.wg.Add(1)
 	// Requeue builds
 	runningBuilds, _ := bS.buildManager.GetRunningBuilds()
@@ -56,6 +56,6 @@ func (bS *BuildScheduler) Run() {
 	bS.wg.Done()
 }
 
-func (bS *BuildScheduler) Stop() {
+func (bS *BuildScheduler) StopWorker() {
 	bS.stop = true
 }

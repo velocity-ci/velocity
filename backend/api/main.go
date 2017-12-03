@@ -70,11 +70,11 @@ func main() {
 
 // VelocityAPI - The Velocity API app
 type VelocityAPI struct {
-	Router         *MuxRouter
-	server         *http.Server
-	bolt           *bolt.DB
-	workers        sync.WaitGroup
-	buildScheduler *slave.BuildScheduler
+	Router  *MuxRouter
+	server  *http.Server
+	bolt    *bolt.DB
+	wg      sync.WaitGroup
+	workers []Worker
 }
 
 // App - For starting and stopping gracefully.
@@ -83,13 +83,14 @@ type App interface {
 	Stop()
 }
 
+type Worker interface {
+	StartWorker()
+	StopWorker()
+}
+
 // New - Returns a new Velocity API app
 func NewVelocity() App {
 	velocityAPI := &VelocityAPI{}
-	// boltLogger := log.New(os.Stdout, "[bolt]", log.Lshortfile)
-	// velocityAPI.bolt = NewBoltDB(boltLogger, "velocity.db")
-	var wg sync.WaitGroup
-	velocityAPI.workers = wg
 
 	validate, translator := newValidator()
 
@@ -125,7 +126,9 @@ func NewVelocity() App {
 	taskController := task.NewController(taskManager, projectManager, commitManager)
 
 	// Build
-	buildManager := build.NewManager(gorm)
+	fileManager := build.NewFileManager(&velocityAPI.wg)
+	velocityAPI.workers = append(velocityAPI.workers, fileManager)
+	buildManager := build.NewManager(gorm, fileManager)
 	buildResolver := build.NewResolver(taskManager)
 	buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager, taskManager)
 
@@ -140,8 +143,12 @@ func NewVelocity() App {
 	// websocketManager := websocket.NewManager()
 	// websocketController := websocket.NewController(websocketManager, commitManager)
 
-	velocityAPI.buildScheduler = slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.workers)
-	go velocityAPI.buildScheduler.Run()
+	buildScheduler := slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.wg)
+	velocityAPI.workers = append(velocityAPI.workers, buildScheduler)
+
+	for _, w := range velocityAPI.workers {
+		go w.StartWorker()
+	}
 
 	velocityAPI.Router = NewMuxRouter([]Routable{
 		authController,
@@ -170,8 +177,10 @@ func NewVelocity() App {
 // Stop - Stops the API
 func (v *VelocityAPI) Stop() {
 	log.Println("Stopping Velocity API")
-	v.buildScheduler.Stop()
-	v.workers.Wait()
+	for _, w := range v.workers {
+		w.StopWorker()
+	}
+	v.wg.Wait()
 	if err := v.server.Shutdown(nil); err != nil {
 		panic(err)
 	}

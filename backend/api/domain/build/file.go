@@ -5,84 +5,138 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	"github.com/docker/go/canonical/json"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
-type fileManager struct {
-	logger *log.Logger
+type logFile struct {
+	contents   []string
+	totalLines uint64
+
+	needsFlush bool
+	mux        sync.RWMutex
 }
 
-func newFileManager() *fileManager {
+type fileManager struct {
+	logger   *log.Logger
+	logFiles map[string]*logFile // id: logFile
+
+	wg   *sync.WaitGroup
+	stop bool
+}
+
+func NewFileManager(wg *sync.WaitGroup) *fileManager {
 	err := os.MkdirAll("/tmp/velocity-workspace/logs", os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &fileManager{
-		logger: log.New(os.Stdout, "[file:build]", log.Lshortfile),
+	fM := &fileManager{
+		logger:   log.New(os.Stdout, "[file:build]", log.Lshortfile),
+		logFiles: map[string]*logFile{},
+		wg:       wg,
+		stop:     false,
 	}
+
+	return fM
+}
+
+func (m *fileManager) StartWorker() {
+	m.wg.Add(1)
+	for m.stop == false {
+		for id, lF := range m.logFiles {
+			lF.mux.Lock()
+			if lF.needsFlush {
+				filePath := fmt.Sprintf("/tmp/velocity-workspace/logs/%s", id)
+				file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
+				err = file.Truncate(0)
+				if err != nil {
+					log.Panic(err)
+				}
+				writer := bufio.NewWriter(file)
+				for _, s := range lF.contents {
+					writer.WriteString(s)
+				}
+				writer.Flush()
+				lF.needsFlush = false
+				m.logger.Printf("flushed logs for %s", id)
+			}
+			lF.mux.Unlock()
+		}
+		time.Sleep(3 * time.Second)
+	}
+	m.logger.Println("stopped file manager")
+	m.wg.Done()
+}
+
+func (m *fileManager) StopWorker() {
+	m.stop = true
 }
 
 // TODO: include query ability
 func (m *fileManager) GetByID(id string) ([]StreamLine, uint64) {
 	outputStream := []StreamLine{}
-	filePath := fmt.Sprintf("/tmp/velocity-workspace/logs/%s", id)
-	file, err := os.Open(filePath)
-	if err != nil {
-		m.logger.Println(err)
-		return []StreamLine{}, uint64(0)
-	}
-	defer file.Close()
+	logFile := m.getStreamLogFile(id)
 
-	scanner := bufio.NewScanner(file)
-	count := uint64(0)
-	for scanner.Scan() {
-		lineBytes := scanner.Bytes()
-		var line StreamLine
-		err := json.Unmarshal(lineBytes, &line)
+	for i, l := range logFile.contents {
+		parts := strings.SplitN(l, " ", 2)
+		timestampUnixNano, _ := strconv.ParseInt(parts[0], 10, 64)
+		outputStream = append(outputStream, StreamLine{
+			BuildStepStreamID: id,
+			LineNumber:        uint64(i),
+			Timestamp:         time.Unix(0, timestampUnixNano),
+			Output:            parts[1],
+		})
+	}
+	return outputStream, logFile.totalLines
+}
+
+func (m *fileManager) SaveStreamLine(streamLine StreamLine) StreamLine {
+	logFile := m.getStreamLogFile(streamLine.BuildStepStreamID)
+	logFile.mux.Lock()
+	defer logFile.mux.Unlock()
+
+	if streamLine.LineNumber >= logFile.totalLines {
+		logFile.contents = append(logFile.contents, fmt.Sprintf("%d %s\n", streamLine.Timestamp.UnixNano(), streamLine.Output))
+		logFile.totalLines++
+	} else {
+		logFile.contents[streamLine.LineNumber] = fmt.Sprintf("%d %s\n", streamLine.Timestamp.UnixNano(), streamLine.Output)
+	}
+	logFile.needsFlush = true
+	return streamLine
+}
+
+func (m *fileManager) getStreamLogFile(id string) *logFile {
+	if _, ok := m.logFiles[id]; !ok {
+		filePath := fmt.Sprintf("/tmp/velocity-workspace/logs/%s", id)
+		file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, os.ModePerm)
 		if err != nil {
-			m.logger.Fatal(err)
+			log.Panic(err)
+			return nil
 		}
-		fmt.Println(line.Output)
-
-		outputStream = append(outputStream, line)
-		count++
+		contents := []string{}
+		totalLines := uint64(0)
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			contents = append(contents, scanner.Text())
+			totalLines++
+		}
+		m.logFiles[id] = &logFile{
+			contents:   contents,
+			totalLines: totalLines,
+			needsFlush: false,
+		}
+		file.Close()
 	}
 
-	if err := scanner.Err(); err != nil {
-		m.logger.Fatal(err)
-	}
-
-	return outputStream, count
+	return m.logFiles[id]
 }
 
 func (m *fileManager) DeleteByID(id string) {
 	filePath := fmt.Sprintf("/tmp/velocity-workspace/logs/%s", id)
 	os.RemoveAll(filePath)
-}
-
-func (m *fileManager) SaveStreamLine(streamLine StreamLine) StreamLine {
-	filePath := fmt.Sprintf("/tmp/velocity-workspace/logs/%s", streamLine.BuildStepStreamID)
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
-	if err != nil {
-		m.logger.Fatal(err)
-		return streamLine
+	if _, ok := m.logFiles[id]; ok {
+		delete(m.logFiles, id)
 	}
-	defer file.Close()
-	jsonLine, err := json.Marshal(ResponseStreamLine{
-		LineNumber: streamLine.LineNumber,
-		Timestamp:  streamLine.Timestamp,
-		Output:     streamLine.Output,
-	})
-	if err != nil {
-		m.logger.Fatal(err)
-	}
-	_, err = file.WriteString(fmt.Sprintf("%s\n", jsonLine))
-	if err != nil {
-		m.logger.Fatal(err)
-	}
-
-	m.logger.Printf("wrote to %s:%d", filePath, streamLine.LineNumber)
-
-	return streamLine
 }

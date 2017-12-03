@@ -11,10 +11,11 @@ type Manager struct {
 
 func NewManager(
 	db *gorm.DB,
+	fileManager *fileManager,
 ) *Manager {
 	return &Manager{
 		gormRepository: newGORMRepository(db),
-		fileManager:    newFileManager(),
+		fileManager:    fileManager,
 	}
 }
 
