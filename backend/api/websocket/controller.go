@@ -33,7 +33,6 @@ func (c Controller) Setup(router *mux.Router) {
 
 	// /v1/ws
 	router.Handle("/v1/ws", negroni.New(
-		auth.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.wsClientHandler)),
 	)).Methods("GET")
 
@@ -76,42 +75,5 @@ func (c *Controller) monitor(client *Client) {
 			return
 		}
 		client.HandleMessage(message)
-
-		// if message.Type == "subscribe" {
-		// 	client.Subscribe(message.Route)
-		// 	if strings.Contains(message.Route, "builds/") {
-		// 		routeParts := strings.Split(message.Route, "/")
-		// 		projectID := routeParts[1]
-		// 		commitHash := routeParts[3]
-		// 		buildID := routeParts[5]
-
-		// 		buildIDU, err := strconv.ParseUint(buildID, 10, 64)
-		// 		if err != nil {
-		// 			log.Fatal(err)
-		// 		}
-		// 		// build := c.commitManager.GetBuild(projectID, commitHash, buildIDU)
-		// 		// for stepNumber, sL := range build.StepLogs {
-		// 		// 	for _, ls := range sL.Logs {
-		// 		// 		for _, l := range ls {
-		// 		// 			client.ws.WriteJSON(
-		// 		// 				&EmitMessage{
-		// 		// 					Subscription: fmt.Sprintf("project/%s/commits/%s/builds/%d", projectID, commitHash, buildIDU),
-		// 		// 					Data: BuildMessage{
-		// 		// 						Step:   uint64(stepNumber),
-		// 		// 						Status: sL.Status,
-		// 		// 						Log: LogMessage{
-		// 		// 							Timestamp: l.Timestamp,
-		// 		// 							Output:    l.Output,
-		// 		// 						},
-		// 		// 					},
-		// 		// 				},
-		// 		// 			)
-		// 		// 		}
-		// 		// 	}
-		// 		// }
-		// 	}
-		// } else if message.Type == "unsubscribe" {
-		// 	client.Unsubscribe(message.Route)
-		// }
 	}
 }
