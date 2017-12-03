@@ -7,55 +7,82 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
-	"github.com/velocity-ci/velocity/backend/api/domain/branch"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
-type GORMCommit struct {
-	ID               string `gorm:"primary_key"`
-	Hash             string
-	Project          project.GORMProject `gorm:"ForeignKey:ProjectReference"`
-	ProjectReference string
-	Author           string
-	CreatedAt        time.Time
-	Message          string
-	Branches         []branch.GORMBranch `gorm:"many2many:commit_branches;AssociationForeignKey:ID;ForeignKey:ID"`
+type gormCommit struct {
+	ID        string `gorm:"primary_key"`
+	ProjectID string
+	Hash      string
+	Author    string
+	CreatedAt time.Time
+	Message   string
+	Branches  []gormBranch `gorm:"many2many:commit_branches;AssociationForeignKey:ID;ForeignKey:ID"`
 }
 
-func (g GORMCommit) TableName() string {
+func (gormCommit) TableName() string {
 	return "commits"
 }
 
-func GORMCommitFromCommit(c Commit) GORMCommit {
-	gormBranches := []branch.GORMBranch{}
-	for _, b := range c.Branches {
-		gormBranches = append(gormBranches, branch.GORMBranchFromBranch(b))
+func commitFromGormCommit(gC gormCommit) Commit {
+	branches := []Branch{}
+	for _, gB := range gC.Branches {
+		branches = append(branches, branchFromGormBranch(gB))
 	}
-	return GORMCommit{
-		ID:               c.ID,
-		Hash:             c.Hash,
-		Project:          project.GORMProjectFromProject(c.Project),
-		ProjectReference: c.Project.ID,
-		Author:           c.Author,
-		CreatedAt:        c.CreatedAt,
-		Message:          c.Message,
-		Branches:         gormBranches,
+
+	return Commit{
+		ID:        gC.ID,
+		ProjectID: gC.ProjectID,
+		Hash:      gC.Hash,
+		Author:    gC.Author,
+		CreatedAt: gC.CreatedAt,
+		Message:   gC.Message,
+		Branches:  branches,
 	}
 }
 
-func CommitFromGORMCommit(g GORMCommit) Commit {
-	branches := []branch.Branch{}
-	for _, gB := range g.Branches {
-		branches = append(branches, branch.BranchFromGORMBranch(gB))
+func gormCommitFromCommit(c Commit) gormCommit {
+	gormBranches := []gormBranch{}
+	for _, b := range c.Branches {
+		gormBranches = append(gormBranches, gormBranchFromBranch(b))
 	}
-	return Commit{
-		ID:        g.ID,
-		Hash:      g.Hash,
-		Author:    g.Author,
-		Project:   project.ProjectFromGORMProject(g.Project),
-		CreatedAt: g.CreatedAt,
-		Message:   g.Message,
-		Branches:  branches,
+
+	return gormCommit{
+		ID:        c.ID,
+		ProjectID: c.ProjectID,
+		Hash:      c.Hash,
+		Author:    c.Author,
+		CreatedAt: c.CreatedAt,
+		Message:   c.Message,
+		Branches:  gormBranches,
+	}
+}
+
+type gormBranch struct {
+	ID          string `gorm:"primary_key"`
+	Name        string
+	ProjectID   string
+	LastUpdated time.Time
+}
+
+func (gormBranch) TableName() string {
+	return "branches"
+}
+
+func branchFromGormBranch(gB gormBranch) Branch {
+	return Branch{
+		ID:          gB.ID,
+		Name:        gB.Name,
+		ProjectID:   gB.ProjectID,
+		LastUpdated: gB.LastUpdated,
+	}
+}
+
+func gormBranchFromBranch(b Branch) gormBranch {
+	return gormBranch{
+		ID:          b.ID,
+		Name:        b.Name,
+		ProjectID:   b.ProjectID,
+		LastUpdated: b.LastUpdated,
 	}
 }
 
@@ -66,92 +93,170 @@ type gormRepository struct {
 }
 
 func newGORMRepository(db *gorm.DB) *gormRepository {
-	db.AutoMigrate(GORMCommit{})
+	db.AutoMigrate(gormCommit{}, gormBranch{})
 	return &gormRepository{
 		logger: log.New(os.Stdout, "[gorm:commit]", log.Lshortfile),
 		gorm:   db,
 	}
 }
 
-func (r *gormRepository) Save(c Commit) Commit {
+func (r *gormRepository) SaveCommit(c Commit) Commit {
 	tx := r.gorm.Begin()
 
-	gormCommit := GORMCommitFromCommit(c)
+	gC := gormCommitFromCommit(c)
 
-	err := tx.Where(&GORMCommit{
+	err := tx.Where(&gormCommit{
 		ID: c.ID,
-	}).First(&GORMCommit{}).Error
+	}).First(&gormCommit{}).Error
 	if err != nil {
-		err = tx.Create(&gormCommit).Error
+		err = tx.Create(&gC).Error
 	} else {
-		tx.Save(&gormCommit)
+		tx.Save(&gC)
 	}
 
 	tx.Commit()
-	return c
+	r.logger.Printf("saved commit %s", c.ID)
+
+	return commitFromGormCommit(gC)
 }
 
-func (r *gormRepository) Delete(c Commit) {
+func (r *gormRepository) DeleteCommit(c Commit) {
 	tx := r.gorm.Begin()
 
-	gormCommit := GORMCommitFromCommit(c)
+	gC := gormCommitFromCommit(c)
 
-	if err := tx.Delete(gormCommit).Error; err != nil {
+	if err := tx.Delete(gC).Error; err != nil {
 		tx.Rollback()
 		r.logger.Fatal(err)
 	}
 
 	tx.Commit()
 }
-func (r *gormRepository) GetByProjectAndHash(p project.Project, hash string) (Commit, error) {
-	gormCommit := GORMCommit{
-		Branches: []branch.GORMBranch{},
-	}
+func (r *gormRepository) GetCommitByCommitID(id string) (Commit, error) {
+	gC := gormCommit{}
 	if r.gorm.
-		Preload("Project").
-		Where(&GORMCommit{
-			ProjectReference: p.ID,
-			Hash:             hash,
-		}).
 		Preload("Branches").
-		Preload("Branches.Project").
-		First(&gormCommit).RecordNotFound() {
-		r.logger.Printf("Could not find Commit %s", hash)
-		return Commit{}, fmt.Errorf("could not find Commit %s", hash)
+		Where(&gormCommit{
+			ID: id,
+		}).
+		First(&gC).RecordNotFound() {
+		r.logger.Printf("could not find commit %s", id)
+		return Commit{}, fmt.Errorf("could not find commit %s", id)
 	}
 
-	return CommitFromGORMCommit(gormCommit), nil
+	r.logger.Printf("got commit %s", id)
+	return commitFromGormCommit(gC), nil
 }
 
-func (r *gormRepository) GetAllByProject(p project.Project, q Query) ([]Commit, uint64) {
-	gormCommits := []GORMCommit{}
+func (r *gormRepository) GetCommitByProjectIDAndCommitHash(projectID string, hash string) (Commit, error) {
+	gC := gormCommit{}
+	if r.gorm.
+		Preload("Branches").
+		Where(&gormCommit{
+			ProjectID: projectID,
+			Hash:      hash,
+		}).
+		First(&gC).RecordNotFound() {
+		r.logger.Printf("could not find Project Commit %s:%s", projectID, hash)
+		return Commit{}, fmt.Errorf("could not find Project Commit %s:%s", projectID, hash)
+	}
+
+	r.logger.Printf("got project:commit %s:%s", projectID, hash)
+	return commitFromGormCommit(gC), nil
+}
+
+func (r *gormRepository) GetAllCommitsByProjectID(projectID string, q Query) ([]Commit, uint64) {
+	gCs := []gormCommit{}
 	var count uint64
 	db := r.gorm
 
 	db = db.
-		Preload("Project").
-		Where("commits.project_reference = ?", p.ID).
 		Preload("Branches").
-		Preload("Branches.Project")
+		Where("commits.project_id = ?", projectID)
 
 	if len(q.Branch) > 0 {
 		db = db.
-			Joins("JOIN commit_branches AS cb ON cb.gorm_commit_id=commits.id").
-			Joins("JOIN branches AS b ON b.id=cb.gorm_branch_id").
+			Joins("JOIN commit_branches AS cb ON cb.commit_id=commits.id").
+			Joins("JOIN branches AS b ON b.id=cb.branch_id").
 			Where("b.name in (?)", []string{q.Branch}).
 			Group("commits.id")
 	}
-	db.Find(&gormCommits).Count(&count)
+	db.Find(&gCs).Count(&count)
 
 	db.
 		Limit(int(q.Amount)).
 		Offset(int(q.Page - 1)).
-		Find(&gormCommits)
+		Find(&gCs)
 
 	commits := []Commit{}
-	for _, gCommit := range gormCommits {
-		commits = append(commits, CommitFromGORMCommit(gCommit))
+	for _, gC := range gCs {
+		commits = append(commits, commitFromGormCommit(gC))
 	}
 
 	return commits, count
+}
+
+func (r *gormRepository) SaveBranch(b Branch) Branch {
+	tx := r.gorm.Begin()
+
+	gB := gormBranchFromBranch(b)
+
+	err := tx.Where(&gormBranch{
+		ID: b.ID,
+	}).First(&gormBranch{}).Error
+	if err != nil {
+		err = tx.Create(&gB).Error
+	} else {
+		tx.Save(&gB)
+	}
+
+	tx.Commit()
+	r.logger.Printf("saved branch %s", b.ID)
+	return branchFromGormBranch(gB)
+}
+
+func (r *gormRepository) DeleteBranch(b Branch) {
+	tx := r.gorm.Begin()
+
+	gB := gormBranchFromBranch(b)
+
+	if err := tx.Delete(gB).Error; err != nil {
+		tx.Rollback()
+		r.logger.Fatal(err)
+	}
+
+	tx.Commit()
+}
+func (r *gormRepository) GetBranchByProjectIDAndName(projectID string, name string) (Branch, error) {
+	gB := gormBranch{}
+	if r.gorm.
+		Where(&gormBranch{
+			Name:      name,
+			ProjectID: projectID,
+		}).
+		First(&gB).RecordNotFound() {
+		r.logger.Printf("could not find project:branch %s:%s", projectID, name)
+		return Branch{}, fmt.Errorf("could not find project:branch %s:%s", projectID, name)
+	}
+
+	r.logger.Printf("got project:branch %s:%s", projectID, name)
+	return branchFromGormBranch(gB), nil
+}
+
+func (r *gormRepository) GetAllBranchesByProjectID(projectID string, q Query) ([]Branch, uint64) {
+	gBs := []gormBranch{}
+	var count uint64
+	r.gorm.
+		Where(&gormBranch{
+			ProjectID: projectID,
+		}).
+		Find(&gBs).
+		Count(&count)
+
+	branches := []Branch{}
+	for _, gB := range gBs {
+		branches = append(branches, branchFromGormBranch(gB))
+	}
+
+	return branches, count
 }

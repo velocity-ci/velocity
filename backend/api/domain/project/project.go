@@ -18,7 +18,7 @@ type Repository interface {
 type Project struct {
 	ID         string                 `json:"id" gorm:"primary_key"`
 	Name       string                 `json:"name" gorm:"unique_index"`
-	Repository velocity.GitRepository `json:"repository" gorm:"type:blob"`
+	Repository velocity.GitRepository `json:"repository"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

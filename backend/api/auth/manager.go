@@ -16,7 +16,7 @@ func EnsureAdminUser(m *user.Manager) {
 		} else {
 			password = GenerateRandomString(16)
 		}
-		user := &user.User{Username: "admin"}
+		user := user.User{Username: "admin"}
 		user.HashPassword(password)
 		m.Save(user)
 		log.Printf("\n\n\nCreated Administrator:\n\tusername: admin \n\tpassword: %s\n\n\n", password)

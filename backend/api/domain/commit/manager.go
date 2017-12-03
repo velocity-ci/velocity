@@ -2,7 +2,6 @@ package commit
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
 )
 
 type Manager struct {
@@ -17,19 +16,36 @@ func NewManager(
 	}
 }
 
-func (m *Manager) Save(c Commit) Commit {
-	m.gormRepository.Save(c)
+func (m *Manager) SaveCommit(c Commit) Commit {
+	m.gormRepository.SaveCommit(c)
 	return c
 }
 
-func (m *Manager) Delete(c Commit) {
-	m.gormRepository.Delete(c)
+func (m *Manager) DeleteCommit(c Commit) {
+	m.gormRepository.DeleteCommit(c)
 }
 
-func (m *Manager) GetByProjectAndHash(p project.Project, hash string) (Commit, error) {
-	return m.gormRepository.GetByProjectAndHash(p, hash)
+func (m *Manager) GetCommitByCommitID(id string) (Commit, error) {
+	return m.gormRepository.GetCommitByCommitID(id)
 }
 
-func (m *Manager) GetAllByProject(p project.Project, q Query) ([]Commit, uint64) {
-	return m.gormRepository.GetAllByProject(p, q)
+func (m *Manager) GetCommitByProjectIDAndCommitHash(projectID string, hash string) (Commit, error) {
+	return m.gormRepository.GetCommitByProjectIDAndCommitHash(projectID, hash)
+}
+
+func (m *Manager) GetAllCommitsByProjectID(projectID string, q Query) ([]Commit, uint64) {
+	return m.gormRepository.GetAllCommitsByProjectID(projectID, q)
+}
+
+func (m *Manager) SaveBranch(b Branch) Branch {
+	return m.gormRepository.SaveBranch(b)
+}
+func (m *Manager) DeleteBranch(b Branch) {
+	m.gormRepository.DeleteBranch(b)
+}
+func (m *Manager) GetBranchByProjectIDAndName(projectID string, name string) (Branch, error) {
+	return m.gormRepository.GetBranchByProjectIDAndName(projectID, name)
+}
+func (m *Manager) GetAllBranchesByProjectID(projectID string, q Query) ([]Branch, uint64) {
+	return m.gormRepository.GetAllBranchesByProjectID(projectID, q)
 }

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/velocity-ci/velocity/backend/api/domain/branch"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
@@ -22,7 +21,6 @@ type Controller struct {
 	render         *render.Render
 	projectManager project.Repository
 	commitManager  commit.Repository
-	branchManager  branch.Repository
 	taskManager    task.Repository
 }
 
@@ -30,7 +28,6 @@ type Controller struct {
 func NewController(
 	projectManager *project.Manager,
 	commitManager *commit.Manager,
-	branchManager *branch.Manager,
 	taskManager *task.Manager,
 ) *Controller {
 	return &Controller{
@@ -38,7 +35,6 @@ func NewController(
 		render:         render.New(),
 		projectManager: projectManager,
 		commitManager:  commitManager,
-		branchManager:  branchManager,
 		taskManager:    taskManager,
 	}
 }
@@ -75,7 +71,7 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 	p.Synchronising = true
 	c.projectManager.Save(p)
 
-	go sync(p, c.projectManager, c.commitManager, c.branchManager, c.taskManager)
+	go sync(p, c.projectManager, c.commitManager, c.taskManager)
 
 	c.render.JSON(w, http.StatusCreated, project.NewResponseProject(p))
 }

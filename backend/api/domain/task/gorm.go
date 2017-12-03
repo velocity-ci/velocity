@@ -1,124 +1,144 @@
 package task
 
-// type GORMTask struct {
-// 	ID              string
-// 	Commit          commit.GORMCommit `gorm:"ForeignKey:CommitReference"`
-// 	CommitReference string
-// 	TaskConfig      []byte // JSON of task name, parameters, steps etc.
-// }
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
 
-// func GORMTaskFromTask(t Task) GORMTask {
-// 	taskConfig, err := json.Marshal(t.VTask)
-// 	if err != nil {
-// 		log.Printf("could not marshal task from %v", t)
-// 		log.Fatal(err)
-// 	}
-// 	return GORMTask{
-// 		ID:              t.ID,
-// 		Commit:          commit.GORMCommitFromCommit(t.Commit),
-// 		CommitReference: t.Commit.ID,
-// 		TaskConfig:      taskConfig,
-// 	}
-// }
+	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/backend/velocity"
+)
 
-// func TaskFromGORMTask(g GORMTask) Task {
-// 	var taskConfig velocity.Task
-// 	err := json.Unmarshal(g.TaskConfig, &taskConfig)
-// 	if err != nil {
-// 		log.Printf("could not unmarshal task from %v", g)
-// 		log.Fatal(err)
-// 	}
-// 	return Task{
-// 		ID:     g.ID,
-// 		Commit: commit.CommitFromGORMCommit(g.Commit),
-// 		VTask:  taskConfig,
-// 	}
-// }
+type gormTask struct {
+	ID       string `gorm:"primary_key"`
+	CommitID string
+	Name     string
+	VTask    []byte // JSON of task for storage
+}
 
-// // Expose CRUD operations (implement interface?) Implement repository funcs, as they will be used when we have caching.
-// type gormRepository struct {
-// 	logger *log.Logger
-// 	gorm   *gorm.DB
-// }
+func gormTaskFromTask(t Task) gormTask {
+	jsonTask, err := json.Marshal(t.Task)
+	if err != nil {
+		log.Println("Could not marshal task")
+		log.Fatal(err)
+	}
 
-// func newGORMRepository(db *gorm.DB) *gormRepository {
-// 	db.AutoMigrate(GORMTask{})
-// 	return &gormRepository{
-// 		logger: log.New(os.Stdout, "[gorm:task]", log.Lshortfile),
-// 		gorm:   db,
-// 	}
-// }
+	return gormTask{
+		ID:       t.ID,
+		CommitID: t.CommitID,
+		Name:     t.Name,
+		VTask:    jsonTask,
+	}
+}
 
-// func (r *gormRepository) Save(t Task) Task {
-// 	tx := r.gorm.Begin()
+func taskFromGormTask(g gormTask) Task {
+	var vTask velocity.Task
+	err := json.Unmarshal(g.VTask, &vTask)
+	if err != nil {
+		log.Println("Could not unmarshal task from %v", g.VTask)
+		log.Fatal(err)
+	}
 
-// 	gormTask := GORMTaskFromTask(t)
+	return Task{
+		ID:       g.ID,
+		CommitID: g.CommitID,
+		Task:     vTask,
+	}
+}
 
-// 	err := tx.Where(&GORMTask{
-// 		ID: t.ID,
-// 	}).First(&GORMTask{}).Error
-// 	if err != nil {
-// 		err = tx.Create(&gormTask).Error
-// 	} else {
-// 		tx.Save(&gormTask)
-// 	}
+// Expose CRUD operations (implement interface?) Implement repository funcs, as they will be used when we have caching.
+type gormRepository struct {
+	logger *log.Logger
+	gorm   *gorm.DB
+}
 
-// 	tx.Commit()
-// 	return t
-// }
+func newGORMRepository(db *gorm.DB) *gormRepository {
+	db.AutoMigrate(gormTask{})
+	return &gormRepository{
+		logger: log.New(os.Stdout, "[gorm:task]", log.Lshortfile),
+		gorm:   db,
+	}
+}
 
-// func (r *gormRepository) Delete(t Task) {
-// 	tx := r.gorm.Begin()
+func (r *gormRepository) Save(t Task) Task {
+	tx := r.gorm.Begin()
 
-// 	gormTask := GORMTaskFromTask(t)
+	gT := gormTaskFromTask(t)
 
-// 	if err := tx.Delete(gormTask).Error; err != nil {
-// 		tx.Rollback()
-// 		log.Fatal(err)
-// 	}
+	err := tx.Where(&gormTask{
+		ID: t.ID,
+	}).First(&gormTask{}).Error
+	if err != nil {
+		err = tx.Create(&gT).Error
+	} else {
+		tx.Save(&gT)
+	}
 
-// 	tx.Commit()
-// }
+	tx.Commit()
+	r.logger.Printf("saved task %s", t.ID)
+	return taskFromGormTask(gT)
+}
 
-// func (r *gormRepository) GetByProjectAndCommitAndID(p project.Project, c commit.Commit, ID string) (Task, error) {
-// 	gormTask := GORMTask{}
+func (r *gormRepository) Delete(t Task) {
+	tx := r.gorm.Begin()
 
-// 	if r.gorm.
-// 		Preload("Commit").
-// 		Preload("Commit.Project").
-// 		Preload("Commit.Branches").
-// 		Preload("Commit.Branches.Project").
-// 		Where(&GORMTask{
-// 			CommitReference: c.ID,
-// 			ID:              ID,
-// 		}).
-// 		First(&gormTask).RecordNotFound() {
-// 		log.Printf("Could not find Task %s", ID)
-// 		return Task{}, fmt.Errorf("could not find Task %s", ID)
-// 	}
+	gT := gormTaskFromTask(t)
 
-// 	return TaskFromGORMTask(gormTask), nil
-// }
+	if err := tx.Delete(gT).Error; err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+	}
 
-// func (r *gormRepository) GetAllByProjectAndCommit(p project.Project, c commit.Commit, q Query) ([]Task, uint64) {
-// 	gormTasks := []GORMTask{}
-// 	var count uint64
+	tx.Commit()
+}
 
-// 	r.gorm.
-// 		Preload("Commit").
-// 		Preload("Commit.Project").
-// 		Preload("Commit.Branches").
-// 		Preload("Commit.Branches.Project").
-// 		Where(&GORMTask{
-// 			CommitReference: c.ID,
-// 		}).
-// 		Find(&gormTasks).
-// 		Count(&count)
+func (r *gormRepository) GetByTaskID(taskID string) (Task, error) {
+	gT := gormTask{}
 
-// 	tasks := []Task{}
-// 	for _, gTask := range gormTasks {
-// 		tasks = append(tasks, TaskFromGORMTask(gTask))
-// 	}
+	if r.gorm.
+		Where(&gormTask{
+			ID: taskID,
+		}).
+		First(&gT).RecordNotFound() {
+		log.Printf("could not find task %s", taskID)
+		return Task{}, fmt.Errorf("could not find task %s", taskID)
+	}
 
-// 	return tasks, count
-// }
+	return taskFromGormTask(gT), nil
+}
+
+func (r *gormRepository) GetByCommitIDAndTaskName(commitID string, name string) (Task, error) {
+	gT := gormTask{}
+
+	if r.gorm.
+		Where(&gormTask{
+			CommitID: commitID,
+			Name:     name,
+		}).
+		First(&gT).RecordNotFound() {
+		log.Printf("could not find commit:task %s:%s", commitID, name)
+		return Task{}, fmt.Errorf("could not find commit:task %s:%s", commitID, name)
+	}
+
+	return taskFromGormTask(gT), nil
+}
+
+func (r *gormRepository) GetAllByCommitID(commitID string, q Query) ([]Task, uint64) {
+	gTs := []gormTask{}
+	var count uint64
+
+	r.gorm.
+		Where(&gormTask{
+			CommitID: commitID,
+		}).
+		Find(&gTs).
+		Count(&count)
+
+	tasks := []Task{}
+	for _, gT := range gTs {
+		tasks = append(tasks, taskFromGormTask(gT))
+	}
+
+	return tasks, count
+}

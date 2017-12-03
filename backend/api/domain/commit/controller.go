@@ -50,6 +50,12 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.getProjectCommitHandler)),
 	)).Methods("GET")
 
+	// GET /v1/projects/{id}/branches
+	router.Handle("/v1/projects/{id}/branches", negroni.New(
+		auth.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getBranchesHandler)),
+	)).Methods("GET")
+
 	c.logger.Println("Set up Commit controller.")
 }
 
@@ -65,14 +71,14 @@ func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Requ
 
 	opts := QueryOptsFromRequest(r)
 
-	commits, count := c.manager.GetAllByProject(p, opts)
+	commits, count := c.manager.GetAllCommitsByProjectID(p.ID, opts)
 
 	respCommits := []ResponseCommit{}
 	for _, c := range commits {
 		respCommits = append(respCommits, NewResponseCommit(c))
 	}
 
-	c.render.JSON(w, http.StatusOK, ManyResponse{
+	c.render.JSON(w, http.StatusOK, ManyResponseCommit{
 		Total:  count,
 		Result: respCommits,
 	})
@@ -83,17 +89,41 @@ func (c Controller) getProjectCommitHandler(w http.ResponseWriter, r *http.Reque
 	reqProjectID := reqVars["projectID"]
 	reqCommitID := reqVars["commitHash"]
 
-	p, err := c.projectManager.GetByID(reqProjectID)
+	_, err := c.projectManager.GetByID(reqProjectID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
 
-	commit, err := c.manager.GetByProjectAndHash(p, reqCommitID)
+	commit, err := c.manager.GetCommitByCommitID(reqCommitID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
 
 	c.render.JSON(w, http.StatusOK, NewResponseCommit(commit))
+}
+
+func (c Controller) getBranchesHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["id"]
+
+	p, err := c.projectManager.GetByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	branches, count := c.manager.GetAllBranchesByProjectID(p.ID, Query{})
+
+	respBranches := []ResponseBranch{}
+
+	for _, b := range branches {
+		respBranches = append(respBranches, NewResponseBranch(b))
+	}
+
+	c.render.JSON(w, http.StatusOK, ManyResponseBranch{
+		Total:  count,
+		Result: respBranches,
+	})
 }

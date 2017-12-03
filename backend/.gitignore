@@ -5,3 +5,6 @@ tmp
 *.test
 *.db*
 velocity-workspace
+api/api
+slave/slave
+cli/cli

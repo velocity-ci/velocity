@@ -9,10 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/api/domain/branch"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
+	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/api/domain/user"
+	apiSync "github.com/velocity-ci/velocity/backend/api/sync"
 	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/boltdb/bolt"
@@ -116,13 +117,9 @@ func NewVelocity() App {
 	commitManager := commit.NewManager(gorm)
 	commitController := commit.NewController(commitManager, projectManager)
 
-	// Branch
-	branchManager := branch.NewManager(gorm)
-	branchController := branch.NewController(branchManager, projectManager)
-
 	// Task
-	// taskManager := task.NewManager(gorm)
-	// taskController := task.NewController(taskManager, projectManager, commitManager)
+	taskManager := task.NewManager(gorm)
+	taskController := task.NewController(taskManager, projectManager, commitManager)
 
 	// Build
 	// buildManager := build.NewManager(gorm)
@@ -130,7 +127,7 @@ func NewVelocity() App {
 	// buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager)
 
 	// // Sync
-	// syncController := apiSync.NewController(projectManager, commitManager, branchManager, taskManager)
+	syncController := apiSync.NewController(projectManager, commitManager, taskManager)
 
 	// // Slave
 	// slaveManager := slave.NewManager(buildManager)
@@ -148,11 +145,10 @@ func NewVelocity() App {
 		// knownHostController,
 		projectController,
 		commitController,
-		branchController,
 		taskController,
-		buildController,
+		// buildController,
 		syncController,
-		slaveController,
+		// slaveController,
 		// websocketController,
 	}, true)
 

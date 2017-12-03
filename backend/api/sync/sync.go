@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/api/domain/branch"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
@@ -21,7 +20,6 @@ func sync(
 	p project.Project,
 	projectManager project.Repository,
 	commitManager commit.Repository,
-	branchManager branch.Repository,
 	taskManager task.Repository,
 ) {
 	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankWriter())
@@ -62,57 +60,62 @@ func sync(
 
 		branchName := strings.Join(strings.Split(r.Name().Short(), "/")[1:], "/")
 		if branchName != "" {
-			b := branch.NewBranch(p, branchName)
-			branchManager.Save(b)
-
-			c := commit.NewCommit(
-				p,
-				gitCommit.Hash.String(),
-				strings.TrimSpace(message),
-				gitCommit.Author.Email,
-				gitCommit.Committer.When,
-				b,
-			)
-
-			commitManager.Save(c)
-
-			err = w.Checkout(&git.CheckoutOptions{
-				Hash: gitCommit.Hash,
-			})
-
+			b, err := commitManager.GetBranchByProjectIDAndName(p.ID, branchName)
 			if err != nil {
-				fmt.Println(err)
+				b = commit.NewBranch(p.ID, branchName)
+				commitManager.SaveBranch(b)
 			}
 
-			SHA := r.Hash().String()
-			shortSHA := SHA[:7]
-			describe := shortSHA
+			c, err := commitManager.GetCommitByProjectIDAndCommitHash(p.ID, gitCommit.Hash.String())
+			if err != nil {
+				c = commit.NewCommit(
+					p.ID,
+					gitCommit.Hash.String(),
+					strings.TrimSpace(message),
+					gitCommit.Author.Email,
+					gitCommit.Committer.When,
+					[]commit.Branch{b},
+				)
+				commitManager.SaveCommit(c)
 
-			gitParams := map[string]velocity.Parameter{
-				"GIT_SHA": velocity.Parameter{
-					Value: SHA,
-				},
-				"GIT_SHORT_SHA": velocity.Parameter{
-					Value: shortSHA,
-				},
-				"GIT_BRANCH": velocity.Parameter{
-					Value: branchName,
-				},
-				"GIT_DESCRIBE": velocity.Parameter{
-					Value: describe,
-				},
-			}
-
-			if _, err := os.Stat(fmt.Sprintf("%s/tasks/", dir)); err == nil {
-				filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
-					if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
-						taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
-						t := velocity.ResolveTaskFromYAML(string(taskYml), gitParams)
-						apiTask := task.NewTask(p, c, t)
-						taskManager.Save(apiTask)
-					}
-					return nil
+				err = w.Checkout(&git.CheckoutOptions{
+					Hash: gitCommit.Hash,
 				})
+
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				SHA := r.Hash().String()
+				shortSHA := SHA[:7]
+				describe := shortSHA
+
+				gitParams := map[string]velocity.Parameter{
+					"GIT_SHA": velocity.Parameter{
+						Value: SHA,
+					},
+					"GIT_SHORT_SHA": velocity.Parameter{
+						Value: shortSHA,
+					},
+					"GIT_BRANCH": velocity.Parameter{
+						Value: branchName,
+					},
+					"GIT_DESCRIBE": velocity.Parameter{
+						Value: describe,
+					},
+				}
+
+				if _, err := os.Stat(fmt.Sprintf("%s/tasks/", dir)); err == nil {
+					filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
+						if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
+							taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
+							t := velocity.ResolveTaskFromYAML(string(taskYml), gitParams)
+							apiTask := task.NewTask(c.ID, t)
+							taskManager.Save(apiTask)
+						}
+						return nil
+					})
+				}
 			}
 		}
 
