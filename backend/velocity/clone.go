@@ -17,23 +17,19 @@ import (
 
 type Clone struct {
 	BaseStep      `yaml:",inline"`
-	GitRepository *GitRepository `yaml:"-"`
-	CommitHash    string         `yaml:"-"`
-	Submodule     bool           `json:"submodule" yaml:"submodule"`
+	GitRepository GitRepository `json:"-" yaml:"-"`
+	CommitHash    string        `json:"-" yaml:"-"`
+	Submodule     bool          `json:"submodule" yaml:"submodule"`
 }
 
 func NewClone() *Clone {
 	return &Clone{
 		Submodule: false,
+		BaseStep: BaseStep{
+			Type:          "clone",
+			OutputStreams: []string{"clone"},
+		},
 	}
-}
-
-func (c Clone) GetType() string {
-	return "clone"
-}
-
-func (c Clone) GetDescription() string {
-	return c.Description
 }
 
 func (c Clone) GetDetails() string {
@@ -41,11 +37,12 @@ func (c Clone) GetDetails() string {
 }
 
 func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
+	emitter.SetStreamName("clone")
 	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, c.Description)))
 
 	log.Printf("Cloning %s", c.GitRepository.Address)
 
-	repo, dir, err := GitClone(c.GitRepository, false, true, c.Submodule, emitter)
+	repo, dir, err := GitClone(&c.GitRepository, false, true, c.Submodule, emitter)
 	if err != nil {
 		log.Fatal(err)
 		return err
@@ -80,7 +77,7 @@ func (c *Clone) SetParams(params map[string]Parameter) error {
 	return nil
 }
 
-func (c *Clone) SetGitRepositoryAndCommitHash(r *GitRepository, hash string) error {
+func (c *Clone) SetGitRepositoryAndCommitHash(r GitRepository, hash string) error {
 	c.GitRepository = r
 	c.CommitHash = hash
 	return nil

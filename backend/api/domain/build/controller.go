@@ -7,13 +7,14 @@ import (
 	"os"
 
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/task"
+	"github.com/velocity-ci/velocity/backend/api/middleware"
 
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
 	"github.com/urfave/negroni"
 	"github.com/velocity-ci/velocity/backend/api/auth"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
-	"github.com/velocity-ci/velocity/backend/api/middleware"
 )
 
 // Controller - Handles Builds.
@@ -23,85 +24,94 @@ type Controller struct {
 	manager        Repository
 	projectManager project.Repository
 	commitManager  commit.Repository
+	taskManager    task.Repository
 	resolver       *Resolver
 }
 
 // NewController - Returns a new Controller for Builds.
 func NewController(
 	buildResolver *Resolver,
-	buildManager *Manager,
-	projectManager *project.Manager,
-	commitManager *commit.Manager,
+	buildManager Repository,
+	projectManager project.Repository,
+	commitManager commit.Repository,
+	taskManager task.Repository,
 ) *Controller {
 	return &Controller{
-		logger:         log.New(os.Stdout, "[controller:commit]", log.Lshortfile),
+		logger:         log.New(os.Stdout, "[controller:build]", log.Lshortfile),
 		render:         render.New(),
 		manager:        buildManager,
 		projectManager: projectManager,
 		commitManager:  commitManager,
+		taskManager:    taskManager,
 		resolver:       buildResolver,
 	}
 }
 
 // Setup - Sets up the routes for Builds.
 func (c Controller) Setup(router *mux.Router) {
-	// POST /v1/projects/{id}/commits/{commitHash}/builds
-	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds", negroni.New(
+	// POST /v1/projects/{id}/commits/{commitID}/builds
+	router.Handle("/v1/projects/{projectID}/commits/{commitID}/tasks/{taskID}/builds", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.postProjectCommitBuildsHandler)),
+		negroni.Wrap(http.HandlerFunc(c.postProjectCommitTaskBuildsHandler)),
 	)).Methods("POST")
 
-	// GET /v1/projects/{projectID}/commits/{commitHash}/builds
-	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds", negroni.New(
+	// GET /v1/projects/{projectID}/commits/{commitID}/builds
+	router.Handle("/v1/projects/{projectID}/commits/{commitID}/tasks/{taskID}/builds", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.getProjectCommitBuildsHandler)),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskBuildsHandler)),
 	)).Methods("GET")
 
-	// GET /v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}
-	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}", negroni.New(
+	// GET /v1/projects/{projectID}/commits/{commitID}/builds/{buildNumber}
+	router.Handle("/v1/projects/{projectID}/commits/{commitID}/tasks/{taskID}/builds/{buildNumber}", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.getProjectCommitBuildHandler)),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskBuildHandler)),
 	)).Methods("GET")
-	// GET /v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps
-	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps", negroni.New(
+	// GET /v1/projects/{projectID}/commits/{commitID}/builds/{buildNumber}/steps
+	router.Handle("/v1/projects/{projectID}/commits/{commitID}/tasks/{taskID}/builds/{buildNumber}/steps", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.getProjectCommitBuildStepsHandler)),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskBuildStepsHandler)),
 	)).Methods("GET")
-	// GET /v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps/{stepNumber}
-	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps/{stepNumber}", negroni.New(
+	// GET /v1/projects/{projectID}/commits/{commitID}/builds/{buildNumber}/steps/{stepNumber}
+	router.Handle("/v1/projects/{projectID}/commits/{commitID}/tasks/{taskID}/builds/{buildNumber}/steps/{stepID}", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.getProjectCommitBuildStepHandler)),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskBuildStepHandler)),
 	)).Methods("GET")
-	// GET /v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps/{stepNumber}/streams
-	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps/{stepNumber}/streams", negroni.New(
+	// GET /v1/projects/{projectID}/commits/{commitID}/builds/{buildNumber}/steps/{stepNumber}/streams
+	router.Handle("/v1/projects/{projectID}/commits/{commitID}/tasks/{taskID}/builds/{buildNumber}/steps/{stepID}/streams", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.getProjectCommitBuildStepStreamsHandler)),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskBuildStepStreamsHandler)),
 	)).Methods("GET")
-	// GET /v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps/{stepNumber}/streams/{containerName}
-	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/builds/{buildNumber}/steps/{stepNumber}/streams/{streamName}", negroni.New(
+	// GET /v1/projects/{projectID}/commits/{commitID}/builds/{buildNumber}/steps/{stepNumber}/streams/{containerName}
+	router.Handle("/v1/projects/{projectID}/commits/{commitID}/tasks/{taskID}/builds/{buildNumber}/steps/{stepID}/streams/{streamName}", negroni.New(
 		auth.NewJWT(c.render),
-		negroni.Wrap(http.HandlerFunc(c.getProjectCommitBuildStepStreamHandler)),
+		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTaskBuildStepStreamHandler)),
 	)).Methods("GET")
 
 	c.logger.Println("Set up Commit controller.")
 }
 
-func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) postProjectCommitTaskBuildsHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitID := reqVars["commitID"]
+	reqTaskID := reqVars["taskID"]
 
-	project, err := c.projectManager.GetByID(reqProjectID)
+	_, err := c.projectManager.GetByID(reqProjectID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
-	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
+	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
-	build, err := c.resolver.BuildFromRequest(r.Body, project, commit)
+	task, err := c.taskManager.GetByTaskID(reqTaskID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s", reqTaskID)) {
+		return
+	}
+
+	build, err := c.resolver.BuildFromRequest(r.Body, task)
 	if err != nil {
 		middleware.HandleRequestError(err, w, c.render)
 		return
@@ -115,22 +125,28 @@ func (c Controller) postProjectCommitBuildsHandler(w http.ResponseWriter, r *htt
 	// c.manager.QueueBuild(queuedBuild)
 }
 
-func (c Controller) getProjectCommitBuildsHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getProjectCommitTaskBuildsHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitID := reqVars["commitID"]
+	reqTaskID := reqVars["taskID"]
 
-	project, err := c.projectManager.GetByID(reqProjectID)
+	_, err := c.projectManager.GetByID(reqProjectID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
-	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
+	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
-	builds, count := c.manager.GetBuildsByProjectAndCommit(project, commit)
+	task, err := c.taskManager.GetByTaskID(reqTaskID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s", reqTaskID)) {
+		return
+	}
+
+	builds, count := c.manager.GetBuildsByTaskID(task.ID, Query{})
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
@@ -143,23 +159,29 @@ func (c Controller) getProjectCommitBuildsHandler(w http.ResponseWriter, r *http
 	})
 }
 
-func (c Controller) getProjectCommitBuildHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getProjectCommitTaskBuildHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitID := reqVars["commitID"]
+	reqTaskID := reqVars["taskID"]
 	reqBuildID := reqVars["buildID"]
 
-	project, err := c.projectManager.GetByID(reqProjectID)
+	_, err := c.projectManager.GetByID(reqProjectID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
-	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
+	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
-	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
+	_, err = c.taskManager.GetByTaskID(reqTaskID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s", reqTaskID)) {
+		return
+	}
+
+	build, err := c.manager.GetBuildByBuildID(reqBuildID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
 		return
 	}
@@ -167,31 +189,37 @@ func (c Controller) getProjectCommitBuildHandler(w http.ResponseWriter, r *http.
 	c.render.JSON(w, http.StatusOK, NewResponseBuild(build))
 }
 
-func (c Controller) getProjectCommitBuildStepsHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getProjectCommitTaskBuildStepsHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitID := reqVars["commitID"]
+	reqTaskID := reqVars["taskID"]
 	reqBuildID := reqVars["buildID"]
 
-	project, err := c.projectManager.GetByID(reqProjectID)
+	_, err := c.projectManager.GetByID(reqProjectID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
-	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
+	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
-	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
+	t, err := c.taskManager.GetByTaskID(reqTaskID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s", reqTaskID)) {
+		return
+	}
+
+	build, err := c.manager.GetBuildByBuildID(reqBuildID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
 		return
 	}
 
-	buildSteps, count := c.manager.GetBuildStepsForBuild(build)
+	buildSteps, count := c.manager.GetBuildStepsByBuildID(build.ID)
 	respBuildSteps := []ResponseBuildStep{}
 	for _, buildStep := range buildSteps {
-		respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep))
+		respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number]))
 	}
 	c.render.JSON(w, http.StatusOK, BuildStepManyResponse{
 		Total:  count,
@@ -199,64 +227,76 @@ func (c Controller) getProjectCommitBuildStepsHandler(w http.ResponseWriter, r *
 	})
 }
 
-func (c Controller) getProjectCommitBuildStepHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getProjectCommitTaskBuildStepHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitID := reqVars["commitID"]
+	reqTaskID := reqVars["taskID"]
 	reqBuildID := reqVars["buildID"]
-	reqStepNumber := reqVars["stepNumber"]
+	reqStepID := reqVars["stepID"]
 
-	project, err := c.projectManager.GetByID(reqProjectID)
+	_, err := c.projectManager.GetByID(reqProjectID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
-	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
+	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
-	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
+	t, err := c.taskManager.GetByTaskID(reqTaskID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s", reqTaskID)) {
+		return
+	}
+
+	_, err = c.manager.GetBuildByBuildID(reqBuildID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
 		return
 	}
 
-	buildStep, err := c.manager.GetBuildStepByBuildAndID(build, reqStepNumber)
-	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepNumber)) {
+	buildStep, err := c.manager.GetBuildStepByBuildStepID(reqStepID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepID)) {
 		return
 	}
 
-	c.render.JSON(w, http.StatusOK, NewResponseBuildStep(buildStep))
+	c.render.JSON(w, http.StatusOK, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number]))
 }
 
-func (c Controller) getProjectCommitBuildStepStreamsHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getProjectCommitTaskBuildStepStreamsHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitID := reqVars["commitID"]
+	reqTaskID := reqVars["taskID"]
 	reqBuildID := reqVars["buildID"]
-	reqStepNumber := reqVars["stepNumber"]
+	reqStepID := reqVars["stepID"]
 
-	project, err := c.projectManager.GetByID(reqProjectID)
+	_, err := c.projectManager.GetByID(reqProjectID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
 		return
 	}
 
-	commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
+	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
 		return
 	}
 
-	build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
+	_, err = c.taskManager.GetByTaskID(reqTaskID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s", reqTaskID)) {
+		return
+	}
+
+	_, err = c.manager.GetBuildByBuildID(reqBuildID)
 	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
 		return
 	}
 
-	buildStep, err := c.manager.GetBuildStepByBuildAndID(build, reqStepNumber)
-	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepNumber)) {
+	buildStep, err := c.manager.GetBuildStepByBuildStepID(reqStepID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepID)) {
 		return
 	}
 
-	outputStreams, count := c.manager.GetOutputStreamsForBuildStep(buildStep)
+	outputStreams, count := c.manager.GetStreamsByBuildStepID(buildStep.ID)
 
 	respOutputStreams := []string{}
 	for _, outputStream := range outputStreams {
@@ -269,20 +309,48 @@ func (c Controller) getProjectCommitBuildStepStreamsHandler(w http.ResponseWrite
 	})
 }
 
-func (c Controller) getProjectCommitBuildStepStreamHandler(w http.ResponseWriter, r *http.Request) {
-	// project, err := c.projectManager.GetByID(reqProjectID)
-	// handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID))
+func (c Controller) getProjectCommitTaskBuildStepStreamHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["projectID"]
+	reqCommitID := reqVars["commitID"]
+	reqTaskID := reqVars["taskID"]
+	reqBuildID := reqVars["buildID"]
+	reqStepID := reqVars["stepID"]
+	streamID := reqVars["streamID"]
 
-	// commit, err := c.commitManager.GetByProjectAndHash(project, reqCommitID)
-	// handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID))
+	_, err := c.projectManager.GetByID(reqProjectID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find project %s", reqProjectID)) {
+		return
+	}
 
-	// build, err := c.manager.GetBuildByProjectAndCommitAndID(project, commit, reqBuildID)
-	// handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID))
+	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find commit %s", reqCommitID)) {
+		return
+	}
 
-	// buildStep, err := c.manager.GetBuildStepByBuildAndID(build, reqStepNumber)
-	// handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepNumber))
+	_, err = c.taskManager.GetByTaskID(reqTaskID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s", reqTaskID)) {
+		return
+	}
 
-	// outputStream, err := c.manager.Get
+	_, err = c.manager.GetBuildByBuildID(reqBuildID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s", reqBuildID)) {
+		return
+	}
+
+	_, err = c.manager.GetBuildStepByBuildStepID(reqStepID)
+	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find step %s", reqStepID)) {
+		return
+	}
+
+	stream, err := c.manager.GetStreamByID(streamID)
+
+	streamLines, total := c.manager.GetStreamLinesByStreamID(stream.ID)
+
+	c.render.JSON(w, http.StatusOK, StreamLineManyResponse{
+		Total:  total,
+		Result: streamLines,
+	})
 }
 
 func handleResourceError(r *render.Render, w http.ResponseWriter, err error, message string) bool {

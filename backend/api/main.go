@@ -6,13 +6,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/api/domain/user"
+	"github.com/velocity-ci/velocity/backend/api/slave"
 	apiSync "github.com/velocity-ci/velocity/backend/api/sync"
 	"github.com/velocity-ci/velocity/backend/velocity"
 
@@ -67,11 +70,11 @@ func main() {
 
 // VelocityAPI - The Velocity API app
 type VelocityAPI struct {
-	Router *MuxRouter
-	server *http.Server
-	bolt   *bolt.DB
-	// workers        sync.WaitGroup
-	// buildScheduler *slave.BuildScheduler
+	Router         *MuxRouter
+	server         *http.Server
+	bolt           *bolt.DB
+	workers        sync.WaitGroup
+	buildScheduler *slave.BuildScheduler
 }
 
 // App - For starting and stopping gracefully.
@@ -85,8 +88,8 @@ func NewVelocity() App {
 	velocityAPI := &VelocityAPI{}
 	// boltLogger := log.New(os.Stdout, "[bolt]", log.Lshortfile)
 	// velocityAPI.bolt = NewBoltDB(boltLogger, "velocity.db")
-	// var wg sync.WaitGroup
-	// velocityAPI.workers = wg
+	var wg sync.WaitGroup
+	velocityAPI.workers = wg
 
 	validate, translator := newValidator()
 
@@ -122,23 +125,23 @@ func NewVelocity() App {
 	taskController := task.NewController(taskManager, projectManager, commitManager)
 
 	// Build
-	// buildManager := build.NewManager(gorm)
-	// buildResolver := build.NewResolver(taskManager)
-	// buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager)
+	buildManager := build.NewManager(gorm)
+	buildResolver := build.NewResolver(taskManager)
+	buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager, taskManager)
 
 	// // Sync
 	syncController := apiSync.NewController(projectManager, commitManager, taskManager)
 
 	// // Slave
-	// slaveManager := slave.NewManager(buildManager)
-	// slaveController := slave.NewController(slaveManager, buildManager, commitManager)
+	slaveManager := slave.NewManager(buildManager, taskManager, commitManager, projectManager)
+	slaveController := slave.NewController(slaveManager, buildManager, commitManager)
 
 	// Client Websocket
 	// websocketManager := websocket.NewManager()
 	// websocketController := websocket.NewController(websocketManager, commitManager)
 
-	// velocityAPI.buildScheduler = slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.workers)
-	// go velocityAPI.buildScheduler.Run()
+	velocityAPI.buildScheduler = slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.workers)
+	go velocityAPI.buildScheduler.Run()
 
 	velocityAPI.Router = NewMuxRouter([]Routable{
 		authController,
@@ -146,9 +149,9 @@ func NewVelocity() App {
 		projectController,
 		commitController,
 		taskController,
-		// buildController,
+		buildController,
 		syncController,
-		// slaveController,
+		slaveController,
 		// websocketController,
 	}, true)
 
@@ -167,8 +170,8 @@ func NewVelocity() App {
 // Stop - Stops the API
 func (v *VelocityAPI) Stop() {
 	log.Println("Stopping Velocity API")
-	// v.buildScheduler.Stop()
-	// v.workers.Wait()
+	v.buildScheduler.Stop()
+	v.workers.Wait()
 	if err := v.server.Shutdown(nil); err != nil {
 		panic(err)
 	}

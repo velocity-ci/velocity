@@ -2,29 +2,23 @@ package build
 
 import (
 	"io"
-	"log"
 	"strings"
 
 	"github.com/docker/go/canonical/json"
-	"github.com/velocity-ci/velocity/backend/api/domain/commit"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
-	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type Resolver struct {
-	taskManager task.Repository
 	// BuildValidator *BuildValidator
 }
 
 func NewResolver(taskManager *task.Manager) *Resolver {
 	return &Resolver{
-		taskManager: taskManager,
-		// BuildValidator: buildValidator,
+	// BuildValidator: buildValidator,
 	}
 }
 
-func (r *Resolver) BuildFromRequest(b io.ReadCloser, p project.Project, c commit.Commit) (Build, error) {
+func (r *Resolver) BuildFromRequest(b io.ReadCloser, t task.Task) (Build, error) {
 	reqBuild := RequestBuild{}
 
 	err := json.NewDecoder(b).Decode(&reqBuild)
@@ -42,21 +36,14 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, p project.Project, c commit
 	// 	return nil, err
 	// }
 
-	task, err := r.taskManager.GetByProjectAndCommitAndID(p, c, reqBuild.TaskID)
+	setTaskParametersFromRequest(&t, reqBuild.Parameters)
 
-	if err != nil {
-		log.Fatal(err)
-		return Build{}, err
-	}
-
-	setTaskParametersFromRequest(&task.VTask, reqBuild.Parameters)
-
-	build := NewBuild(task, task.VTask.Parameters)
+	build := NewBuild(t.ID, t.Parameters)
 
 	return build, nil
 }
 
-func setTaskParametersFromRequest(t *velocity.Task, reqParams []RequestParameter) {
+func setTaskParametersFromRequest(t *task.Task, reqParams []RequestParameter) {
 	for _, reqParam := range reqParams {
 		if param, ok := t.Parameters[reqParam.Name]; ok {
 			param.Value = reqParam.Value

@@ -1,8 +1,13 @@
 package slave
 
 import (
+	"fmt"
+
 	"github.com/docker/go/canonical/json"
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
+	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/project"
+	"github.com/velocity-ci/velocity/backend/api/domain/task"
 )
 
 type CommandMessage struct {
@@ -10,8 +15,16 @@ type CommandMessage struct {
 	Data    Message `json:"data"`
 }
 
+func (c CommandMessage) String() string {
+	j, _ := json.Marshal(c)
+	return string(j)
+}
+
 type BuildCommand struct {
 	Build      build.Build       `json:"build"`
+	Project    project.Project   `json:"project"`
+	Commit     commit.Commit     `json:"commit"`
+	Task       task.Task         `json:"task"`
 	BuildSteps []build.BuildStep `json:"buildSteps"`
 }
 
@@ -21,18 +34,57 @@ func (c BuildCommand) String() string {
 }
 
 type SlaveBuildLogMessage struct {
-	OutputStreamID string `json:"outputStreamID"`
-	LineNumber     uint64 `json:"lineNumber"`
-	Output         string `json:"output"`
-	Status         string `json:"status"`
+	BuildStepID string `json:"buildStepId"`
+	StreamName  string `json:"streamName"`
+	LineNumber  uint64 `json:"lineNumber"`
+	Status      string `json:"status"`
+	Output      string `json:"output"`
 }
 
-func NewBuildCommand(b build.Build, bS []build.BuildStep) CommandMessage {
+func NewBuildCommand(b build.Build, bS []build.BuildStep, p project.Project, c commit.Commit, task task.Task) CommandMessage {
 	return CommandMessage{
 		Command: "build",
 		Data: BuildCommand{
 			Build:      b,
+			Project:    p,
+			Commit:     c,
+			Task:       task,
 			BuildSteps: bS,
 		},
 	}
+}
+
+func (c *CommandMessage) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	// We'll store the error (if any) so we can return it if necessary
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	// Deserialize Command
+	err = json.Unmarshal(*objMap["command"], &c.Command)
+	if err != nil {
+		return err
+	}
+
+	// Deserialize Data by command
+	var rawData json.RawMessage
+	err = json.Unmarshal(*objMap["data"], &rawData)
+	if err != nil {
+		return err
+	}
+
+	if c.Command == "build" {
+		d := BuildCommand{}
+		err := json.Unmarshal(rawData, &d)
+		if err != nil {
+			return err
+		}
+		c.Data = &d
+	} else {
+		return fmt.Errorf("unsupported type in json.Unmarshal: %s", c.Command)
+	}
+
+	return nil
 }

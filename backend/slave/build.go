@@ -3,19 +3,25 @@ package main
 import (
 	"github.com/gorilla/websocket"
 	"github.com/velocity-ci/velocity/backend/api/slave"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 func runBuild(build *slave.BuildCommand, ws *websocket.Conn) {
 	emitter := NewSlaveWriter(ws)
 
-	for _, buildStep := range build.BuildSteps {
-		buildStep.SetParams(build.Build.Parameters)
-		if buildStep.GetType() == "clone" {
-			// buildStep.Step.(*velocity.Clone).SetBuild(velocity.NewBuild(build.Project, build.CommitHash, build.BuildID))
+	for i, step := range build.Task.Steps {
+		emitter.SetBuildStepID(build.BuildSteps[i].ID)
+
+		step.SetParams(build.Build.Parameters)
+		if step.GetType() == "clone" {
+			step.(*velocity.Clone).SetGitRepositoryAndCommitHash(
+				build.Project.Repository,
+				build.Commit.Hash,
+			)
 		}
 
 		emitter.SetStatus("running")
-		err := buildStep.Execute(emitter, build.Build.Parameters)
+		err := step.Execute(emitter, build.Build.Parameters)
 		if err != nil {
 			break
 		}

@@ -32,6 +32,10 @@ func NewDockerRun() *DockerRun {
 		WorkingDir:     "",
 		MountPoint:     "",
 		IgnoreExitCode: false,
+		BaseStep: BaseStep{
+			Type:          "run",
+			OutputStreams: []string{"run"},
+		},
 	}
 }
 
@@ -40,7 +44,7 @@ func (dR DockerRun) GetDetails() string {
 }
 
 func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error {
-
+	emitter.SetStreamName("run")
 	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description)))
 
 	if dR.MountPoint == "" {

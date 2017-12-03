@@ -4,35 +4,35 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/velocity-ci/velocity/backend/api/domain/commit"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
-	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type Repository interface {
 	SaveBuild(b Build) Build
 	DeleteBuild(b Build)
-	GetBuildByProjectAndCommitAndID(p project.Project, c commit.Commit, id string) (Build, error)
-	// Order timestamp descending
-	GetBuildsByProject(p project.Project, q Query) ([]Build, uint64)
-	// Order timestamp descending
-	GetBuildsByProjectAndCommit(p project.Project, c commit.Commit) ([]Build, uint64)
+	GetBuildByBuildID(id string) (Build, error)
+	GetBuildsByProjectID(projectID string, q Query) ([]Build, uint64)
+	GetBuildsByCommitID(commitID string, q Query) ([]Build, uint64)
+	GetBuildsByTaskID(taskID string, q Query) ([]Build, uint64)
 	GetRunningBuilds() ([]Build, uint64)
 	GetWaitingBuilds() ([]Build, uint64)
 
 	// BuildSteps
 	SaveBuildStep(bS BuildStep) BuildStep
-	GetBuildStepsForBuild(b Build) ([]BuildStep, uint64)
-	GetBuildStepByBuildAndID(b Build, id string) (BuildStep, error)
+	DeleteBuildStep(bS BuildStep)
+	GetBuildStepByBuildStepID(id string) (BuildStep, error)
+	GetBuildStepsByBuildID(buildID string) ([]BuildStep, uint64)
 
 	// OutputStreams
-	SaveOutputStream(oS velocity.OutputStream) velocity.OutputStream
-	GetOutputStreamsForBuildStep(bS BuildStep) ([]velocity.OutputStream, uint64)
-	GetOutputStreamByID(id string) (velocity.OutputStream, error)
+	SaveStream(s BuildStepStream) BuildStepStream
+	GetStreamsByBuildStepID(buildStepID string) ([]BuildStepStream, uint64)
+	GetStreamByID(id string) (BuildStepStream, error)
+
+	GetStreamByBuildStepIDAndStreamName(buildStepID string, name string) (BuildStepStream, error)
 
 	// StreamLines
 	SaveStreamLine(sL StreamLine) StreamLine
+	GetStreamLinesByStreamID(streamID string) ([]StreamLine, uint64)
 }
 
 type Query struct {
@@ -42,64 +42,73 @@ type Query struct {
 
 type Build struct {
 	ID         string                        `json:"id"`
-	Task       task.Task                     `json:"task"`
-	Status     string                        `json:"status"` // waiting, running, success, failed
+	TaskID     string                        `json:"taskId"`
 	Parameters map[string]velocity.Parameter `json:"parameters"`
+
+	Status      string    `json:"status"` // waiting, running, success, failed
+	CreatedAt   time.Time `json:"createdAt"`
+	StartedAt   time.Time `json:"startedAt"`
+	CompletedAt time.Time `json:"completedAt"`
 }
 
-func NewBuild(t task.Task, params map[string]velocity.Parameter) Build {
+func NewBuild(taskID string, params map[string]velocity.Parameter) Build {
 	return Build{
-		ID:         uuid.NewV3(uuid.NewV1(), t.ID).String(),
-		Task:       t,
-		Status:     "waiting",
+		ID:         uuid.NewV3(uuid.NewV1(), taskID).String(),
+		TaskID:     taskID,
 		Parameters: params,
+		Status:     "waiting",
+		CreatedAt:  time.Now(),
 	}
 }
 
 type BuildStep struct {
-	velocity.Step
-	ID            string                  `json:"id"`
-	Number        uint64                  `json:"number"`
-	Build         Build                   `json:"build"`
-	Status        string                  `json:"status"` // waiting, running, success, failed
-	OutputStreams []velocity.OutputStream `json:"outputStreams"`
+	ID      string `json:"id"`
+	BuildID string `json:"build"`
+	Number  uint64 `json:"number"`
+
+	Status      string    `json:"status"` // waiting, running, success, failed
+	StartedAt   time.Time `json:"startedAt"`
+	CompletedAt time.Time `json:"completedAt"`
 }
 
-func NewBuildStep(b Build, n uint64, step velocity.Step) BuildStep {
+type BuildStepStream struct {
+	ID          string `json:"id"`
+	BuildStepID string `json:"buildStepId"`
+	Name        string `json:"name"`
+}
+
+func NewBuildStepStream(buildStepID string, name string) BuildStepStream {
+	return BuildStepStream{
+		ID:          uuid.NewV3(uuid.NewV1(), buildStepID).String(),
+		BuildStepID: buildStepID,
+		Name:        name,
+	}
+}
+
+func NewBuildStep(buildID string, n uint64) BuildStep {
 	bS := BuildStep{
-		ID:     uuid.NewV3(uuid.NewV1(), b.ID).String(),
-		Build:  b,
-		Status: "waiting",
-		Number: n,
-		Step:   step,
+		ID:      uuid.NewV3(uuid.NewV1(), buildID).String(),
+		BuildID: buildID,
+		Status:  "waiting",
+		Number:  n,
 	}
-
-	outputStreams := []velocity.OutputStream{}
-	for _, oS := range step.GetOutputStreams() {
-		outputStreams = append(outputStreams, velocity.NewOutputStream(
-			uuid.NewV3(uuid.NewV1(), bS.ID).String(),
-			oS.Name,
-		))
-	}
-
-	bS.OutputStreams = outputStreams
 
 	return bS
 }
 
 type StreamLine struct {
-	OutputStream velocity.OutputStream
-	LineNumber   uint64
-	Timestamp    time.Time
-	Output       string
+	BuildStepStreamID string
+	LineNumber        uint64
+	Timestamp         time.Time
+	Output            string
 }
 
-func NewStreamLine(oS velocity.OutputStream, lineNumber uint64, timestamp time.Time, output string) StreamLine {
+func NewStreamLine(buildStepStreamID string, lineNumber uint64, timestamp time.Time, output string) StreamLine {
 	return StreamLine{
-		OutputStream: oS,
-		LineNumber:   lineNumber,
-		Timestamp:    timestamp,
-		Output:       output,
+		BuildStepStreamID: buildStepStreamID,
+		LineNumber:        lineNumber,
+		Timestamp:         timestamp,
+		Output:            output,
 	}
 }
 
@@ -110,7 +119,6 @@ type ResponseStreamLine struct {
 }
 
 type RequestBuild struct {
-	TaskID     string             `json:"taskId"`
 	Parameters []RequestParameter `json:"params"`
 }
 
@@ -134,32 +142,43 @@ type OutputStreamManyResponse struct {
 	Result []string `json:"result"`
 }
 
+type StreamLineManyResponse struct {
+	Total  uint64       `json:"total"`
+	Result []StreamLine `json:"result"`
+}
+
 type ResponseBuild struct {
-	ID      string                  `json:"id"`
-	Project project.ResponseProject `json:"project"`
-	Commit  commit.ResponseCommit   `json:"commit"`
-	Task    task.ResponseTask       `json:"task"`
-	Status  string                  `json:"status"`
+	ID     string `json:"id"`
+	TaskID string `json:"task"`
+	Status string `json:"status"`
 }
 
 func NewResponseBuild(b Build) ResponseBuild {
 	return ResponseBuild{
-		ID:      b.ID,
-		Project: project.NewResponseProject(b.Task.Commit.Project),
-		Commit:  commit.NewResponseCommit(b.Task.Commit),
-		Task:    task.NewResponseTask(b.Task),
-		Status:  b.Status,
+		ID:     b.ID,
+		TaskID: b.TaskID,
+		Status: b.Status,
 	}
 }
 
 type ResponseBuildStep struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
+	ID          string    `json:"id"`
+	Type        string    `json:"type"`
+	Description string    `json:"description"`
+	Number      uint64    `json:"number"`
+	Status      string    `json:"status"`
+	StartedAt   time.Time `json:"startedAt"`
+	CompletedAt time.Time `json:"completedAt"`
 }
 
-func NewResponseBuildStep(bS BuildStep) ResponseBuildStep {
+func NewResponseBuildStep(bS BuildStep, s velocity.Step) ResponseBuildStep {
 	return ResponseBuildStep{
-		ID:     bS.ID,
-		Status: bS.Status,
+		ID:          bS.ID,
+		Type:        s.GetType(),
+		Description: s.GetDescription(),
+		Number:      bS.Number,
+		Status:      bS.Status,
+		StartedAt:   bS.StartedAt,
+		CompletedAt: bS.CompletedAt,
 	}
 }

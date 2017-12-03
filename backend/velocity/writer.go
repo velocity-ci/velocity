@@ -3,7 +3,7 @@ package velocity
 // Emitter for forwarding bytes of output onwards
 type Emitter interface {
 	Write(p []byte) (n int, err error)
-	SetOutputStreamID(ID string)
+	SetStreamName(name string)
 	SetStatus(s string)
 }
 
@@ -20,6 +20,6 @@ func (w BlankWriter) Write(p []byte) (n int, err error) {
 
 func (w *BlankWriter) SetStep(num uint64) {}
 
-func (w *BlankWriter) SetOutputStreamID(ID string) {}
+func (w *BlankWriter) SetStreamName(name string) {}
 
 func (w *BlankWriter) SetStatus(s string) {}

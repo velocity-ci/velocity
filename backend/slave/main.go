@@ -106,7 +106,7 @@ func waitForService(client *http.Client, address string) bool {
 
 func monitorCommands(ws *websocket.Conn) {
 	for {
-		command := &CommandMessage{}
+		command := &slave.CommandMessage{}
 		err := ws.ReadJSON(command)
 		if err != nil {
 			log.Println(err)

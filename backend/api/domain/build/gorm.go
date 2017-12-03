@@ -4,82 +4,124 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/docker/go/canonical/json"
 	"github.com/jinzhu/gorm"
-	"github.com/velocity-ci/velocity/backend/api/domain/commit"
-	"github.com/velocity-ci/velocity/backend/api/domain/project"
-	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
-type GORMBuild struct {
-	ID            string        `gorm:"primary_key"`
-	Task          task.GORMTask `gorm:"ForeignKey:TaskReference"`
-	TaskReference string
-	Parameters    []byte // Parameters as JSON
-	Status        string
+type gormBuild struct {
+	ID          string `gorm:"primary_key"`
+	TaskID      string
+	Parameters  []byte // Parameters as JSON
+	Status      string
+	CreatedAt   time.Time
+	StartedAt   time.Time
+	CompletedAt time.Time
 }
 
-type GORMBuildStep struct {
-	ID             string    `gorm:"primary_key"`
-	Build          GORMBuild `gorm:"ForeignKey:BuildReference"`
-	BuildReference string
-	Status         string
+func (gormBuild) TableName() string {
+	return "builds"
 }
 
-type GORMOutputStream struct {
-	ID                 string        `gorm:"primary_key"`
-	BuildStep          GORMBuildStep `gorm:"ForeignKey:BuildStepReference"`
-	BuildStepReference string
-	Name               string
-	Path               string
+type gormBuildStep struct {
+	ID          string `gorm:"primary_key"`
+	BuildID     string
+	Number      uint64
+	Status      string
+	StartedAt   time.Time
+	CompletedAt time.Time
 }
 
-func GORMBuildFromBuild(b Build) GORMBuild {
+func (gormBuildStep) TableName() string {
+	return "build_steps"
+}
+
+type gormBuildStepStream struct {
+	ID          string `gorm:"primary_key"`
+	BuildStepID string
+	Name        string
+	Path        string
+}
+
+func (gormBuildStepStream) TableName() string {
+	return "build_step_streams"
+}
+
+func gormBuildStepStreamFromBuildStepStream(s BuildStepStream) gormBuildStepStream {
+	return gormBuildStepStream{
+		ID:          s.ID,
+		BuildStepID: s.BuildStepID,
+		Name:        s.Name,
+		Path:        s.ID, // TODO: define path in workspace
+	}
+}
+
+func buildStepStreamFromGormBuildStepStream(g gormBuildStepStream) BuildStepStream {
+	return BuildStepStream{
+		ID:          g.ID,
+		BuildStepID: g.BuildStepID,
+		Name:        g.Name,
+	}
+}
+
+func gormBuildFromBuild(b Build) gormBuild {
 	jsonParameters, err := json.Marshal(b.Parameters)
 	if err != nil {
 		log.Printf("could not marshal build parameters from %v\n", b)
 		log.Fatal(err)
 	}
-	return GORMBuild{
-		ID:            b.ID,
-		Task:          task.GORMTaskFromTask(b.Task),
-		TaskReference: b.Task.ID,
-		Parameters:    jsonParameters,
-		Status:        b.Status,
+	return gormBuild{
+		ID:          b.ID,
+		TaskID:      b.TaskID,
+		Parameters:  jsonParameters,
+		Status:      b.Status,
+		CreatedAt:   b.CreatedAt,
+		StartedAt:   b.StartedAt,
+		CompletedAt: b.CompletedAt,
 	}
 }
 
-func BuildFromGORMBuild(gB GORMBuild) Build {
+func buildFromGormBuild(g gormBuild) Build {
 	var parameters map[string]velocity.Parameter
-	err := json.Unmarshal(gB.Parameters, &parameters)
+	err := json.Unmarshal(g.Parameters, &parameters)
 	if err != nil {
-		log.Printf("could not unmarshal build parameters from %v\n", gB)
+		log.Printf("could not unmarshal build parameters from %v\n", g.Parameters)
 		log.Fatal(err)
 	}
 	return Build{
-		ID:         gB.ID,
-		Task:       task.TaskFromGORMTask(gB.Task),
-		Parameters: parameters,
-		Status:     gB.Status,
+		ID:          g.ID,
+		TaskID:      g.TaskID,
+		Parameters:  parameters,
+		Status:      g.Status,
+		CreatedAt:   g.CreatedAt,
+		StartedAt:   g.StartedAt,
+		CompletedAt: g.CompletedAt,
 	}
 }
 
-func BuildStepFromGORMBuildStep(gBS GORMBuildStep) BuildStep {
+func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
 	return BuildStep{
-		ID:     gBS.ID,
-		Status: gBS.Status,
-		Build:  BuildFromGORMBuild(gBS.Build),
+		ID:      g.ID,
+		BuildID: g.BuildID,
+		Number:  g.Number,
+
+		Status:      g.Status,
+		StartedAt:   g.StartedAt,
+		CompletedAt: g.CompletedAt,
 	}
 }
 
-func GORMBuildStepFromBuildStep(bS BuildStep) GORMBuildStep {
-	return GORMBuildStep{
-		ID:             bS.ID,
-		Build:          GORMBuildFromBuild(bS.Build),
-		BuildReference: bS.Build.ID,
-		Status:         bS.Status,
+func gormBuildStepFromBuildStep(bS BuildStep) gormBuildStep {
+	return gormBuildStep{
+		ID:      bS.ID,
+		BuildID: bS.BuildID,
+		Number:  bS.Number,
+
+		Status:      bS.Status,
+		StartedAt:   bS.StartedAt,
+		CompletedAt: bS.CompletedAt,
 	}
 }
 
@@ -90,7 +132,7 @@ type gormRepository struct {
 }
 
 func newGORMRepository(db *gorm.DB) *gormRepository {
-	db.AutoMigrate(GORMBuild{}, GORMBuildStep{})
+	db.AutoMigrate(gormBuild{}, gormBuildStep{}, gormBuildStepStream{})
 	return &gormRepository{
 		logger: log.New(os.Stdout, "[gorm:build]", log.Lshortfile),
 		gorm:   db,
@@ -100,26 +142,28 @@ func newGORMRepository(db *gorm.DB) *gormRepository {
 func (r *gormRepository) SaveBuild(b Build) Build {
 	tx := r.gorm.Begin()
 
-	gormBuild := GORMBuildFromBuild(b)
+	gB := gormBuildFromBuild(b)
 
-	err := tx.Where(&GORMBuild{
+	err := tx.Where(&gormBuild{
 		ID: b.ID,
-	}).First(&GORMBuild{}).Error
+	}).First(&gormBuild{}).Error
 	if err != nil {
-		err = tx.Create(&gormBuild).Error
+		err = tx.Create(&gB).Error
 	} else {
-		tx.Save(&gormBuild)
+		tx.Save(&gB)
 	}
 
 	tx.Commit()
 
-	return b
+	r.logger.Printf("saved build %s", b.ID)
+
+	return buildFromGormBuild(gB)
 
 }
 func (r *gormRepository) DeleteBuild(b Build) {
 	tx := r.gorm.Begin()
 
-	gormBuild := GORMBuildFromBuild(b)
+	gormBuild := gormBuildFromBuild(b)
 	if err := tx.Delete(gormBuild).Error; err != nil {
 		tx.Rollback()
 		log.Fatal(err)
@@ -128,98 +172,68 @@ func (r *gormRepository) DeleteBuild(b Build) {
 	tx.Commit()
 }
 
-func (r *gormRepository) GetBuildByProjectAndCommitAndID(p project.Project, c commit.Commit, id string) (Build, error) {
-	gormBuild := GORMBuild{}
+func (r *gormRepository) GetBuildByBuildID(buildID string) (Build, error) {
+	gB := gormBuild{}
 	if r.gorm.
-		Preload("Task").
-		Preload("Task.Commit").
-		Preload("Task.Commit.Project").
-		Where(&GORMBuild{
-			ID: id,
+		Where(&gormBuild{
+			ID: buildID,
 		}).
-		First(&gormBuild).RecordNotFound() {
-		r.logger.Printf("Could not find Build %s:%s:%s", p.ID, c.Hash, id)
-		return Build{}, fmt.Errorf("could not find Build %s:%s:%s", p.ID, c.Hash, id)
+		First(&gB).RecordNotFound() {
+		r.logger.Printf("could not find build %s", buildID)
+		return Build{}, fmt.Errorf("could not find build %s", buildID)
 	}
-	return BuildFromGORMBuild(gormBuild), nil
+	return buildFromGormBuild(gB), nil
 }
 
-func (r *gormRepository) GetBuildsByProject(p project.Project, q Query) ([]Build, uint64) {
-	gormBuilds := []GORMBuild{}
-	var count uint64
-	r.gorm.
-		Preload("Task").
-		Preload("Task.Commit").
-		Preload("Task.Commit.Project").
-		Joins("JOIN gorm_tasks AS t ON t.id=gorm_builds.task_reference").
-		Joins("JOIN commits AS c ON c.id=t.commit_reference").
-		Joins("JOIN gorm_projects AS p ON p.id=c.project_reference").
-		Where("p.id = ?", p.ID).
-		Find(&gormBuilds).
-		Count(&count)
+func (r *gormRepository) GetBuildsByProjectID(projectID string, q Query) ([]Build, uint64) {
+	query := r.gorm.
+		Joins("JOIN tasks AS t ON t.id=builds.task_id").
+		Joins("JOIN commits AS c ON c.id=t.commit_id").
+		Joins("JOIN projects AS p ON p.id=c.project_id").
+		Where("p.id = ?", projectID)
 
-	builds := []Build{}
-	for _, gBuild := range gormBuilds {
-		builds = append(builds, BuildFromGORMBuild(gBuild))
-	}
-
-	return builds, count
+	return queryBuilds(query)
 }
 
-func (r *gormRepository) GetBuildsByProjectAndCommit(p project.Project, c commit.Commit) ([]Build, uint64) {
-	gormBuilds := []GORMBuild{}
-	var count uint64
-	r.gorm.
-		Preload("Task").
-		Preload("Task.Commit").
-		Preload("Task.Commit.Project").
-		Joins("JOIN gorm_tasks AS t ON t.id=gorm_builds.task_reference").
-		Joins("JOIN commits AS c ON c.id=t.commit_reference").
-		Where("c.id = ?", c.ID).
-		Find(&gormBuilds).
-		Count(&count)
+func (r *gormRepository) GetBuildsByCommitID(commitID string, q Query) ([]Build, uint64) {
+	query := r.gorm.
+		Joins("JOIN tasks AS t ON t.id=builds.task_id").
+		Joins("JOIN commits AS c ON c.id=t.commit_id").
+		Where("c.id = ?", commitID)
 
-	builds := []Build{}
-	for _, gBuild := range gormBuilds {
-		builds = append(builds, BuildFromGORMBuild(gBuild))
-	}
+	return queryBuilds(query)
+}
 
-	return builds, count
+func (r *gormRepository) GetBuildsByTaskID(taskID string, q Query) ([]Build, uint64) {
+	query := r.gorm.
+		Where(gormBuild{TaskID: taskID})
+
+	return queryBuilds(query)
 }
 
 func (r *gormRepository) GetRunningBuilds() ([]Build, uint64) {
-	gormBuilds := []GORMBuild{}
-	var count uint64
-	r.gorm.
-		Preload("Task").
-		Preload("Task.Commit").
-		Preload("Task.Commit.Project").
-		Where(&GORMBuild{Status: "running"}).
-		Find(&gormBuilds).
-		Count(&count)
+	query := r.gorm.
+		Where(&gormBuild{Status: "running"})
 
-	builds := []Build{}
-	for _, gBuild := range gormBuilds {
-		builds = append(builds, BuildFromGORMBuild(gBuild))
-	}
-
-	return builds, count
+	return queryBuilds(query)
 }
 
 func (r *gormRepository) GetWaitingBuilds() ([]Build, uint64) {
-	gormBuilds := []GORMBuild{}
-	var count uint64
-	r.gorm.
-		Preload("Task").
-		Preload("Task.Commit").
-		Preload("Task.Commit.Project").
-		Where(&GORMBuild{Status: "waiting"}).
-		Find(&gormBuilds).
-		Count(&count)
+	query := r.gorm.
+		Where(&gormBuild{Status: "waiting"})
 
+	return queryBuilds(query)
+}
+
+func queryBuilds(preparedDB *gorm.DB) ([]Build, uint64) {
+	gBs := []gormBuild{}
+	var count uint64
+	preparedDB.
+		Find(&gBs).
+		Count(&count)
 	builds := []Build{}
-	for _, gBuild := range gormBuilds {
-		builds = append(builds, BuildFromGORMBuild(gBuild))
+	for _, gB := range gBs {
+		builds = append(builds, buildFromGormBuild(gB))
 	}
 
 	return builds, count
@@ -228,95 +242,141 @@ func (r *gormRepository) GetWaitingBuilds() ([]Build, uint64) {
 func (r *gormRepository) SaveBuildStep(bS BuildStep) BuildStep {
 	tx := r.gorm.Begin()
 
-	gormBuildStep := GORMBuildStepFromBuildStep(bS)
+	gBS := gormBuildStepFromBuildStep(bS)
 
-	err := tx.Where(&GORMBuildStep{
+	err := tx.Where(&gormBuildStep{
 		ID: bS.ID,
-	}).First(&GORMBuildStep{}).Error
+	}).First(&gormBuildStep{}).Error
 	if err != nil {
-		err = tx.Create(&gormBuildStep).Error
+		err = tx.Create(&gBS).Error
 	} else {
-		tx.Save(&gormBuildStep)
+		tx.Save(&gBS)
 	}
 
 	tx.Commit()
 
-	return bS
+	return buildStepFromGormBuildStep(gBS)
 }
 
-func (r *gormRepository) GetBuildStepsForBuild(b Build) ([]BuildStep, uint64) {
-	gormBuildSteps := []GORMBuildStep{}
+func (r *gormRepository) DeleteBuildStep(bS BuildStep) {
+	tx := r.gorm.Begin()
+
+	gBS := gormBuildStepFromBuildStep(bS)
+	if err := tx.Delete(gBS).Error; err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+	}
+
+	tx.Commit()
+	r.logger.Printf("removed buildStep %s", bS.ID)
+}
+
+func (r *gormRepository) GetBuildStepsByBuildID(buildID string) ([]BuildStep, uint64) {
+	gBSs := []gormBuildStep{}
 	var count uint64
 
 	r.gorm.
-		Preload("Build").
-		Preload("Build.Task").
-		Preload("Build.Task.Commit").
-		Preload("Build.Task.Commit.Project").
-		Where(&GORMBuildStep{
-			BuildReference: b.ID,
-		}).Find(&gormBuildSteps).
+		Where(&gormBuildStep{
+			BuildID: buildID,
+		}).Find(&gBSs).
 		Count(&count)
 
 	buildSteps := []BuildStep{}
 
-	for _, gBuildStep := range gormBuildSteps {
-		buildSteps = append(buildSteps, BuildStepFromGORMBuildStep(gBuildStep))
+	for _, gBS := range gBSs {
+		buildSteps = append(buildSteps, buildStepFromGormBuildStep(gBS))
 	}
 
 	return buildSteps, count
 }
 
-func (r *gormRepository) GetBuildStepByBuildAndID(b Build, ID string) (BuildStep, error) {
-	gormBuildStep := GORMBuildStep{}
+func (r *gormRepository) GetBuildStepByBuildStepID(ID string) (BuildStep, error) {
+	gBS := gormBuildStep{}
 	if r.gorm.
-		Preload("Build").
-		Preload("Build.Task").
-		Where(&GORMBuildStep{
-			ID:             ID,
-			BuildReference: b.ID,
+		Where(&gormBuildStep{
+			ID: ID,
 		}).
-		First(&gormBuildStep).RecordNotFound() {
-		r.logger.Printf("Could not find BuildStep %s:%s", b.ID, ID)
-		return BuildStep{}, fmt.Errorf("could not find BuildStep %s:%s", b.ID, ID)
+		First(&gBS).RecordNotFound() {
+		r.logger.Printf("could not find build step %s", ID)
+		return BuildStep{}, fmt.Errorf("could not find build step %s", ID)
 	}
-	return BuildStepFromGORMBuildStep(gormBuildStep), nil
+	return buildStepFromGormBuildStep(gBS), nil
 }
 
-func (r *gormRepository) GetOutputStreamsForBuildStep(bS BuildStep) ([]velocity.OutputStream, uint64) {
-	gormOutputStreams := []GORMOutputStream{}
+func (r *gormRepository) SaveStream(s BuildStepStream) BuildStepStream {
+	tx := r.gorm.Begin()
+
+	gS := gormBuildStepStreamFromBuildStepStream(s)
+
+	err := tx.Where(&gormBuildStepStream{
+		ID: s.ID,
+	}).First(&gormBuildStepStream{}).Error
+	if err != nil {
+		err = tx.Create(&gS).Error
+	} else {
+		tx.Save(&gS)
+	}
+
+	tx.Commit()
+
+	return buildStepStreamFromGormBuildStepStream(gS)
+}
+
+func (r *gormRepository) DeleteStream(s BuildStepStream) {
+	tx := r.gorm.Begin()
+
+	gS := gormBuildStepStreamFromBuildStepStream(s)
+	if err := tx.Delete(gS).Error; err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+	}
+
+	tx.Commit()
+	r.logger.Printf("removed buildStepStream %s", s.ID)
+}
+
+func (r *gormRepository) GetStreamsByBuildStepID(buildStepID string) ([]BuildStepStream, uint64) {
+	gBSSs := []gormBuildStepStream{}
 	var count uint64
 
 	r.gorm.
-		Where(&GORMOutputStream{
-			BuildStep: GORMBuildStep{
-				ID: bS.ID,
-			},
-		}).Find(&gormOutputStreams).
+		Where(&gormBuildStepStream{
+			BuildStepID: buildStepID,
+		}).Find(&gBSSs).
 		Count(&count)
 
-	outputStreams := []velocity.OutputStream{}
+	streams := []BuildStepStream{}
 
-	for _, gOutputStream := range gormOutputStreams {
-		outputStreams = append(outputStreams, velocity.OutputStream{
-			Name: gOutputStream.Name,
-		})
+	for _, gBSS := range gBSSs {
+		streams = append(streams, buildStepStreamFromGormBuildStepStream(gBSS))
 	}
 
-	return outputStreams, count
+	return streams, count
 }
 
-func (r *gormRepository) GetOutputStreamByID(id string) (velocity.OutputStream, error) {
-	gormOutputStream := GORMOutputStream{}
+func (r *gormRepository) GetStreamByID(id string) (BuildStepStream, error) {
+	gBSS := gormBuildStepStream{}
 	if r.gorm.
-		Where(&GORMOutputStream{
+		Where(&gormBuildStepStream{
 			ID: id,
 		}).
-		First(&gormOutputStream).RecordNotFound() {
-		r.logger.Printf("Could not find velocity.OutputStream %s", id)
-		return velocity.OutputStream{}, fmt.Errorf("could not find velocity.OutputStream %s", id)
+		First(&gBSS).RecordNotFound() {
+		r.logger.Printf("could not find build step stream %s", id)
+		return BuildStepStream{}, fmt.Errorf("could not find build step stream %s", id)
 	}
-	return velocity.OutputStream{
-		Name: gormOutputStream.Name,
-	}, nil
+	return buildStepStreamFromGormBuildStepStream(gBSS), nil
+}
+
+func (r *gormRepository) GetStreamByBuildStepIDAndStreamName(buildStepID string, name string) (BuildStepStream, error) {
+	gBSS := gormBuildStepStream{}
+	if r.gorm.
+		Where(&gormBuildStepStream{
+			BuildStepID: buildStepID,
+			Name:        name,
+		}).
+		First(&gBSS).RecordNotFound() {
+		r.logger.Printf("could not find buildStep:stream %s:%s", buildStepID, name)
+		return BuildStepStream{}, fmt.Errorf("could not find buildStep:stream %s:%s", buildStepID, name)
+	}
+	return buildStepStreamFromGormBuildStepStream(gBSS), nil
 }

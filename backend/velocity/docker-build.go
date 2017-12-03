@@ -19,7 +19,7 @@ func NewDockerBuild() *DockerBuild {
 		Tags:       []string{},
 		BaseStep: BaseStep{
 			Type:          "build",
-			OutputStreams: []OutputStream{NewOutputStream("", "build")},
+			OutputStreams: []string{"build"},
 		},
 	}
 }
@@ -29,6 +29,7 @@ func (dB DockerBuild) GetDetails() string {
 }
 
 func (dB *DockerBuild) Execute(emitter Emitter, params map[string]Parameter) error {
+	emitter.SetStreamName("build")
 	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
 
 	err := buildContainer(

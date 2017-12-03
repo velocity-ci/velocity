@@ -38,6 +38,7 @@ func NewController(
 		render:        render.New(),
 		manager:       slaveManager,
 		commitManager: commitManager,
+		buildManager:  buildManager,
 		// websocketManager: websocketManager,
 	}
 }
@@ -136,12 +137,12 @@ func (c *Controller) monitor(s Slave) {
 		if message.Type == "log" {
 			// TODO: Create build-step and outputstream IDs beforehand. Find way to communicate them to Slave.
 			lM := message.Data.(*SlaveBuildLogMessage)
-			outputStream, err := c.buildManager.GetOutputStreamByID(lM.OutputStreamID) // TODO: Cache in memory
+			outputStream, err := c.buildManager.GetStreamByBuildStepIDAndStreamName(lM.BuildStepID, lM.StreamName) // TODO: Cache in memory
 			if err != nil {
-				log.Fatalf("could not find output stream %s", lM.OutputStreamID)
+				log.Fatalf("could not find buildStep:stream %s:%s", lM.BuildStepID, lM.StreamName)
 			}
 
-			streamLine := build.NewStreamLine(outputStream, lM.LineNumber, time.Now(), lM.Output)
+			streamLine := build.NewStreamLine(outputStream.ID, lM.LineNumber, time.Now(), lM.Output)
 			c.buildManager.SaveStreamLine(streamLine) // TODO: Future cache in memory and auto-flush
 
 			// OLD ---

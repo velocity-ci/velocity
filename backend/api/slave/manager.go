@@ -5,20 +5,35 @@ import (
 	"log"
 	"os"
 
+	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/project"
+
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
+	"github.com/velocity-ci/velocity/backend/api/domain/task"
 )
 
 type Manager struct {
-	logger       *log.Logger
-	slaves       map[string]Slave
-	buildManager build.Repository
+	logger         *log.Logger
+	slaves         map[string]Slave
+	buildManager   build.Repository
+	taskManager    task.Repository
+	commitManager  commit.Repository
+	projectManager project.Repository
 }
 
-func NewManager(buildManager build.Repository) *Manager {
+func NewManager(
+	buildManager build.Repository,
+	taskManager task.Repository,
+	commitManager commit.Repository,
+	projectManager project.Repository,
+) *Manager {
 	return &Manager{
-		logger:       log.New(os.Stdout, "[manager:slave]", log.Lshortfile),
-		slaves:       map[string]Slave{},
-		buildManager: buildManager,
+		logger:         log.New(os.Stdout, "[manager:slave]", log.Lshortfile),
+		slaves:         map[string]Slave{},
+		buildManager:   buildManager,
+		taskManager:    taskManager,
+		commitManager:  commitManager,
+		projectManager: projectManager,
 	}
 }
 
@@ -65,23 +80,47 @@ func (m *Manager) StartBuild(slave Slave, b build.Build) {
 	m.buildManager.SaveBuild(b)
 	m.logger.Printf("set build %s as running", b.ID)
 
-	buildSteps, count := m.buildManager.GetBuildStepsForBuild(b)
-	if count < 1 {
-		m.logger.Printf("creating build steps for %s", b.ID)
-		for i, s := range b.Task.VTask.Steps {
-			bS := build.NewBuildStep(
-				b,
-				uint64(i),
-				s,
-			)
-			m.buildManager.SaveBuildStep(bS)
-			for _, oS := range bS.Step.GetOutputStreams() {
-				m.buildManager.SaveOutputStream(oS)
-			}
-			buildSteps = append(buildSteps, bS)
-		}
+	t, err := m.taskManager.GetByTaskID(b.TaskID)
+	if err != nil {
+		m.logger.Fatalf("task %s not found for build %s?!?!", b.TaskID, b.ID)
 	}
-	slave.Command = NewBuildCommand(b, buildSteps)
+
+	c, err := m.commitManager.GetCommitByCommitID(t.CommitID)
+	if err != nil {
+		m.logger.Fatalf("commit %s not found for task %s?!?!", t.CommitID, t.ID)
+	}
+
+	p, err := m.projectManager.GetByID(c.ProjectID)
+	if err != nil {
+		m.logger.Fatalf("project %s not found for commit %s?!?!", c.ProjectID, c.ID)
+	}
+
+	buildSteps, count := m.buildManager.GetBuildStepsByBuildID(b.ID)
+	if count > 1 {
+		// Remove existing buildSteps
+		for _, bS := range buildSteps {
+			m.buildManager.DeleteBuildStep(bS)
+		}
+		buildSteps = []build.BuildStep{}
+	}
+	for i, s := range t.Steps {
+		bS := build.NewBuildStep(
+			b.ID,
+			uint64(i),
+		)
+		m.buildManager.SaveBuildStep(bS)
+		buildSteps = append(buildSteps, bS)
+
+		for _, streamName := range s.GetOutputStreams() {
+			stream := build.NewBuildStepStream(bS.ID, streamName)
+			m.buildManager.SaveStream(stream)
+		}
+		m.logger.Printf("created streams for %s", bS.ID)
+	}
+	m.logger.Printf("created build steps for %s", b.ID)
+	slave.Command = NewBuildCommand(b, buildSteps, p, c, t)
 
 	slave.ws.WriteJSON(slave.Command)
+
+	m.logger.Printf("Sent to slave %s: %v", slave.ID, slave.Command)
 }

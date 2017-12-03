@@ -9,13 +9,13 @@ type Step interface {
 	GetDetails() string
 	Validate(map[string]Parameter) error
 	SetParams(map[string]Parameter) error
-	GetOutputStreams() []OutputStream
+	GetOutputStreams() []string
 }
 
 type BaseStep struct {
-	Type          string         `json:"type" yaml:"type"`
-	Description   string         `json:"description" yaml:"description"`
-	OutputStreams []OutputStream `json:"outputStreams" yaml:"-"`
+	Type          string   `json:"type" yaml:"type"`
+	Description   string   `json:"description" yaml:"description"`
+	OutputStreams []string `json:"outputStreams" yaml:"-"`
 }
 
 func (bS *BaseStep) GetType() string {
@@ -26,20 +26,8 @@ func (bS *BaseStep) GetDescription() string {
 	return bS.Description
 }
 
-func (bS *BaseStep) GetOutputStreams() []OutputStream {
+func (bS *BaseStep) GetOutputStreams() []string {
 	return bS.OutputStreams
-}
-
-type OutputStream struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-func NewOutputStream(id string, name string) OutputStream {
-	return OutputStream{
-		ID:   id,
-		Name: name,
-	}
 }
 
 type StreamLine struct {

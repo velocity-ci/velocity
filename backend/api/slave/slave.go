@@ -65,7 +65,7 @@ func (c *SlaveMessage) UnmarshalJSON(b []byte) error {
 	}
 
 	if c.Type == "log" {
-		d := SlaveStreamLine{}
+		d := SlaveBuildLogMessage{}
 		err := json.Unmarshal(rawData, &d)
 		if err != nil {
 			return err
