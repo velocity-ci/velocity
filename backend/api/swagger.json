@@ -1,0 +1,1207 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "Velocity API"
+  },
+  "basePath": "/v1",
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/auth": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Logs a user into the system, returning a transient token",
+        "operationId": "authUser",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Login"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully authenticated",
+            "schema": {
+              "$ref": "#/definitions/Token"
+            }
+          },
+          "400": {
+            "description": "Malformed request"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Returns all of the projects",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "All of the projects",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "format": "long"
+                },
+                "result": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/ProjectResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Creates a new project",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ProjectRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully created",
+            "schema": {
+              "$ref": "#/definitions/ProjectResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request. TODO: present validation errors"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Returns a project given by its ID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project to return",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project corresponding to the given ID",
+            "schema": {
+              "$ref": "#/definitions/ProjectResponse"
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Deletes a project given by its ID",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project to return",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Succesfully deleted the project"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/sync": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Synchronises a project's commits and tasks given its ID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully started synchronising the project",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "example-project"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "Example Project"
+                },
+                "repository": {
+                  "type": "string",
+                  "example": "https://example-project.git"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "synchronising": {
+                  "type": "boolean",
+                  "example": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Project already synchronising"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits": {
+      "get": {
+        "tags": [
+          "commits"
+        ],
+        "summary": "Returns all of the commits for the given project ID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All of the commits for the given project ID",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "format": "long"
+                },
+                "result": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/CommitResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/commits/{commitUUID}": {
+      "get": {
+        "tags": [
+          "commits"
+        ],
+        "summary": "Returns a commit given its UUID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "commitUUID",
+            "in": "path",
+            "description": "UUID of commit",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The commit given its UUID",
+            "schema": {
+              "$ref": "#/definitions/CommitResponse"
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}": {
+      "get": {
+        "tags": [
+          "commits"
+        ],
+        "summary": "Returns a commit given its project ID and hash",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The commit given its project ID and hash",
+            "schema": {
+              "$ref": "#/definitions/CommitResponse"
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/branches": {
+      "get": {
+        "tags": [
+          "branches"
+        ],
+        "summary": "Returns all of the branches for the given project ID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All of the branches for the given project ID",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "format": "long"
+                },
+                "result": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/BranchResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/commits/{commitUUID}/tasks": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Returns all of the tasks for the given commit UUID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "commitUUID",
+            "in": "path",
+            "description": "UUID of commit",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tasks for the given commit"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Returns all of the tasks for the given commit hash and project ID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/tasks/{taskUUID}": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Returns a task given its UUID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "taskUUID",
+            "in": "path",
+            "description": "UUID of task",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tasks for the given UUID"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Returns a task given its commit hash, project ID and name",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds": {
+      "post": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Creates a new build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BuildRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Returns builds for a task",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/tasks/{taskUUID}/builds": {
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Returns builds for a task",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "taskUUID",
+            "in": "path",
+            "description": "UUID of task",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}": {
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Returns build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "buildNumber",
+            "in": "path",
+            "description": "number of build",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/builds/{buildUUID}": {
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Returns build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "buildUUID",
+            "in": "path",
+            "description": "UUID of build",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps": {
+      "get": {
+        "tags": [
+          "build steps"
+        ],
+        "summary": "Returns steps for build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "buildNumber",
+            "in": "path",
+            "description": "number of build",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/builds/{buildUUID}/steps": {
+      "get": {
+        "tags": [
+          "build steps"
+        ],
+        "summary": "Returns steps for build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "buildUUID",
+            "in": "path",
+            "description": "UUID of build",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps/{stepNumber}": {
+      "get": {
+        "tags": [
+          "build steps"
+        ],
+        "summary": "Returns steps for build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "buildNumber",
+            "in": "path",
+            "description": "number of build",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "name": "stepNumber",
+            "in": "path",
+            "description": "number of step",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/steps/{stepUUID}": {
+      "get": {
+        "tags": [
+          "build steps"
+        ],
+        "summary": "Returns steps for build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "stepUUID",
+            "in": "path",
+            "description": "UUID of build step",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps/{stepNumber}/streams": {
+      "get": {
+        "tags": [
+          "build step streams"
+        ],
+        "summary": "Returns streams for build step",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "buildNumber",
+            "in": "path",
+            "description": "number of build",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "name": "stepNumber",
+            "in": "path",
+            "description": "number of step",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/steps/{stepUUID}/streams": {
+      "get": {
+        "tags": [
+          "build step streams"
+        ],
+        "summary": "Returns streams for build step",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "stepUUID",
+            "in": "path",
+            "description": "UUID of build step",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps/{stepNumber}/streams/{streamName}": {
+      "get": {
+        "tags": [
+          "build step streams"
+        ],
+        "summary": "Returns stream for build step",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "commitHash",
+            "in": "path",
+            "description": "SHA1 of commit",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "taskName",
+            "in": "path",
+            "description": "Name of task",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "buildNumber",
+            "in": "path",
+            "description": "number of build",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "name": "stepNumber",
+            "in": "path",
+            "description": "number of step",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "name": "streamName",
+            "in": "path",
+            "description": "name of stream",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/streams/{streamUUID}": {
+      "get": {
+        "tags": [
+          "build step streams"
+        ],
+        "summary": "Returns stream for build step",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "streamUUID",
+            "in": "path",
+            "description": "UUID of build step stream",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "petstore_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "http://petstore.swagger.io/oauth/dialog",
+      "flow": "implicit",
+      "scopes": {
+        "write:pets": "modify pets in your account",
+        "read:pets": "read your pets"
+      }
+    },
+    "api_key": {
+      "type": "apiKey",
+      "name": "api_key",
+      "in": "header"
+    }
+  },
+  "definitions": {
+    "Login": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "example": "admin"
+        },
+        "password": {
+          "type": "string",
+          "format": "password",
+          "example": "foobar1234"
+        }
+      }
+    },
+    "Token": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "example": "admin"
+        },
+        "authToken": {
+          "type": "string",
+          "example": "xxxxx.yyyyy.zzzzz"
+        },
+        "expires": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ProjectResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": "example-project"
+        },
+        "name": {
+          "type": "string",
+          "example": "Example Project"
+        },
+        "repository": {
+          "type": "string",
+          "example": "https://example-project.git"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "synchronising": {
+          "type": "boolean",
+          "example": false
+        }
+      }
+    },
+    "ProjectRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Example Project"
+        },
+        "repository": {
+          "type": "string",
+          "example": "https://example-project.git"
+        },
+        "key": {
+          "type": "string",
+          "example": ""
+        }
+      }
+    },
+    "CommitResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": ""
+        },
+        "hash": {
+          "type": "string",
+          "example": ""
+        },
+        "author": {
+          "type": "string",
+          "example": "bob@example.org"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "message": {
+          "type": "string",
+          "example": "I made a git commit!"
+        },
+        "branches": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "example": "master"
+          }
+        }
+      }
+    },
+    "BranchResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "master"
+        }
+      }
+    },
+    "BuildRequest": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "example": "environment"
+              },
+              "value": {
+                "type": "string",
+                "example": "beta"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Find out more about Swagger",
+    "url": "http://swagger.io"
+  }
+}
