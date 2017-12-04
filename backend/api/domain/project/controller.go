@@ -108,7 +108,7 @@ func (c Controller) postProjectsHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	p = c.manager.Save(p)
+	p = c.manager.Create(p)
 
 	c.render.JSON(w, http.StatusCreated, NewResponseProject(p))
 }

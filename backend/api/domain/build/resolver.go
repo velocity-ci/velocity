@@ -2,19 +2,23 @@ package build
 
 import (
 	"io"
+	"log"
 	"strings"
 
 	"github.com/docker/go/canonical/json"
+	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
 )
 
 type Resolver struct {
 	// BuildValidator *BuildValidator
+	commitManager commit.Repository
 }
 
-func NewResolver(taskManager *task.Manager) *Resolver {
+func NewResolver(commitManager *commit.Manager) *Resolver {
 	return &Resolver{
-	// BuildValidator: buildValidator,
+		commitManager: commitManager,
+		// BuildValidator: buildValidator,
 	}
 }
 
@@ -38,7 +42,12 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, t task.Task) (Build, error)
 
 	setTaskParametersFromRequest(&t, reqBuild.Parameters)
 
-	build := NewBuild(t.ID, t.Parameters)
+	cm, err := r.commitManager.GetCommitByCommitID(t.CommitID)
+	if err != nil {
+		log.Printf("could not find commit %s?!?!", t.CommitID)
+	}
+
+	build := NewBuild(cm.ProjectID, t.ID, t.Parameters)
 
 	return build, nil
 }

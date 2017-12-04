@@ -1,13 +1,17 @@
 package project
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/backend/api/websocket"
 	"github.com/velocity-ci/velocity/backend/velocity"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
 type Manager struct {
-	gormRepository *gormRepository
+	gormRepository   *gormRepository
+	websocketManager *websocket.Manager
 
 	Sync func(r *velocity.GitRepository, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error)
 }
@@ -15,20 +19,41 @@ type Manager struct {
 func NewManager(
 	db *gorm.DB,
 	syncFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error),
+	websocketManager *websocket.Manager,
 ) *Manager {
 	return &Manager{
-		gormRepository: newGORMRepository(db),
-		Sync:           syncFunc,
+		gormRepository:   newGORMRepository(db),
+		Sync:             syncFunc,
+		websocketManager: websocketManager,
 	}
 }
 
-func (m *Manager) Save(p Project) Project {
+func (m *Manager) Create(p Project) Project {
 	m.gormRepository.Save(p)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   "projects",
+		Event:   websocket.VNewProject,
+		Payload: NewResponseProject(p),
+	})
+	return p
+}
+
+func (m *Manager) Update(p Project) Project {
+	m.gormRepository.Save(p)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   fmt.Sprintf("project:%s", p.ID),
+		Event:   websocket.VUpdateProject,
+		Payload: NewResponseProject(p),
+	})
 	return p
 }
 
 func (m *Manager) Delete(p Project) {
 	m.gormRepository.Delete(p)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic: fmt.Sprintf("project:%s", p.ID),
+		Event: websocket.VDeleteProject,
+	})
 }
 
 func (m *Manager) GetByID(ID string) (Project, error) {

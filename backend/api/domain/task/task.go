@@ -6,7 +6,8 @@ import (
 )
 
 type Repository interface {
-	Save(t Task) Task
+	Create(t Task) Task
+	Update(t Task) Task
 	Delete(t Task)
 	GetByTaskID(taskID string) (Task, error)
 	GetByCommitIDAndTaskName(commitID string, name string) (Task, error)

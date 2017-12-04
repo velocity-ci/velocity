@@ -8,6 +8,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
+	"github.com/velocity-ci/velocity/backend/api/websocket"
 
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
@@ -17,11 +18,12 @@ import (
 
 // Controller - Handles Syncing.
 type Controller struct {
-	logger         *log.Logger
-	render         *render.Render
-	projectManager project.Repository
-	commitManager  commit.Repository
-	taskManager    task.Repository
+	logger           *log.Logger
+	render           *render.Render
+	projectManager   project.Repository
+	commitManager    commit.Repository
+	taskManager      task.Repository
+	websocketManager *websocket.Manager
 }
 
 // NewController - Returns a new Controller for Syncing.
@@ -29,13 +31,15 @@ func NewController(
 	projectManager *project.Manager,
 	commitManager *commit.Manager,
 	taskManager *task.Manager,
+	websocketManager *websocket.Manager,
 ) *Controller {
 	return &Controller{
-		logger:         log.New(os.Stdout, "[controller:sync]", log.Lshortfile),
-		render:         render.New(),
-		projectManager: projectManager,
-		commitManager:  commitManager,
-		taskManager:    taskManager,
+		logger:           log.New(os.Stdout, "[controller:sync]", log.Lshortfile),
+		render:           render.New(),
+		projectManager:   projectManager,
+		commitManager:    commitManager,
+		taskManager:      taskManager,
+		websocketManager: websocketManager,
 	}
 }
 
@@ -69,9 +73,9 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Synchronising = true
-	c.projectManager.Save(p)
+	c.projectManager.Update(p)
 
-	go sync(p, c.projectManager, c.commitManager, c.taskManager)
+	go sync(p, c.projectManager, c.commitManager, c.taskManager, c.websocketManager)
 
 	c.render.JSON(w, http.StatusCreated, project.NewResponseProject(p))
 }

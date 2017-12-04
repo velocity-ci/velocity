@@ -10,7 +10,8 @@ import (
 
 // Repository - Implementing repositories will guarantee consistency between persistence objects and virtual objects.
 type Repository interface {
-	Save(p Project) Project
+	Create(p Project) Project
+	Update(p Project) Project
 	Delete(p Project)
 	GetByID(ID string) (Project, error)
 	GetAll(q Query) ([]Project, uint64)

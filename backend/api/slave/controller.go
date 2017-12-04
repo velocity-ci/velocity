@@ -130,7 +130,7 @@ func (c *Controller) monitor(s Slave) {
 			if s.Command.Command == "build" {
 				buildCommand := s.Command.Data.(BuildCommand)
 				buildCommand.Build.Status = "waiting"
-				c.buildManager.SaveBuild(buildCommand.Build)
+				c.buildManager.UpdateBuild(buildCommand.Build)
 			}
 			c.manager.Save(s)
 			return
@@ -154,121 +154,38 @@ func (c *Controller) monitor(s Slave) {
 			}
 
 			streamLine := build.NewStreamLine(outputStream.ID, lM.LineNumber, time.Now(), lM.Output)
-			c.buildManager.SaveStreamLine(streamLine)
-			c.websocketManager.EmitAll(&apiWebsocket.PhoenixMessage{
-				Topic:   fmt.Sprintf("stream:%s", streamLine.BuildStepStreamID),
-				Event:   "new",
-				Payload: streamLine,
-			})
-			updateBuildStep := false
-			updateBuild := false
+			c.buildManager.CreateStreamLine(streamLine)
+
 			if buildStep.Status == velocity.StateWaiting {
 				buildStep.Status = lM.Status
 				buildStep.StartedAt = time.Now()
-				updateBuildStep = true
+				c.buildManager.UpdateBuildStep(buildStep)
 			}
 			if b.Status == velocity.StateWaiting || b.StartedAt.IsZero() {
 				b.Status = lM.Status
 				b.StartedAt = time.Now()
-				updateBuild = true
+				c.buildManager.UpdateBuild(b)
 			}
 
 			if lM.Status == velocity.StateSuccess {
 				buildStep.Status = velocity.StateSuccess
 				buildStep.CompletedAt = time.Now()
-				updateBuildStep = true
+				c.buildManager.UpdateBuildStep(buildStep)
 				_, total := c.buildManager.GetBuildStepsByBuildID(b.ID) // TODO: cache?
 				if buildStep.Number == total-1 {
 					b.Status = velocity.StateSuccess
 					b.CompletedAt = time.Now()
-					updateBuild = true
+					c.buildManager.UpdateBuild(b)
 				}
 			} else if lM.Status == velocity.StateFailed {
 				buildStep.Status = velocity.StateFailed
 				buildStep.CompletedAt = time.Now()
-				updateBuildStep = true
+				c.buildManager.UpdateBuildStep(buildStep)
 				b.Status = velocity.StateFailed
 				b.CompletedAt = time.Now()
-				updateBuild = true
+				c.buildManager.UpdateBuild(b)
 			}
 
-			if updateBuildStep {
-				c.buildManager.SaveBuildStep(buildStep)
-				c.websocketManager.EmitAll(&apiWebsocket.PhoenixMessage{
-					Topic:   fmt.Sprintf("step:%s", buildStep.ID),
-					Event:   "modify",
-					Payload: buildStep,
-				})
-
-			}
-
-			if updateBuild {
-				c.buildManager.SaveBuild(b)
-				c.websocketManager.EmitAll(&apiWebsocket.PhoenixMessage{
-					Topic:   fmt.Sprintf("build:%s", b.ID),
-					Event:   "modify",
-					Payload: b,
-				})
-			}
-
-			// topics
-			// stream: uuid
-			// step: uuid
-			// build: uuid
-
-			// OLD ---
-			// log.Println(lM.Step, lM.Status, lM.Output)
-			// build := c.commitManager.GetBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
-			// timestamp := time.Now()
-
-			// if lM.Step > 0 && build.Task.Steps[lM.Step-1].GetType() == "compose" {
-			// } else {
-			// 	if build.StepLogs == nil {
-			// 		build.StepLogs = []commit.StepLog{commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status}}
-			// 	} else if len(build.StepLogs) <= int(lM.Step) {
-			// 		build.StepLogs = append(build.StepLogs, commit.StepLog{Logs: map[string][]commit.Log{}, Status: lM.Status})
-			// 	}
-			// 	build.StepLogs[lM.Step].Status = lM.Status
-			// 	build.StepLogs[lM.Step].Logs["container"] = append(build.StepLogs[lM.Step].Logs["container"], commit.Log{
-			// 		Timestamp: timestamp,
-			// 		Output:    lM.Output,
-			// 	})
-			// }
-
-			// if lM.Status == "failed" {
-			// 	build.Status = "failed"
-			// 	c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
-			// 	c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
-			// 	s.State = "ready"
-			// 	s.Command = nil
-			// 	c.manager.Save(s)
-			// } else if lM.Status == "success" {
-			// 	if int(lM.Step) == len(build.Task.Steps)-1 {
-			// 		// successfully finished build
-			// 		build.Status = "success"
-			// 		c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
-			// 		c.commitManager.RemoveQueuedBuild(lM.ProjectID, lM.CommitHash, lM.BuildID)
-			// 		s.State = "ready"
-			// 		s.Command = nil
-			// 		c.manager.Save(s)
-			// 	}
-			// }
-			// c.commitManager.SaveBuild(build, lM.ProjectID, lM.CommitHash)
-
-			// // Emit to websocket clients
-			// c.websocketManager.EmitAll(
-			// 	&apiWebsocket.EmitMessage{
-			// 		Subscription: fmt.Sprintf("project/%s/commits/%s/builds/%d", lM.ProjectID, lM.CommitHash, lM.BuildID),
-			// 		Data: apiWebsocket.BuildMessage{
-			// 			Step:   lM.Step,
-			// 			Status: lM.Status,
-			// 			Log: apiWebsocket.LogMessage{
-			// 				Timestamp: timestamp,
-			// 				Output:    lM.Output,
-			// 			},
-			// 		},
-			// 	},
-			// )
 		}
 	}
 }

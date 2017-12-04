@@ -10,15 +10,17 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
+	"github.com/velocity-ci/velocity/backend/api/websocket"
 )
 
 type Manager struct {
-	logger         *log.Logger
-	slaves         map[string]Slave
-	buildManager   build.Repository
-	taskManager    task.Repository
-	commitManager  commit.Repository
-	projectManager project.Repository
+	logger           *log.Logger
+	slaves           map[string]Slave
+	buildManager     build.Repository
+	taskManager      task.Repository
+	commitManager    commit.Repository
+	projectManager   project.Repository
+	websocketManager *websocket.Manager
 }
 
 func NewManager(
@@ -26,14 +28,16 @@ func NewManager(
 	taskManager task.Repository,
 	commitManager commit.Repository,
 	projectManager project.Repository,
+	websocketManager *websocket.Manager,
 ) *Manager {
 	return &Manager{
-		logger:         log.New(os.Stdout, "[manager:slave]", log.Lshortfile),
-		slaves:         map[string]Slave{},
-		buildManager:   buildManager,
-		taskManager:    taskManager,
-		commitManager:  commitManager,
-		projectManager: projectManager,
+		logger:           log.New(os.Stdout, "[manager:slave]", log.Lshortfile),
+		slaves:           map[string]Slave{},
+		buildManager:     buildManager,
+		taskManager:      taskManager,
+		commitManager:    commitManager,
+		projectManager:   projectManager,
+		websocketManager: websocketManager,
 	}
 }
 
@@ -58,9 +62,19 @@ func (m *Manager) GetSlaves() map[string]Slave {
 }
 
 func (m *Manager) Save(s Slave) {
-	m.logger.Printf("saving slave: %s", s.ID)
+	var ev string
+	if m.Exists(s.ID) {
+		ev = websocket.VUpdateSlave
+	} else {
+		ev = websocket.VNewSlave
+	}
 	m.slaves[s.ID] = s
 	m.logger.Printf("saved slave: %s\n", s.ID)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   "slaves",
+		Event:   ev,
+		Payload: s,
+	})
 }
 
 func (m *Manager) GetSlaveByID(slaveID string) (Slave, error) {
@@ -77,7 +91,7 @@ func (m *Manager) StartBuild(slave Slave, b build.Build) {
 	m.logger.Printf("set slave %s as busy", slave.ID)
 
 	b.Status = "running"
-	m.buildManager.SaveBuild(b)
+	m.buildManager.UpdateBuild(b)
 	m.logger.Printf("set build %s as running", b.ID)
 
 	t, err := m.taskManager.GetByTaskID(b.TaskID)
@@ -108,7 +122,7 @@ func (m *Manager) StartBuild(slave Slave, b build.Build) {
 			b.ID,
 			uint64(i),
 		)
-		m.buildManager.SaveBuildStep(bS)
+		m.buildManager.CreateBuildStep(bS)
 		buildSteps = append(buildSteps, bS)
 
 		for _, streamName := range s.GetOutputStreams() {

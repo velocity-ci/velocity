@@ -12,6 +12,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
+	"github.com/velocity-ci/velocity/backend/api/websocket"
 	"github.com/velocity-ci/velocity/backend/velocity"
 	git "gopkg.in/src-d/go-git.v4"
 )
@@ -21,6 +22,7 @@ func sync(
 	projectManager project.Repository,
 	commitManager commit.Repository,
 	taskManager task.Repository,
+	websocketManager *websocket.Manager,
 ) {
 	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankWriter())
 	if err != nil {
@@ -63,7 +65,7 @@ func sync(
 			b, err := commitManager.GetBranchByProjectIDAndName(p.ID, branchName)
 			if err != nil {
 				b = commit.NewBranch(p.ID, branchName)
-				commitManager.SaveBranch(b)
+				commitManager.CreateBranch(b)
 			}
 
 			c, err := commitManager.GetCommitByProjectIDAndCommitHash(p.ID, gitCommit.Hash.String())
@@ -76,7 +78,7 @@ func sync(
 					gitCommit.Committer.When,
 					[]commit.Branch{b},
 				)
-				commitManager.SaveCommit(c)
+				commitManager.CreateCommit(c)
 
 				err = w.Checkout(&git.CheckoutOptions{
 					Hash: gitCommit.Hash,
@@ -111,7 +113,7 @@ func sync(
 							taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
 							t := velocity.ResolveTaskFromYAML(string(taskYml), gitParams)
 							apiTask := task.NewTask(c.ID, t)
-							taskManager.Save(apiTask)
+							taskManager.Create(apiTask)
 						}
 						return nil
 					})
@@ -123,5 +125,10 @@ func sync(
 
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
-	projectManager.Save(p)
+	projectManager.Update(p)
+	websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   fmt.Sprintf("project:%s", p.ID),
+		Event:   websocket.VUpdateProject,
+		Payload: project.NewResponseProject(p),
+	})
 }

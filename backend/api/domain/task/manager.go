@@ -1,22 +1,32 @@
 package task
 
 import (
+	"github.com/velocity-ci/velocity/backend/api/websocket"
+
 	"github.com/jinzhu/gorm"
 )
 
 type Manager struct {
-	gormRepository *gormRepository
+	gormRepository   *gormRepository
+	websocketManager *websocket.Manager
 }
 
 func NewManager(
 	db *gorm.DB,
+	websocketManager *websocket.Manager,
 ) *Manager {
 	return &Manager{
-		gormRepository: newGORMRepository(db),
+		gormRepository:   newGORMRepository(db),
+		websocketManager: websocketManager,
 	}
 }
 
-func (m *Manager) Save(t Task) Task {
+func (m *Manager) Create(t Task) Task {
+	m.gormRepository.Save(t)
+	return t
+}
+
+func (m *Manager) Update(t Task) Task {
 	m.gormRepository.Save(t)
 	return t
 }

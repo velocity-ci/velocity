@@ -98,6 +98,10 @@ func NewVelocity() App {
 	// Persistence
 	gorm := NewGORMDB()
 
+	// Client Websocket
+	websocketManager := websocket.NewManager()
+	websocketController := websocket.NewController(websocketManager)
+
 	// User
 	userManager := user.NewManager(gorm)
 
@@ -113,35 +117,31 @@ func NewVelocity() App {
 	// knownHostController := knownhost.NewController(knownHostManager, knownHostResolver)
 
 	// Project
-	projectManager := project.NewManager(gorm, velocity.GitClone)
+	projectManager := project.NewManager(gorm, velocity.GitClone, websocketManager)
 	projectValidator := project.NewValidator(validate, translator, projectManager)
 	projectResolver := project.NewResolver(projectValidator)
 	projectController := project.NewController(projectManager, projectResolver)
 
 	// Commit
-	commitManager := commit.NewManager(gorm)
+	commitManager := commit.NewManager(gorm, websocketManager)
 	commitController := commit.NewController(commitManager, projectManager)
 
 	// Task
-	taskManager := task.NewManager(gorm)
+	taskManager := task.NewManager(gorm, websocketManager)
 	taskController := task.NewController(taskManager, projectManager, commitManager)
 
 	// Build
 	fileManager := build.NewFileManager(&velocityAPI.wg)
 	velocityAPI.workers = append(velocityAPI.workers, fileManager)
-	buildManager := build.NewManager(gorm, fileManager)
-	buildResolver := build.NewResolver(taskManager)
+	buildManager := build.NewManager(gorm, fileManager, websocketManager)
+	buildResolver := build.NewResolver(commitManager)
 	buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager, taskManager)
 
 	// // Sync
-	syncController := apiSync.NewController(projectManager, commitManager, taskManager)
-
-	// Client Websocket
-	websocketManager := websocket.NewManager()
-	websocketController := websocket.NewController(websocketManager)
+	syncController := apiSync.NewController(projectManager, commitManager, taskManager, websocketManager)
 
 	// Slave
-	slaveManager := slave.NewManager(buildManager, taskManager, commitManager, projectManager)
+	slaveManager := slave.NewManager(buildManager, taskManager, commitManager, projectManager, websocketManager)
 	slaveController := slave.NewController(slaveManager, buildManager, commitManager, websocketManager)
 
 	buildScheduler := slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.wg)

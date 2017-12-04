@@ -87,7 +87,7 @@ func (c Controller) postProjectCommitTaskBuildsHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	c.manager.SaveBuild(build)
+	c.manager.CreateBuild(build)
 
 	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
 
@@ -110,7 +110,7 @@ func (c Controller) postTaskByUUIDBuildsHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	c.manager.SaveBuild(build)
+	c.manager.CreateBuild(build)
 
 	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
 

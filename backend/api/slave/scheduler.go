@@ -31,7 +31,7 @@ func (bS *BuildScheduler) StartWorker() {
 	runningBuilds, _ := bS.buildManager.GetRunningBuilds()
 	for _, runningBuild := range runningBuilds {
 		runningBuild.Status = "waiting"
-		bS.buildManager.SaveBuild(runningBuild)
+		bS.buildManager.UpdateBuild(runningBuild)
 		log.Printf("Requeued: %s\n", runningBuild.ID)
 	}
 	log.Println("Started Build Scheduler")

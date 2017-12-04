@@ -8,7 +8,8 @@ import (
 )
 
 type Repository interface {
-	SaveBuild(b Build) Build
+	CreateBuild(b Build) Build
+	UpdateBuild(b Build) Build
 	DeleteBuild(b Build)
 	GetBuildByBuildID(id string) (Build, error)
 	GetBuildsByProjectID(projectID string, q Query) ([]Build, uint64)
@@ -18,7 +19,8 @@ type Repository interface {
 	GetWaitingBuilds() ([]Build, uint64)
 
 	// BuildSteps
-	SaveBuildStep(bS BuildStep) BuildStep
+	CreateBuildStep(bS BuildStep) BuildStep
+	UpdateBuildStep(bS BuildStep) BuildStep
 	DeleteBuildStep(bS BuildStep)
 	GetBuildStepByBuildStepID(id string) (BuildStep, error)
 	GetBuildStepByBuildIDAndNumber(buildID string, stepNumber uint64) (BuildStep, error)
@@ -32,7 +34,7 @@ type Repository interface {
 	GetStreamByBuildStepIDAndStreamName(buildStepID string, name string) (BuildStepStream, error)
 
 	// StreamLines
-	SaveStreamLine(sL StreamLine) StreamLine
+	CreateStreamLine(sL StreamLine) StreamLine
 	GetStreamLinesByStreamID(streamID string) ([]StreamLine, uint64)
 }
 
@@ -43,6 +45,7 @@ type Query struct {
 
 type Build struct {
 	ID         string                        `json:"id"`
+	ProjectID  string                        `json:"projectId"`
 	TaskID     string                        `json:"taskId"`
 	Parameters map[string]velocity.Parameter `json:"parameters"`
 
@@ -52,9 +55,10 @@ type Build struct {
 	CompletedAt time.Time `json:"completedAt"`
 }
 
-func NewBuild(taskID string, params map[string]velocity.Parameter) Build {
+func NewBuild(projectId string, taskID string, params map[string]velocity.Parameter) Build {
 	return Build{
 		ID:         uuid.NewV3(uuid.NewV1(), taskID).String(),
+		ProjectID:  projectId,
 		TaskID:     taskID,
 		Parameters: params,
 		Status:     "waiting",
@@ -178,6 +182,22 @@ func NewResponseBuildStep(bS BuildStep, s velocity.Step) ResponseBuildStep {
 		Type:        s.GetType(),
 		Description: s.GetDescription(),
 		Number:      bS.Number,
+		Status:      bS.Status,
+		StartedAt:   bS.StartedAt,
+		CompletedAt: bS.CompletedAt,
+	}
+}
+
+type WebsocketBuildStep struct {
+	ID          string    `json:"id"`
+	Status      string    `json:"status"`
+	StartedAt   time.Time `json:"startedAt"`
+	CompletedAt time.Time `json:"completedAt"`
+}
+
+func NewWebsocketBuildStep(bS BuildStep) WebsocketBuildStep {
+	return WebsocketBuildStep{
+		ID:          bS.ID,
 		Status:      bS.Status,
 		StartedAt:   bS.StartedAt,
 		CompletedAt: bS.CompletedAt,

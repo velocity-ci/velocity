@@ -90,6 +90,37 @@ const (
 	PhxSystemTopic    = "phoenix"
 )
 
+// Velocity specific events
+const (
+	VNewProject    = "project:new"
+	VUpdateProject = "project:update"
+	VDeleteProject = "project:delete"
+
+	VNewCommit    = "commit:new"
+	VUpdateCommit = "commit:update"
+	VDeleteCommit = "commit:delete"
+
+	VNewBranch    = "branch:new"
+	VUpdateBranch = "branch:update"
+	VDeleteBranch = "branch:delete"
+
+	VNewBuild    = "build:new"
+	VUpdateBuild = "build:update"
+	VDeleteBuild = "build:delete"
+
+	VUpdateStep = "step:update"
+	VDeleteStep = "step:delete"
+
+	VUpdateStream = "stream:update"
+	VDeleteStream = "stream:delete"
+
+	VNewStreamLine = "streamLine:new"
+
+	VUpdateSlave = "slave:update"
+	VNewSlave    = "slave:new"
+	VDeleteSlave = "slave:delete"
+)
+
 type PhoenixMessage struct {
 	Event   string      `json:"event"`
 	Topic   string      `json:"topic"`

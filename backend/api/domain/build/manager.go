@@ -1,30 +1,57 @@
 package build
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/backend/api/websocket"
 )
 
 type Manager struct {
-	gormRepository *gormRepository
-	fileManager    *fileManager
+	gormRepository   *gormRepository
+	fileManager      *fileManager
+	websocketManager *websocket.Manager
 }
 
 func NewManager(
 	db *gorm.DB,
 	fileManager *fileManager,
+	websocketManager *websocket.Manager,
 ) *Manager {
 	return &Manager{
-		gormRepository: newGORMRepository(db),
-		fileManager:    fileManager,
+		gormRepository:   newGORMRepository(db),
+		fileManager:      fileManager,
+		websocketManager: websocketManager,
 	}
 }
 
-func (m *Manager) SaveBuild(b Build) Build {
-	return m.gormRepository.SaveBuild(b)
+func (m *Manager) CreateBuild(b Build) Build {
+	m.gormRepository.SaveBuild(b)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
+		Event:   websocket.VNewBuild,
+		Payload: NewResponseBuild(b),
+	})
+	return b
+}
+
+func (m *Manager) UpdateBuild(b Build) Build {
+	m.gormRepository.SaveBuild(b)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
+		Event:   websocket.VUpdateBuild,
+		Payload: NewResponseBuild(b),
+	})
+	return b
 }
 
 func (m *Manager) DeleteBuild(b Build) {
 	m.gormRepository.DeleteBuild(b)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
+		Event:   websocket.VDeleteBuild,
+		Payload: NewResponseBuild(b),
+	})
 }
 
 func (m *Manager) GetBuildByBuildID(id string) (Build, error) {
@@ -51,8 +78,18 @@ func (m *Manager) GetWaitingBuilds() ([]Build, uint64) {
 	return m.gormRepository.GetWaitingBuilds()
 }
 
-func (m *Manager) SaveBuildStep(bS BuildStep) BuildStep {
+func (m *Manager) CreateBuildStep(bS BuildStep) BuildStep {
 	return m.gormRepository.SaveBuildStep(bS)
+}
+
+func (m *Manager) UpdateBuildStep(bS BuildStep) BuildStep {
+	m.gormRepository.SaveBuildStep(bS)
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   fmt.Sprintf("step:%s", bS.ID),
+		Event:   websocket.VUpdateStep,
+		Payload: NewWebsocketBuildStep(bS),
+	})
+	return bS
 }
 
 func (m *Manager) DeleteBuildStep(bS BuildStep) {
@@ -96,8 +133,14 @@ func (m *Manager) GetStreamByBuildStepIDAndStreamName(buildStepID string, name s
 	return m.gormRepository.GetStreamByBuildStepIDAndStreamName(buildStepID, name)
 }
 
-func (m *Manager) SaveStreamLine(sL StreamLine) StreamLine {
-	return m.fileManager.SaveStreamLine(sL)
+func (m *Manager) CreateStreamLine(sL StreamLine) StreamLine {
+	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
+		Topic:   fmt.Sprintf("stream:%s", sL.BuildStepStreamID),
+		Event:   websocket.VNewStreamLine,
+		Payload: sL,
+	})
+	m.fileManager.SaveStreamLine(sL)
+	return sL
 }
 
 func (m *Manager) GetStreamLinesByStreamID(streamID string) ([]StreamLine, uint64) {

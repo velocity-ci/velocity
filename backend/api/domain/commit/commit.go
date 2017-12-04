@@ -7,13 +7,15 @@ import (
 )
 
 type Repository interface {
-	SaveCommit(c Commit) Commit
+	CreateCommit(c Commit) Commit
+	UpdateCommit(c Commit) Commit
 	DeleteCommit(c Commit)
 	GetCommitByCommitID(commitID string) (Commit, error)
 	GetCommitByProjectIDAndCommitHash(projectID string, hash string) (Commit, error)
 	GetAllCommitsByProjectID(projectID string, q Query) ([]Commit, uint64)
 
-	SaveBranch(b Branch) Branch
+	CreateBranch(b Branch) Branch
+	UpdateBranch(b Branch) Branch
 	DeleteBranch(b Branch)
 	GetBranchByProjectIDAndName(projectID string, name string) (Branch, error)
 	GetAllBranchesByProjectID(projectID string, q Query) ([]Branch, uint64)
