@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/unrolled/render"
 	"github.com/urfave/negroni"
-	"github.com/velocity-ci/velocity/backend/api/auth"
 )
 
 // Controller - Handles Websockets

@@ -50,6 +50,12 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.getProjectCommitHandler)),
 	)).Methods("GET")
 
+	// GET /v1/commits/{commitUUID}
+	router.Handle("/v1/commits/{commitUUID}", negroni.New(
+		auth.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getCommitByUUIDHandler)),
+	)).Methods("GET")
+
 	// GET /v1/projects/{id}/branches
 	router.Handle("/v1/projects/{id}/branches", negroni.New(
 		auth.NewJWT(c.render),
@@ -84,18 +90,31 @@ func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-func (c Controller) getProjectCommitHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getCommitByUUIDHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
-	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitUUID := reqVars["commitUUID"]
 
-	_, err := c.projectManager.GetByID(reqProjectID)
+	commit, err := c.manager.GetCommitByCommitID(reqCommitUUID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
 
-	commit, err := c.manager.GetCommitByCommitID(reqCommitID)
+	c.render.JSON(w, http.StatusOK, NewResponseCommit(commit))
+}
+
+func (c Controller) getProjectCommitHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["projectID"]
+	reqCommitHash := reqVars["commitHash"]
+
+	p, err := c.projectManager.GetByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	commit, err := c.manager.GetCommitByProjectIDAndCommitHash(p.ID, reqCommitHash)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return

@@ -66,6 +66,11 @@ func (m *Manager) DeleteBuildStep(bS BuildStep) {
 func (m *Manager) GetBuildStepByBuildStepID(buildStepID string) (BuildStep, error) {
 	return m.gormRepository.GetBuildStepByBuildStepID(buildStepID)
 }
+
+func (m *Manager) GetBuildStepByBuildIDAndNumber(buildID string, stepNumber uint64) (BuildStep, error) {
+	return m.gormRepository.GetBuildStepByBuildIDAndNumber(buildID, stepNumber)
+}
+
 func (m *Manager) GetBuildStepsByBuildID(buildID string) ([]BuildStep, uint64) {
 	return m.gormRepository.GetBuildStepsByBuildID(buildID)
 }

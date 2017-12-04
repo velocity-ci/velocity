@@ -1,6 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"strings"
+
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni"
@@ -36,6 +40,20 @@ func NewMuxRouter(controllers []Routable, logging bool) *MuxRouter {
 	for _, controller := range controllers {
 		controller.Setup(muxRouter.Router)
 	}
+
+	routes := []string{}
+
+	muxRouter.Router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		t, err := route.GetPathTemplate()
+		if err != nil {
+			return err
+		}
+		m, _ := route.GetMethods()
+		routes = append(routes, fmt.Sprintf("%s: %s", m[0], t))
+		return nil
+	})
+
+	log.Printf("\n\n%s\n\n", strings.Join(routes, "\n"))
 
 	muxRouter.Negroni.UseHandler(muxRouter.Router)
 

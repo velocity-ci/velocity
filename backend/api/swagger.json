@@ -601,40 +601,12 @@
         }
       }
     },
-    "/tasks/{taskUUID}/builds": {
+    "/projects/{projectId}/commits/{commitHash}/builds": {
       "get": {
         "tags": [
           "builds"
         ],
-        "summary": "Returns builds for a task",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "taskUUID",
-            "in": "path",
-            "description": "UUID of task",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
-    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}": {
-      "get": {
-        "tags": [
-          "builds"
-        ],
-        "summary": "Returns build",
+        "summary": "Returns builds for a commit",
         "produces": [
           "application/json"
         ],
@@ -652,20 +624,124 @@
             "description": "SHA1 of commit",
             "required": true,
             "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
           },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/commits/{commitUUID}/builds": {
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Returns builds for a commit",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
           {
-            "name": "taskName",
+            "name": "commitUUID",
             "in": "path",
-            "description": "Name of task",
+            "description": "UUID for commit",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/builds": {
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Returns builds for a project",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "ID of project",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/tasks/{taskUUID}/builds": {
+      "post": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Creates a new build",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "taskUUID",
+            "in": "path",
+            "description": "UUID of task",
             "required": true,
             "type": "string"
           },
           {
-            "name": "buildNumber",
-            "in": "path",
-            "description": "number of build",
+            "in": "body",
+            "name": "body",
             "required": true,
-            "type": "integer"
+            "schema": {
+              "$ref": "#/definitions/BuildRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Returns builds for a task",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "taskUUID",
+            "in": "path",
+            "description": "UUID of task",
+            "required": true,
+            "type": "string"
           }
         ],
         "responses": {
@@ -706,55 +782,6 @@
         }
       }
     },
-    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps": {
-      "get": {
-        "tags": [
-          "build steps"
-        ],
-        "summary": "Returns steps for build",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "description": "ID of project",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "commitHash",
-            "in": "path",
-            "description": "SHA1 of commit",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "taskName",
-            "in": "path",
-            "description": "Name of task",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "buildNumber",
-            "in": "path",
-            "description": "number of build",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
     "/builds/{buildUUID}/steps": {
       "get": {
         "tags": [
@@ -783,68 +810,12 @@
         }
       }
     },
-    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps/{stepNumber}": {
-      "get": {
-        "tags": [
-          "build steps"
-        ],
-        "summary": "Returns steps for build",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "description": "ID of project",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "commitHash",
-            "in": "path",
-            "description": "SHA1 of commit",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "taskName",
-            "in": "path",
-            "description": "Name of task",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "buildNumber",
-            "in": "path",
-            "description": "number of build",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "name": "stepNumber",
-            "in": "path",
-            "description": "number of step",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
     "/steps/{stepUUID}": {
       "get": {
         "tags": [
           "build steps"
         ],
-        "summary": "Returns steps for build",
+        "summary": "Returns step for build",
         "produces": [
           "application/json"
         ],
@@ -855,62 +826,6 @@
             "description": "UUID of build step",
             "required": true,
             "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
-    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps/{stepNumber}/streams": {
-      "get": {
-        "tags": [
-          "build step streams"
-        ],
-        "summary": "Returns streams for build step",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "description": "ID of project",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "commitHash",
-            "in": "path",
-            "description": "SHA1 of commit",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "taskName",
-            "in": "path",
-            "description": "Name of task",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "buildNumber",
-            "in": "path",
-            "description": "number of build",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "name": "stepNumber",
-            "in": "path",
-            "description": "number of step",
-            "required": true,
-            "type": "integer"
           }
         ],
         "responses": {
@@ -937,69 +852,6 @@
             "name": "stepUUID",
             "in": "path",
             "description": "UUID of build step",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
-    "/projects/{projectId}/commits/{commitHash}/tasks/{taskName}/builds/{buildNumber}/steps/{stepNumber}/streams/{streamName}": {
-      "get": {
-        "tags": [
-          "build step streams"
-        ],
-        "summary": "Returns stream for build step",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "description": "ID of project",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "commitHash",
-            "in": "path",
-            "description": "SHA1 of commit",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "taskName",
-            "in": "path",
-            "description": "Name of task",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "buildNumber",
-            "in": "path",
-            "description": "number of build",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "name": "stepNumber",
-            "in": "path",
-            "description": "number of step",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "name": "streamName",
-            "in": "path",
-            "description": "name of stream",
             "required": true,
             "type": "string"
           }

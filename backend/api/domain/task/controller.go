@@ -40,10 +40,22 @@ func NewController(
 // Setup - Sets up the routes for Tasks.
 func (c Controller) Setup(router *mux.Router) {
 
+	// GET /v1/commits/{commitUUID}/tasks
+	router.Handle("/v1/commits/{commitUUID}/tasks", negroni.New(
+		auth.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getTasksByCommitUUIDHandler)),
+	)).Methods("GET")
+
 	// GET /v1/projects/{projectID}/commits/{commitHash}/tasks
 	router.Handle("/v1/projects/{projectID}/commits/{commitHash}/tasks", negroni.New(
 		auth.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.getProjectCommitTasksHandler)),
+	)).Methods("GET")
+
+	// GET /v1/tasks/{taskUUID}
+	router.Handle("/v1/tasks/{taskUUID}", negroni.New(
+		auth.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getTaskByUUIDHandler)),
 	)).Methods("GET")
 
 	// GET /v1/projects/{projectID}/commits/{commitHash}/tasks/{taskName}
@@ -55,18 +67,11 @@ func (c Controller) Setup(router *mux.Router) {
 	c.logger.Println("Set up Task controller.")
 }
 
-func (c Controller) getProjectCommitTasksHandler(w http.ResponseWriter, r *http.Request) {
+func (c Controller) getTasksByCommitUUIDHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
-	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
+	reqCommitUUID := reqVars["commitUUID"]
 
-	_, err := c.projectManager.GetByID(reqProjectID)
-	if err != nil {
-		c.render.JSON(w, http.StatusNotFound, nil)
-		return
-	}
-
-	commit, err := c.commitManager.GetCommitByCommitID(reqCommitID)
+	commit, err := c.commitManager.GetCommitByCommitID(reqCommitUUID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
@@ -86,25 +91,69 @@ func (c Controller) getProjectCommitTasksHandler(w http.ResponseWriter, r *http.
 	})
 }
 
+func (c Controller) getProjectCommitTasksHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqProjectID := reqVars["projectID"]
+	reqCommitHash := reqVars["commitHash"]
+
+	p, err := c.projectManager.GetByID(reqProjectID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	commit, err := c.commitManager.GetCommitByProjectIDAndCommitHash(p.ID, reqCommitHash)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	tasks, count := c.manager.GetAllByCommitID(commit.ID, Query{})
+
+	responseTasks := []ResponseTask{}
+
+	for _, t := range tasks {
+		responseTasks = append(responseTasks, NewResponseTask(t))
+	}
+
+	c.render.JSON(w, http.StatusOK, ManyResponse{
+		Total:  count,
+		Result: responseTasks,
+	})
+}
+
+func (c Controller) getTaskByUUIDHandler(w http.ResponseWriter, r *http.Request) {
+	reqVars := mux.Vars(r)
+	reqTaskUUID := reqVars["taskUUID"]
+
+	task, err := c.manager.GetByTaskID(reqTaskUUID)
+	if err != nil {
+		c.render.JSON(w, http.StatusNotFound, err)
+		return
+	}
+
+	c.render.JSON(w, http.StatusOK, NewResponseTask(task))
+}
+
 func (c Controller) getProjectCommitTaskHandler(w http.ResponseWriter, r *http.Request) {
 	reqVars := mux.Vars(r)
 	reqProjectID := reqVars["projectID"]
-	reqCommitID := reqVars["commitHash"]
-	reqTaskID := reqVars["taskID"]
+	reqCommitHash := reqVars["commitHash"]
+	reqTaskName := reqVars["taskName"]
 
-	_, err := c.projectManager.GetByID(reqProjectID)
+	p, err := c.projectManager.GetByID(reqProjectID)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
 
-	_, err = c.commitManager.GetCommitByCommitID(reqCommitID)
+	cm, err := c.commitManager.GetCommitByProjectIDAndCommitHash(p.ID, reqCommitHash)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, nil)
 		return
 	}
 
-	task, err := c.manager.GetByTaskID(reqTaskID)
+	task, err := c.manager.GetByCommitIDAndTaskName(cm.ID, reqTaskName)
 	if err != nil {
 		c.render.JSON(w, http.StatusNotFound, err)
 		return

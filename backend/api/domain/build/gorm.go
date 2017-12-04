@@ -303,6 +303,20 @@ func (r *gormRepository) GetBuildStepByBuildStepID(ID string) (BuildStep, error)
 	return buildStepFromGormBuildStep(gBS), nil
 }
 
+func (r *gormRepository) GetBuildStepByBuildIDAndNumber(buildID string, stepNumber uint64) (BuildStep, error) {
+	gBS := gormBuildStep{}
+	if r.gorm.
+		Where(&gormBuildStep{
+			BuildID: buildID,
+			Number:  stepNumber,
+		}).
+		First(&gBS).RecordNotFound() {
+		r.logger.Printf("could not find build step %s:%d", buildID, stepNumber)
+		return BuildStep{}, fmt.Errorf("could not find build step %s:%d", buildID, stepNumber)
+	}
+	return buildStepFromGormBuildStep(gBS), nil
+}
+
 func (r *gormRepository) SaveStream(s BuildStepStream) BuildStepStream {
 	tx := r.gorm.Begin()
 

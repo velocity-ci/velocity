@@ -21,6 +21,7 @@ type Repository interface {
 	SaveBuildStep(bS BuildStep) BuildStep
 	DeleteBuildStep(bS BuildStep)
 	GetBuildStepByBuildStepID(id string) (BuildStep, error)
+	GetBuildStepByBuildIDAndNumber(buildID string, stepNumber uint64) (BuildStep, error)
 	GetBuildStepsByBuildID(buildID string) ([]BuildStep, uint64)
 
 	// OutputStreams
