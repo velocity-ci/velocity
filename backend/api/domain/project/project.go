@@ -48,9 +48,9 @@ func NewProject(name string, repository velocity.GitRepository) Project {
 		ID:            slug.Make(name),
 		Name:          name,
 		Repository:    repository,
+		Synchronising: false,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
-		Synchronising: false,
 	}
 }
 

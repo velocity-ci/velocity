@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/api/websocket"
@@ -26,6 +27,7 @@ func NewManager(
 }
 
 func (m *Manager) CreateBuild(b Build) Build {
+	b.CreatedAt = time.Now()
 	m.gormRepository.SaveBuild(b)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),

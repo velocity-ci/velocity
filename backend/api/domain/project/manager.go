@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/api/websocket"
@@ -39,6 +40,7 @@ func (m *Manager) Create(p Project) Project {
 }
 
 func (m *Manager) Update(p Project) Project {
+	p.UpdatedAt = time.Now()
 	m.gormRepository.Save(p)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", p.ID),

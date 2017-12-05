@@ -43,13 +43,16 @@ type Branch struct {
 	Name        string    `json:"name"`
 	ProjectID   string    `json:"projectId"`
 	LastUpdated time.Time `json:"lastUpdated"`
+	Active      bool
 }
 
 func NewBranch(projectID string, name string) Branch {
 	return Branch{
-		ID:        uuid.NewV3(uuid.NewV1(), projectID).String(),
-		ProjectID: projectID,
-		Name:      name,
+		ID:          uuid.NewV3(uuid.NewV1(), projectID).String(),
+		ProjectID:   projectID,
+		Name:        name,
+		LastUpdated: time.Now(),
+		Active:      true,
 	}
 }
 
@@ -64,12 +67,16 @@ type ManyResponseBranch struct {
 }
 
 type ResponseBranch struct {
-	Name string `json:"name"`
+	Name        string    `json:"name"`
+	LastUpdated time.Time `json:"lastUpdated"`
+	Active      bool      `json:"active"`
 }
 
 func NewResponseBranch(b Branch) ResponseBranch {
 	return ResponseBranch{
-		Name: b.Name,
+		Name:        b.Name,
+		LastUpdated: b.LastUpdated,
+		Active:      b.Active,
 	}
 }
 

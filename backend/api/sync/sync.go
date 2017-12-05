@@ -41,6 +41,7 @@ func sync(
 		log.Fatal(err)
 		return
 	}
+	remoteBranchNames := []string{}
 	for {
 		r, err := refIter.Next()
 		if err != nil {
@@ -62,6 +63,7 @@ func sync(
 
 		branchName := strings.Join(strings.Split(r.Name().Short(), "/")[1:], "/")
 		if branchName != "" {
+			remoteBranchNames = append(remoteBranchNames, branchName)
 			b, err := commitManager.GetBranchByProjectIDAndName(p.ID, branchName)
 			if err != nil {
 				b = commit.NewBranch(p.ID, branchName)
@@ -120,7 +122,14 @@ func sync(
 				}
 			}
 		}
+	}
 
+	// Set remaining local branches as inactive.
+	allKnownBranches, _ := commitManager.GetAllBranchesByProjectID(p.ID, commit.Query{})
+	localOnlyBranches := removeRemoteBranches(allKnownBranches, remoteBranchNames)
+	for _, b := range localOnlyBranches {
+		b.Active = false
+		commitManager.UpdateBranch(b)
 	}
 
 	p.UpdatedAt = time.Now()
@@ -131,4 +140,21 @@ func sync(
 		Event:   websocket.VUpdateProject,
 		Payload: project.NewResponseProject(p),
 	})
+}
+
+func removeRemoteBranches(haystack []commit.Branch, names []string) []commit.Branch {
+	returnBranches := []commit.Branch{}
+	for _, b := range haystack {
+		found := false
+		for _, n := range names {
+			if b.Name == n {
+				found = true
+				break
+			}
+		}
+		if !found {
+			returnBranches = append(returnBranches, b)
+		}
+	}
+	return returnBranches
 }

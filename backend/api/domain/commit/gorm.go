@@ -62,6 +62,7 @@ type gormBranch struct {
 	Name        string
 	ProjectID   string
 	LastUpdated time.Time
+	Active      bool
 }
 
 func (gormBranch) TableName() string {
@@ -74,6 +75,7 @@ func branchFromGormBranch(gB gormBranch) Branch {
 		Name:        gB.Name,
 		ProjectID:   gB.ProjectID,
 		LastUpdated: gB.LastUpdated,
+		Active:      gB.Active,
 	}
 }
 
@@ -83,6 +85,7 @@ func gormBranchFromBranch(b Branch) gormBranch {
 		Name:        b.Name,
 		ProjectID:   b.ProjectID,
 		LastUpdated: b.LastUpdated,
+		Active:      b.Active,
 	}
 }
 

@@ -2,6 +2,7 @@ package commit
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/api/websocket"
@@ -65,6 +66,7 @@ func (m *Manager) GetAllCommitsByProjectID(projectID string, q Query) ([]Commit,
 }
 
 func (m *Manager) CreateBranch(b Branch) Branch {
+	b.LastUpdated = time.Now()
 	m.gormRepository.SaveBranch(b)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
@@ -75,6 +77,7 @@ func (m *Manager) CreateBranch(b Branch) Branch {
 }
 
 func (m *Manager) UpdateBranch(b Branch) Branch {
+	b.LastUpdated = time.Now()
 	m.gormRepository.SaveBranch(b)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
