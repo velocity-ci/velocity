@@ -12,20 +12,26 @@ type Repository interface {
 	DeleteCommit(c Commit)
 	GetCommitByCommitID(commitID string) (Commit, error)
 	GetCommitByProjectIDAndCommitHash(projectID string, hash string) (Commit, error)
-	GetAllCommitsByProjectID(projectID string, q Query) ([]Commit, uint64)
+	GetAllCommitsByProjectID(projectID string, q CommitQuery) ([]Commit, uint64)
 
 	CreateBranch(b Branch) Branch
 	UpdateBranch(b Branch) Branch
 	DeleteBranch(b Branch)
 	GetBranchByProjectIDAndName(projectID string, name string) (Branch, error)
-	GetAllBranchesByProjectID(projectID string, q Query) ([]Branch, uint64)
+	GetAllBranchesByProjectID(projectID string, q BranchQuery) ([]Branch, uint64)
 }
 
-type Query struct {
+type CommitQuery struct {
 	Amount uint64
 	Page   uint64
 	Branch string
 	Author string
+}
+
+type BranchQuery struct {
+	Amount uint64
+	Page   uint64
+	Active int // -1: false, 0: all, 1: true
 }
 
 type Commit struct {

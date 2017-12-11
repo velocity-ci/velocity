@@ -57,8 +57,23 @@ func (m *Manager) WebSocketConnected(slaveID string) bool {
 	return false
 }
 
-func (m *Manager) GetSlaves() map[string]Slave {
-	return m.slaves
+func (m *Manager) GetSlaves(q SlaveQuery) ([]Slave, uint64) {
+	slaves := []Slave{}
+	skipCounter := uint64(0)
+	for _, v := range m.slaves {
+		if uint64(len(slaves)) >= q.Amount {
+			break
+		}
+		if skipCounter < (q.Page-1)*q.Amount {
+			skipCounter++
+			break
+		}
+		if q.Status == "all" || q.Status == v.State {
+			slaves = append(slaves, v)
+		}
+	}
+
+	return slaves, uint64(len(slaves)) + skipCounter*q.Amount
 }
 
 func (m *Manager) Save(s Slave) {

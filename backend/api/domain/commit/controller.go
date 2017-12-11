@@ -75,7 +75,7 @@ func (c Controller) getProjectCommitsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	opts := QueryOptsFromRequest(r)
+	opts := CommitQueryOptsFromRequest(r)
 
 	commits, count := c.manager.GetAllCommitsByProjectID(p.ID, opts)
 
@@ -133,7 +133,9 @@ func (c Controller) getBranchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	branches, count := c.manager.GetAllBranchesByProjectID(p.ID, Query{})
+	opts := BranchQueryOptsFromRequest(r)
+
+	branches, count := c.manager.GetAllBranchesByProjectID(p.ID, opts)
 
 	respBranches := []ResponseBranch{}
 

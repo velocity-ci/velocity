@@ -185,52 +185,73 @@ func (r *gormRepository) GetBuildByBuildID(buildID string) (Build, error) {
 	return buildFromGormBuild(gB), nil
 }
 
-func (r *gormRepository) GetBuildsByProjectID(projectID string, q Query) ([]Build, uint64) {
+func (r *gormRepository) GetBuildsByProjectID(projectID string, q BuildQuery) ([]Build, uint64) {
 	query := r.gorm.
 		Joins("JOIN tasks AS t ON t.id=builds.task_id").
 		Joins("JOIN commits AS c ON c.id=t.commit_id").
 		Joins("JOIN projects AS p ON p.id=c.project_id").
 		Where("p.id = ?", projectID)
 
-	return queryBuilds(query)
+	if q.Status != "all" {
+		query = query.Where("builds.status = ?", q.Status)
+	}
+
+	return queryBuilds(query, q)
 }
 
-func (r *gormRepository) GetBuildsByCommitID(commitID string, q Query) ([]Build, uint64) {
+func (r *gormRepository) GetBuildsByCommitID(commitID string, q BuildQuery) ([]Build, uint64) {
 	query := r.gorm.
 		Joins("JOIN tasks AS t ON t.id=builds.task_id").
 		Joins("JOIN commits AS c ON c.id=t.commit_id").
 		Where("c.id = ?", commitID)
 
-	return queryBuilds(query)
+	if q.Status != "all" {
+		query = query.Where(&gormBuild{Status: q.Status})
+	}
+
+	return queryBuilds(query, q)
 }
 
-func (r *gormRepository) GetBuildsByTaskID(taskID string, q Query) ([]Build, uint64) {
+func (r *gormRepository) GetBuildsByTaskID(taskID string, q BuildQuery) ([]Build, uint64) {
 	query := r.gorm.
 		Where(gormBuild{TaskID: taskID})
 
-	return queryBuilds(query)
+	if q.Status != "all" {
+		query = query.Where(&gormBuild{Status: q.Status})
+	}
+
+	return queryBuilds(query, q)
 }
 
 func (r *gormRepository) GetRunningBuilds() ([]Build, uint64) {
 	query := r.gorm.
 		Where(&gormBuild{Status: "running"})
 
-	return queryBuilds(query)
+	return queryBuilds(query, BuildQuery{
+		Amount: 10,
+	})
 }
 
 func (r *gormRepository) GetWaitingBuilds() ([]Build, uint64) {
 	query := r.gorm.
 		Where(&gormBuild{Status: "waiting"})
 
-	return queryBuilds(query)
+	return queryBuilds(query, BuildQuery{
+		Amount: 10,
+	})
 }
 
-func queryBuilds(preparedDB *gorm.DB) ([]Build, uint64) {
+func queryBuilds(preparedDB *gorm.DB, q BuildQuery) ([]Build, uint64) {
 	gBs := []gormBuild{}
 	var count uint64
 	preparedDB.
 		Find(&gBs).
 		Count(&count)
+	preparedDB.
+		Limit(int(q.Amount)).
+		Offset(int(q.Page - 1)).
+		Order("created_at desc").
+		Find(&gBs)
 	builds := []Build{}
 	for _, gB := range gBs {
 		builds = append(builds, buildFromGormBuild(gB))

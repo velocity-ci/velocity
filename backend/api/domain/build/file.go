@@ -74,12 +74,19 @@ func (m *fileManager) StopWorker() {
 	m.stop = true
 }
 
-// TODO: include query ability
-func (m *fileManager) GetByID(id string) ([]StreamLine, uint64) {
+func (m *fileManager) GetByID(id string, q StreamLineQuery) ([]StreamLine, uint64) {
 	outputStream := []StreamLine{}
 	logFile := m.getStreamLogFile(id)
+	skipCounter := uint64(0)
 
 	for i, l := range logFile.contents {
+		if uint64(len(outputStream)) >= q.Amount {
+			break
+		}
+		if skipCounter < (q.Page-1)*q.Amount {
+			skipCounter++
+			break
+		}
 		parts := strings.SplitN(l, " ", 2)
 		timestampUnixNano, _ := strconv.ParseInt(parts[0], 10, 64)
 		outputStream = append(outputStream, StreamLine{
@@ -88,6 +95,7 @@ func (m *fileManager) GetByID(id string) ([]StreamLine, uint64) {
 			Timestamp:         time.Unix(0, timestampUnixNano),
 			Output:            parts[1],
 		})
+
 	}
 	return outputStream, logFile.totalLines
 }

@@ -42,11 +42,10 @@ func (bS *BuildScheduler) StartWorker() {
 		for _, waitingBuild := range waitingBuilds {
 			log.Printf("%s: %s", waitingBuild.ID, waitingBuild.Status)
 			// Queue on any idle worker
-			for _, slave := range bS.slaveManager.GetSlaves() {
-				if slave.State == "ready" {
-					go bS.slaveManager.StartBuild(slave, waitingBuild)
-					break
-				}
+			activeSlaves, _ := bS.slaveManager.GetSlaves(SlaveQuery{Status: "ready"})
+			for _, slave := range activeSlaves {
+				go bS.slaveManager.StartBuild(slave, waitingBuild)
+				break
 			}
 		}
 

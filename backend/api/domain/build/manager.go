@@ -60,15 +60,15 @@ func (m *Manager) GetBuildByBuildID(id string) (Build, error) {
 	return m.gormRepository.GetBuildByBuildID(id)
 }
 
-func (m *Manager) GetBuildsByProjectID(projectID string, q Query) ([]Build, uint64) {
+func (m *Manager) GetBuildsByProjectID(projectID string, q BuildQuery) ([]Build, uint64) {
 	return m.gormRepository.GetBuildsByProjectID(projectID, q)
 }
 
-func (m *Manager) GetBuildsByCommitID(commitID string, q Query) ([]Build, uint64) {
+func (m *Manager) GetBuildsByCommitID(commitID string, q BuildQuery) ([]Build, uint64) {
 	return m.gormRepository.GetBuildsByCommitID(commitID, q)
 }
 
-func (m *Manager) GetBuildsByTaskID(taskID string, q Query) ([]Build, uint64) {
+func (m *Manager) GetBuildsByTaskID(taskID string, q BuildQuery) ([]Build, uint64) {
 	return m.gormRepository.GetBuildsByTaskID(taskID, q)
 }
 
@@ -145,6 +145,6 @@ func (m *Manager) CreateStreamLine(sL StreamLine) StreamLine {
 	return sL
 }
 
-func (m *Manager) GetStreamLinesByStreamID(streamID string) ([]StreamLine, uint64) {
-	return m.fileManager.GetByID(streamID)
+func (m *Manager) GetStreamLinesByStreamID(streamID string, q StreamLineQuery) ([]StreamLine, uint64) {
+	return m.fileManager.GetByID(streamID, q)
 }

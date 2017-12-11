@@ -18,6 +18,12 @@ type Slave struct {
 	Command CommandMessage
 }
 
+type SlaveQuery struct {
+	Amount uint64
+	Page   uint64
+	Status string
+}
+
 func NewSlave(ID string) Slave {
 	return Slave{
 		ID:    ID,

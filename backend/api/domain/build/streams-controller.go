@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -34,9 +35,12 @@ func (c Controller) getStepByUUIDStreams(w http.ResponseWriter, r *http.Request)
 
 	outputStreams, count := c.manager.GetStreamsByBuildStepID(buildStep.ID)
 
-	respOutputStreams := []string{}
+	respOutputStreams := []ResponseOutputStream{}
 	for _, outputStream := range outputStreams {
-		respOutputStreams = append(respOutputStreams, outputStream.Name)
+		respOutputStreams = append(respOutputStreams, ResponseOutputStream{
+			ID:   outputStream.ID,
+			Name: outputStream.Name,
+		})
 	}
 
 	c.render.JSON(w, http.StatusOK, OutputStreamManyResponse{
@@ -54,7 +58,10 @@ func (c Controller) getStreamByUUID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	streamLines, total := c.manager.GetStreamLinesByStreamID(stream.ID)
+	opts := StreamLineQueryOptsFromRequest(r)
+	log.Println(opts)
+
+	streamLines, total := c.manager.GetStreamLinesByStreamID(stream.ID, opts)
 
 	c.render.JSON(w, http.StatusOK, StreamLineManyResponse{
 		Total:  total,

@@ -168,7 +168,7 @@ func (r *gormRepository) GetCommitByProjectIDAndCommitHash(projectID string, has
 	return commitFromGormCommit(gC), nil
 }
 
-func (r *gormRepository) GetAllCommitsByProjectID(projectID string, q Query) ([]Commit, uint64) {
+func (r *gormRepository) GetAllCommitsByProjectID(projectID string, q CommitQuery) ([]Commit, uint64) {
 	gCs := []gormCommit{}
 	var count uint64
 	db := r.gorm
@@ -246,15 +246,34 @@ func (r *gormRepository) GetBranchByProjectIDAndName(projectID string, name stri
 	return branchFromGormBranch(gB), nil
 }
 
-func (r *gormRepository) GetAllBranchesByProjectID(projectID string, q Query) ([]Branch, uint64) {
+func (r *gormRepository) GetAllBranchesByProjectID(projectID string, q BranchQuery) ([]Branch, uint64) {
 	gBs := []gormBranch{}
 	var count uint64
-	r.gorm.
+
+	db := r.gorm
+
+	db = db.
 		Where(&gormBranch{
 			ProjectID: projectID,
-		}).
+		})
+
+	if q.Active == 1 {
+		db = db.Where(&gormBranch{
+			Active: true,
+		})
+	} else if q.Active == -1 {
+		db = db.Where(&gormBranch{
+			Active: false,
+		})
+	}
+	db.
 		Find(&gBs).
 		Count(&count)
+
+	db.
+		Limit(int(q.Amount)).
+		Offset(int(q.Page - 1)).
+		Find(&gBs)
 
 	branches := []Branch{}
 	for _, gB := range gBs {

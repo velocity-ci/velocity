@@ -61,7 +61,7 @@ func (m *Manager) GetCommitByProjectIDAndCommitHash(projectID string, hash strin
 	return m.gormRepository.GetCommitByProjectIDAndCommitHash(projectID, hash)
 }
 
-func (m *Manager) GetAllCommitsByProjectID(projectID string, q Query) ([]Commit, uint64) {
+func (m *Manager) GetAllCommitsByProjectID(projectID string, q CommitQuery) ([]Commit, uint64) {
 	return m.gormRepository.GetAllCommitsByProjectID(projectID, q)
 }
 
@@ -100,6 +100,6 @@ func (m *Manager) GetBranchByProjectIDAndName(projectID string, name string) (Br
 	return m.gormRepository.GetBranchByProjectIDAndName(projectID, name)
 }
 
-func (m *Manager) GetAllBranchesByProjectID(projectID string, q Query) ([]Branch, uint64) {
+func (m *Manager) GetAllBranchesByProjectID(projectID string, q BranchQuery) ([]Branch, uint64) {
 	return m.gormRepository.GetAllBranchesByProjectID(projectID, q)
 }

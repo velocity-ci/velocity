@@ -127,7 +127,9 @@ func (c Controller) getProjectBuildsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	builds, count := c.manager.GetBuildsByProjectID(p.ID, Query{})
+	opts := BuildQueryOptsFromRequest(r)
+
+	builds, count := c.manager.GetBuildsByProjectID(p.ID, opts)
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
@@ -155,7 +157,8 @@ func (c Controller) getProjectCommitBuildsHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	builds, count := c.manager.GetBuildsByCommitID(cm.ID, Query{})
+	opts := BuildQueryOptsFromRequest(r)
+	builds, count := c.manager.GetBuildsByCommitID(cm.ID, opts)
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
@@ -189,7 +192,9 @@ func (c Controller) getProjectCommitTaskBuildsHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	builds, count := c.manager.GetBuildsByTaskID(task.ID, Query{})
+	opts := BuildQueryOptsFromRequest(r)
+
+	builds, count := c.manager.GetBuildsByTaskID(task.ID, opts)
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
@@ -211,7 +216,9 @@ func (c Controller) getCommitByUUIDBuildsHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	builds, count := c.manager.GetBuildsByCommitID(cm.ID, Query{})
+	opts := BuildQueryOptsFromRequest(r)
+
+	builds, count := c.manager.GetBuildsByCommitID(cm.ID, opts)
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
@@ -233,7 +240,9 @@ func (c Controller) getTaskByUUIDBuildsHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	builds, count := c.manager.GetBuildsByTaskID(task.ID, Query{})
+	opts := BuildQueryOptsFromRequest(r)
+
+	builds, count := c.manager.GetBuildsByTaskID(task.ID, opts)
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {

@@ -12,9 +12,9 @@ type Repository interface {
 	UpdateBuild(b Build) Build
 	DeleteBuild(b Build)
 	GetBuildByBuildID(id string) (Build, error)
-	GetBuildsByProjectID(projectID string, q Query) ([]Build, uint64)
-	GetBuildsByCommitID(commitID string, q Query) ([]Build, uint64)
-	GetBuildsByTaskID(taskID string, q Query) ([]Build, uint64)
+	GetBuildsByProjectID(projectID string, q BuildQuery) ([]Build, uint64)
+	GetBuildsByCommitID(commitID string, q BuildQuery) ([]Build, uint64)
+	GetBuildsByTaskID(taskID string, q BuildQuery) ([]Build, uint64)
 	GetRunningBuilds() ([]Build, uint64)
 	GetWaitingBuilds() ([]Build, uint64)
 
@@ -35,10 +35,16 @@ type Repository interface {
 
 	// StreamLines
 	CreateStreamLine(sL StreamLine) StreamLine
-	GetStreamLinesByStreamID(streamID string) ([]StreamLine, uint64)
+	GetStreamLinesByStreamID(streamID string, q StreamLineQuery) ([]StreamLine, uint64)
 }
 
-type Query struct {
+type BuildQuery struct {
+	Amount uint64
+	Page   uint64
+	Status string
+}
+
+type StreamLineQuery struct {
 	Amount uint64
 	Page   uint64
 }
@@ -142,9 +148,14 @@ type BuildStepManyResponse struct {
 	Result []ResponseBuildStep `json:"result"`
 }
 
+type ResponseOutputStream struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type OutputStreamManyResponse struct {
-	Total  uint64   `json:"total"`
-	Result []string `json:"result"`
+	Total  uint64                 `json:"total"`
+	Result []ResponseOutputStream `json:"result"`
 }
 
 type StreamLineManyResponse struct {
