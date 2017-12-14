@@ -230,5 +230,5 @@ validate =
         [ (.username >> .value) >> ifBlank (Username => "username can't be blank.")
         , (.password >> .value) >> ifBlank (Password => "password can't be blank.")
         , (.username >> .value) >> (ifBelowLength 3) (Username => "username must be over 2 characters.")
-        , (.password >> .value) >> (ifBelowLength 8) (Password => "password must be over 7 characters.")
+        , (.password >> .value) >> (ifBelowLength 3) (Password => "password must be over 2 characters.")
         ]
