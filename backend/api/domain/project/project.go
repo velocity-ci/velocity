@@ -4,17 +4,38 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
+// Repository - Implementing repositories will guarantee consistency between persistence objects and virtual objects.
+type Repository interface {
+	Create(p Project) Project
+	Update(p Project) Project
+	Delete(p Project)
+	GetByID(ID string) (Project, error)
+	GetAll(q Query) ([]Project, uint64)
+}
 type Project struct {
-	velocity.Project
+	ID         string                 `json:"id" gorm:"primary_key"`
+	Name       string                 `json:"name" gorm:"unique_index"`
+	Repository velocity.GitRepository `json:"repository"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 
 	Synchronising bool `json:"synchronising"`
-	TotalCommits  uint `json:"totalCommits"`
+}
+
+type Query struct {
+	Amount        uint64
+	Page          uint64
+	Synchronising bool
+}
+
+type ManyResponse struct {
+	Total  uint64            `json:"total"`
+	Result []ResponseProject `json:"result"`
 }
 
 func (p *Project) String() string {
@@ -24,22 +45,12 @@ func (p *Project) String() string {
 
 func NewProject(name string, repository velocity.GitRepository) Project {
 	return Project{
-		Project:       velocity.NewProject(name, repository),
+		ID:            slug.Make(name),
+		Name:          name,
+		Repository:    repository,
+		Synchronising: false,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
-		Synchronising: false,
-		TotalCommits:  0,
-	}
-}
-
-func (p *Project) ToTaskProject() *velocity.Project {
-	return &velocity.Project{
-		ID:   p.ID,
-		Name: p.Name,
-		Repository: velocity.GitRepository{
-			Address:    p.Repository.Address,
-			PrivateKey: p.Repository.PrivateKey,
-		},
 	}
 }
 
@@ -62,8 +73,8 @@ type ResponseProject struct {
 	Synchronising bool `json:"synchronising"`
 }
 
-func NewResponseProject(p *Project) *ResponseProject {
-	return &ResponseProject{
+func NewResponseProject(p Project) ResponseProject {
+	return ResponseProject{
 		ID:            p.ID,
 		Name:          p.Name,
 		Repository:    p.Repository.Address,

@@ -53,7 +53,7 @@ func resolvePluginStep(y string) Step {
 }
 
 func resolveCloneStep(y string) Step {
-	step := &Clone{}
+	step := NewClone()
 	err := yaml.Unmarshal([]byte(y), step)
 	if err != nil {
 		panic(err)

@@ -5,57 +5,47 @@ import (
 	"sync"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/api/commit"
-	"github.com/velocity-ci/velocity/backend/api/project"
+	"github.com/velocity-ci/velocity/backend/api/domain/build"
 )
 
 type BuildScheduler struct {
-	commitManager  *commit.Manager
-	slaveManager   *Manager
-	projectManager *project.Manager
-	stop           bool
-	wg             *sync.WaitGroup
+	buildManager build.Repository
+	slaveManager *Manager
+	stop         bool
+	wg           *sync.WaitGroup
 }
 
-func NewBuildScheduler(commitManager *commit.Manager, slaveManager *Manager, projectManager *project.Manager, wg *sync.WaitGroup) *BuildScheduler {
+func NewBuildScheduler(slaveManager *Manager, buildManager *build.Manager, wg *sync.WaitGroup) *BuildScheduler {
 	return &BuildScheduler{
-		commitManager:  commitManager,
-		slaveManager:   slaveManager,
-		projectManager: projectManager,
-		stop:           false,
-		wg:             wg,
+		slaveManager: slaveManager,
+		buildManager: buildManager,
+		stop:         false,
+		wg:           wg,
 	}
 }
 
-func (bS *BuildScheduler) Run() {
+// TODO: Generate and persist BuildSteps and OutputStreams.
+func (bS *BuildScheduler) StartWorker() {
 	bS.wg.Add(1)
 	// Requeue builds
-	for _, queuedBuild := range bS.commitManager.GetQueuedBuilds() {
-		build := bS.commitManager.GetBuildFromQueuedBuild(queuedBuild)
-		log.Printf("Reset: %s, %s, %d", queuedBuild.ProjectID, queuedBuild.CommitHash, queuedBuild.ID)
-		build.Status = "waiting"
-		bS.commitManager.SaveBuild(build, queuedBuild.ProjectID, queuedBuild.CommitHash)
+	runningBuilds, _ := bS.buildManager.GetRunningBuilds()
+	for _, runningBuild := range runningBuilds {
+		runningBuild.Status = "waiting"
+		bS.buildManager.UpdateBuild(runningBuild)
+		log.Printf("Requeued: %s\n", runningBuild.ID)
 	}
 	log.Println("Started Build Scheduler")
 	for bS.stop == false {
-		queuedBuilds := bS.commitManager.GetQueuedBuilds()
-		log.Printf("Got %d queued builds", len(queuedBuilds))
+		waitingBuilds, total := bS.buildManager.GetWaitingBuilds()
+		log.Printf("Got %d waiting builds", total)
 
-		for _, queuedBuild := range queuedBuilds {
-			build := bS.commitManager.GetBuildFromQueuedBuild(queuedBuild)
-			log.Printf("%s:%s:%d: %s", queuedBuild.ProjectID, queuedBuild.CommitHash, queuedBuild.ID, build.Status)
-			if build.Status == "waiting" {
-				// Queue on any idle worker
-				for _, slave := range bS.slaveManager.GetSlaves() {
-					if slave.State == "ready" {
-						project, _ := bS.projectManager.FindByID(queuedBuild.ProjectID)
-						// convert queued build to build
-						go bS.slaveManager.StartBuild(slave.ID, project, queuedBuild.CommitHash, build)
-						build.Status = "running"
-						bS.commitManager.SaveBuild(build, project.ID, queuedBuild.CommitHash)
-						break
-					}
-				}
+		for _, waitingBuild := range waitingBuilds {
+			log.Printf("%s: %s", waitingBuild.ID, waitingBuild.Status)
+			// Queue on any idle worker
+			activeSlaves, _ := bS.slaveManager.GetSlaves(SlaveQuery{Status: "ready"})
+			for _, slave := range activeSlaves {
+				go bS.slaveManager.StartBuild(slave, waitingBuild)
+				break
 			}
 		}
 
@@ -65,6 +55,6 @@ func (bS *BuildScheduler) Run() {
 	bS.wg.Done()
 }
 
-func (bS *BuildScheduler) Stop() {
+func (bS *BuildScheduler) StopWorker() {
 	bS.stop = true
 }

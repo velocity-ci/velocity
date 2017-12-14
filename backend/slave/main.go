@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/velocity-ci/velocity/backend/api/slave"
 )
 
 func main() {
@@ -105,7 +106,7 @@ func waitForService(client *http.Client, address string) bool {
 
 func monitorCommands(ws *websocket.Conn) {
 	for {
-		command := &CommandMessage{}
+		command := &slave.CommandMessage{}
 		err := ws.ReadJSON(command)
 		if err != nil {
 			log.Println(err)
@@ -116,7 +117,7 @@ func monitorCommands(ws *websocket.Conn) {
 
 		if command.Command == "build" {
 			log.Printf("Got Build: %v", command.Data)
-			runBuild(command.Data.(*BuildMessage), ws)
+			runBuild(command.Data.(*slave.BuildCommand), ws)
 		}
 	}
 }

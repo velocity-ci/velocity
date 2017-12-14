@@ -15,14 +15,19 @@ type Slave struct {
 	ID      string
 	State   string // ready, busy, disconnected
 	ws      *websocket.Conn
-	Command *CommandMessage
+	Command CommandMessage
 }
 
-func NewSlave(ID string) *Slave {
-	return &Slave{
-		ID:      ID,
-		State:   "disconnected",
-		Command: nil,
+type SlaveQuery struct {
+	Amount uint64
+	Page   uint64
+	Status string
+}
+
+func NewSlave(ID string) Slave {
+	return Slave{
+		ID:    ID,
+		State: "disconnected",
 	}
 }
 
@@ -37,13 +42,11 @@ type SlaveMessage struct {
 
 type Message interface{}
 
-type LogMessage struct {
-	ProjectID  string `json:"projectId"`
-	CommitHash string `json:"commitHash"`
-	BuildID    uint64 `json:"buildId"`
-	Step       uint64 `json:"step"`
-	Status     string `json:"status"`
-	Output     string `json:"output"`
+type SlaveStreamLine struct {
+	OutputStreamID string `json:"outputStreamId"`
+	Status         string `json:"status"`
+	LineNumber     uint64 `json:"lineNumber"`
+	Output         string `json:"output"`
 }
 
 func (c *SlaveMessage) UnmarshalJSON(b []byte) error {
@@ -68,7 +71,7 @@ func (c *SlaveMessage) UnmarshalJSON(b []byte) error {
 	}
 
 	if c.Type == "log" {
-		d := LogMessage{}
+		d := SlaveBuildLogMessage{}
 		err := json.Unmarshal(rawData, &d)
 		if err != nil {
 			return err

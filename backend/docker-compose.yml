@@ -2,6 +2,15 @@ version: '3'
 
 services:
 
+  swagger:
+    image: swaggerapi/swagger-ui
+    volumes:
+      - "./api/swagger.json:/swagger.json"
+    environment:
+      SWAGGER_JSON: /swagger.json
+    ports:
+      - "8080:8080"
+
   api:
     build:
       context: .
@@ -10,11 +19,13 @@ services:
     restart: unless-stopped
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/backend/"
+      - "/tmp/velocity-workspace/logs:/tmp/velocity-workspace/logs"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/api
     environment:
       JWT_SECRET: development
       PORT: 80
       SLAVE_SECRET: development
+      ADMIN_PASSWORD: admin
     ports:
       - "80:80"
 

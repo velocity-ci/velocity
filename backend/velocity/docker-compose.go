@@ -10,6 +10,10 @@ type DockerCompose struct {
 	Contents    dockerComposeYaml
 }
 
+func (dC DockerCompose) GetOutputStreams() []string {
+	return []string{"compose services"} // TODO: return service names
+}
+
 func (dC DockerCompose) GetType() string {
 	return "compose"
 }

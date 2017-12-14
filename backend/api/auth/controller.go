@@ -7,18 +7,19 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
+	"github.com/velocity-ci/velocity/backend/api/domain/user"
 )
 
 // Controller - Handles authentication
 type Controller struct {
 	logger  *log.Logger
 	render  *render.Render
-	manager *Manager
+	manager user.Repository
 }
 
 // NewController - returns a new Controller for Authentication.
 func NewController(
-	userManager *Manager,
+	userManager *user.Manager,
 ) *Controller {
 	return &Controller{
 		logger:  log.New(os.Stdout, "[controller:auth]", log.Lshortfile),
@@ -43,7 +44,7 @@ func (c Controller) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	boltUser, err := c.manager.FindByUsername(requestUser.Username)
+	boltUser, err := c.manager.GetByUsername(requestUser.Username)
 	if err != nil {
 		c.render.JSON(w, http.StatusUnauthorized, nil)
 		return

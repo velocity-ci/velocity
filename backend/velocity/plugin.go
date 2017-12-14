@@ -13,20 +13,12 @@ type Plugin struct {
 	Environment    map[string]string `json:"environment" yaml:"environment"`
 }
 
-func (p Plugin) GetType() string {
-	return "plugin"
-}
-
-func (p Plugin) GetDescription() string {
-	return p.Description
-}
-
 func (p Plugin) GetDetails() string {
 	return fmt.Sprintf("image: %s dind: %v", p.Image, p.DockerInDocker)
 }
 
 func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
-
+	emitter.SetStatus(StateRunning)
 	env := []string{}
 	for k, v := range p.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
