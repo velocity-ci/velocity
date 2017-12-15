@@ -35,7 +35,7 @@ type BranchQuery struct {
 }
 
 type Commit struct {
-	ID        string    `json:"id" gorm:"primary_key"`
+	ID        string    `json:"id"`
 	ProjectID string    `json:"projectId"`
 	Hash      string    `json:"hash"`
 	Author    string    `json:"author"`
@@ -45,7 +45,7 @@ type Commit struct {
 }
 
 type Branch struct {
-	ID          string    `json:"id" gorm:"primary_key"`
+	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	ProjectID   string    `json:"projectId"`
 	LastUpdated time.Time `json:"lastUpdated"`
