@@ -58,6 +58,7 @@ func NewKnownHost(e string) KnownHost {
 	}
 
 	return KnownHost{
+		Entry:             e,
 		ID:                id,
 		Hosts:             hosts,
 		Comment:           comment,

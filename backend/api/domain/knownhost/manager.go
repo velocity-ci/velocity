@@ -15,10 +15,19 @@ func NewManager(
 	db *gorm.DB,
 	websocketManager *websocket.Manager,
 ) *Manager {
+	gR := newGORMRepository(db)
+	fM := NewFileManager()
+
+	ks, _ := gR.GetAll(KnownHostQuery{})
+	fM.Clear()
+	for _, k := range ks {
+		fM.Save(k)
+	}
+
 	return &Manager{
-		gormRepository:   newGORMRepository(db),
+		gormRepository:   gR,
 		websocketManager: websocketManager,
-		fileManager:      NewFileManager(),
+		fileManager:      fM,
 	}
 }
 

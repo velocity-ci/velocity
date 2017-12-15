@@ -41,6 +41,7 @@ func NewManager(
 		taskManager:      taskManager,
 		commitManager:    commitManager,
 		projectManager:   projectManager,
+		knownHostManager: knownHostManager,
 		websocketManager: websocketManager,
 	}
 }
