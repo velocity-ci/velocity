@@ -136,8 +136,6 @@ func (r *gormRepository) GetAll(q KnownHostQuery) ([]KnownHost, uint64) {
 		Offset(int(q.Page - 1)).
 		Find(&gKs)
 
-	gK := gormKnownHost{}
-
 	knownHosts := []KnownHost{}
 	for _, gK := range gKs {
 		knownHosts = append(knownHosts, knownHostFromGormKnownHost(gK))

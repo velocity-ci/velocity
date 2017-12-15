@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/velocity-ci/velocity/backend/api/domain/knownhost"
+
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 
@@ -20,6 +22,7 @@ type Manager struct {
 	taskManager      task.Repository
 	commitManager    commit.Repository
 	projectManager   project.Repository
+	knownHostManager knownhost.Repository
 	websocketManager *websocket.Manager
 }
 
@@ -28,6 +31,7 @@ func NewManager(
 	taskManager task.Repository,
 	commitManager commit.Repository,
 	projectManager project.Repository,
+	knownHostManager knownhost.Repository,
 	websocketManager *websocket.Manager,
 ) *Manager {
 	return &Manager{
@@ -100,10 +104,15 @@ func (m *Manager) GetSlaveByID(slaveID string) (Slave, error) {
 }
 
 func (m *Manager) StartBuild(slave Slave, b build.Build) {
-	// TODO: Sync known hosts
 	slave.State = "busy"
 	m.Save(slave)
 	m.logger.Printf("set slave %s as busy", slave.ID)
+
+	knownHosts, _ := m.knownHostManager.GetAll(knownhost.KnownHostQuery{})
+
+	slave.Command = NewKnownHostCommand(knownHosts)
+	slave.ws.WriteJSON(slave.Command)
+	m.logger.Printf("Sent to slave %s: %v", slave.ID, slave.Command)
 
 	b.Status = "running"
 	m.buildManager.UpdateBuild(b)

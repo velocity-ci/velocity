@@ -22,7 +22,7 @@ build-api:
 	docker run --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
- 	--env CGO_ENABLED=0 \
+ 	--env CGO_ENABLED=1 \
  	--env GOOS=linux \
 	golang \
 	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_api ./api"
