@@ -8,18 +8,18 @@ import (
 	"os/user"
 )
 
-type FileManager struct {
+type fileManager struct {
 	logger         *log.Logger
 	knownHostsPath string
 }
 
-func NewFileManager() *FileManager {
+func NewFileManager() *fileManager {
 	processUser, err := user.Current()
 	if err != nil {
 		log.Fatal(err)
 	}
 	os.MkdirAll(fmt.Sprintf("%s/.ssh/", processUser.HomeDir), os.ModePerm)
-	fM := &FileManager{
+	fM := &fileManager{
 		logger:         log.New(os.Stdout, "[file:knownhost]", log.Lshortfile),
 		knownHostsPath: fmt.Sprintf("%s/.ssh/known_hosts", processUser.HomeDir),
 	}
@@ -32,7 +32,7 @@ func NewFileManager() *FileManager {
 	return fM
 }
 
-func (m FileManager) Save(e *KnownHost) error {
+func (m fileManager) Save(e KnownHost) error {
 	if m.Exists(e.Entry) {
 		return nil
 	}
@@ -52,7 +52,7 @@ func (m FileManager) Save(e *KnownHost) error {
 	return nil
 }
 
-func (m FileManager) Exists(e string) bool {
+func (m fileManager) Exists(e string) bool {
 	f, err := os.OpenFile(m.knownHostsPath, os.O_RDONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -75,7 +75,7 @@ func (m FileManager) Exists(e string) bool {
 	return false
 }
 
-func (m FileManager) All() []KnownHost {
+func (m fileManager) All() []KnownHost {
 	knownHosts := []KnownHost{}
 
 	f, err := os.OpenFile(m.knownHostsPath, os.O_RDONLY|os.O_SYNC, 0644)
@@ -99,4 +99,14 @@ func (m FileManager) All() []KnownHost {
 
 	return knownHosts
 
+}
+
+func (m fileManager) Clear() error {
+	f, err := os.OpenFile(m.knownHostsPath, os.O_RDWR|os.O_SYNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	f.Truncate(0)
+	return nil
 }

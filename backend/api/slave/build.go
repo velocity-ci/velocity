@@ -6,6 +6,7 @@ import (
 	"github.com/docker/go/canonical/json"
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/knownhost"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
 )
@@ -33,6 +34,10 @@ func (c BuildCommand) String() string {
 	return string(j)
 }
 
+type KnownHostCommand struct {
+	KnownHosts []knownhost.KnownHost `json:"knownHosts"`
+}
+
 type SlaveBuildLogMessage struct {
 	BuildStepID string `json:"buildStepId"`
 	StreamName  string `json:"streamName"`
@@ -50,6 +55,15 @@ func NewBuildCommand(b build.Build, bS []build.BuildStep, p project.Project, c c
 			Commit:     c,
 			Task:       task,
 			BuildSteps: bS,
+		},
+	}
+}
+
+func NewKnownHostCommand(knownHosts []knownhost.KnownHost) CommandMessage {
+	return CommandMessage{
+		Command: "known-hosts",
+		Data: KnownHostCommand{
+			KnownHosts: knownHosts,
 		},
 	}
 }
@@ -77,6 +91,13 @@ func (c *CommandMessage) UnmarshalJSON(b []byte) error {
 
 	if c.Command == "build" {
 		d := BuildCommand{}
+		err := json.Unmarshal(rawData, &d)
+		if err != nil {
+			return err
+		}
+		c.Data = &d
+	} else if c.Command == "known-hosts" {
+		d := KnownHostCommand{}
 		err := json.Unmarshal(rawData, &d)
 		if err != nil {
 			return err

@@ -12,6 +12,7 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
+	"github.com/velocity-ci/velocity/backend/api/domain/knownhost"
 	"github.com/velocity-ci/velocity/backend/api/domain/project"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/api/domain/user"
@@ -110,11 +111,10 @@ func NewVelocity() App {
 	authController := auth.NewController(userManager)
 
 	// Known Host
-	// knownHostFileManager := knownhost.NewFileManager()
-	// knownHostManager := knownhost.NewManager(velocityAPI.bolt, knownHostFileManager)
-	// knownHostValidator := knownhost.NewValidator(validate, translator, knownHostManager)
-	// knownHostResolver := knownhost.NewResolver(knownHostValidator)
-	// knownHostController := knownhost.NewController(knownHostManager, knownHostResolver)
+	knownHostManager := knownhost.NewManager(gorm, websocketManager)
+	knownHostValidator := knownhost.NewValidator(validate, translator, knownHostManager)
+	knownHostResolver := knownhost.NewResolver(knownHostValidator)
+	knownHostController := knownhost.NewController(knownHostManager, knownHostResolver)
 
 	// Project
 	projectManager := project.NewManager(gorm, velocity.GitClone, websocketManager)
@@ -141,7 +141,7 @@ func NewVelocity() App {
 	syncController := apiSync.NewController(projectManager, commitManager, taskManager, websocketManager)
 
 	// Slave
-	slaveManager := slave.NewManager(buildManager, taskManager, commitManager, projectManager, websocketManager)
+	slaveManager := slave.NewManager(buildManager, taskManager, commitManager, projectManager, knownHostManager, websocketManager)
 	slaveController := slave.NewController(slaveManager, buildManager, commitManager, websocketManager)
 
 	buildScheduler := slave.NewBuildScheduler(slaveManager, buildManager, &velocityAPI.wg)
@@ -153,7 +153,7 @@ func NewVelocity() App {
 
 	velocityAPI.Router = NewMuxRouter([]Routable{
 		authController,
-		// knownHostController,
+		knownHostController,
 		projectController,
 		commitController,
 		taskController,

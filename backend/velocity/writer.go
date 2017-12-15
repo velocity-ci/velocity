@@ -18,8 +18,6 @@ func (w BlankWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (w *BlankWriter) SetStep(num uint64) {}
-
 func (w *BlankWriter) SetStreamName(name string) {}
 
 func (w *BlankWriter) SetStatus(s string) {}
