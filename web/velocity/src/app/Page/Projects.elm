@@ -20,6 +20,7 @@ import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
 import Page.Project.Route as ProjectRoute
 import Navigation
 import Views.Helpers exposing (onClickPage)
+import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 
 
 -- MODEL --
@@ -82,13 +83,13 @@ init session =
         handleLoadError _ =
             pageLoadError Page.Projects "Projects are currently unavailable."
 
-        initialModel projects =
+        initialModel (Paginated projectResults) =
             { formCollapsed = True
             , form = initialForm
             , errors = validate initialForm
             , serverErrors = []
             , submitting = False
-            , projects = projects
+            , projects = projectResults.results
             }
     in
         Task.map initialModel loadProjects

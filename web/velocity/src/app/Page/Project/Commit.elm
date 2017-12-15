@@ -8,9 +8,7 @@ import Data.Project as Project exposing (Project)
 import Data.Task as ProjectTask
 import Data.Build as Build exposing (Build)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Page.Helpers exposing (formatDateTime, sortByDatetime)
 import Page.Project.Commits as Commits
-import Request.Project
 import Request.Commit
 import Util exposing ((=>))
 import Task exposing (Task)
@@ -20,7 +18,6 @@ import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Navigation
-import Views.Helpers exposing (onClickPage)
 import Views.Page as Page exposing (ActivePage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask

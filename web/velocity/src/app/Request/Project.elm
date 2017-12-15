@@ -14,7 +14,7 @@ import Data.Commit as Commit exposing (Commit)
 import Data.Task as Task exposing (Task)
 import Data.Branch as Branch exposing (Branch)
 import Data.Build as Build exposing (Build)
-import Data.CommitResults as CommitResults
+import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
@@ -32,12 +32,12 @@ baseUrl =
 -- LIST --
 
 
-list : Maybe AuthToken -> Http.Request (List Project)
+list : Maybe AuthToken -> Http.Request (PaginatedList Project)
 list maybeToken =
     let
         expect =
             Project.decoder
-                |> Decode.list
+                |> PaginatedList.decoder
                 |> Http.expectJson
     in
         apiUrl baseUrl
