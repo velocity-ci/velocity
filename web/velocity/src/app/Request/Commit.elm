@@ -6,7 +6,7 @@ import Data.Commit as Commit exposing (Commit)
 import Data.Task as Task exposing (Task)
 import Data.Branch as Branch exposing (Branch)
 import Data.Build as Build exposing (Build)
-import Data.CommitResults as CommitResults
+import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
@@ -30,11 +30,12 @@ list :
     -> Int
     -> Int
     -> Maybe AuthToken
-    -> Http.Request CommitResults.Results
+    -> Http.Request (PaginatedList Commit)
 list id maybeBranch amount page maybeToken =
     let
         expect =
-            CommitResults.decoder
+            Commit.decoder
+                |> PaginatedList.decoder
                 |> Http.expectJson
 
         branchParam queryParams =
@@ -94,12 +95,12 @@ get id hash maybeToken =
 -- TASKS --
 
 
-tasks : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (List Task)
+tasks : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Task)
 tasks id hash maybeToken =
     let
         expect =
             Task.decoder
-                |> Decode.list
+                |> PaginatedList.decoder
                 |> Http.expectJson
 
         urlPieces =
@@ -144,12 +145,12 @@ task id hash name maybeToken =
 -- BUILDS --
 
 
-builds : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (List Build)
+builds : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Build)
 builds id hash maybeToken =
     let
         expect =
             Build.decoder
-                |> Decode.list
+                |> PaginatedList.decoder
                 |> Http.expectJson
 
         urlPieces =

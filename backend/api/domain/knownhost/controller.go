@@ -1,7 +1,6 @@
 package knownhost
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -60,23 +59,22 @@ func (c Controller) postKnownHostsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = c.manager.Save(knownHost)
-	if err != nil {
-		fmt.Println(err)
-		c.render.JSON(w, http.StatusInternalServerError, nil)
-		return
-	}
+	c.manager.Create(knownHost)
 
 	c.render.JSON(w, http.StatusCreated, NewResponseKnownHost(knownHost))
 }
 
 func (c Controller) getKnownHostsHandler(w http.ResponseWriter, r *http.Request) {
-	knownHosts := c.manager.FindAll()
+	opts := c.resolver.QueryOptsFromRequest(r)
+	knownHosts, count := c.manager.GetAll(opts)
 
-	responseKnownHosts := []*ResponseKnownHost{}
+	responseKnownHosts := []ResponseKnownHost{}
 	for _, k := range knownHosts {
-		responseKnownHosts = append(responseKnownHosts, NewResponseKnownHost(&k))
+		responseKnownHosts = append(responseKnownHosts, NewResponseKnownHost(k))
 	}
 
-	c.render.JSON(w, http.StatusOK, responseKnownHosts)
+	c.render.JSON(w, http.StatusOK, ManyResponseKnownHost{
+		Total:  count,
+		Result: responseKnownHosts,
+	})
 }

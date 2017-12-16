@@ -2,12 +2,12 @@ module Request.KnownHost exposing (list, create)
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.KnownHost as KnownHost exposing (KnownHost)
-import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Util exposing ((=>))
 import Http
+import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 
 
 baseUrl : String
@@ -19,12 +19,12 @@ baseUrl =
 -- LIST --
 
 
-list : Maybe AuthToken -> Http.Request (List KnownHost)
+list : Maybe AuthToken -> Http.Request (PaginatedList KnownHost)
 list maybeToken =
     let
         expect =
             KnownHost.decoder
-                |> Decode.list
+                |> PaginatedList.decoder
                 |> Http.expectJson
     in
         apiUrl baseUrl

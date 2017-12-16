@@ -4,10 +4,10 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on, targetValue)
 import Data.Commit as Commit exposing (Commit)
-import Data.CommitResults as CommitResults exposing (Results)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
+import Data.PaginatedList as PaginatedList exposing (PaginatedList, Paginated(..))
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, formatTime, sortByDatetime)
 import Request.Project
@@ -54,7 +54,7 @@ init session id maybeBranch maybePage =
                 |> Request.Commit.list id maybeBranch perPage defaultPage
                 |> Http.toTask
 
-        initialModel { results, total } =
+        initialModel (Paginated { results, total }) =
             { commits = results
             , total = total
             , page = defaultPage
@@ -242,7 +242,7 @@ pageLink page isActive project maybeBranch =
 
 type Msg
     = SubmitSync
-    | SyncCompleted (Result Http.Error Results)
+    | SyncCompleted (Result Http.Error (PaginatedList Commit))
     | FilterBranch (Maybe Branch.Name)
     | SelectPage Int
     | NewUrl String
@@ -275,7 +275,7 @@ update project session msg model =
             in
                 { model | submitting = True } => cmd
 
-        SyncCompleted (Ok { results, total }) ->
+        SyncCompleted (Ok (Paginated { results, total })) ->
             { model
                 | submitting = False
                 , commits = results

@@ -104,6 +104,9 @@ const (
 	VUpdateBranch = "branch:update"
 	VDeleteBranch = "branch:delete"
 
+	VNewKnownHost    = "knownhost:new"
+	VDeleteKnownHost = "knownhost:delete"
+
 	VNewBuild    = "build:new"
 	VUpdateBuild = "build:update"
 	VDeleteBuild = "build:delete"

@@ -8,6 +8,7 @@ import Html.Attributes exposing (class, href, id, placeholder, attribute, classL
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
+import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Util exposing ((=>), onClickStopPropagation)
 import Views.Page as Page
 import Task exposing (Task)
@@ -41,7 +42,7 @@ init session =
         handleLoadError _ =
             pageLoadError Page.Home "Homepage is currently unavailable."
     in
-        Task.map Model loadProjects
+        Task.map (\(Paginated { results }) -> Model results) loadProjects
             |> Task.mapError handleLoadError
 
 

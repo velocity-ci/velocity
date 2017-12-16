@@ -118,6 +118,9 @@ func monitorCommands(ws *websocket.Conn) {
 		if command.Command == "build" {
 			log.Printf("Got Build: %v", command.Data)
 			runBuild(command.Data.(*slave.BuildCommand), ws)
+		} else if command.Command == "known-hosts" {
+			log.Printf("Got known hosts: %v", command.Data)
+			updateKnownHosts(command.Data.(*slave.KnownHostCommand))
 		}
 	}
 }

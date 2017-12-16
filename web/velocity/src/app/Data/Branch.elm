@@ -16,7 +16,7 @@ type alias Branch =
 
 decoder : Decoder Branch
 decoder =
-    Decode.map Name Decode.string
+    Decode.map Name (Decode.at [ "name" ] Decode.string)
 
 
 selectDecoder : Decoder (Maybe Branch)
