@@ -95,12 +95,12 @@ get id hash maybeToken =
 -- TASKS --
 
 
-tasks : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (List Task)
+tasks : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Task)
 tasks id hash maybeToken =
     let
         expect =
             Task.decoder
-                |> Decode.list
+                |> PaginatedList.decoder
                 |> Http.expectJson
 
         urlPieces =
@@ -145,12 +145,12 @@ task id hash name maybeToken =
 -- BUILDS --
 
 
-builds : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (List Build)
+builds : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Build)
 builds id hash maybeToken =
     let
         expect =
             Build.decoder
-                |> Decode.list
+                |> PaginatedList.decoder
                 |> Http.expectJson
 
         urlPieces =

@@ -24,7 +24,7 @@ decoder =
     decode Commit
         |> required "hash" decodeHash
         |> required "author" Decode.string
-        |> required "date" stringToDateTime
+        |> required "createdAt" stringToDateTime
         |> required "message" Decode.string
 
 

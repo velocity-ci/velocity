@@ -21,6 +21,7 @@ import Page.Project.Overview as Overview
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Socket.Channel as Channel exposing (Channel)
+import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 
 
 -- SUB PAGES --
@@ -85,9 +86,9 @@ init session id maybeRoute =
                 |> Request.Project.branches id
                 |> Http.toTask
 
-        initialModel project branches =
+        initialModel project (Paginated branches) =
             { project = project
-            , branches = branches
+            , branches = branches.results
             , subPageState = Loaded initialSubPage
             }
 

@@ -2,6 +2,7 @@ module Page.KnownHosts exposing (..)
 
 import Data.KnownHost as KnownHost exposing (KnownHost)
 import Data.Session as Session exposing (Session)
+import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Task exposing (Task)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.KnownHost
@@ -72,13 +73,13 @@ init session =
         handleLoadError _ =
             pageLoadError Page.KnownHosts "Known hosts are currently unavailable."
 
-        initialModel knownHosts =
+        initialModel (Paginated { total, results }) =
             { formCollapsed = True
             , form = initialForm
             , errors = validate initialForm
             , serverErrors = []
             , submitting = False
-            , knownHosts = knownHosts
+            , knownHosts = results
             }
     in
         Task.map initialModel loadKnownHosts

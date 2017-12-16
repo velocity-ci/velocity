@@ -22,6 +22,7 @@ import Views.Page as Page exposing (ActivePage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
 import Socket.Channel as Channel exposing (Channel)
+import Data.PaginatedList exposing (Paginated(..))
 
 
 -- SUB PAGES --
@@ -92,10 +93,10 @@ init session project hash maybeRoute =
                 |> Request.Commit.builds project.id hash
                 |> Http.toTask
 
-        initialModel commit tasks builds =
+        initialModel commit (Paginated tasks) (Paginated builds) =
             { commit = commit
-            , tasks = tasks
-            , builds = builds
+            , tasks = tasks.results
+            , builds = builds.results
             , subPageState = Loaded initialSubPage
             }
 

@@ -69,11 +69,12 @@ sync id token =
 -- BRANCHES --
 
 
-branches : Project.Id -> Maybe AuthToken -> Http.Request (List Branch)
+branches : Project.Id -> Maybe AuthToken -> Http.Request (PaginatedList Branch)
 branches id maybeToken =
     let
         expect =
-            Decode.list Branch.decoder
+            Branch.decoder
+                |> PaginatedList.decoder
                 |> Http.expectJson
     in
         apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/branches")
