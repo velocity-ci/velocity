@@ -179,12 +179,12 @@ func (r *gormRepository) GetAllCommitsByProjectID(projectID string, q CommitQuer
 
 	if len(q.Branch) > 0 {
 		db = db.
-			Joins("JOIN commit_branches AS cb ON cb.commit_id=commits.id").
-			Joins("JOIN branches AS b ON b.id=cb.branch_id").
+			Joins("JOIN commit_branches AS cb ON cb.gorm_commit_id=commits.id").
+			Joins("JOIN branches AS b ON b.id=cb.gorm_branch_id").
 			Where("b.name in (?)", []string{q.Branch}).
 			Group("commits.id")
 	}
-	db.Find(&gCs).Count(&count)
+	db.Find(&gCs).Count(&count).Debug()
 
 	db.
 		Limit(int(q.Amount)).
