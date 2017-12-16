@@ -32,6 +32,6 @@ import:
 - package: gopkg.in/src-d/go-git.v4
   version: ^4.0.0-rc9
 - package: github.com/jinzhu/gorm
-  version: ^1.0.0
+  version: master
   subpackages:
   - dialects/sqlite

@@ -1,5 +1,5 @@
-hash: 25a5b3a2687d3cebb38c65878b27eb2558d69a83cecae9203c3f9bae8e5fa7d2
-updated: 2017-11-19T18:25:43.699808281Z
+hash: 4615f1840c3d0746d9f54ee08efd10573daea87ee2fd4efcef17faf2bd909243
+updated: 2017-12-16T16:11:46.668037099Z
 imports:
 - name: github.com/agl/ed25519
   version: 5312a61534124124185d41f09206b9fef1d88403
@@ -10,7 +10,7 @@ imports:
   subpackages:
   - winterm
 - name: github.com/boltdb/bolt
-  version: fa5367d20c994db73282594be0146ab221657943
+  version: 9da31745363232bc1e27dbab3569e77383a51585
 - name: github.com/dgrijalva/jwt-go
   version: dbeaa9332f19a944acb5736b4456cfcc02140e29
 - name: github.com/docker/cli
@@ -128,7 +128,7 @@ imports:
 - name: github.com/go-playground/universal-translator
   version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/gogo/protobuf
-  version: 616a82ed12d78d24d4839363e8f3c5d3f20627cf
+  version: 35b81a066e522fb86ece043a8ef1dbfa10b4fed1
   subpackages:
   - proto
 - name: github.com/gorilla/context
@@ -146,17 +146,17 @@ imports:
   subpackages:
   - io
 - name: github.com/jinzhu/gorm
-  version: 5174cc5c242a728b435ea2be8a2f7f998e15429b
+  version: 0a51f6cdc55d1650d9ed3b4c13026cfa9133b01e
   subpackages:
   - dialects/sqlite
 - name: github.com/jinzhu/inflection
   version: 1c35d901db3da928c72a72d8458480cc9ade058f
 - name: github.com/mattn/go-sqlite3
-  version: 47157b55f33fde3bf09c73d8bd2e60da14fd6e3b
+  version: d5ffb5c0cca8778699a929b236766f4a7af674e8
 - name: github.com/Microsoft/go-winio
   version: 78439966b38d69bf38227fbf57ac8a6fee70f69a
 - name: github.com/miekg/pkcs11
-  version: 694c80ab67e3b197690c5ba8a11f0ecdf7a90c93
+  version: 57296583125bf58643f8bac3635bc1af1d65a6df
 - name: github.com/mitchellh/go-homedir
   version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: github.com/Nvveen/Gotty
@@ -164,7 +164,7 @@ imports:
 - name: github.com/opencontainers/go-digest
   version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
 - name: github.com/opencontainers/image-spec
-  version: 89b51c794e9113108a2914e38e66c826a649f2b5
+  version: 577479e4dc273d3779f00c223c7e0dba4cd6b8b0
   subpackages:
   - specs-go
   - specs-go/v1
@@ -174,7 +174,7 @@ imports:
   - libcontainer/system
   - libcontainer/user
 - name: github.com/pkg/errors
-  version: f15c970de5b76fac0b59abb32d62c17cc7bed265
+  version: e881fd58d78e04cf6d0de1217f8707c8cc2249bc
 - name: github.com/rainycape/unidecode
   version: cb7f23ec59bec0d61b19c56cd88cee3d0cc1870c
 - name: github.com/rs/cors
@@ -186,9 +186,9 @@ imports:
   subpackages:
   - diffmatchpatch
 - name: github.com/sirupsen/logrus
-  version: 95cd2b9c79aa5e72ab0bc69b7ccc2be15bf850f6
+  version: d682213848ed68c0a260ca37d6dd5ace8423f5ba
 - name: github.com/spf13/cobra
-  version: 19e54c4a2b8a78c9d54b2bed61b1a6c5e1bfcf6f
+  version: ccaecb155a2177302cb56cae929251a256d0f646
 - name: github.com/spf13/pflag
   version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/src-d/gcfg
@@ -204,7 +204,7 @@ imports:
 - name: github.com/xanzy/ssh-agent
   version: ba9c9e33906f58169366275e3450db66139a31a9
 - name: golang.org/x/crypto
-  version: 9f005a07e0d31d45e6656d241bb5c0f2efd4bc94
+  version: 94eea52f7b742c7cbe0b03b22f0c4c8631ece122
   subpackages:
   - bcrypt
   - blowfish
@@ -217,18 +217,18 @@ imports:
   - ssh/knownhosts
   - ssh/terminal
 - name: golang.org/x/net
-  version: 9dfe39835686865bff950a07b394c12a98ddc811
+  version: d866cfc389cec985d6fda2859936a575a55a3ab6
   subpackages:
   - context
   - context/ctxhttp
   - proxy
 - name: golang.org/x/sys
-  version: 0ac51a24ef1c37380f98ba8b98f56e3bffd59850
+  version: d5840adf789d732bc8b00f37b26ca956a7cc8e79
   subpackages:
   - unix
   - windows
 - name: golang.org/x/text
-  version: 88f656faf3f37f690df1a32515b479415e1a6769
+  version: d5a9226ed7dd70cade6ccae9d37517fe14dd9fee
   subpackages:
   - transform
   - unicode/norm
@@ -237,7 +237,7 @@ imports:
   subpackages:
   - rate
 - name: gopkg.in/go-playground/validator.v9
-  version: 61caf9d3038e1af346dbf5c2e16f6678e1548364
+  version: b1f51f36f1c98cc97f777d6fc9d4b05eaa0cabb5
   subpackages:
   - translations/en
 - name: gopkg.in/src-d/go-billy.v3
@@ -295,11 +295,11 @@ imports:
   version: 287cf08546ab5e7e37d55a84f7ed3fd1db036de5
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
