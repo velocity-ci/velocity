@@ -16,7 +16,14 @@ steps:
     image: civelocity/dev:latest
     mount_point: /go/src/github.com/velocity-ci/velocity/
     working_dir: backend
-    command: ["glide", "install", "--strip-vendor"]
+    command: ["dep", "ensure", "-v"]
+
+  - type: run
+    description: Prune dependencies
+    image: civelocity/dev:latest
+    mount_point: /go/src/github.com/velocity-ci/velocity/
+    working_dir: backend
+    command: ["dep", "prune"]
 
   - type: run
     description: Build binary

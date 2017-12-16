@@ -1,22 +1,31 @@
 GIT_VERSION = $(shell git describe --always)
 
-update:
-	docker run --rm \
+dep-install:
+	docker run -it --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
-	golang \
-	/bin/sh -c "curl https://glide.sh/get | sh && glide update --strip-vendor"
+	civelocity/dev \
+	/bin/sh -c "dep ensure -v && dep prune -v"
 
-install:
-	docker run --rm \
+dep-update:
+	docker run -it --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
-	golang \
-	/bin/sh -c "curl https://glide.sh/get | sh && glide install --strip-vendor"
+	civelocity/dev \
+	/bin/sh -c "dep ensure -v -update && dep prune -v"
+
+dep-status:
+	docker run -it --rm \
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+ 	--env CGO_ENABLED=0 \
+ 	--env GOOS=linux \
+	civelocity/dev \
+	/bin/sh -c "dep status"
 
 build-api:
 	docker run --rm \
