@@ -7,16 +7,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/docker/cli/cli/command"
-	"github.com/docker/cli/cli/command/image/build"
-	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/builder/dockerignore"
+	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
-	"github.com/docker/docker/pkg/term"
 )
 
 func runContainer(
@@ -26,81 +25,96 @@ func runContainer(
 	parameters map[string]Parameter,
 	emitter Emitter,
 ) (int, error) {
+
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		return 1, err
+	}
+
 	ctx := context.Background()
-	stdIn, stdOut, stdErr := term.StdStreams()
-	dockerCli := command.NewDockerCli(stdIn, stdOut, stdErr)
-	dockerCli.Initialize(cliflags.NewClientOptions())
 
-	pullResponse, pullErr := dockerCli.Client().ImagePull(ctx, pullImage, types.ImagePullOptions{})
-	if pullErr == nil {
-		defer pullResponse.Close()
-		handleOutput(pullResponse, parameters, emitter)
-	}
-
-	createResponse, err := dockerCli.Client().ContainerCreate(ctx, config, hostConfig, nil, "")
+	pullResp, err := cli.ImagePull(ctx, pullImage, types.ImagePullOptions{})
 	if err != nil {
-		return -1, err
+		return 1, err
 	}
+	defer pullResp.Close()
+	handleOutput(pullResp, parameters, emitter)
 
-	dockerCli.Client().ContainerStart(ctx, createResponse.ID, types.ContainerStartOptions{})
-	logsResponse, err := dockerCli.Client().ContainerLogs(ctx, createResponse.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
-	defer logsResponse.Close()
+	createResp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, "")
 	if err != nil {
-		return -1, err
+		return 1, err
 	}
-	handleOutput(logsResponse, parameters, emitter)
 
-	c, _ := dockerCli.Client().ContainerInspect(ctx, createResponse.ID)
-	d, _ := time.ParseDuration("1m")
-	err = dockerCli.Client().ContainerStop(ctx, createResponse.ID, &d)
+	err = cli.ContainerStart(ctx, createResp.ID, types.ContainerStartOptions{})
 	if err != nil {
-		fmt.Println(err)
+		return 1, err
 	}
 
-	err = dockerCli.Client().ContainerRemove(ctx, createResponse.ID, types.ContainerRemoveOptions{
-		RemoveVolumes: true,
-	})
+	logsResp, err := cli.ContainerLogs(ctx, createResp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
 	if err != nil {
-		fmt.Println(err)
+		return 1, err
+	}
+	defer logsResp.Close()
+	handleOutput(logsResp, parameters, emitter)
+
+	container, err := cli.ContainerInspect(ctx, createResp.ID)
+	if err != nil {
+		return 1, err
+	}
+	stopTimeout, _ := time.ParseDuration("30s")
+	err = cli.ContainerStop(ctx, createResp.ID, &stopTimeout)
+	if err != nil {
+		return 1, err
+	}
+	err = cli.ContainerRemove(ctx, createResp.ID, types.ContainerRemoveOptions{RemoveVolumes: true})
+	if err != nil {
+		return 1, err
 	}
 
-	return c.State.ExitCode, nil
+	return container.State.ExitCode, nil
 }
 
-func buildContainer(buildContext string, dockerfile string, tags []string, parameters map[string]Parameter, emitter Emitter) error {
-	ctx := context.Background()
-
+func buildContainer(
+	buildContext string,
+	dockerfile string,
+	tags []string,
+	parameters map[string]Parameter,
+	emitter Emitter,
+) error {
 	cwd, _ := os.Getwd()
 	buildContext = fmt.Sprintf("%s/%s", cwd, buildContext)
 
-	excludes, err := build.ReadDockerignore(buildContext)
+	excludes, err := readDockerignore(buildContext)
 	if err != nil {
-		emitter.SetStatus("failed")
-		emitter.Write([]byte(err.Error()))
 		return err
 	}
+
 	buildCtx, err := archive.TarWithOptions(buildContext, &archive.TarOptions{
 		ExcludePatterns: excludes,
 	})
 
-	stdIn, stdOut, stdErr := term.StdStreams()
-	dockerCli := command.NewDockerCli(stdIn, stdOut, stdErr)
-	dockerCli.Initialize(cliflags.NewClientOptions())
+	if err != nil {
+		return err
+	}
 
-	buildResponse, err := dockerCli.Client().ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+
+	buildResp, err := cli.ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
 		PullParent: true,
 		Remove:     true,
 		Dockerfile: dockerfile,
 		Tags:       tags,
 	})
 	if err != nil {
-		emitter.SetStatus("failed")
-		emitter.Write([]byte(err.Error()))
 		return err
 	}
-	defer buildResponse.Body.Close()
 
-	handleOutput(buildResponse.Body, parameters, emitter)
+	defer buildResp.Body.Close()
+	handleOutput(buildResp.Body, parameters, emitter)
 
 	return nil
 }
@@ -175,4 +189,22 @@ func resolvePullImage(image string) string {
 	}
 
 	return fmt.Sprintf("docker.io/%s", image)
+}
+
+// From: https://github.com/docker/cli/blob/c202b4b98704876b0476a8fda073c5ffa14ff76d/cli/command/image/build/dockerignore.go
+// ReadDockerignore reads the .dockerignore file in the context directory and
+// returns the list of paths to exclude
+func readDockerignore(contextDir string) ([]string, error) {
+	var excludes []string
+
+	f, err := os.Open(filepath.Join(contextDir, ".dockerignore"))
+	switch {
+	case os.IsNotExist(err):
+		return excludes, nil
+	case err != nil:
+		return nil, err
+	}
+	defer f.Close()
+
+	return dockerignore.ReadAll(f)
 }

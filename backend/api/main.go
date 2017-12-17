@@ -21,7 +21,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/websocket"
 	"github.com/velocity-ci/velocity/backend/velocity"
 
-	"github.com/boltdb/bolt"
 	"github.com/velocity-ci/velocity/backend/api/auth"
 )
 
@@ -74,7 +73,6 @@ func main() {
 type VelocityAPI struct {
 	Router  *MuxRouter
 	server  *http.Server
-	bolt    *bolt.DB
 	wg      sync.WaitGroup
 	workers []Worker
 }
@@ -183,9 +181,6 @@ func (v *VelocityAPI) Stop() {
 	}
 	v.wg.Wait()
 	if err := v.server.Shutdown(nil); err != nil {
-		panic(err)
-	}
-	if err := v.bolt.Close(); err != nil {
 		panic(err)
 	}
 }

@@ -184,7 +184,7 @@ func (r *gormRepository) GetAllCommitsByProjectID(projectID string, q CommitQuer
 			Where("b.name in (?)", []string{q.Branch}).
 			Group("commits.id")
 	}
-	db.Find(&gCs).Count(&count).Debug()
+	db.Find(&gCs).Count(&count)
 
 	db.
 		Limit(int(q.Amount)).
