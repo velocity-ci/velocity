@@ -16,6 +16,7 @@ type gormBuild struct {
 	TaskID      string
 	Parameters  []byte // Parameters as JSON
 	Status      string
+	UpdatedAt   time.Time
 	CreatedAt   time.Time
 	StartedAt   time.Time
 	CompletedAt time.Time
@@ -30,6 +31,7 @@ type gormBuildStep struct {
 	BuildID     string
 	Number      uint64
 	Status      string
+	UpdatedAt   time.Time
 	StartedAt   time.Time
 	CompletedAt time.Time
 }
@@ -77,6 +79,7 @@ func gormBuildFromBuild(b Build) gormBuild {
 		TaskID:      b.TaskID,
 		Parameters:  jsonParameters,
 		Status:      b.Status,
+		UpdatedAt:   b.UpdatedAt,
 		CreatedAt:   b.CreatedAt,
 		StartedAt:   b.StartedAt,
 		CompletedAt: b.CompletedAt,
@@ -95,6 +98,7 @@ func buildFromGormBuild(g gormBuild) Build {
 		TaskID:      g.TaskID,
 		Parameters:  parameters,
 		Status:      g.Status,
+		UpdatedAt:   g.UpdatedAt,
 		CreatedAt:   g.CreatedAt,
 		StartedAt:   g.StartedAt,
 		CompletedAt: g.CompletedAt,
@@ -108,6 +112,7 @@ func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
 		Number:  g.Number,
 
 		Status:      g.Status,
+		UpdatedAt:   g.UpdatedAt,
 		StartedAt:   g.StartedAt,
 		CompletedAt: g.CompletedAt,
 	}
@@ -120,6 +125,7 @@ func gormBuildStepFromBuildStep(bS BuildStep) gormBuildStep {
 		Number:  bS.Number,
 
 		Status:      bS.Status,
+		UpdatedAt:   bS.UpdatedAt,
 		StartedAt:   bS.StartedAt,
 		CompletedAt: bS.CompletedAt,
 	}

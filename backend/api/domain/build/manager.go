@@ -28,6 +28,7 @@ func NewManager(
 
 func (m *Manager) CreateBuild(b Build) Build {
 	b.CreatedAt = time.Now()
+	b.UpdatedAt = time.Now()
 	m.gormRepository.SaveBuild(b)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
@@ -38,6 +39,7 @@ func (m *Manager) CreateBuild(b Build) Build {
 }
 
 func (m *Manager) UpdateBuild(b Build) Build {
+	b.UpdatedAt = time.Now()
 	m.gormRepository.SaveBuild(b)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
@@ -81,10 +83,12 @@ func (m *Manager) GetWaitingBuilds() ([]Build, uint64) {
 }
 
 func (m *Manager) CreateBuildStep(bS BuildStep) BuildStep {
+	bS.UpdatedAt = time.Now()
 	return m.gormRepository.SaveBuildStep(bS)
 }
 
 func (m *Manager) UpdateBuildStep(bS BuildStep) BuildStep {
+	bS.UpdatedAt = time.Now()
 	m.gormRepository.SaveBuildStep(bS)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("step:%s", bS.ID),

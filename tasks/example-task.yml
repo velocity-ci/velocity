@@ -1,0 +1,9 @@
+description: "Hello Velocity"
+name: hello-velocity
+steps: 
+  - type: clone
+    submodule: false
+      
+  - type: run
+    description: Hello Docker
+    image: hello-world:latest
