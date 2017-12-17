@@ -62,17 +62,7 @@ initialSubPage =
 
 channels : Model -> List (Channel Msg)
 channels { builds } =
-    let
-        buildChannelPath build =
-            [ "project"
-            , Project.idToString build.project
-            , "commits"
-            , Commit.hashToString build.commit
-            , "builds"
-            , Build.idToString build.id
-            ]
-    in
-        List.map (buildChannelPath >> String.join "/" >> Channel.init) builds
+    []
 
 
 init : Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), ExternalMsg )
@@ -276,8 +266,9 @@ setRoute session project maybeRoute model =
                     Just build ->
                         { model | subPageState = CommitBuild.initialModel build |> CommitBuild |> Loaded }
                             => Cmd.none
-                            => JoinChannel (CommitBuild.channel build |> Channel.map CommitBuildMsg)
+                            => NoOp
 
+                    --                            => JoinChannel (CommitBuild.channel build |> Channel.map CommitBuildMsg)
                     _ ->
                         errored Page.Project "Uhoh"
                             => NoOp

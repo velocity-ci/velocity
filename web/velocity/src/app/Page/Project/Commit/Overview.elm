@@ -36,8 +36,8 @@ view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
 view project commit tasks builds =
     div []
         [ viewCommitDetails commit
-        , viewBuildTable project commit builds
-        , viewTaskList project commit tasks
+          --        , viewBuildTable project commit builds
+        , viewTaskList project commit tasks builds
         ]
 
 
@@ -74,11 +74,11 @@ viewCommitDetailsIcon commit iconClass fn =
         ]
 
 
-viewTaskList : Project -> Commit -> List ProjectTask.Task -> Html Msg
-viewTaskList project commit tasks =
+viewTaskList : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
+viewTaskList project commit tasks builds =
     let
         taskList =
-            List.map (viewTaskListItem project commit) tasks
+            List.map (viewTaskListItem project commit builds) tasks
                 |> div [ class "list-group list-group-flush" ]
     in
         div [ class "card mt-3" ]
@@ -87,60 +87,104 @@ viewTaskList project commit tasks =
             ]
 
 
-viewBuildTable : Project -> Commit -> List Build -> Html Msg
-viewBuildTable project commit builds =
-    let
-        header =
-            thead []
-                [ tr []
-                    [ th [ scope "col" ] [ text "#" ]
-                    , th [ scope "col" ] [ text "Task" ]
-                    , th [ scope "col" ] [ text "Status" ]
-                    ]
-                ]
-    in
-        table [ class "table table-bordered mt-3" ]
-            [ header
-            , tbody [] (List.map (viewBuildTableRow project commit) builds)
-            ]
+
+--
+--viewBuildTable : Project -> Commit -> List Build -> Html Msg
+--viewBuildTable project commit builds =
+--    let
+--        header =
+--            thead []
+--                [ tr []
+--                    [ th [ scope "col" ] [ text "#" ]
+--                    , th [ scope "col" ] [ text "Task" ]
+--                    , th [ scope "col" ] [ text "Status" ]
+--                    ]
+--                ]
+--    in
+--        table [ class "table table-bordered mt-3" ]
+--            [ header
+--            , tbody [] (List.map (viewBuildTableRow project commit) builds)
+--            ]
+--
+--
+--viewBuildTableRow : Project -> Commit -> Build -> Html Msg
+--viewBuildTableRow project commit build =
+--    let
+--        route =
+--            CommitRoute.Build build.id
+--                |> ProjectRoute.Commit commit.hash
+--                |> Route.Project project.id
+--    in
+--        tr []
+--            [ td []
+--                [ a
+--                    [ Route.href route
+--                    , onClickPage NewUrl route
+--                    ]
+--                    [ text <| Build.idToString build.id ]
+--                ]
+--            , td [] [ text <| ProjectTask.nameToString build.task ]
+--            , td [] []
+--            ]
 
 
-viewBuildTableRow : Project -> Commit -> Build -> Html Msg
-viewBuildTableRow project commit build =
-    let
-        route =
-            CommitRoute.Build build.id
-                |> ProjectRoute.Commit commit.hash
-                |> Route.Project project.id
-    in
-        tr []
-            [ td []
-                [ a
-                    [ Route.href route
-                    , onClickPage NewUrl route
-                    ]
-                    [ text <| Build.idToString build.id ]
-                ]
-            , td [] [ text <| ProjectTask.nameToString build.task ]
-            , td [] []
-            ]
+taskStatus : ProjectTask.Task -> List Build -> Maybe Build.Status
+taskStatus task builds =
+    builds
+        |> List.filter (\b -> ProjectTask.idEquals task.id b.taskId)
+        |> List.foldl
+            (\b a ->
+                if List.member a [ Just Build.Waiting, Just Build.Running ] then
+                    a
+                else
+                    Just b.status
+            )
+            Nothing
 
 
-viewTaskListItem : Project -> Commit -> ProjectTask.Task -> Html Msg
-viewTaskListItem project commit task =
+viewTaskStatusIcon : Maybe Build.Status -> String
+viewTaskStatusIcon status =
+    case status of
+        Just (Build.Waiting) ->
+            "fa-spinner"
+
+        Just (Build.Running) ->
+            "fa-spinner"
+
+        Just (Build.Success) ->
+            "fa-check"
+
+        Just (Build.Failed) ->
+            "fa-times"
+
+        Nothing ->
+            ""
+
+
+viewTaskListItem : Project -> Commit -> List Build -> ProjectTask.Task -> Html Msg
+viewTaskListItem project commit builds task =
     let
         route =
             CommitRoute.Task task.name
                 |> ProjectRoute.Commit commit.hash
                 |> Route.Project project.id
+
+        status =
+            taskStatus task builds
+
+        iconClassList =
+            [ ( "fa", True )
+            , ( viewTaskStatusIcon status, True )
+            ]
     in
         a
-            [ class "list-group-item list-group-item-action flex-column align-items-center"
+            [ class "list-group-item list-group-item-action flex-column align-items-center justify-content-between"
             , Route.href route
             , onClickPage NewUrl route
             ]
             [ div [ class "d-flex w-100 justify-content-between" ]
                 [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ]
+                , span [] [ i [ classList iconClassList ] [] ]
                 ]
             , p [ class "mb-1" ] [ text task.description ]
             ]

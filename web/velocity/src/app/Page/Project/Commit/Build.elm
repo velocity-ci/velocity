@@ -15,27 +15,22 @@ import Json.Decode as Decode
 
 
 -- SUBSCRIPTIONS --
-
-
-channel : Build -> Channel Msg
-channel build =
-    let
-        buildChannelPath =
-            [ "project"
-            , Project.idToString build.project
-            , "commits"
-            , Commit.hashToString build.commit
-            , "builds"
-            , Build.idToString build.id
-            ]
-    in
-        buildChannelPath
-            |> String.join "/"
-            |> Channel.init
-            |> Channel.onJoin SocketUpdate
-
-
-
+--channel : Build -> Channel Msg
+--channel build =
+--    let
+--        buildChannelPath =
+--            [ "project"
+--            , Project.idToString build.project
+--            , "commits"
+--            , Commit.hashToString build.commit
+--            , "builds"
+--            , Build.idToString build.id
+--            ]
+--    in
+--        buildChannelPath
+--            |> String.join "/"
+--            |> Channel.init
+--            |> Channel.onJoin SocketUpdate
 -- MODEL --
 
 

@@ -93,8 +93,13 @@ init session id maybeRoute =
             , subPageState = Loaded initialSubPage
             }
 
-        handleLoadError _ =
-            pageLoadError Page.Project "Project unavailable."
+        handleLoadError e =
+            case e of
+                Http.BadPayload debugError _ ->
+                    pageLoadError Page.Project debugError
+
+                _ ->
+                    pageLoadError Page.Project "Project unavailable."
     in
         Task.map2 initialModel loadProject loadBranches
             |> Task.andThen

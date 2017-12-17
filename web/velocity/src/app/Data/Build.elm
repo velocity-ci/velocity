@@ -11,9 +11,7 @@ import UrlParser
 type alias Build =
     { id : Id
     , status : Status
-    , commit : Commit.Hash
-    , project : Project.Id
-    , task : Task.Name
+    , taskId : Task.Id
     }
 
 
@@ -24,11 +22,9 @@ type alias Build =
 decoder : Decoder Build
 decoder =
     decode Build
-        |> required "id" (Decode.map Id int)
+        |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
-        |> required "commit" Commit.decodeHash
-        |> required "project" Project.decodeId
-        |> required "taskName" Task.decodeName
+        |> required "task" Task.decodeId
 
 
 statusDecoder : Decoder Status
@@ -60,7 +56,7 @@ statusDecoder =
 
 idParser : UrlParser.Parser (Id -> a) a
 idParser =
-    UrlParser.custom "ID" (String.toInt >> Result.map Id)
+    UrlParser.custom "ID" (Ok << Id)
 
 
 type Status
@@ -71,9 +67,9 @@ type Status
 
 
 type Id
-    = Id Int
+    = Id String
 
 
 idToString : Id -> String
 idToString (Id id) =
-    toString id
+    id

@@ -9,7 +9,8 @@ import UrlParser
 
 
 type alias Task =
-    { name : Name
+    { id : Id
+    , name : Name
     , description : String
     , steps : List Step
     , parameters : List Parameter
@@ -74,6 +75,7 @@ type alias ChoiceParameter =
 decoder : Decoder Task
 decoder =
     decode Task
+        |> required "id" decodeId
         |> required "name" decodeName
         |> optional "description" Decode.string ""
         |> optional "steps" (Decode.list stepDecoder) []
@@ -176,6 +178,10 @@ type Name
     = Name String
 
 
+type Id
+    = Id String
+
+
 decodeName : Decoder Name
 decodeName =
     Decode.map Name Decode.string
@@ -189,3 +195,18 @@ nameParser =
 nameToString : Name -> String
 nameToString (Name name) =
     name
+
+
+decodeId : Decoder Id
+decodeId =
+    Decode.map Id Decode.string
+
+
+idToString : Id -> String
+idToString (Id id) =
+    id
+
+
+idEquals : Id -> Id -> Bool
+idEquals (Id first) (Id second) =
+    first == second
