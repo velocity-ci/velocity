@@ -56,6 +56,7 @@ type Build struct {
 	Parameters map[string]velocity.Parameter `json:"parameters"`
 
 	Status      string    `json:"status"` // waiting, running, success, failed
+	UpdatedAt   time.Time `json:"updatedAt"`
 	CreatedAt   time.Time `json:"createdAt"`
 	StartedAt   time.Time `json:"startedAt"`
 	CompletedAt time.Time `json:"completedAt"`
@@ -69,6 +70,7 @@ func NewBuild(projectId string, taskID string, params map[string]velocity.Parame
 		Parameters: params,
 		Status:     "waiting",
 		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 }
 
@@ -78,6 +80,7 @@ type BuildStep struct {
 	Number  uint64 `json:"number"`
 
 	Status      string    `json:"status"` // waiting, running, success, failed
+	UpdatedAt   time.Time `json:"updatedAt"`
 	StartedAt   time.Time `json:"startedAt"`
 	CompletedAt time.Time `json:"completedAt"`
 }
@@ -98,10 +101,11 @@ func NewBuildStepStream(buildStepID string, name string) BuildStepStream {
 
 func NewBuildStep(buildID string, n uint64) BuildStep {
 	bS := BuildStep{
-		ID:      uuid.NewV3(uuid.NewV1(), buildID).String(),
-		BuildID: buildID,
-		Status:  "waiting",
-		Number:  n,
+		ID:        uuid.NewV3(uuid.NewV1(), buildID).String(),
+		BuildID:   buildID,
+		Status:    "waiting",
+		Number:    n,
+		UpdatedAt: time.Now(),
 	}
 
 	return bS
