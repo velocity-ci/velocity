@@ -8,7 +8,7 @@ import Util exposing ((=>))
 
 type alias Session msg =
     { user : Maybe User
-    , socket : Maybe (Socket msg)
+    , socket : Socket msg
     }
 
 

@@ -17,10 +17,12 @@ import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, format
 import Route
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
+import Json.Encode as Encode
 import Page.Project.Route as ProjectRoute
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Socket.Channel as Channel exposing (Channel)
 
 
 -- MODEL --
@@ -68,6 +70,16 @@ initialForm =
     , repository = newField Repository
     , privateKey = newField PrivateKey
     }
+
+
+channel : Channel msg
+channel =
+    Channel.init "projects"
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    [ ( "project:new", AddProject ) ]
 
 
 init : Session msg -> Task PageLoadError Model
@@ -304,6 +316,7 @@ type Msg
     | SetRepository String
     | SetPrivateKey String
     | ProjectCreated (Result Http.Error Project)
+    | AddProject Encode.Value
 
 
 updateInput : Field -> String -> FormField
@@ -454,12 +467,23 @@ update session msg model =
 
             ProjectCreated (Ok project) ->
                 { model
-                    | projects = project :: model.projects
-                    , submitting = False
+                    | submitting = False
                     , formCollapsed = True
                     , form = initialForm
                 }
                     => Cmd.none
+
+            AddProject projectJson ->
+                let
+                    newModel =
+                        case Decode.decodeValue Project.decoder projectJson of
+                            Ok project ->
+                                { model | projects = project :: model.projects }
+
+                            Err _ ->
+                                model
+                in
+                    newModel => Cmd.none
 
 
 

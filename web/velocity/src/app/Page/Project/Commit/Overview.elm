@@ -176,9 +176,20 @@ viewTaskListItem project commit builds task =
             [ ( "fa", True )
             , ( viewTaskStatusIcon status, True )
             ]
+
+        textClass =
+            case status of
+                Just (Build.Success) ->
+                    "text-success"
+
+                Just (Build.Failed) ->
+                    "text-danger"
+
+                _ ->
+                    ""
     in
         a
-            [ class "list-group-item list-group-item-action flex-column align-items-center justify-content-between"
+            [ class (textClass ++ " list-group-item list-group-item-action flex-column align-items-center justify-content-between")
             , Route.href route
             , onClickPage NewUrl route
             ]
