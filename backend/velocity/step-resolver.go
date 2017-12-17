@@ -60,3 +60,7 @@ func resolveCloneStep(y string) Step {
 	}
 	return step
 }
+
+func resolveDockerComposeStep(y string) Step {
+	return NewDockerCompose(y)
+}
