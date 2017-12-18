@@ -110,7 +110,7 @@ init session id maybeRoute =
 
 channelName : Project.Id -> String
 channelName projectId =
-    "projects:" ++ (Project.idToString projectId)
+    "project:" ++ (Project.idToString projectId)
 
 
 events : ProjectRoute.Route -> List ( String, Encode.Value -> Msg )
