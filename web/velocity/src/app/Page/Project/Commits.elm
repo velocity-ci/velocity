@@ -26,6 +26,7 @@ import Page.Project.Commit.Route as CommitRoute
 import Json.Decode as Decode
 import Navigation
 import Views.Helpers exposing (onClickPage)
+import Json.Encode as Encode
 
 
 -- MODEL --
@@ -72,6 +73,15 @@ init session id maybeBranch maybePage =
 perPage : Int
 perPage =
     10
+
+
+
+-- CHANNELS --
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    [ ( "commit:new", AddCommit ) ]
 
 
 
@@ -246,6 +256,7 @@ type Msg
     | FilterBranch (Maybe Branch.Name)
     | SelectPage Int
     | NewUrl String
+    | AddCommit Encode.Value
 
 
 update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -319,3 +330,35 @@ update project session msg model =
                     Route.Project project.id <| ProjectRoute.Commits uriEncoded (Just 1)
             in
                 model => Route.modifyUrl newRoute
+
+        AddCommit commitJson ->
+            let
+                find p =
+                    List.filter (\a -> a.hash == p.hash) model.commits
+                        |> List.head
+
+                newModel =
+                    case ( Decode.decodeValue Commit.decoder commitJson, model.branch ) of
+                        ( Ok commit, Just branch ) ->
+                            case find commit of
+                                Just _ ->
+                                    model
+
+                                Nothing ->
+                                    if List.member branch commit.branches then
+                                        { model | commits = commit :: model.commits }
+                                    else
+                                        model
+
+                        ( Ok commit, Nothing ) ->
+                            case find commit of
+                                Just _ ->
+                                    model
+
+                                Nothing ->
+                                    { model | commits = commit :: model.commits }
+
+                        ( Err _, _ ) ->
+                            model
+            in
+                newModel => Cmd.none

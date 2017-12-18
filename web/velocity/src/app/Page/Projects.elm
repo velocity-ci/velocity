@@ -72,16 +72,6 @@ initialForm =
     }
 
 
-channel : Channel msg
-channel =
-    Channel.init "projects"
-
-
-events : List ( String, Encode.Value -> Msg )
-events =
-    [ ( "project:new", AddProject ) ]
-
-
 init : Session msg -> Task PageLoadError Model
 init session =
     let
@@ -106,6 +96,20 @@ init session =
     in
         Task.map initialModel loadProjects
             |> Task.mapError handleLoadError
+
+
+
+-- CHANNELS --
+
+
+channelName : String
+channelName =
+    "projects"
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    [ ( "project:new", AddProject ) ]
 
 
 
@@ -475,10 +479,19 @@ update session msg model =
 
             AddProject projectJson ->
                 let
+                    find p =
+                        List.filter (\a -> a.id == p.id) model.projects
+                            |> List.head
+
                     newModel =
                         case Decode.decodeValue Project.decoder projectJson of
                             Ok project ->
-                                { model | projects = project :: model.projects }
+                                case find project of
+                                    Just _ ->
+                                        model
+
+                                    Nothing ->
+                                        { model | projects = project :: model.projects }
 
                             Err _ ->
                                 model

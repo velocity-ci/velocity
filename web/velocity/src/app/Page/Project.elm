@@ -23,6 +23,7 @@ import Navigation exposing (newUrl)
 import Socket.Channel as Channel exposing (Channel)
 import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Json.Encode as Encode
 
 
 -- SUB PAGES --
@@ -58,20 +59,7 @@ initialSubPage =
     Blank
 
 
-channels : Model -> List (Channel Msg)
-channels { subPageState } =
-    case subPageState of
-        Loaded (Commit subModel) ->
-            List.map (Channel.map CommitMsg) (Commit.channels subModel)
-
-        TransitioningFrom (Commit subModel) ->
-            List.map (Channel.map CommitMsg) (Commit.channels subModel)
-
-        _ ->
-            []
-
-
-init : Session msg -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), ExternalMsg )
+init : Session msg -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
 init session id maybeRoute =
     let
         maybeAuthToken =
@@ -111,10 +99,28 @@ init session id maybeRoute =
 
                         Nothing ->
                             ( successModel, Cmd.none )
-                                => JoinChannel (Channel.init "hello")
                                 |> Task.succeed
                 )
             |> Task.mapError handleLoadError
+
+
+
+-- CHANNELS --
+
+
+channelName : Project.Id -> String
+channelName projectId =
+    (Project.idToString projectId) ++ "projects:"
+
+
+events : ProjectRoute.Route -> List ( String, Encode.Value -> Msg )
+events route =
+    case route of
+        ProjectRoute.Commits _ _ ->
+            List.map (Tuple.mapSecond (\msg -> msg >> CommitsMsg)) Commits.events
+
+        _ ->
+            []
 
 
 
@@ -330,12 +336,6 @@ type Msg
     | SettingsMsg Settings.Msg
 
 
-type ExternalMsg
-    = SetSocket ( Socket Msg, Cmd (Socket.Msg Msg) )
-    | JoinChannel (Channel.Channel Msg)
-    | NoOp
-
-
 getSubPage : SubPageState -> SubPage
 getSubPage subPageState =
     case subPageState of
@@ -435,12 +435,12 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-update : Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     updateSubPage session (getSubPage model.subPageState) msg model
 
 
-updateSubPage : Session msg -> SubPage -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+updateSubPage : Session msg -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
 updateSubPage session subPage msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -457,62 +457,41 @@ updateSubPage session subPage msg model =
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
-                    => NoOp
 
             ( SetRoute route, _ ) ->
                 setRoute session route model
-                    => NoOp
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update model.project session) subMsg subModel
-                    => NoOp
 
             ( CommitsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Commits subModel) }
                     => Cmd.none
-                    => NoOp
 
             ( CommitsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => NoOp
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
-                    => NoOp
 
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
-                    => NoOp
 
             ( CommitLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => NoOp
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
                     ( ( newSubModel, newCmd ), externalMsg ) =
                         Commit.update model.project session subMsg subModel
-
-                    newExternalMsg =
-                        case externalMsg of
-                            Commit.SetSocket socket ->
-                                SetSocket ( (Socket.map CommitMsg socket), Cmd.none )
-
-                            Commit.JoinChannel channel ->
-                                JoinChannel (Channel.map CommitMsg channel)
-
-                            _ ->
-                                NoOp
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
-                        => newExternalMsg
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through" model)
                     => Cmd.none
-                    => NoOp
