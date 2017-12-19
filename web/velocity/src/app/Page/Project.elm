@@ -24,6 +24,7 @@ import Socket.Channel as Channel exposing (Channel)
 import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
+import Json.Decode as Decode
 
 
 -- SUB PAGES --
@@ -115,12 +116,16 @@ channelName projectId =
 
 events : ProjectRoute.Route -> List ( String, Encode.Value -> Msg )
 events route =
-    case route of
-        ProjectRoute.Commits _ _ ->
-            List.map (Tuple.mapSecond (\msg -> msg >> CommitsMsg)) Commits.events
+    let
+        subPageEvents =
+            case route of
+                ProjectRoute.Commits _ _ ->
+                    List.map (Tuple.mapSecond (\msg -> msg >> CommitsMsg)) Commits.events
 
-        _ ->
-            []
+                _ ->
+                    []
+    in
+        subPageEvents ++ [ ( "project:update", UpdateProject ) ]
 
 
 
@@ -275,7 +280,7 @@ viewSubPage session model =
                             |> pageFrame (sidebar CommitsPage)
 
                     crumbExtraItems =
-                        Commits.viewBreadcrumbExtraItems subModel
+                        Commits.viewBreadcrumbExtraItems project subModel
                             |> Html.map CommitsMsg
 
                     crumb =
@@ -334,6 +339,7 @@ type Msg
     | CommitMsg Commit.Msg
     | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
     | SettingsMsg Settings.Msg
+    | UpdateProject Encode.Value
 
 
 getSubPage : SubPageState -> SubPage
@@ -490,6 +496,17 @@ updateSubPage session subPage msg model =
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
+
+            ( UpdateProject updateJson, _ ) ->
+                let
+                    newProject =
+                        updateJson
+                            |> Decode.decodeValue Project.decoder
+                            |> Result.toMaybe
+                            |> Maybe.withDefault model.project
+                in
+                    { model | project = newProject }
+                        => Cmd.none
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page

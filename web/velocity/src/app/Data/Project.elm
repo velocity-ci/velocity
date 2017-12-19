@@ -13,6 +13,7 @@ type alias Project =
     , repository : String
     , createdAt : DateTime
     , updatedAt : DateTime
+    , synchronising : Bool
     }
 
 
@@ -28,6 +29,7 @@ decoder =
         |> required "repository" Decode.string
         |> required "createdAt" stringToDateTime
         |> required "updatedAt" stringToDateTime
+        |> required "synchronising" Decode.bool
 
 
 

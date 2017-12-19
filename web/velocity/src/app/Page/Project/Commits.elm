@@ -96,7 +96,7 @@ view project branches model =
                 |> viewCommitListContainer project
     in
         div []
-            [ viewCommitToolbar model.branch branches
+            [ viewCommitToolbar project model.branch branches
             , commits
             , pagination model.page model.total project model.branch
             ]
@@ -125,8 +125,8 @@ commitListToDict commits =
         List.foldl reducer Dict.empty commits
 
 
-viewCommitToolbar : Maybe Branch -> List Branch -> Html Msg
-viewCommitToolbar selectedBranch branches =
+viewCommitToolbar : Project -> Maybe Branch -> List Branch -> Html Msg
+viewCommitToolbar project selectedBranch branches =
     let
         o b =
             option
@@ -207,11 +207,11 @@ breadcrumb project =
     [ ( Route.Project project.id (ProjectRoute.Commits Nothing Nothing), "Commits" ) ]
 
 
-viewBreadcrumbExtraItems : Model -> Html Msg
-viewBreadcrumbExtraItems model =
+viewBreadcrumbExtraItems : Project -> Model -> Html Msg
+viewBreadcrumbExtraItems project model =
     div [ class "ml-auto p-2" ]
         [ button
-            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled model.submitting ]
+            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled project.synchronising ]
             [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
         ]
 
