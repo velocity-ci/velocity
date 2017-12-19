@@ -58,8 +58,6 @@ func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
 
 func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) error {
 	// Determine order to start services from links
-	serviceOrder := []string{}
-	totalServices := len(dC.Contents.Services)
 
 	return nil
 }
@@ -74,10 +72,27 @@ func getServiceOrder(services map[string]dockerComposeService, serviceOrder []st
 		if isIn(serviceName, serviceOrder) {
 			break
 		}
-		for _, link := range serviceDef.Links {
-
+		for _, linkedService := range serviceDef.Links {
+			serviceOrder = getLinkedServiceOrder(linkedService, services, serviceOrder)
 		}
+		serviceOrder = append(serviceOrder, serviceName)
 	}
+
+	for len(services) != len(serviceOrder) {
+		serviceOrder = getServiceOrder(services, serviceOrder)
+	}
+
+	return serviceOrder
+}
+
+func getLinkedServiceOrder(serviceName string, services map[string]dockerComposeService, serviceOrder []string) []string {
+	if isIn(serviceName, serviceOrder) {
+		return serviceOrder
+	}
+	for _, linkedService := range services[serviceName].Links {
+		serviceOrder = getLinkedServiceOrder(linkedService, services, serviceOrder)
+	}
+	return append(serviceOrder, serviceName)
 }
 
 func isIn(needle string, haystack []string) bool {
