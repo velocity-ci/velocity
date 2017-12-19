@@ -135,11 +135,6 @@ func sync(
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
 	projectManager.Update(p)
-	websocketManager.EmitAll(&websocket.PhoenixMessage{
-		Topic:   fmt.Sprintf("project:%s", p.ID),
-		Event:   websocket.VUpdateProject,
-		Payload: project.NewResponseProject(p),
-	})
 }
 
 func removeRemoteBranches(haystack []commit.Branch, names []string) []commit.Branch {
