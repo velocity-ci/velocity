@@ -41,7 +41,7 @@ type alias Model =
     }
 
 
-init : Session msg -> Project.Id -> Maybe Branch -> Maybe Int -> Task PageLoadError Model
+init : Session msg -> Project.Id -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
 init session id maybeBranch maybePage =
     let
         defaultPage =
@@ -60,7 +60,7 @@ init session id maybeBranch maybePage =
             , total = total
             , page = defaultPage
             , submitting = False
-            , branch = maybeBranch
+            , branch = Nothing
             }
 
         handleLoadError _ =
@@ -131,7 +131,7 @@ viewCommitToolbar project selectedBranch branches =
         o b =
             option
                 [ selected (b == selectedBranch) ]
-                [ text (Branch.nameToString b) ]
+                [ text (Branch.nameToString (Maybe.map .name b)) ]
 
         branchesSelect =
             List.map Just branches
@@ -234,7 +234,7 @@ pageLink : Int -> Bool -> Project -> Maybe Branch -> Html Msg
 pageLink page isActive project maybeBranch =
     let
         route =
-            Route.Project project.id <| ProjectRoute.Commits maybeBranch (Just page)
+            Route.Project project.id <| ProjectRoute.Commits (Maybe.map .name maybeBranch) (Just page)
     in
         li [ classList [ "page-item" => True, "active" => isActive ] ]
             [ a
@@ -253,7 +253,7 @@ pageLink page isActive project maybeBranch =
 type Msg
     = SubmitSync
     | SyncCompleted (Result Http.Error (PaginatedList Commit))
-    | FilterBranch (Maybe Branch.Name)
+    | FilterBranch (Maybe Branch)
     | SelectPage Int
     | NewUrl String
     | AddCommit Encode.Value
@@ -269,7 +269,7 @@ update project session msg model =
             let
                 getCommits authToken =
                     Just authToken
-                        |> Request.Commit.list project.id model.branch perPage model.page
+                        |> Request.Commit.list project.id (Maybe.map .name model.branch) perPage model.page
                         |> Http.toTask
 
                 cmdFromAuth authToken =
@@ -301,6 +301,7 @@ update project session msg model =
             let
                 uriEncoded =
                     model.branch
+                        |> Maybe.map .name
                         |> Maybe.andThen
                             (\(Branch.Name slug) ->
                                 slug
@@ -318,6 +319,7 @@ update project session msg model =
             let
                 uriEncoded =
                     maybeBranch
+                        |> Maybe.map .name
                         |> Maybe.andThen
                             (\(Branch.Name slug) ->
                                 slug
@@ -345,7 +347,7 @@ update project session msg model =
                                     model
 
                                 Nothing ->
-                                    if List.member branch commit.branches then
+                                    if List.member branch.name commit.branches then
                                         { model | commits = commit :: model.commits }
                                     else
                                         model

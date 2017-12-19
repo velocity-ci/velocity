@@ -26,7 +26,7 @@ baseUrl =
 
 list :
     Project.Id
-    -> Maybe Branch
+    -> Maybe Branch.Name
     -> Int
     -> Int
     -> Maybe AuthToken
@@ -40,8 +40,8 @@ list id maybeBranch amount page maybeToken =
 
         branchParam queryParams =
             case maybeBranch of
-                Just (Branch.Name branch) ->
-                    ( "branch", branch ) :: queryParams
+                Just branch ->
+                    ( "branch", Branch.nameToString (Just branch) ) :: queryParams
 
                 _ ->
                     queryParams
