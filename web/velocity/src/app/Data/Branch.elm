@@ -4,10 +4,13 @@ import Html.Events exposing (targetValue)
 import Json.Decode as Decode exposing (Decoder)
 import UrlParser
 import Http
+import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
 
 
 type alias Branch =
-    Name
+    { name : Name
+    , active : Bool
+    }
 
 
 
@@ -16,7 +19,9 @@ type alias Branch =
 
 decoder : Decoder Branch
 decoder =
-    Decode.map Name (Decode.at [ "name" ] Decode.string)
+    decode Branch
+        |> required "name" (Decode.map Name Decode.string)
+        |> required "active" Decode.bool
 
 
 selectDecoder : Decoder (Maybe Branch)
@@ -27,8 +32,7 @@ selectDecoder =
                 if branchName == allBranchName then
                     Decode.succeed Nothing
                 else
-                    Name branchName
-                        |> Just
+                    Just { name = Name branchName, active = True }
                         |> Decode.succeed
             )
 

@@ -1,7 +1,6 @@
 module Main exposing (main)
 
 import Data.Session as Session exposing (Session)
-import Data.AuthToken as AuthToken
 import Data.User as User exposing (User, Username)
 import Data.Project exposing (idToString)
 import Html exposing (..)
@@ -45,9 +44,8 @@ type PageState
 
 
 type alias Model =
-    { session : Session
+    { session : Session Msg
     , pageState : PageState
-    , socket : Maybe (Socket Msg)
     }
 
 
@@ -58,12 +56,13 @@ init val location =
             decodeUserFromJson val
 
         session =
-            { user = user }
+            { user = user
+            , socket = initialSocket
+            }
     in
         setRoute (Route.fromLocation location)
             { pageState = Loaded initialPage
             , session = session
-            , socket = socket session
             }
 
 
@@ -80,21 +79,9 @@ initialPage =
     Blank
 
 
-channels : PageState -> List (Channel Msg)
-channels pageState =
-    case pageState of
-        Loaded (Project subModel) ->
-            List.map (Channel.map ProjectMsg) (Project.channels subModel)
-
-        _ ->
-            Debug.log "no channels" []
-
-
-socket : Session -> Maybe (Socket Msg)
-socket session =
-    session.user
-        |> Maybe.map .token
-        |> Maybe.map (\t -> Socket.init <| "ws://localhost/v1/ws?authToken=" ++ AuthToken.tokenToString t)
+initialSocket : Socket Msg
+initialSocket =
+    Socket.init "ws://localhost/v1/ws"
 
 
 
@@ -140,7 +127,7 @@ pageToActivePage page =
             Page.Other
 
 
-viewHeader : Session -> Bool -> Page -> Html Msg
+viewHeader : Session msg -> Bool -> Page -> Html Msg
 viewHeader session isLoading page =
     page
         |> pageToActivePage
@@ -148,7 +135,7 @@ viewHeader session isLoading page =
         |> Html.map HeaderMsg
 
 
-viewPage : Session -> Bool -> Page -> Html Msg
+viewPage : Session Msg -> Bool -> Page -> Html Msg
 viewPage session isLoading page =
     let
         frame =
@@ -171,28 +158,28 @@ viewPage session isLoading page =
 
             Home subModel ->
                 Home.view session subModel
-                    |> frame Page.Home
                     |> Html.map HomeMsg
+                    |> frame Page.Home
 
             Projects subModel ->
                 Projects.view session subModel
-                    |> frame Page.Projects
                     |> Html.map ProjectsMsg
+                    |> frame Page.Projects
 
             Project subModel ->
                 Project.view session subModel
-                    |> frame Page.Projects
                     |> Html.map ProjectMsg
+                    |> frame Page.Projects
 
             Login subModel ->
                 Login.view session subModel
-                    |> frame Page.Login
                     |> Html.map LoginMsg
+                    |> frame Page.Login
 
             KnownHosts subModel ->
                 KnownHosts.view session subModel
-                    |> frame Page.KnownHosts
                     |> Html.map KnownHostsMsg
+                    |> frame Page.KnownHosts
 
 
 
@@ -206,10 +193,7 @@ subscriptions model =
             Sub.map SetUser sessionChange
 
         socket =
-            SocketMsg
-                |> Just
-                |> Maybe.map2 Socket.listen model.socket
-                |> Maybe.withDefault Sub.none
+            Socket.listen model.session.socket SocketMsg
     in
         Sub.batch [ session, socket ]
 
@@ -247,10 +231,37 @@ type Msg
     | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
     | KnownHostsMsg KnownHosts.Msg
     | SocketMsg (Socket.Msg Msg)
+    | JoinChannel (Channel Msg)
+    | NoOp
 
 
+leaveChannels : Session Msg -> Page -> Maybe Route -> ( Session Msg, Cmd Msg )
+leaveChannels session page route =
+    let
+        ( newSocket, leaveCmd ) =
+            case page of
+                Projects _ ->
+                    if route == Just Route.Projects then
+                        session.socket => Cmd.none
+                    else
+                        Socket.leave Projects.channelName session.socket
 
---    | NewMessage String
+                Project { project } ->
+                    case route of
+                        Just (Route.Project projectId _) ->
+                            if projectId == project.id then
+                                session.socket => Cmd.none
+                            else
+                                Socket.leave (Project.channelName project.id) session.socket
+
+                        _ ->
+                            session.socket => Cmd.none
+
+                _ ->
+                    session.socket => Cmd.none
+    in
+        { session | socket = newSocket }
+            => Cmd.map SocketMsg leaveCmd
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -262,6 +273,12 @@ setRoute maybeRoute model =
 
         errored =
             pageErrored model
+
+        session =
+            model.session
+
+        socket =
+            session.socket
     in
         case maybeRoute of
             Nothing ->
@@ -284,15 +301,32 @@ setRoute maybeRoute model =
                         model.session
                 in
                     { model | session = { session | user = Nothing } }
-                        => Cmd.batch
-                            [ Ports.storeSession Nothing
-                            , Route.modifyUrl Route.Home
-                            ]
+                        ! [ Ports.storeSession Nothing
+                          , Route.modifyUrl Route.Home
+                          ]
 
             Just (Route.Projects) ->
                 case model.session.user of
                     Just user ->
-                        transition ProjectsLoaded (Projects.init model.session)
+                        let
+                            ( newModel, pageCmd ) =
+                                transition ProjectsLoaded (Projects.init model.session)
+
+                            channel =
+                                Channel.init Projects.channelName
+                                    |> Channel.map ProjectsMsg
+
+                            ( newSocket, socketCmd ) =
+                                Socket.join channel socket
+
+                            listeningSocket =
+                                List.foldl
+                                    (\( event, msg ) s -> Socket.on event channel.name (msg >> ProjectsMsg) s)
+                                    newSocket
+                                    Projects.events
+                        in
+                            { newModel | session = { session | socket = listeningSocket } }
+                                ! [ pageCmd, Cmd.map SocketMsg socketCmd ]
 
                     Nothing ->
                         errored Page.Projects "You must be signed in to access your projects."
@@ -307,19 +341,33 @@ setRoute maybeRoute model =
 
             Just (Route.Project id subRoute) ->
                 let
-                    loadFreshPage =
+                    ( pageModel, pageCmd ) =
                         Just subRoute
                             |> Project.init model.session id
                             |> transition ProjectLoaded
+                            |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
+                            |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
+
+                    channel =
+                        Channel.init (Project.channelName id)
+                            |> Channel.map ProjectMsg
+
+                    ( newSocket, socketCmd ) =
+                        Socket.join channel socket
+
+                    listeningSocket =
+                        List.foldl
+                            (\( event, msg ) s -> Socket.on event channel.name (msg >> ProjectMsg) s)
+                            newSocket
+                            (Project.events subRoute)
 
                     transitionSubPage subModel =
                         let
                             ( newModel, newMsg ) =
-                                subModel
-                                    |> Project.update model.session (Project.SetRoute (Just subRoute))
+                                Project.update model.session (Project.SetRoute (Just subRoute)) subModel
                         in
                             { model | pageState = Loaded (Project newModel) }
-                                => Cmd.map ProjectMsg newMsg
+                                ! [ Cmd.map ProjectMsg newMsg ]
                 in
                     case ( model.session.user, model.pageState ) of
                         ( Just _, Loaded page ) ->
@@ -330,13 +378,13 @@ setRoute maybeRoute model =
                                     if id == subModel.project.id then
                                         transitionSubPage subModel
                                     else
-                                        loadFreshPage
+                                        ( pageModel, pageCmd )
 
                                 _ ->
-                                    loadFreshPage
+                                    ( pageModel, pageCmd )
 
                         ( Just _, TransitioningFrom _ ) ->
-                            loadFreshPage
+                            ( pageModel, pageCmd )
 
                         ( Nothing, _ ) ->
                             errored Page.Project ("You must be signed in to access project '" ++ idToString id ++ "'.")
@@ -366,35 +414,21 @@ updatePage page msg model =
             let
                 ( newModel, newCmd ) =
                     subUpdate subMsg subModel
-
-                ( socket, socketMsg ) =
-                    socketUpdates (Loaded (toModel newModel)) model.socket
             in
-                { model
-                    | pageState = Loaded (toModel newModel)
-                    , socket = socket
-                }
-                    ! [ Cmd.map toMsg newCmd
-                      , Cmd.map SocketMsg socketMsg
-                      ]
+                { model | pageState = Loaded (toModel newModel) }
+                    ! [ Cmd.map toMsg newCmd ]
 
         errored =
             pageErrored model
     in
         case ( msg, page ) of
-            ( SocketMsg subMsg, _ ) ->
+            ( SocketMsg msg, _ ) ->
                 let
-                    ( socket, cmd ) =
-                        case model.socket of
-                            Just socket ->
-                                Socket.update subMsg socket
-                                    |> Tuple.mapFirst Just
-
-                            _ ->
-                                Nothing => Cmd.none
+                    ( newSocket, socketCmd ) =
+                        Socket.update msg model.session.socket
                 in
-                    ( { model | socket = socket }
-                    , Cmd.map SocketMsg cmd
+                    ( { model | session = { session | socket = newSocket } }
+                    , Cmd.map SocketMsg socketCmd
                     )
 
             ( HeaderMsg subMsg, _ ) ->
@@ -403,7 +437,31 @@ updatePage page msg model =
                         model => Navigation.newUrl newUrl
 
             ( SetRoute route, _ ) ->
-                setRoute route model
+                let
+                    ( channelLeaveSession, channelLeaveCmd ) =
+                        leaveChannels model.session (getPage model.pageState) route
+
+                    ( routeModel, routeCmd ) =
+                        setRoute route { model | session = channelLeaveSession }
+                in
+                    routeModel
+                        ! [ routeCmd, channelLeaveCmd ]
+
+            ( JoinChannel channel, _ ) ->
+                let
+                    session =
+                        model.session
+
+                    ( newSession, socketCmd ) =
+                        let
+                            ( newSocket, socketCmd ) =
+                                Socket.join channel model.session.socket
+                        in
+                            { session | socket = newSocket }
+                                => socketCmd
+                in
+                    { model | session = newSession }
+                        => Cmd.map SocketMsg socketCmd
 
             ( SetUser user, _ ) ->
                 let
@@ -418,8 +476,10 @@ updatePage page msg model =
                             Cmd.none
                 in
                     { model
-                        | session = { session | user = user }
-                        , socket = socket session
+                        | session =
+                            { session
+                                | user = user
+                            }
                     }
                         => cmd
 
@@ -438,7 +498,12 @@ updatePage page msg model =
                                     session =
                                         model.session
                                 in
-                                    { model | session = { user = Just user } }
+                                    { model
+                                        | session =
+                                            { session
+                                                | user = Just user
+                                            }
+                                    }
                 in
                     { newModel | pageState = Loaded (Login pageModel) }
                         => Cmd.map LoginMsg cmd
@@ -474,23 +539,22 @@ updatePage page msg model =
                 let
                     pageState =
                         Loaded (Project subModel)
-
-                    ( socket, socketMsg ) =
-                        socketUpdates pageState model.socket
                 in
-                    { model
-                        | pageState = pageState
-                        , socket = socket
-                    }
+                    { model | pageState = pageState }
                         ! [ Cmd.map ProjectMsg subMsg
-                          , Cmd.map SocketMsg socketMsg
                           ]
 
             ( ProjectLoaded (Err error), _ ) ->
                 { model | pageState = Loaded (Errored error) } => Cmd.none
 
             ( ProjectMsg subMsg, Project subModel ) ->
-                toPage Project ProjectMsg (Project.update session) subMsg subModel
+                let
+                    ( newSubModel, newCmd ) =
+                        Project.update session subMsg subModel
+                in
+                    { model | pageState = Loaded (Project newSubModel) }
+                        ! [ Cmd.map ProjectMsg newCmd
+                          ]
 
             ( _, NotFound ) ->
                 -- Disregard incoming messages when we're on the
@@ -500,24 +564,6 @@ updatePage page msg model =
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong page
                 model => Cmd.none
-
-
-socketUpdates : PageState -> Maybe (Socket Msg) -> ( Maybe (Socket Msg), Cmd (Socket.Msg Msg) )
-socketUpdates pageState maybeSocket =
-    case maybeSocket of
-        Just socket ->
-            List.foldl
-                (\channel ( maybeSocket, cmd ) ->
-                    maybeSocket
-                        |> Socket.join channel
-                        |> Tuple.mapSecond (\msg -> Cmd.batch [ cmd, msg ])
-                )
-                ( socket, Cmd.none )
-                (channels pageState)
-                |> Tuple.mapFirst Just
-
-        Nothing ->
-            Nothing => Cmd.none
 
 
 

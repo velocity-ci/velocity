@@ -9,11 +9,11 @@ import UrlParser
 
 type alias Project =
     { id : Id
-    , key : Maybe String
     , name : String
     , repository : String
     , createdAt : DateTime
     , updatedAt : DateTime
+    , synchronising : Bool
     }
 
 
@@ -25,11 +25,11 @@ decoder : Decoder Project
 decoder =
     decode Project
         |> required "id" decodeId
-        |> optional "key" (Decode.nullable Decode.string) Nothing
         |> required "name" Decode.string
         |> required "repository" Decode.string
         |> required "createdAt" stringToDateTime
         |> required "updatedAt" stringToDateTime
+        |> required "synchronising" Decode.bool
 
 
 

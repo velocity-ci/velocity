@@ -32,56 +32,170 @@ initialModel =
 -- VIEW --
 
 
-view : Project -> Commit -> List ProjectTask.Task -> Html Msg
-view project commit tasks =
+view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
+view project commit tasks builds =
     div []
-        [ div [ class "card mt-3" ] [ div [ class "card-body" ] [ viewCommitDetails commit ] ]
-        , viewTaskList project commit tasks
+        [ viewCommitDetails commit
+          --        , viewBuildTable project commit builds
+        , viewTaskList project commit tasks builds
         ]
 
 
 viewCommitDetails : Commit -> Html Msg
 viewCommitDetails commit =
     let
-        hash =
-            Commit.hashToString commit.hash
+        viewCommitDetailsIcon_ =
+            viewCommitDetailsIcon commit
     in
-        dl [ style [ ( "margin-bottom", "0" ) ] ]
-            [ dt [] [ text "Message" ]
-            , dd [] [ text commit.message ]
-            , dt [] [ i [ attribute "aria-hidden" "true", class "fa fa-file-code-o" ] [] ]
-            , dd [] [ text hash ]
-            , dt [] [ text "Author" ]
-            , dd [] [ text commit.author ]
-            , dt [] [ i [ attribute "aria-hidden" "true", class "fa fa-calendar" ] [] ]
-            , dd [] [ text (formatDateTime commit.date) ]
+        div [ class "card mt-3 bg-light" ]
+            [ div [ class "card-body d-flex justify-content-between" ]
+                [ ul [ class "list-unstyled mb-0" ]
+                    [ viewCommitDetailsIcon_ "fa-comment-o" .message
+                    , viewCommitDetailsIcon_ "fa-file-code-o" (.hash >> Commit.hashToString)
+                    , viewCommitDetailsIcon_ "fa-user" .author
+                    , viewCommitDetailsIcon_ "fa-calendar" (.date >> formatDateTime)
+                    ]
+                ]
             ]
 
 
-viewTaskList : Project -> Commit -> List ProjectTask.Task -> Html Msg
-viewTaskList project commit tasks =
+viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
+viewCommitDetailsIcon commit iconClass fn =
+    li []
+        [ i
+            [ attribute "aria-hidden" "true"
+            , classList
+                [ ( "fa", True )
+                , ( iconClass, True )
+                ]
+            ]
+            []
+        , " " ++ fn commit |> text
+        ]
+
+
+viewTaskList : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
+viewTaskList project commit tasks builds =
     let
         taskList =
-            List.map (viewTaskListItem project commit) tasks
+            List.map (viewTaskListItem project commit builds) tasks
                 |> div [ class "list-group list-group-flush" ]
     in
-        div [ class "card default-margin-top" ]
+        div [ class "card mt-3" ]
             [ h5 [ class "card-header" ] [ text "Tasks" ]
             , taskList
             ]
 
 
-viewTaskListItem : Project -> Commit -> ProjectTask.Task -> Html Msg
-viewTaskListItem project commit task =
+
+--
+--viewBuildTable : Project -> Commit -> List Build -> Html Msg
+--viewBuildTable project commit builds =
+--    let
+--        header =
+--            thead []
+--                [ tr []
+--                    [ th [ scope "col" ] [ text "#" ]
+--                    , th [ scope "col" ] [ text "Task" ]
+--                    , th [ scope "col" ] [ text "Status" ]
+--                    ]
+--                ]
+--    in
+--        table [ class "table table-bordered mt-3" ]
+--            [ header
+--            , tbody [] (List.map (viewBuildTableRow project commit) builds)
+--            ]
+--
+--
+--viewBuildTableRow : Project -> Commit -> Build -> Html Msg
+--viewBuildTableRow project commit build =
+--    let
+--        route =
+--            CommitRoute.Build build.id
+--                |> ProjectRoute.Commit commit.hash
+--                |> Route.Project project.id
+--    in
+--        tr []
+--            [ td []
+--                [ a
+--                    [ Route.href route
+--                    , onClickPage NewUrl route
+--                    ]
+--                    [ text <| Build.idToString build.id ]
+--                ]
+--            , td [] [ text <| ProjectTask.nameToString build.task ]
+--            , td [] []
+--            ]
+
+
+taskStatus : ProjectTask.Task -> List Build -> Maybe Build.Status
+taskStatus task builds =
+    builds
+        |> List.filter (\b -> ProjectTask.idEquals task.id b.taskId)
+        |> List.foldl
+            (\b a ->
+                if List.member a [ Just Build.Waiting, Just Build.Running ] then
+                    a
+                else
+                    Just b.status
+            )
+            Nothing
+
+
+viewTaskStatusIcon : Maybe Build.Status -> String
+viewTaskStatusIcon status =
+    case status of
+        Just (Build.Waiting) ->
+            "fa-spinner"
+
+        Just (Build.Running) ->
+            "fa-spinner"
+
+        Just (Build.Success) ->
+            "fa-check"
+
+        Just (Build.Failed) ->
+            "fa-times"
+
+        Nothing ->
+            ""
+
+
+viewTaskListItem : Project -> Commit -> List Build -> ProjectTask.Task -> Html Msg
+viewTaskListItem project commit builds task =
     let
         route =
             CommitRoute.Task task.name
                 |> ProjectRoute.Commit commit.hash
                 |> Route.Project project.id
+
+        status =
+            taskStatus task builds
+
+        iconClassList =
+            [ ( "fa", True )
+            , ( viewTaskStatusIcon status, True )
+            ]
+
+        textClass =
+            case status of
+                Just (Build.Success) ->
+                    "text-success"
+
+                Just (Build.Failed) ->
+                    "text-danger"
+
+                _ ->
+                    ""
     in
-        a [ class "list-group-item list-group-item-action flex-column align-items-center", Route.href route, onClickPage NewUrl route ]
+        a
+            [ class (textClass ++ " list-group-item list-group-item-action flex-column align-items-center justify-content-between")
+            , Route.href route
+            , onClickPage NewUrl route
+            ]
             [ div [ class "d-flex w-100 justify-content-between" ]
                 [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ]
+                , span [] [ i [ classList iconClassList ] [] ]
                 ]
             , p [ class "mb-1" ] [ text task.description ]
             ]
@@ -95,7 +209,7 @@ type Msg
     = NewUrl String
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     case msg of
         NewUrl url ->

@@ -135,7 +135,7 @@ type Msg
     | SetDeleteState ConfirmDeleteState
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     case msg of
         SubmitProjectDelete ->

@@ -1,8 +1,17 @@
-module Socket.Channel exposing (..)
+module Socket.Channel exposing (Channel, State(..), init, withPayload, onError, onClose, onJoin, onJoinError, setState, map)
 
+{-|
+
+@docs Channel, State, init, withPayload, onError, onClose, onJoin, onJoinError, setState, map
+
+-}
+
+import Socket.Helpers exposing (emptyPayload)
 import Json.Encode as JE
 
 
+{-| Represents a phoenix channel
+-}
 type alias Channel msg =
     { name : String
     , payload : JE.Value
@@ -16,10 +25,25 @@ type alias Channel msg =
     }
 
 
+{-| All possible states a channel can be in
+-}
+type State
+    = Closed
+    | Errored
+    | Joined
+    | Joining
+    | Leaving
+
+
+{-| Initializes a channel
+
+    init "rooms:lobby"
+
+-}
 init : String -> Channel msg
 init name =
     { name = name
-    , payload = (JE.object [])
+    , payload = emptyPayload
     , state = Closed
     , onClose = Nothing
     , onError = Nothing
@@ -28,6 +52,42 @@ init name =
     , joinRef = -1
     , leaveRef = -1
     }
+
+
+{-| Attaches a payload that's used for authentication
+
+    payload = JE.object [ ("user_id", JE.string "123") ]
+    init "rooms:lobby"
+      |> withPayload payload
+
+-}
+withPayload : JE.Value -> Channel msg -> Channel msg
+withPayload payload channel =
+    { channel | payload = payload }
+
+
+{-| -}
+onError : (JE.Value -> msg) -> Channel msg -> Channel msg
+onError valueToMsg channel =
+    { channel | onError = Just valueToMsg }
+
+
+{-| -}
+onClose : (JE.Value -> msg) -> Channel msg -> Channel msg
+onClose valueToMsg channel =
+    { channel | onClose = Just valueToMsg }
+
+
+{-| -}
+onJoin : (JE.Value -> msg) -> Channel msg -> Channel msg
+onJoin valueToMsg channel =
+    { channel | onJoin = Just valueToMsg }
+
+
+{-| -}
+onJoinError : (JE.Value -> msg) -> Channel msg -> Channel msg
+onJoinError valueToMsg channel =
+    { channel | onJoinError = Just valueToMsg }
 
 
 {-| -}
@@ -41,9 +101,8 @@ map fn channel =
     }
 
 
-type State
-    = Closed
-    | Errored
-    | Joined
-    | Joining
-    | Leaving
+{-| Sets the state of a channel. Internal use only.
+-}
+setState : State -> Channel msg -> Channel msg
+setState state channel =
+    { channel | state = state }

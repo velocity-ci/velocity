@@ -17,10 +17,12 @@ import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, format
 import Route
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
+import Json.Encode as Encode
 import Page.Project.Route as ProjectRoute
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Socket.Channel as Channel exposing (Channel)
 
 
 -- MODEL --
@@ -70,7 +72,7 @@ initialForm =
     }
 
 
-init : Session -> Task PageLoadError Model
+init : Session msg -> Task PageLoadError Model
 init session =
     let
         maybeAuthToken =
@@ -97,10 +99,24 @@ init session =
 
 
 
+-- CHANNELS --
+
+
+channelName : String
+channelName =
+    "projects"
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    [ ( "project:new", AddProject ) ]
+
+
+
 -- VIEW --
 
 
-view : Session -> Model -> Html Msg
+view : Session msg -> Model -> Html Msg
 view session model =
     div []
         [ div [ class "container-fluid" ]
@@ -304,6 +320,7 @@ type Msg
     | SetRepository String
     | SetPrivateKey String
     | ProjectCreated (Result Http.Error Project)
+    | AddProject Encode.Value
 
 
 updateInput : Field -> String -> FormField
@@ -344,7 +361,7 @@ serverErrorToFormError ( fieldNameString, errorString ) =
         field => errorString
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     let
         form =
@@ -454,12 +471,32 @@ update session msg model =
 
             ProjectCreated (Ok project) ->
                 { model
-                    | projects = project :: model.projects
-                    , submitting = False
+                    | submitting = False
                     , formCollapsed = True
                     , form = initialForm
                 }
                     => Cmd.none
+
+            AddProject projectJson ->
+                let
+                    find p =
+                        List.filter (\a -> a.id == p.id) model.projects
+                            |> List.head
+
+                    newModel =
+                        case Decode.decodeValue Project.decoder projectJson of
+                            Ok project ->
+                                case find project of
+                                    Just _ ->
+                                        model
+
+                                    Nothing ->
+                                        { model | projects = project :: model.projects }
+
+                            Err _ ->
+                                model
+                in
+                    newModel => Cmd.none
 
 
 

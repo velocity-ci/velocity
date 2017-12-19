@@ -32,7 +32,7 @@ pageLoadError activePage errorMessage =
 -- VIEW --
 
 
-view : Session -> PageLoadError -> Html msg
+view : Session msg -> PageLoadError -> Html msg
 view session (PageLoadError model) =
     div [ class "container mt-3" ]
         [ div [ class "row" ]

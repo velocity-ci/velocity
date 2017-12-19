@@ -10,7 +10,6 @@ import Data.User as User exposing (User, Username)
 import Html.Lazy exposing (lazy2)
 import Views.Spinner exposing (spinner)
 import Views.Helpers exposing (onClickPage)
-import Util exposing ((=>))
 
 
 {-| Determines which navbar link (if any) will be rendered as active.

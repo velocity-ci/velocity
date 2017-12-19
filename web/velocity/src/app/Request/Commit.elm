@@ -26,7 +26,7 @@ baseUrl =
 
 list :
     Project.Id
-    -> Maybe Branch
+    -> Maybe Branch.Name
     -> Int
     -> Int
     -> Maybe AuthToken
@@ -40,8 +40,8 @@ list id maybeBranch amount page maybeToken =
 
         branchParam queryParams =
             case maybeBranch of
-                Just (Branch.Name branch) ->
-                    ( "branch", branch ) :: queryParams
+                Just branch ->
+                    ( "branch", Branch.nameToString (Just branch) ) :: queryParams
 
                 _ ->
                     queryParams
@@ -180,6 +180,8 @@ createBuild id hash taskName params token =
             , Project.idToString id
             , "commits"
             , Commit.hashToString hash
+            , "tasks"
+            , Task.nameToString taskName
             , "builds"
             ]
 
@@ -196,9 +198,7 @@ createBuild id hash taskName params token =
 
         encodedBody =
             Encode.object
-                [ "taskName" => (Task.nameToString taskName |> Encode.string)
-                , "params" => encodedParams
-                ]
+                [ "params" => encodedParams ]
 
         body =
             encodedBody
