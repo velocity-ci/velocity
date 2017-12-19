@@ -8,7 +8,7 @@ import Html.Attributes exposing (alt, class, id, src, tabindex)
 -- VIEW --
 
 
-view : Session -> Html msg
+view : Session msg -> Html msg
 view session =
     main_ [ id "content", class "container", tabindex -1 ]
         [ h1 [] [ text "Not Found" ]

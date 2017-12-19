@@ -5,14 +5,13 @@ import Data.Commit as Commit
 import Data.Task as Task
 import Json.Decode as Decode exposing (Decoder, int, string)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
+import UrlParser
 
 
 type alias Build =
     { id : Id
     , status : Status
-    , commit : Commit.Hash
-    , project : Project.Id
-    , task : Task.Name
+    , taskId : Task.Id
     }
 
 
@@ -23,11 +22,9 @@ type alias Build =
 decoder : Decoder Build
 decoder =
     decode Build
-        |> required "id" (Decode.map Id int)
+        |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
-        |> required "commit" Commit.decodeHash
-        |> required "project" Project.decodeId
-        |> required "taskName" Task.decodeName
+        |> required "task" Task.decodeId
 
 
 statusDecoder : Decoder Status
@@ -57,6 +54,11 @@ statusDecoder =
 -- IDENTIFIERS --
 
 
+idParser : UrlParser.Parser (Id -> a) a
+idParser =
+    UrlParser.custom "ID" (Ok << Id)
+
+
 type Status
     = Waiting
     | Failed
@@ -65,9 +67,9 @@ type Status
 
 
 type Id
-    = Id Int
+    = Id String
 
 
 idToString : Id -> String
 idToString (Id id) =
-    toString id
+    id

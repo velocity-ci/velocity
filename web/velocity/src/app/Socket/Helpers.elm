@@ -1,15 +1,23 @@
 module Socket.Helpers exposing (..)
 
-import Json.Decode as Decode exposing (field)
+import Json.Decode as JD exposing (field)
 import Json.Encode as JE
 
 
 type alias Message =
     { event : String
     , topic : String
-    , payload : Decode.Value
+    , payload : JD.Value
     , ref : Maybe Int
     }
+
+
+nullOrInt : JD.Decoder (Maybe Int)
+nullOrInt =
+    JD.oneOf
+        [ JD.null Nothing
+        , JD.map Just JD.int
+        ]
 
 
 maybeInt : Maybe Int -> JE.Value
@@ -22,31 +30,30 @@ maybeInt maybe =
             JE.null
 
 
-nullOrInt : Decode.Decoder (Maybe Int)
-nullOrInt =
-    Decode.oneOf
-        [ Decode.null Nothing
-        , Decode.map Just Decode.int
-        ]
-
-
-messageDecoder : Decode.Decoder Message
+messageDecoder : JD.Decoder Message
 messageDecoder =
-    Decode.map4 Message
-        (field "event" Decode.string)
-        (field "topic" Decode.string)
-        (field "payload" Decode.value)
+    JD.map4 Message
+        (field "event" JD.string)
+        (field "topic" JD.string)
+        (field "payload" JD.value)
         (field "ref" nullOrInt)
 
 
 messageEncoder : Message -> JE.Value
 messageEncoder { topic, event, payload, ref } =
     JE.object
-        [ ( "type", JE.string "subscribe" )
-        , ( "route", JE.string topic )
+        [ ( "event", JE.string event )
+        , ( "topic", JE.string topic )
+        , ( "payload", payload )
+        , ( "ref", maybeInt ref )
         ]
 
 
 encodeMessage : Message -> String
 encodeMessage =
     messageEncoder >> JE.encode 0
+
+
+emptyPayload : JE.Value
+emptyPayload =
+    JE.object []

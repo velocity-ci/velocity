@@ -55,7 +55,7 @@ type alias ChoiceFormField =
     }
 
 
-init : Session -> Project.Id -> Commit.Hash -> ProjectTask.Name -> Task PageLoadError Model
+init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Name -> Task PageLoadError Model
 init session id hash name =
     let
         maybeAuthToken =
@@ -389,7 +389,7 @@ type Msg
     | BuildCreated (Result Http.Error Data.Build.Build)
 
 
-update : Project -> Commit -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Commit -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project commit session msg model =
     let
         projectId =

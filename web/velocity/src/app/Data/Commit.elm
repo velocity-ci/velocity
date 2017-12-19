@@ -1,14 +1,16 @@
 module Data.Commit exposing (..)
 
+import Data.Branch as Branch exposing (Branch)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (decode, required)
+import Json.Decode.Pipeline as Pipeline exposing (decode, required, optional)
 import Time.DateTime as DateTime exposing (DateTime)
 import Data.Helpers exposing (stringToDateTime)
 import UrlParser
 
 
 type alias Commit =
-    { hash : Hash
+    { branches : List Branch.Name
+    , hash : Hash
     , author : String
     , date : DateTime
     , message : String
@@ -22,6 +24,7 @@ type alias Commit =
 decoder : Decoder Commit
 decoder =
     decode Commit
+        |> optional "branches" (Decode.map Branch.Name Decode.string |> Decode.list) []
         |> required "hash" decodeHash
         |> required "author" Decode.string
         |> required "createdAt" stringToDateTime

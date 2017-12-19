@@ -21,7 +21,9 @@ import Navigation
 import Views.Page as Page exposing (ActivePage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
+import Page.Project.Commit.Build as CommitBuild
 import Socket.Channel as Channel exposing (Channel)
+import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList exposing (Paginated(..))
 
 
@@ -33,6 +35,7 @@ type SubPage
     | Overview Overview.Model
     | Errored PageLoadError
     | CommitTask CommitTask.Model
+    | CommitBuild CommitBuild.Model
 
 
 type SubPageState
@@ -59,20 +62,10 @@ initialSubPage =
 
 channels : Model -> List (Channel Msg)
 channels { builds } =
-    let
-        buildChannelPath build =
-            [ "project"
-            , Project.idToString build.project
-            , "commits"
-            , Commit.hashToString build.commit
-            , "builds"
-            , Build.idToString build.id
-            ]
-    in
-        List.map (buildChannelPath >> String.join "/" >> Channel.init) builds
+    []
 
 
-init : Session -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init : Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), ExternalMsg )
 init session project hash maybeRoute =
     let
         maybeAuthToken =
@@ -113,6 +106,7 @@ init session project hash maybeRoute =
 
                         Nothing ->
                             ( successModel, Cmd.none )
+                                => NoOp
                                 |> Task.succeed
                 )
             |> Task.mapError handleLoadError
@@ -126,7 +120,7 @@ view : Project -> Model -> Html Msg
 view project model =
     case getSubPage model.subPageState of
         Overview _ ->
-            Overview.view project model.commit model.tasks
+            Overview.view project model.commit model.tasks model.builds
                 |> frame model.commit
                 |> Html.map OverviewMsg
 
@@ -134,6 +128,11 @@ view project model =
             CommitTask.view subModel
                 |> frame model.commit
                 |> Html.map CommitTaskMsg
+
+        CommitBuild subModel ->
+            CommitBuild.view subModel
+                |> frame model.commit
+                |> Html.map CommitBuildMsg
 
         _ ->
             Html.text "Nope"
@@ -194,6 +193,14 @@ type Msg
     | OverviewMsg Overview.Msg
     | CommitTaskMsg CommitTask.Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
+    | CommitBuildMsg CommitBuild.Msg
+    | CommitBuildLoaded (Result PageLoadError (List Build))
+
+
+type ExternalMsg
+    = SetSocket (Socket Msg)
+    | JoinChannel (Channel Msg)
+    | NoOp
 
 
 getSubPage : SubPageState -> SubPage
@@ -215,12 +222,19 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-setRoute : Session -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
+findBuild : List Build -> Build.Id -> Maybe Build
+findBuild builds id =
+    List.filter (\b -> b.id == id) builds
+        |> List.head
+
+
+setRoute : Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 setRoute session project maybeRoute model =
     let
         transition toMsg task =
             { model | subPageState = TransitioningFrom (getSubPage model.subPageState) }
                 => Task.attempt toMsg task
+                => NoOp
 
         errored =
             pageErrored model
@@ -229,10 +243,13 @@ setRoute session project maybeRoute model =
             Just (CommitRoute.Overview) ->
                 case session.user of
                     Just user ->
-                        { model | subPageState = Overview.initialModel |> Overview |> Loaded } => Cmd.none
+                        { model | subPageState = Overview.initialModel |> Overview |> Loaded }
+                            => Cmd.none
+                            => NoOp
 
                     Nothing ->
                         errored Page.Project "Uhoh"
+                            => NoOp
 
             Just (CommitRoute.Task name) ->
                 case session.user of
@@ -242,12 +259,27 @@ setRoute session project maybeRoute model =
 
                     Nothing ->
                         errored Page.Project "Uhoh"
+                            => NoOp
+
+            Just (CommitRoute.Build id) ->
+                case findBuild model.builds id of
+                    Just build ->
+                        { model | subPageState = CommitBuild.initialModel build |> CommitBuild |> Loaded }
+                            => Cmd.none
+                            => NoOp
+
+                    --                            => JoinChannel (CommitBuild.channel build |> Channel.map CommitBuildMsg)
+                    _ ->
+                        errored Page.Project "Uhoh"
+                            => NoOp
 
             _ ->
-                { model | subPageState = Loaded Blank } => Cmd.none
+                { model | subPageState = Loaded Blank }
+                    => Cmd.none
+                    => NoOp
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update project session msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -265,26 +297,37 @@ update project session msg model =
     in
         case ( msg, subPage ) of
             ( NewUrl url, _ ) ->
-                model => Navigation.newUrl url
+                model
+                    => Navigation.newUrl url
+                    => NoOp
 
             ( SetRoute route, _ ) ->
                 setRoute session project route model
 
             ( OverviewMsg subMsg, Overview subModel ) ->
                 toPage Overview OverviewMsg (Overview.update project session) subMsg subModel
+                    => NoOp
 
             ( CommitTaskLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (CommitTask subModel) }
                     => Cmd.none
+                    => NoOp
 
             ( CommitTaskLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
+                    => NoOp
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 toPage CommitTask CommitTaskMsg (CommitTask.update project model.commit session) subMsg subModel
+                    => NoOp
+
+            ( CommitBuildMsg subMsg, CommitBuild subModel ) ->
+                toPage CommitBuild CommitBuildMsg CommitBuild.update subMsg subModel
+                    => NoOp
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through" model)
                     => Cmd.none
+                    => NoOp

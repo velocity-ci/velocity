@@ -26,6 +26,7 @@ import Page.Project.Commit.Route as CommitRoute
 import Json.Decode as Decode
 import Navigation
 import Views.Helpers exposing (onClickPage)
+import Json.Encode as Encode
 
 
 -- MODEL --
@@ -40,7 +41,7 @@ type alias Model =
     }
 
 
-init : Session -> Project.Id -> Maybe Branch -> Maybe Int -> Task PageLoadError Model
+init : Session msg -> Project.Id -> Maybe Branch -> Maybe Int -> Task PageLoadError Model
 init session id maybeBranch maybePage =
     let
         defaultPage =
@@ -75,6 +76,15 @@ perPage =
 
 
 
+-- CHANNELS --
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    [ ( "commit:new", AddCommit ) ]
+
+
+
 -- VIEW --
 
 
@@ -86,7 +96,7 @@ view project branches model =
                 |> viewCommitListContainer project
     in
         div []
-            [ viewCommitToolbar model.branch branches
+            [ viewCommitToolbar project model.branch branches
             , commits
             , pagination model.page model.total project model.branch
             ]
@@ -115,8 +125,8 @@ commitListToDict commits =
         List.foldl reducer Dict.empty commits
 
 
-viewCommitToolbar : Maybe Branch -> List Branch -> Html Msg
-viewCommitToolbar selectedBranch branches =
+viewCommitToolbar : Project -> Maybe Branch -> List Branch -> Html Msg
+viewCommitToolbar project selectedBranch branches =
     let
         o b =
             option
@@ -197,11 +207,11 @@ breadcrumb project =
     [ ( Route.Project project.id (ProjectRoute.Commits Nothing Nothing), "Commits" ) ]
 
 
-viewBreadcrumbExtraItems : Model -> Html Msg
-viewBreadcrumbExtraItems model =
+viewBreadcrumbExtraItems : Project -> Model -> Html Msg
+viewBreadcrumbExtraItems project model =
     div [ class "ml-auto p-2" ]
         [ button
-            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled model.submitting ]
+            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled project.synchronising ]
             [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
         ]
 
@@ -246,9 +256,10 @@ type Msg
     | FilterBranch (Maybe Branch.Name)
     | SelectPage Int
     | NewUrl String
+    | AddCommit Encode.Value
 
 
-update : Project -> Session -> Msg -> Model -> ( Model, Cmd Msg )
+update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     case msg of
         NewUrl newUrl ->
@@ -319,3 +330,35 @@ update project session msg model =
                     Route.Project project.id <| ProjectRoute.Commits uriEncoded (Just 1)
             in
                 model => Route.modifyUrl newRoute
+
+        AddCommit commitJson ->
+            let
+                find p =
+                    List.filter (\a -> a.hash == p.hash) model.commits
+                        |> List.head
+
+                newModel =
+                    case ( Decode.decodeValue Commit.decoder commitJson, model.branch ) of
+                        ( Ok commit, Just branch ) ->
+                            case find commit of
+                                Just _ ->
+                                    model
+
+                                Nothing ->
+                                    if List.member branch commit.branches then
+                                        { model | commits = commit :: model.commits }
+                                    else
+                                        model
+
+                        ( Ok commit, Nothing ) ->
+                            case find commit of
+                                Just _ ->
+                                    model
+
+                                Nothing ->
+                                    { model | commits = commit :: model.commits }
+
+                        ( Err _, _ ) ->
+                            model
+            in
+                newModel => Cmd.none

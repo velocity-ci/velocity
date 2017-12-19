@@ -180,6 +180,8 @@ createBuild id hash taskName params token =
             , Project.idToString id
             , "commits"
             , Commit.hashToString hash
+            , "tasks"
+            , Task.nameToString taskName
             , "builds"
             ]
 
@@ -196,9 +198,7 @@ createBuild id hash taskName params token =
 
         encodedBody =
             Encode.object
-                [ "taskName" => (Task.nameToString taskName |> Encode.string)
-                , "params" => encodedParams
-                ]
+                [ "params" => encodedParams ]
 
         body =
             encodedBody
