@@ -41,8 +41,8 @@ type alias Model =
     }
 
 
-init : Session msg -> Project.Id -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
-init session id maybeBranch maybePage =
+init : Session msg -> List Branch -> Project.Id -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
+init session branches id maybeBranchName maybePage =
     let
         defaultPage =
             Maybe.withDefault 1 maybePage
@@ -52,15 +52,20 @@ init session id maybeBranch maybePage =
 
         loadCommits =
             maybeAuthToken
-                |> Request.Commit.list id maybeBranch perPage defaultPage
+                |> Request.Commit.list id maybeBranchName perPage defaultPage
                 |> Http.toTask
+
+        maybeBranch =
+            branches
+                |> List.filter (\b -> maybeBranchName == Just b.name)
+                |> List.head
 
         initialModel (Paginated { results, total }) =
             { commits = results
             , total = total
             , page = defaultPage
             , submitting = False
-            , branch = Nothing
+            , branch = maybeBranch
             }
 
         handleLoadError _ =

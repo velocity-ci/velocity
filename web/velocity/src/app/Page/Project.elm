@@ -377,7 +377,7 @@ setRoute session maybeRoute model =
             Just (ProjectRoute.Commits maybeBranch maybePage) ->
                 case session.user of
                     Just user ->
-                        Commits.init session model.project.id maybeBranch maybePage
+                        Commits.init session model.branches model.project.id maybeBranch maybePage
                             |> transition CommitsLoaded
 
                     Nothing ->
