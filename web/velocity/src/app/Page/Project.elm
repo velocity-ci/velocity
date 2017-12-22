@@ -117,10 +117,16 @@ channelName projectId =
 events : ProjectRoute.Route -> List ( String, Encode.Value -> Msg )
 events route =
     let
+        mapEvents fromMsg events =
+            List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) events
+
         subPageEvents =
             case route of
                 ProjectRoute.Commits _ _ ->
-                    List.map (Tuple.mapSecond (\msg -> msg >> CommitsMsg)) Commits.events
+                    mapEvents CommitsMsg Commits.events
+
+                ProjectRoute.Commit _ _ ->
+                    mapEvents CommitMsg Commit.events
 
                 _ ->
                     []
@@ -400,15 +406,11 @@ setRoute session maybeRoute model =
                     loadFreshPage =
                         Just maybeRoute
                             |> Commit.init session model.project hash
-                            |> Task.andThen
-                                (\( ( model, cmd ), externalMsg ) ->
-                                    Task.succeed ( model, cmd )
-                                )
                             |> transition CommitLoaded
 
                     transitionSubPage subModel =
                         let
-                            ( ( newModel, newMsg ), externalMsg ) =
+                            ( newModel, newMsg ) =
                                 subModel
                                     |> Commit.update model.project session (Commit.SetRoute (Just maybeRoute))
                         in
@@ -503,7 +505,7 @@ updateSubPage session subPage msg model =
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
-                    ( ( newSubModel, newCmd ), externalMsg ) =
+                    ( newSubModel, newCmd ) =
                         Commit.update model.project session subMsg subModel
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
