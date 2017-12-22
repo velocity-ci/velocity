@@ -22,7 +22,7 @@ import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Socket.Channel as Channel exposing (Channel)
 import Socket.Socket as Socket exposing (Socket)
-import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
 import Json.Encode as Encode
 import Json.Decode as Decode
 
@@ -128,7 +128,10 @@ events route =
         Debug.log "SubPageEvents"
             (subPageEvents
                 ++ [ ( "project:update", UpdateProject )
-                   , ( "branch:new", AddBranch )
+                   , ( "project:delete", ProjectDeleted )
+                   , ( "branch:new", RefreshBranches )
+                   , ( "branch:update", RefreshBranches )
+                   , ( "branch:delete", RefreshBranches )
                    ]
             )
 
@@ -346,6 +349,9 @@ type Msg
     | SettingsMsg Settings.Msg
     | UpdateProject Encode.Value
     | AddBranch Encode.Value
+    | ProjectDeleted Encode.Value
+    | RefreshBranches Encode.Value
+    | RefreshBranchesComplete (Result Http.Error (PaginatedList Branch))
 
 
 getSubPage : SubPageState -> SubPage
@@ -524,6 +530,18 @@ updateSubPage session subPage msg model =
                 in
                     { model | branches = branches }
                         => Cmd.none
+
+            ( RefreshBranches _, _ ) ->
+                model
+                    => Http.send RefreshBranchesComplete (Request.Project.branches model.project.id (Maybe.map .token session.user))
+
+            ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
+                { model | branches = results }
+                    => Cmd.none
+
+            ( ProjectDeleted _, _ ) ->
+                model
+                    => Route.modifyUrl Route.Projects
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page

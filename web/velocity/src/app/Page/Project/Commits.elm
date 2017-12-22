@@ -10,6 +10,7 @@ import Data.Branch as Branch exposing (Branch)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList, Paginated(..))
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, formatTime, sortByDatetime)
+import Data.AuthToken as AuthToken exposing (AuthToken)
 import Request.Project
 import Request.Commit
 import Util exposing ((=>))
@@ -41,6 +42,12 @@ type alias Model =
     }
 
 
+loadCommits : Project.Id -> Maybe AuthToken -> Maybe Branch -> Int -> Http.Request (PaginatedList Commit)
+loadCommits projectId maybeAuthToken maybeBranch page =
+    maybeAuthToken
+        |> Request.Commit.list projectId (Maybe.map .name maybeBranch) perPage page
+
+
 init : Session msg -> List Branch -> Project.Id -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
 init session branches id maybeBranchName maybePage =
     let
@@ -49,11 +56,6 @@ init session branches id maybeBranchName maybePage =
 
         maybeAuthToken =
             Maybe.map .token session.user
-
-        loadCommits =
-            maybeAuthToken
-                |> Request.Commit.list id maybeBranchName perPage defaultPage
-                |> Http.toTask
 
         maybeBranch =
             branches
@@ -71,7 +73,7 @@ init session branches id maybeBranchName maybePage =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map initialModel loadCommits
+        Task.map initialModel (loadCommits id maybeAuthToken maybeBranch defaultPage |> Http.toTask)
             |> Task.mapError handleLoadError
 
 
@@ -86,7 +88,9 @@ perPage =
 
 events : List ( String, Encode.Value -> Msg )
 events =
-    [ ( "commit:new", AddCommit )
+    [ ( "commit:new", RefreshCommitList )
+    , ( "commit:update", RefreshCommitList )
+    , ( "commit:deleted", RefreshCommitList )
     ]
 
 
@@ -218,7 +222,7 @@ viewBreadcrumbExtraItems : Project -> Model -> Html Msg
 viewBreadcrumbExtraItems project model =
     div [ class "ml-auto p-2" ]
         [ button
-            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled project.synchronising ]
+            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled (project.synchronising || model.submitting) ]
             [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
         ]
 
@@ -263,7 +267,8 @@ type Msg
     | FilterBranch (Maybe Branch)
     | SelectPage Int
     | NewUrl String
-    | AddCommit Encode.Value
+    | RefreshCommitList Encode.Value
+    | RefreshCompleted (Result Http.Error (PaginatedList Commit))
 
 
 update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -339,43 +344,19 @@ update project session msg model =
             in
                 model => Route.modifyUrl newRoute
 
-        AddCommit commitJson ->
+        RefreshCommitList _ ->
             let
-                find p =
-                    List.filter (\a -> a.hash == p.hash) model.commits
-                        |> List.head
-
-                decodeResult =
-                    Decode.decodeValue Commit.decoder commitJson
-
-                newModel =
-                    case ( decodeResult, model.branch ) of
-                        ( Ok commit, Just branch ) ->
-                            case find commit of
-                                Just _ ->
-                                    model
-
-                                Nothing ->
-                                    if List.member branch.name commit.branches then
-                                        { model
-                                            | commits = commit :: model.commits
-                                            , total = model.total + 1
-                                        }
-                                    else
-                                        model
-
-                        ( Ok commit, Nothing ) ->
-                            case find commit of
-                                Just _ ->
-                                    model
-
-                                Nothing ->
-                                    { model
-                                        | commits = commit :: model.commits
-                                        , total = model.total + 1
-                                    }
-
-                        ( Err _, _ ) ->
-                            model
+                refreshTask =
+                    loadCommits project.id (Maybe.map .token session.user) model.branch model.page
             in
-                newModel => Cmd.none
+                model => Http.send RefreshCompleted refreshTask
+
+        RefreshCompleted (Ok (Paginated { results, total })) ->
+            { model
+                | commits = results
+                , total = total
+            }
+                => Cmd.none
+
+        RefreshCompleted (Err _) ->
+            model => Cmd.none
