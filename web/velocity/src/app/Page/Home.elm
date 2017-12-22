@@ -1,4 +1,4 @@
-module Page.Home exposing (view, update, Model, Msg, init)
+module Page.Home exposing (view, update, Model, Msg, init, channelName, events)
 
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
@@ -20,6 +20,8 @@ import Page.Project.Route as ProjectRoute
 import Time.DateTime as DateTime
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
+import Json.Encode as Encode
+import Json.Decode as Decode
 
 
 -- MODEL --
@@ -44,6 +46,24 @@ init session =
     in
         Task.map (\(Paginated { results }) -> Model results) loadProjects
             |> Task.mapError handleLoadError
+
+
+
+-- CHANNELS --
+
+
+channelName : String
+channelName =
+    "projects"
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    [ ( "project:new", AddProject ) ]
+
+
+
+-- VIEW --
 
 
 view : Session msg -> Model -> Html Msg
@@ -141,6 +161,7 @@ viewProjectListItem project =
 
 type Msg
     = NewUrl String
+    | AddProject Encode.Value
 
 
 update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -148,3 +169,24 @@ update session msg model =
     case msg of
         NewUrl url ->
             model => newUrl url
+
+        AddProject projectJson ->
+            let
+                find p =
+                    List.filter (\a -> a.id == p.id) model.projects
+                        |> List.head
+
+                newModel =
+                    case Decode.decodeValue Project.decoder projectJson of
+                        Ok project ->
+                            case find project of
+                                Just _ ->
+                                    model
+
+                                Nothing ->
+                                    { model | projects = project :: model.projects }
+
+                        Err _ ->
+                            model
+            in
+                newModel => Cmd.none

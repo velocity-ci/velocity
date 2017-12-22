@@ -86,7 +86,8 @@ perPage =
 
 events : List ( String, Encode.Value -> Msg )
 events =
-    [ ( "commit:new", AddCommit ) ]
+    [ ( "commit:new", AddCommit )
+    ]
 
 
 
@@ -294,7 +295,6 @@ update project session msg model =
         SyncCompleted (Ok (Paginated { results, total })) ->
             { model
                 | submitting = False
-                , commits = results
                 , total = total
             }
                 => Cmd.none
@@ -340,32 +340,19 @@ update project session msg model =
 
         AddCommit commitJson ->
             let
-                find p =
-                    List.filter (\a -> a.hash == p.hash) model.commits
-                        |> List.head
-
+                --                find p =
+                --                    List.filter (\a -> (Commit.hashToString a.hash) == (Commit.hashToString p.hash)) model.commits
+                --                        |> List.head
                 newModel =
-                    case ( Decode.decodeValue Commit.decoder commitJson, model.branch ) of
-                        ( Ok commit, Just branch ) ->
-                            case find commit of
-                                Just _ ->
-                                    model
+                    case Decode.decodeValue Commit.decoder commitJson of
+                        Ok commit ->
+                            { model
+                                | commits = commit :: model.commits
+                                , total = model.total + 1
+                            }
 
-                                Nothing ->
-                                    if List.member branch.name commit.branches then
-                                        { model | commits = commit :: model.commits }
-                                    else
-                                        model
-
-                        ( Ok commit, Nothing ) ->
-                            case find commit of
-                                Just _ ->
-                                    model
-
-                                Nothing ->
-                                    { model | commits = commit :: model.commits }
-
-                        ( Err _, _ ) ->
+                        _ ->
                             model
             in
-                newModel => Cmd.none
+                Debug.log "NEW MODEL" newModel
+                    => Cmd.none

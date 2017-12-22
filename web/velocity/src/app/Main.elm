@@ -246,6 +246,12 @@ leaveChannels session page route =
                     else
                         Socket.leave Projects.channelName session.socket
 
+                Home _ ->
+                    if route == Just Route.Home then
+                        session.socket => Cmd.none
+                    else
+                        Socket.leave Home.channelName session.socket
+
                 Project { project } ->
                     case route of
                         Just (Route.Project projectId _) ->
@@ -285,12 +291,30 @@ setRoute maybeRoute model =
                 { model | pageState = Loaded NotFound } => Cmd.none
 
             Just (Route.Home) ->
-                case model.session.user of
-                    Just user ->
+                let
+                    ( newModel, pageCmd ) =
                         transition HomeLoaded (Home.init model.session)
 
-                    Nothing ->
-                        model => Route.modifyUrl Route.Login
+                    channel =
+                        Channel.init Home.channelName
+                            |> Channel.map HomeMsg
+
+                    ( newSocket, socketCmd ) =
+                        Socket.join channel socket
+
+                    listeningSocket =
+                        List.foldl
+                            (\( event, msg ) s -> Socket.on event channel.name (msg >> HomeMsg) s)
+                            newSocket
+                            Home.events
+                in
+                    case model.session.user of
+                        Just user ->
+                            { newModel | session = { session | socket = listeningSocket } }
+                                ! [ pageCmd, Cmd.map SocketMsg socketCmd ]
+
+                        Nothing ->
+                            model => Route.modifyUrl Route.Login
 
             Just (Route.Login) ->
                 { model | pageState = Loaded (Login Login.initialModel) } => Cmd.none
@@ -329,7 +353,7 @@ setRoute maybeRoute model =
                                 ! [ pageCmd, Cmd.map SocketMsg socketCmd ]
 
                     Nothing ->
-                        errored Page.Projects "You must be signed in to access your projects."
+                        model => Route.modifyUrl Route.Login
 
             Just (Route.KnownHosts) ->
                 case model.session.user of
@@ -337,7 +361,7 @@ setRoute maybeRoute model =
                         transition KnownHostsLoaded (KnownHosts.init model.session)
 
                     Nothing ->
-                        errored Page.KnownHosts "You must be signed in to access your known hosts."
+                        model => Route.modifyUrl Route.Login
 
             Just (Route.Project id subRoute) ->
                 let
@@ -366,7 +390,10 @@ setRoute maybeRoute model =
                             ( newModel, newMsg ) =
                                 Project.update model.session (Project.SetRoute (Just subRoute)) subModel
                         in
-                            { model | pageState = Loaded (Project newModel) }
+                            { model
+                                | pageState = Loaded (Project newModel)
+                                , session = { session | socket = listeningSocket }
+                            }
                                 ! [ Cmd.map ProjectMsg newMsg ]
                 in
                     case ( model.session.user, model.pageState ) of
@@ -387,7 +414,7 @@ setRoute maybeRoute model =
                             ( pageModel, pageCmd )
 
                         ( Nothing, _ ) ->
-                            errored Page.Project ("You must be signed in to access project '" ++ idToString id ++ "'.")
+                            model => Route.modifyUrl Route.Login
 
 
 pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )

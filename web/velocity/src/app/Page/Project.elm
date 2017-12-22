@@ -125,7 +125,12 @@ events route =
                 _ ->
                     []
     in
-        subPageEvents ++ [ ( "project:update", UpdateProject ) ]
+        Debug.log "SubPageEvents"
+            (subPageEvents
+                ++ [ ( "project:update", UpdateProject )
+                   , ( "branch:new", AddBranch )
+                   ]
+            )
 
 
 
@@ -340,6 +345,7 @@ type Msg
     | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
     | SettingsMsg Settings.Msg
     | UpdateProject Encode.Value
+    | AddBranch Encode.Value
 
 
 getSubPage : SubPageState -> SubPage
@@ -506,6 +512,17 @@ updateSubPage session subPage msg model =
                             |> Maybe.withDefault model.project
                 in
                     { model | project = newProject }
+                        => Cmd.none
+
+            ( AddBranch branchJson, _ ) ->
+                let
+                    branches =
+                        Decode.decodeValue Branch.decoder branchJson
+                            |> Result.toMaybe
+                            |> Maybe.map (\b -> b :: model.branches)
+                            |> Maybe.withDefault model.branches
+                in
+                    { model | branches = branches }
                         => Cmd.none
 
             ( _, _ ) ->
