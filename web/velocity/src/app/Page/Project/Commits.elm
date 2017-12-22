@@ -263,7 +263,7 @@ pageLink page isActive project maybeBranch =
 
 type Msg
     = SubmitSync
-    | SyncCompleted (Result Http.Error (PaginatedList Commit))
+    | SyncCompleted (Result Http.Error Project)
     | FilterBranch (Maybe Branch)
     | SelectPage Int
     | NewUrl String
@@ -279,16 +279,10 @@ update project session msg model =
 
         SubmitSync ->
             let
-                getCommits authToken =
-                    Just authToken
-                        |> Request.Commit.list project.id (Maybe.map .name model.branch) perPage model.page
-                        |> Http.toTask
-
                 cmdFromAuth authToken =
                     authToken
                         |> Request.Project.sync project.id
                         |> Http.toTask
-                        |> Task.andThen (getCommits authToken |> always)
                         |> Task.attempt SyncCompleted
 
                 cmd =
@@ -298,15 +292,13 @@ update project session msg model =
             in
                 { model | submitting = True } => cmd
 
-        SyncCompleted (Ok (Paginated { results, total })) ->
-            { model
-                | submitting = False
-                , total = total
-            }
+        SyncCompleted (Ok _) ->
+            { model | submitting = False }
                 => Cmd.none
 
-        SyncCompleted (Err err) ->
-            { model | submitting = False } => Cmd.none
+        SyncCompleted (Err _) ->
+            { model | submitting = False }
+                => Cmd.none
 
         SelectPage page ->
             let
