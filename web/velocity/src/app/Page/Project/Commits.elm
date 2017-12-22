@@ -167,6 +167,7 @@ viewCommitListContainer project dict =
         dict
             |> Dict.toList
             |> List.sortWith sortDateList
+            |> List.take perPage
             |> List.map (viewCommitList project)
             |> div [ class "mt-3" ]
 
@@ -340,19 +341,41 @@ update project session msg model =
 
         AddCommit commitJson ->
             let
-                --                find p =
-                --                    List.filter (\a -> (Commit.hashToString a.hash) == (Commit.hashToString p.hash)) model.commits
-                --                        |> List.head
-                newModel =
-                    case Decode.decodeValue Commit.decoder commitJson of
-                        Ok commit ->
-                            { model
-                                | commits = commit :: model.commits
-                                , total = model.total + 1
-                            }
+                find p =
+                    List.filter (\a -> a.hash == p.hash) model.commits
+                        |> List.head
 
-                        _ ->
+                decodeResult =
+                    Decode.decodeValue Commit.decoder commitJson
+
+                newModel =
+                    case ( decodeResult, model.branch ) of
+                        ( Ok commit, Just branch ) ->
+                            case find commit of
+                                Just _ ->
+                                    model
+
+                                Nothing ->
+                                    if List.member branch.name commit.branches then
+                                        { model
+                                            | commits = commit :: model.commits
+                                            , total = model.total + 1
+                                        }
+                                    else
+                                        model
+
+                        ( Ok commit, Nothing ) ->
+                            case find commit of
+                                Just _ ->
+                                    model
+
+                                Nothing ->
+                                    { model
+                                        | commits = commit :: model.commits
+                                        , total = model.total + 1
+                                    }
+
+                        ( Err _, _ ) ->
                             model
             in
-                Debug.log "NEW MODEL" newModel
-                    => Cmd.none
+                newModel => Cmd.none
