@@ -29,14 +29,17 @@ func (m *Manager) GetClientByID(clientID string) *Client {
 }
 
 func (m *Manager) EmitAll(message *PhoenixMessage) {
+	clientCount := 0
 	for _, c := range m.clients {
 		for _, s := range c.subscriptions {
 			if s == message.Topic {
 				err := c.ws.WriteJSON(message)
+				clientCount++
 				if err != nil {
 					log.Println(err)
 				}
 			}
 		}
 	}
+	log.Printf("Emitted %s to %d clients", message.Topic, clientCount)
 }
