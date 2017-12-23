@@ -65,7 +65,7 @@ func main() {
 
 	a := auth{}
 	json.NewDecoder(res.Body).Decode(&a)
-	log.Printf("Registered %s. Got Token: %s", uniqueID, a.Token)
+	log.Printf("Registered %s.", uniqueID)
 
 	// Connect to WebSocket on successful registration GET /v1/slaves/ws with authToken in header
 	websocketAddress := strings.Replace(masterAddress, "http", "ws", 1)
@@ -112,6 +112,7 @@ func monitorCommands(ws *websocket.Conn) {
 			log.Println(err)
 			log.Println("Closing WebSocket")
 			ws.Close()
+			main()
 			return
 		}
 

@@ -95,6 +95,7 @@ func sync(
 
 				if err != nil {
 					fmt.Println(err)
+					break
 				}
 
 				SHA := r.Hash().String()

@@ -198,6 +198,8 @@ func (c *Controller) monitor(s Slave) {
 					b.Status = velocity.StateSuccess
 					b.CompletedAt = time.Now()
 					c.buildManager.UpdateBuild(b)
+					s.State = "ready"
+					c.manager.Save(s)
 				}
 			} else if lM.Status == velocity.StateFailed {
 				buildStep.Status = velocity.StateFailed
@@ -206,6 +208,8 @@ func (c *Controller) monitor(s Slave) {
 				b.Status = velocity.StateFailed
 				b.CompletedAt = time.Now()
 				c.buildManager.UpdateBuild(b)
+				s.State = "ready"
+				c.manager.Save(s)
 			}
 
 		}
