@@ -132,7 +132,9 @@ func sync(
 	}
 
 	// Set remaining local branches as inactive.
-	allKnownBranches, _ := commitManager.GetAllBranchesByProjectID(p.ID, commit.BranchQuery{})
+	allKnownBranches, _ := commitManager.GetAllBranchesByProjectID(p.ID, commit.BranchQuery{
+		Amount: 999,
+	})
 	localOnlyBranches := removeRemoteBranches(allKnownBranches, remoteBranchNames)
 	for _, b := range localOnlyBranches {
 		b.Active = false

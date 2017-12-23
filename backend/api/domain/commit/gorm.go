@@ -257,11 +257,11 @@ func (r *gormRepository) GetAllBranchesByProjectID(projectID string, q BranchQue
 			ProjectID: projectID,
 		})
 
-	if q.Active == 1 {
+	if q.Active == "true" {
 		db = db.Where(&gormBranch{
 			Active: true,
 		})
-	} else if q.Active == -1 {
+	} else if q.Active == "false" {
 		db = db.Where(&gormBranch{
 			Active: false,
 		})

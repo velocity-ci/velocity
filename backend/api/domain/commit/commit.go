@@ -31,7 +31,7 @@ type CommitQuery struct {
 type BranchQuery struct {
 	Amount uint64
 	Page   uint64
-	Active int // -1: false, 0: all, 1: true
+	Active string // true/false. "" indicates all.
 }
 
 type Commit struct {
