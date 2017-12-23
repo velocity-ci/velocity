@@ -33,7 +33,7 @@ func (m *Manager) CreateBuild(b Build) Build {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VNewBuild,
-		Payload: NewResponseBuild(b),
+		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
 	})
 	return b
 }
@@ -44,7 +44,7 @@ func (m *Manager) UpdateBuild(b Build) Build {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VUpdateBuild,
-		Payload: NewResponseBuild(b),
+		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
 	})
 	return b
 }
@@ -54,7 +54,7 @@ func (m *Manager) DeleteBuild(b Build) {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VDeleteBuild,
-		Payload: NewResponseBuild(b),
+		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
 	})
 }
 
