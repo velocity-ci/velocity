@@ -155,13 +155,15 @@ func GitClone(
 		return nil, "", err
 	}
 
-	w, _ := repo.Worktree()
-	status, _ := w.Status()
+	if !bare {
+		w, _ := repo.Worktree()
+		status, _ := w.Status()
 
-	log.Println(status.String())
-	w.Reset(&git.ResetOptions{
-		Mode: git.HardReset,
-	})
+		log.Println(status.String())
+		w.Reset(&git.ResetOptions{
+			Mode: git.HardReset,
+		})
+	}
 
 	return repo, dir, nil
 }
