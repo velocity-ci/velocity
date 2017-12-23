@@ -17,6 +17,12 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 )
 
+func finishProjectSync(p project.Project, projectManager project.Repository) {
+	p.UpdatedAt = time.Now()
+	p.Synchronising = false
+	projectManager.Update(p)
+}
+
 func sync(
 	p project.Project,
 	projectManager project.Repository,
@@ -24,9 +30,7 @@ func sync(
 	taskManager task.Repository,
 	websocketManager *websocket.Manager,
 ) {
-	defer p.UpdatedAt = time.Now()
-	defer p.Synchronising = false
-	defer projectManager.Update(p)
+	defer finishProjectSync(p, projectManager)
 	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankWriter())
 	if err != nil {
 		log.Fatal(err)
