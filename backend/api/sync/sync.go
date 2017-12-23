@@ -24,6 +24,9 @@ func sync(
 	taskManager task.Repository,
 	websocketManager *websocket.Manager,
 ) {
+	defer p.UpdatedAt = time.Now()
+	defer p.Synchronising = false
+	defer projectManager.Update(p)
 	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankWriter())
 	if err != nil {
 		log.Fatal(err)
@@ -132,9 +135,6 @@ func sync(
 		commitManager.UpdateBranch(b)
 	}
 
-	p.UpdatedAt = time.Now()
-	p.Synchronising = false
-	projectManager.Update(p)
 }
 
 func removeRemoteBranches(haystack []commit.Branch, names []string) []commit.Branch {
