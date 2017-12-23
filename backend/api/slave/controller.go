@@ -58,7 +58,27 @@ func (c Controller) Setup(router *mux.Router) {
 		negroni.Wrap(http.HandlerFunc(c.wsSlavesHandler)),
 	)).Methods("GET")
 
+	router.Handle("/v1/slaves", negroni.New(
+		auth.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getSlavesHandler)),
+	)).Methods("GET")
+
 	c.logger.Println("Set up Slave controller.")
+}
+
+func (c Controller) getSlavesHandler(w http.ResponseWriter, r *http.Request) {
+	opts := QueryOptsFromRequest(r)
+	slaves, count := c.manager.GetSlaves(opts)
+
+	responseSlaves := []ResponseSlave{}
+	for _, s := range slaves {
+		responseSlaves = append(responseSlaves, NewResponseSlave(s))
+	}
+
+	c.render.JSON(w, http.StatusOK, &ManyResponse{
+		Total:  count,
+		Result: responseSlaves,
+	})
 }
 
 func (c Controller) postSlavesHandler(w http.ResponseWriter, r *http.Request) {
