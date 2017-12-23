@@ -112,10 +112,10 @@ func NewBuildStep(buildID string, n uint64) BuildStep {
 }
 
 type StreamLine struct {
-	BuildStepStreamID string
-	LineNumber        uint64
-	Timestamp         time.Time
-	Output            string
+	BuildStepStreamID string    `json:"streamId"`
+	LineNumber        uint64    `json:"lineNumber"`
+	Timestamp         time.Time `json:"timestamp"`
+	Output            string    `json:"output"`
 }
 
 func NewStreamLine(buildStepStreamID string, lineNumber uint64, timestamp time.Time, output string) StreamLine {
