@@ -1,12 +1,8 @@
-module Page.Project.Commit.Build exposing (..)
+module Page.Project.Commit.Task.Build exposing (..)
 
 import Data.Build as Build exposing (Build)
 import Data.Project as Project exposing (Project)
 import Data.Commit as Commit exposing (Commit)
-
-
---import Data.LogOutput as LogOutput exposing (LogOutput)
-
 import Html exposing (..)
 import Util exposing ((=>))
 import Socket.Channel as Channel exposing (Channel)
@@ -14,23 +10,6 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 
 
--- SUBSCRIPTIONS --
---channel : Build -> Channel Msg
---channel build =
---    let
---        buildChannelPath =
---            [ "project"
---            , Project.idToString build.project
---            , "commits"
---            , Commit.hashToString build.commit
---            , "builds"
---            , Build.idToString build.id
---            ]
---    in
---        buildChannelPath
---            |> String.join "/"
---            |> Channel.init
---            |> Channel.onJoin SocketUpdate
 -- MODEL --
 
 

@@ -1,0 +1,67 @@
+module Request.Build exposing (..)
+
+import Data.Build as Build exposing (Build)
+import Data.BuildStep as BuildStep exposing (BuildStep)
+import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
+import Data.PaginatedList as PaginatedList exposing (PaginatedList)
+import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
+import Json.Decode as Decode
+import Json.Encode as Encode
+import Request.Helpers exposing (apiUrl)
+import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
+import Util exposing ((=>))
+import Http
+
+
+steps :
+    Build.Id
+    -> Maybe AuthToken
+    -> Http.Request (PaginatedList BuildStep)
+steps id maybeToken =
+    let
+        expect =
+            BuildStep.decoder
+                |> PaginatedList.decoder
+                |> Http.expectJson
+    in
+        apiUrl ("/builds" ++ "/" ++ Build.idToString id ++ "/steps")
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+streams :
+    Maybe AuthToken
+    -> BuildStep.Id
+    -> Http.Request (PaginatedList BuildStream)
+streams maybeToken id =
+    let
+        expect =
+            BuildStream.decoder
+                |> PaginatedList.decoder
+                |> Http.expectJson
+    in
+        apiUrl ("/steps" ++ "/" ++ BuildStep.idToString id ++ "/streams")
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+streamOutput :
+    Maybe AuthToken
+    -> BuildStream.Id
+    -> Http.Request (PaginatedList BuildStreamOutput)
+streamOutput maybeToken id =
+    let
+        expect =
+            BuildStream.outputDecoder
+                |> PaginatedList.decoder
+                |> Http.expectJson
+    in
+        apiUrl ("/streams/" ++ BuildStream.idToString id)
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest

@@ -3,8 +3,11 @@ module Page.Project.Commit.Task exposing (..)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
-import Data.Build
-import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, Step(..), Parameter(..))
+import Data.Build as Build exposing (Build)
+import Data.BuildStep as BuildStep exposing (BuildStep)
+import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
+import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
+import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
@@ -12,6 +15,7 @@ import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses)
 import Request.Commit
+import Request.Build
 import Task exposing (Task)
 import Util exposing ((=>))
 import Validate exposing (..)
@@ -22,6 +26,8 @@ import Html.Events.Extra exposing (targetSelectedIndex)
 import Route
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
+import Views.Task exposing (viewStepList)
+import Views.Build exposing (viewBuildContainer)
 
 
 -- MODEL --
@@ -32,12 +38,21 @@ type alias Model =
     , toggledStep : Maybe Step
     , form : List Field
     , errors : List Error
+    , build : Maybe BuildType
     }
 
 
 type Field
     = Input InputFormField
     | Choice ChoiceFormField
+
+
+type StepType
+    = LoadedBuildStep BuildStep
+
+
+type BuildType
+    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput)
 
 
 type alias InputFormField =
@@ -55,8 +70,43 @@ type alias ChoiceFormField =
     }
 
 
-init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Name -> Task PageLoadError Model
-init session id hash name =
+loadFirstBuild maybeAuthToken builds =
+    case List.head builds of
+        Just b ->
+            Request.Build.steps b.id maybeAuthToken
+                |> Http.toTask
+                |> Task.andThen
+                    (\(Paginated steps) ->
+                        steps.results
+                            |> List.map (.id >> (Request.Build.streams maybeAuthToken) >> Http.toTask)
+                            |> Task.sequence
+                            |> Task.andThen
+                                (\paginatedStreams ->
+                                    paginatedStreams
+                                        |> List.map (\(Paginated { results }) -> results)
+                                        |> List.foldr (++) []
+                                        |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
+                                        |> Task.sequence
+                                        |> Task.andThen
+                                            (\paginatedStreamOutputList ->
+                                                let
+                                                    streamOutput =
+                                                        paginatedStreamOutputList
+                                                            |> List.map (\(Paginated { results }) -> results)
+                                                            |> List.foldr (++) []
+                                                in
+                                                    Just (LoadedBuild b steps.results streamOutput)
+                                                        |> Task.succeed
+                                            )
+                                )
+                    )
+
+        Nothing ->
+            Task.succeed Nothing
+
+
+init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Name -> List Build -> Task PageLoadError Model
+init session id hash name builds =
     let
         maybeAuthToken =
             Maybe.map .token session.user
@@ -69,7 +119,7 @@ init session id hash name =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
 
-        initialModel task =
+        initialModel task build =
             let
                 toggledStep =
                     Nothing
@@ -84,9 +134,13 @@ init session id hash name =
                 , toggledStep = toggledStep
                 , form = form
                 , errors = errors
+                , build = build
                 }
+
+        loadBuild =
+            loadFirstBuild maybeAuthToken builds
     in
-        Task.map initialModel loadTask
+        Task.map2 initialModel loadTask loadBuild
             |> Task.mapError handleLoadError
 
 
@@ -141,10 +195,18 @@ view model =
                 [ div [ class "card-body" ] <|
                     viewBuildForm (ProjectTask.nameToString task.name) model.form model.errors
                 ]
+
+        buildContainer =
+            case model.build of
+                Just (LoadedBuild build steps _) ->
+                    viewBuildContainer build steps
+
+                Nothing ->
+                    buildForm
     in
         div [ class "row" ]
-            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ] [ buildForm ]
-            , div [ class "col-sm-12 col-md-12 col-lg-12" ] stepList
+            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
+                [ buildContainer ]
             ]
 
 
@@ -205,170 +267,6 @@ viewBuildForm taskName fields errors =
         ]
 
 
-viewStepList : List Step -> Maybe Step -> List (Html Msg)
-viewStepList steps toggledStep =
-    let
-        stepView i step =
-            let
-                stepNum =
-                    i + 1
-
-                runStep =
-                    viewRunStep stepNum
-
-                buildStep =
-                    viewBuildStep stepNum
-
-                cloneStep =
-                    viewCloneStep stepNum
-            in
-                case ( step, toggledStep ) of
-                    ( Run run, Just (Run toggled) ) ->
-                        runStep run (run == toggled)
-
-                    ( Build build, Just (Build toggled) ) ->
-                        buildStep build (build == toggled)
-
-                    ( Clone clone, Just (Clone toggled) ) ->
-                        cloneStep clone (clone == toggled)
-
-                    ( Run run, _ ) ->
-                        runStep run False
-
-                    ( Build build, _ ) ->
-                        buildStep build False
-
-                    ( Clone clone, _ ) ->
-                        cloneStep clone False
-    in
-        List.indexedMap stepView steps
-
-
-viewCloneStep : Int -> CloneStep -> Bool -> Html Msg
-viewCloneStep i cloneStep toggled =
-    let
-        title =
-            toString i ++ ". Clone" ++ cloneStep.description
-    in
-        viewStepCollapse (Clone cloneStep) title toggled <|
-            []
-
-
-viewBuildStep : Int -> BuildStep -> Bool -> Html Msg
-viewBuildStep i buildStep toggled =
-    let
-        tagList =
-            List.map (\t -> li [] [ text t ]) buildStep.tags
-                |> ul []
-
-        rightDl =
-            dl []
-                [ dt [] [ text "Tags" ]
-                , dd [] [ tagList ]
-                ]
-
-        leftDl =
-            dl []
-                [ dt [] [ text "Context" ]
-                , dd [] [ text buildStep.context ]
-                , dt [] [ text "Dockerfile" ]
-                , dd [] [ text buildStep.dockerfile ]
-                ]
-
-        title =
-            toString i ++ ". " ++ buildStep.description
-    in
-        viewStepCollapse (Build buildStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ rightDl ]
-                ]
-            ]
-
-
-viewRunStep : Int -> RunStep -> Bool -> Html Msg
-viewRunStep i runStep toggled =
-    let
-        command =
-            String.join " " runStep.command
-
-        envTable =
-            table [ class "table" ]
-                [ tbody []
-                    (List.map
-                        (\( k, v ) ->
-                            tr []
-                                [ th [] [ text k ]
-                                , td [] [ text v ]
-                                ]
-                        )
-                        runStep.environment
-                    )
-                ]
-
-        ignoreExitCode =
-            runStep.ignoreExitCode
-                |> toString
-                |> String.toLower
-
-        leftDl =
-            dl []
-                [ dt [] [ text "Ignore exit code" ]
-                , dd [] [ text ignoreExitCode ]
-                , dt [] [ text "Image" ]
-                , dd [] [ text runStep.image ]
-                , dt [] [ text "Mount point" ]
-                , dd [] [ text runStep.mountPoint ]
-                , dt [] [ text "Working dir" ]
-                , dd [] [ text runStep.workingDir ]
-                , dt [] [ text "Command" ]
-                , dd [] [ text command ]
-                ]
-
-        title =
-            toString i ++ ". " ++ runStep.description
-    in
-        viewStepCollapse (Run runStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ envTable ]
-                ]
-            ]
-
-
-viewStepCollapse : Step -> String -> Bool -> List (Html Msg) -> Html Msg
-viewStepCollapse step title toggled contents =
-    let
-        msg =
-            if toggled then
-                ToggleStep Nothing
-            else
-                ToggleStep (Just step)
-
-        caretClassList =
-            [ ( "fa-caret-square-o-down", toggled )
-            , ( "fa-caret-square-o-up", not toggled )
-            ]
-    in
-        div [ class "card" ]
-            [ div [ class "card-header collapse-header d-flex justify-content-between align-items-center", onClick msg ]
-                [ h5 [ class "mb-0" ] [ text title ]
-                , button
-                    [ type_ "button"
-                    , class "btn"
-                    ]
-                    [ i [ class "fa", classList caretClassList ] []
-                    ]
-                ]
-            , div
-                [ class "collapse"
-                , classList [ ( "show", toggled ) ]
-                ]
-                [ div [ class "card-body" ] contents
-                ]
-            ]
-
-
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )
 breadcrumb project commit task =
     [ ( CommitRoute.Task task.name |> ProjectRoute.Commit commit.hash |> Route.Project project.id
@@ -386,7 +284,7 @@ type Msg
     | OnInput InputFormField String
     | OnChange ChoiceFormField (Maybe Int)
     | SubmitForm
-    | BuildCreated (Result Http.Error Data.Build.Build)
+    | BuildCreated (Result Http.Error Build)
 
 
 update : Project -> Commit -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )

@@ -1,19 +1,22 @@
-module Data.Build exposing (..)
+module Data.BuildStep exposing (..)
 
 import Data.Project as Project
 import Data.Commit as Commit
 import Data.Task as Task
-import Data.BuildStep as BuildStep exposing (BuildStep)
 import Json.Decode as Decode exposing (Decoder, int, string)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
 import UrlParser
+import Data.Helpers exposing (stringToDateTime)
+import Time.DateTime as DateTime exposing (DateTime)
 
 
-type alias Build =
+type alias BuildStep =
     { id : Id
     , status : Status
-    , taskId : Task.Id
-    , steps : List BuildStep
+    , startedAt : DateTime
+    , completedAt : DateTime
+    , number : Int
+    , description : String
     }
 
 
@@ -21,13 +24,15 @@ type alias Build =
 -- SERIALIZATION --
 
 
-decoder : Decoder Build
+decoder : Decoder BuildStep
 decoder =
-    decode Build
+    decode BuildStep
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
-        |> required "task" Task.decodeId
-        |> required "steps" (Decode.list BuildStep.decoder)
+        |> required "startedAt" stringToDateTime
+        |> required "completedAt" stringToDateTime
+        |> required "number" Decode.int
+        |> required "description" Decode.string
 
 
 statusDecoder : Decoder Status
