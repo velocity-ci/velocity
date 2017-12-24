@@ -89,14 +89,12 @@ loadFirstBuild maybeAuthToken builds =
                                         |> Task.sequence
                                         |> Task.andThen
                                             (\paginatedStreamOutputList ->
-                                                let
-                                                    streamOutput =
-                                                        paginatedStreamOutputList
-                                                            |> List.map (\(Paginated { results }) -> results)
-                                                            |> List.foldr (++) []
-                                                in
-                                                    Just (LoadedBuild b steps.results streamOutput)
-                                                        |> Task.succeed
+                                                paginatedStreamOutputList
+                                                    |> List.map (\(Paginated { results }) -> results)
+                                                    |> List.foldr (++) []
+                                                    |> LoadedBuild b steps.results
+                                                    |> Just
+                                                    |> Task.succeed
                                             )
                                 )
                     )
@@ -198,8 +196,8 @@ view model =
 
         buildContainer =
             case model.build of
-                Just (LoadedBuild build steps _) ->
-                    viewBuildContainer build steps
+                Just (LoadedBuild build steps output) ->
+                    viewBuildContainer build steps output
 
                 Nothing ->
                     buildForm
