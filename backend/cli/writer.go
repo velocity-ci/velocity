@@ -1,21 +1,42 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
 
-type CLIWriter struct {
+	"github.com/velocity-ci/velocity/backend/velocity"
+)
+
+type StreamWriter struct {
+	StepNumber uint64
+	StreamName string
+	status     string
+	ansiColour string
 }
 
-func NewCLIWriter() *CLIWriter {
-	return &CLIWriter{}
+type Emitter struct {
+	StepNumber uint64
 }
 
-func (w CLIWriter) Write(p []byte) (n int, err error) {
-	fmt.Printf("    %s\n", p)
+func NewEmitter() *Emitter {
+	return &Emitter{}
+}
+
+func (e *Emitter) SetStepNumber(n uint64) {
+	e.StepNumber = n
+}
+
+func (e *Emitter) NewStreamWriter(streamName string) velocity.StreamWriter {
+	return &StreamWriter{
+		StreamName: streamName,
+		StepNumber: e.StepNumber,
+	}
+}
+
+func (w *StreamWriter) Write(p []byte) (n int, err error) {
+	fmt.Printf("%s:    %s\n", w.StreamName, p)
 	return len(p), nil
 }
 
-func (w *CLIWriter) SetStatus(s string) {
-}
-
-func (w *CLIWriter) SetStreamName(n string) {
+func (w *StreamWriter) SetStatus(s string) {
+	w.status = s
 }

@@ -3,27 +3,66 @@ package main
 import (
 	"log"
 	"strings"
+	"sync"
+
+	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/gorilla/websocket"
 	"github.com/velocity-ci/velocity/backend/api/slave"
 )
 
-type SlaveWriter struct {
-	ws          *websocket.Conn
-	BuildStepID string
-	StreamName  string
-
-	LineNumber uint64
-	status     string
+type safeWebsocket struct {
+	ws   *websocket.Conn
+	lock sync.RWMutex
 }
 
-func NewSlaveWriter(ws *websocket.Conn) *SlaveWriter {
-	return &SlaveWriter{
-		ws: ws,
+func (sws *safeWebsocket) WriteJSON(m interface{}) error {
+	sws.lock.Lock()
+	defer sws.lock.Unlock()
+
+	return sws.ws.WriteJSON(m)
+}
+
+type StreamWriter struct {
+	ws         *safeWebsocket
+	StepNumber uint64
+	StreamName string
+
+	BuildStepID string
+	LineNumber  uint64
+	status      string
+}
+
+type Emitter struct {
+	ws          *safeWebsocket
+	BuildStepID string
+	StepNumber  uint64
+}
+
+func (e *Emitter) NewStreamWriter(streamName string) velocity.StreamWriter {
+	return &StreamWriter{
+		ws:         e.ws,
+		StreamName: streamName,
+		StepNumber: e.StepNumber,
+		LineNumber: uint64(0),
 	}
 }
 
-func (w *SlaveWriter) Write(p []byte) (n int, err error) {
+func (e *Emitter) SetBuildStepID(buildStepID string) {
+	e.BuildStepID = buildStepID
+}
+
+func (e *Emitter) SetStepNumber(n uint64) {
+	e.StepNumber = n
+}
+
+func NewEmitter(ws *websocket.Conn) *Emitter {
+	return &Emitter{
+		ws: &safeWebsocket{ws: ws},
+	}
+}
+
+func (w *StreamWriter) Write(p []byte) (n int, err error) {
 	lM := slave.SlaveBuildLogMessage{
 		BuildStepID: w.BuildStepID,
 		StreamName:  w.StreamName,
@@ -46,19 +85,6 @@ func (w *SlaveWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (w *SlaveWriter) SetLineNumber(num uint64) {
-	w.LineNumber = num
-}
-
-func (w *SlaveWriter) SetStatus(s string) {
+func (w *StreamWriter) SetStatus(s string) {
 	w.status = s
-}
-
-func (w *SlaveWriter) SetBuildStepID(id string) {
-	w.BuildStepID = id
-}
-
-func (w *SlaveWriter) SetStreamName(name string) {
-	w.StreamName = name
-	w.LineNumber = 0
 }

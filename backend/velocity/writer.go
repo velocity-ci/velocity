@@ -1,23 +1,31 @@
 package velocity
 
-// Emitter for forwarding bytes of output onwards
-type Emitter interface {
+type StreamWriter interface {
 	Write(p []byte) (n int, err error)
-	SetStreamName(name string)
 	SetStatus(s string)
 }
 
-type BlankWriter struct {
+// Emitter for forwarding bytes of output onwards
+type Emitter interface {
+	NewStreamWriter(streamName string) StreamWriter
 }
 
-func NewBlankWriter() *BlankWriter {
+type BlankEmitter struct {
+}
+
+func NewBlankEmitter() *BlankEmitter {
+	return &BlankEmitter{}
+}
+
+func (w *BlankEmitter) NewStreamWriter(streamName string) StreamWriter {
 	return &BlankWriter{}
+}
+
+type BlankWriter struct {
 }
 
 func (w BlankWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (w *BlankWriter) SetStreamName(name string) {}
-
-func (w *BlankWriter) SetStatus(s string) {}
+func (w BlankWriter) SetStatus(s string) {}

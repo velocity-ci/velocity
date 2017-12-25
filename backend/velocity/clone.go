@@ -2,6 +2,7 @@ package velocity
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"os"
@@ -37,17 +38,18 @@ func (c Clone) GetDetails() string {
 }
 
 func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
-	emitter.SetStreamName("clone")
-	emitter.SetStatus(StateRunning)
-	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, c.Description)))
+	writer := emitter.NewStreamWriter("clone")
+	writer.SetStatus(StateRunning)
 
-	emitter.Write([]byte(fmt.Sprintf("Cloning %s", c.GitRepository.Address)))
+	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, c.Description)))
 
-	repo, dir, err := GitClone(&c.GitRepository, false, true, c.Submodule, emitter)
+	writer.Write([]byte(fmt.Sprintf("Cloning %s", c.GitRepository.Address)))
+
+	repo, dir, err := GitClone(&c.GitRepository, false, true, c.Submodule, writer)
 	if err != nil {
 		log.Println(err)
-		emitter.SetStatus(StateFailed)
-		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+		writer.SetStatus(StateFailed)
+		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 	log.Println("Done.")
@@ -56,8 +58,8 @@ func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 	w, err := repo.Worktree()
 	if err != nil {
 		log.Println(err)
-		emitter.SetStatus(StateFailed)
-		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+		writer.SetStatus(StateFailed)
+		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 	log.Printf("Checking out %s", c.CommitHash)
@@ -66,15 +68,15 @@ func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 	})
 	if err != nil {
 		log.Println(err)
-		emitter.SetStatus(StateFailed)
-		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+		writer.SetStatus(StateFailed)
+		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 	log.Println("Done.")
 
 	os.Chdir(dir)
-	emitter.SetStatus(StateSuccess)
-	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
+	writer.SetStatus(StateSuccess)
+	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
 	return nil
 }
 
@@ -108,7 +110,7 @@ func GitClone(
 	bare bool,
 	full bool,
 	submodule bool,
-	emitter Emitter,
+	writer io.Writer,
 ) (*git.Repository, string, error) {
 	psuedoRandom := rand.NewSource(time.Now().UnixNano())
 	randNumber := rand.New(psuedoRandom)
@@ -137,7 +139,7 @@ func GitClone(
 	cloneOpts := &git.CloneOptions{
 		URL:      r.Address,
 		Auth:     auth,
-		Progress: emitter,
+		Progress: writer,
 	}
 
 	if !full {

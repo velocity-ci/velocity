@@ -31,7 +31,7 @@ func sync(
 	websocketManager *websocket.Manager,
 ) {
 	defer finishProjectSync(p, projectManager)
-	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankWriter())
+	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankEmitter().NewStreamWriter("clone"))
 	if err != nil {
 		log.Fatal(err)
 		return

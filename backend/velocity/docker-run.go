@@ -40,9 +40,9 @@ func (dR DockerRun) GetDetails() string {
 }
 
 func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error {
-	emitter.SetStreamName("run")
-	emitter.SetStatus(StateRunning)
-	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description)))
+	writer := emitter.NewStreamWriter("run")
+	writer.SetStatus(StateRunning)
+	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description)))
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"
@@ -77,7 +77,7 @@ func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error
 		config,
 		hostConfig,
 		params,
-		emitter,
+		writer,
 	)
 
 	if err != nil {
@@ -85,13 +85,13 @@ func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error
 	}
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
-		emitter.SetStatus(StateFailed)
-		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
+		writer.SetStatus(StateFailed)
+		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
-	emitter.SetStatus(StateSuccess)
-	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
+	writer.SetStatus(StateSuccess)
+	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
 	return nil
 
 }

@@ -18,7 +18,8 @@ func (p Plugin) GetDetails() string {
 }
 
 func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
-	emitter.SetStatus(StateRunning)
+	writer := emitter.NewStreamWriter("plugin")
+	writer.SetStatus(StateRunning)
 	env := []string{}
 	for k, v := range p.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -46,7 +47,7 @@ func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
 		config,
 		hostConfig,
 		params,
-		emitter,
+		writer,
 	)
 
 	if err != nil {
@@ -54,13 +55,13 @@ func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
 	}
 
 	if exitCode != 0 {
-		emitter.SetStatus("failed")
-		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
+		writer.SetStatus("failed")
+		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
-	emitter.SetStatus("success")
-	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
+	writer.SetStatus("success")
+	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
 	return nil
 }
 

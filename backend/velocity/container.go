@@ -23,7 +23,7 @@ func runContainer(
 	config *container.Config,
 	hostConfig *container.HostConfig,
 	parameters map[string]Parameter,
-	emitter Emitter,
+	writer io.Writer,
 ) (int, error) {
 
 	cli, err := client.NewEnvClient()
@@ -38,7 +38,7 @@ func runContainer(
 		return 1, err
 	}
 	defer pullResp.Close()
-	handleOutput(pullResp, parameters, emitter)
+	handleOutput(pullResp, parameters, writer)
 
 	createResp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, "")
 	if err != nil {
@@ -55,7 +55,7 @@ func runContainer(
 		return 1, err
 	}
 	defer logsResp.Close()
-	handleOutput(logsResp, parameters, emitter)
+	handleOutput(logsResp, parameters, writer)
 
 	container, err := cli.ContainerInspect(ctx, createResp.ID)
 	if err != nil {
@@ -79,7 +79,7 @@ func buildContainer(
 	dockerfile string,
 	tags []string,
 	parameters map[string]Parameter,
-	emitter Emitter,
+	writer io.Writer,
 ) error {
 	cwd, _ := os.Getwd()
 	buildContext = fmt.Sprintf("%s/%s", cwd, buildContext)
@@ -114,12 +114,12 @@ func buildContainer(
 	}
 
 	defer buildResp.Body.Close()
-	handleOutput(buildResp.Body, parameters, emitter)
+	handleOutput(buildResp.Body, parameters, writer)
 
 	return nil
 }
 
-func handleOutput(body io.ReadCloser, parameters map[string]Parameter, emitter Emitter) {
+func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io.Writer) {
 	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
@@ -139,7 +139,7 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, emitter E
 					o = strings.Replace(o, p.Value, "***", -1)
 				}
 			}
-			emitter.Write([]byte(o))
+			writer.Write([]byte(o))
 		}
 	}
 }

@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -14,12 +15,12 @@ type Manager struct {
 	gormRepository   *gormRepository
 	websocketManager *websocket.Manager
 
-	Sync func(r *velocity.GitRepository, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error)
+	Sync func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error)
 }
 
 func NewManager(
 	db *gorm.DB,
-	syncFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, emitter velocity.Emitter) (*git.Repository, string, error),
+	syncFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error),
 	websocketManager *websocket.Manager,
 ) *Manager {
 	return &Manager{

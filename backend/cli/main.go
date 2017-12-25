@@ -104,13 +104,12 @@ func run(taskName string, gitParams map[string]velocity.Parameter) {
 
 	t.UpdateParams()
 
-	emitter := NewCLIWriter()
+	emitter := NewEmitter()
 	// emitter.SetTotalSteps(uint64(len(t.Steps)))
 	// Run each step unless they fail (optional)
-	for _, step := range t.Steps {
+	for i, step := range t.Steps {
+		emitter.SetStepNumber(uint64(i))
 		if step.GetType() != "clone" {
-			// emitter.SetStep(uint64(stepNumber))
-			emitter.SetStatus("running")
 			err := step.Execute(emitter, t.Parameters)
 			if err != nil {
 				break

@@ -29,26 +29,26 @@ func (dB DockerBuild) GetDetails() string {
 }
 
 func (dB *DockerBuild) Execute(emitter Emitter, params map[string]Parameter) error {
-	emitter.SetStreamName("build")
-	emitter.SetStatus(StateRunning)
-	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
+	writer := emitter.NewStreamWriter("build")
+	writer.SetStatus(StateRunning)
+	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
 
 	err := buildContainer(
 		dB.Context,
 		dB.Dockerfile,
 		dB.Tags,
 		params,
-		emitter,
+		writer,
 	)
 
 	if err != nil {
-		emitter.SetStatus(StateFailed)
-		emitter.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+		writer.SetStatus(StateFailed)
+		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 
-	emitter.SetStatus(StateSuccess)
-	emitter.Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
+	writer.SetStatus(StateSuccess)
+	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
 	return nil
 }
 

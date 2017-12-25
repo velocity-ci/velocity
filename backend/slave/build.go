@@ -7,10 +7,11 @@ import (
 )
 
 func runBuild(build *slave.BuildCommand, ws *websocket.Conn) {
-	emitter := NewSlaveWriter(ws)
+	emitter := NewEmitter(ws)
 
 	for i, step := range build.Task.Steps {
 		emitter.SetBuildStepID(build.BuildSteps[i].ID)
+		emitter.SetStepNumber(uint64(i))
 
 		step.SetParams(build.Build.Parameters)
 		if step.GetType() == "clone" {

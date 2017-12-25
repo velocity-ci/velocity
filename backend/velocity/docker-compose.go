@@ -59,6 +59,8 @@ func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
 func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) error {
 	// Determine order to start services from links
 
+	// TODO: Get StepServiceWriter
+
 	return nil
 }
 
