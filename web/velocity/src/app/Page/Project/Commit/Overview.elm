@@ -146,10 +146,10 @@ viewTaskStatusIcon : Maybe Build.Status -> String
 viewTaskStatusIcon status =
     case status of
         Just (Build.Waiting) ->
-            "fa-spinner"
+            "fa-spinner fa-spin"
 
         Just (Build.Running) ->
-            "fa-spinner"
+            "fa-spinner fa-spin"
 
         Just (Build.Success) ->
             "fa-check"

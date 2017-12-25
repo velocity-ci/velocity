@@ -89,7 +89,7 @@ func (c Controller) postProjectCommitTaskBuildsHandler(w http.ResponseWriter, r 
 
 	c.manager.CreateBuild(build)
 
-	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
+	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build, []ResponseBuildStep{}))
 
 	// queuedBuild := NewQueuedBuild(build, project.ID, commit.Hash)
 	// c.manager.QueueBuild(queuedBuild)
@@ -112,10 +112,7 @@ func (c Controller) postTaskByUUIDBuildsHandler(w http.ResponseWriter, r *http.R
 
 	c.manager.CreateBuild(build)
 
-	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
-
-	// queuedBuild := NewQueuedBuild(build, project.ID, commit.Hash)
-	// c.manager.QueueBuild(queuedBuild)
+	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build, []ResponseBuildStep{}))
 }
 
 func (c Controller) getProjectBuildsHandler(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +130,21 @@ func (c Controller) getProjectBuildsHandler(w http.ResponseWriter, r *http.Reque
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
-		respBuilds = append(respBuilds, NewResponseBuild(b))
+		task, _ := c.taskManager.GetByTaskID(b.TaskID)
+		buildSteps, _ := c.manager.GetBuildStepsByBuildID(b.ID)
+		respBuildSteps := []ResponseBuildStep{}
+		for _, buildStep := range buildSteps {
+			streams, _ := c.manager.GetStreamsByBuildStepID(buildStep.ID)
+			respStreams := []ResponseOutputStream{}
+			for _, stream := range streams {
+				respStreams = append(respStreams, ResponseOutputStream{
+					ID:   stream.ID,
+					Name: stream.Name,
+				})
+			}
+			respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, task.Steps[buildStep.Number], respStreams))
+		}
+		respBuilds = append(respBuilds, NewResponseBuild(b, respBuildSteps))
 	}
 
 	c.render.JSON(w, http.StatusOK, BuildManyResponse{
@@ -162,7 +173,21 @@ func (c Controller) getProjectCommitBuildsHandler(w http.ResponseWriter, r *http
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
-		respBuilds = append(respBuilds, NewResponseBuild(b))
+		task, _ := c.taskManager.GetByTaskID(b.TaskID)
+		buildSteps, _ := c.manager.GetBuildStepsByBuildID(b.ID)
+		respBuildSteps := []ResponseBuildStep{}
+		for _, buildStep := range buildSteps {
+			streams, _ := c.manager.GetStreamsByBuildStepID(buildStep.ID)
+			respStreams := []ResponseOutputStream{}
+			for _, stream := range streams {
+				respStreams = append(respStreams, ResponseOutputStream{
+					ID:   stream.ID,
+					Name: stream.Name,
+				})
+			}
+			respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, task.Steps[buildStep.Number], respStreams))
+		}
+		respBuilds = append(respBuilds, NewResponseBuild(b, respBuildSteps))
 	}
 
 	c.render.JSON(w, http.StatusOK, BuildManyResponse{
@@ -198,7 +223,21 @@ func (c Controller) getProjectCommitTaskBuildsHandler(w http.ResponseWriter, r *
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
-		respBuilds = append(respBuilds, NewResponseBuild(b))
+		task, _ := c.taskManager.GetByTaskID(b.TaskID)
+		buildSteps, _ := c.manager.GetBuildStepsByBuildID(b.ID)
+		respBuildSteps := []ResponseBuildStep{}
+		for _, buildStep := range buildSteps {
+			streams, _ := c.manager.GetStreamsByBuildStepID(buildStep.ID)
+			respStreams := []ResponseOutputStream{}
+			for _, stream := range streams {
+				respStreams = append(respStreams, ResponseOutputStream{
+					ID:   stream.ID,
+					Name: stream.Name,
+				})
+			}
+			respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, task.Steps[buildStep.Number], respStreams))
+		}
+		respBuilds = append(respBuilds, NewResponseBuild(b, respBuildSteps))
 	}
 
 	c.render.JSON(w, http.StatusOK, BuildManyResponse{
@@ -222,7 +261,21 @@ func (c Controller) getCommitByUUIDBuildsHandler(w http.ResponseWriter, r *http.
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
-		respBuilds = append(respBuilds, NewResponseBuild(b))
+		task, _ := c.taskManager.GetByTaskID(b.TaskID)
+		buildSteps, _ := c.manager.GetBuildStepsByBuildID(b.ID)
+		respBuildSteps := []ResponseBuildStep{}
+		for _, buildStep := range buildSteps {
+			streams, _ := c.manager.GetStreamsByBuildStepID(buildStep.ID)
+			respStreams := []ResponseOutputStream{}
+			for _, stream := range streams {
+				respStreams = append(respStreams, ResponseOutputStream{
+					ID:   stream.ID,
+					Name: stream.Name,
+				})
+			}
+			respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, task.Steps[buildStep.Number], respStreams))
+		}
+		respBuilds = append(respBuilds, NewResponseBuild(b, respBuildSteps))
 	}
 
 	c.render.JSON(w, http.StatusOK, BuildManyResponse{
@@ -246,7 +299,21 @@ func (c Controller) getTaskByUUIDBuildsHandler(w http.ResponseWriter, r *http.Re
 
 	respBuilds := []ResponseBuild{}
 	for _, b := range builds {
-		respBuilds = append(respBuilds, NewResponseBuild(b))
+		task, _ := c.taskManager.GetByTaskID(b.TaskID)
+		buildSteps, _ := c.manager.GetBuildStepsByBuildID(b.ID)
+		respBuildSteps := []ResponseBuildStep{}
+		for _, buildStep := range buildSteps {
+			streams, _ := c.manager.GetStreamsByBuildStepID(buildStep.ID)
+			respStreams := []ResponseOutputStream{}
+			for _, stream := range streams {
+				respStreams = append(respStreams, ResponseOutputStream{
+					ID:   stream.ID,
+					Name: stream.Name,
+				})
+			}
+			respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, task.Steps[buildStep.Number], respStreams))
+		}
+		respBuilds = append(respBuilds, NewResponseBuild(b, respBuildSteps))
 	}
 
 	c.render.JSON(w, http.StatusOK, BuildManyResponse{
@@ -264,5 +331,5 @@ func (c Controller) getBuildByUUIDHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	c.render.JSON(w, http.StatusOK, NewResponseBuild(build))
+	c.render.JSON(w, http.StatusOK, NewResponseBuild(build, []ResponseBuildStep{}))
 }

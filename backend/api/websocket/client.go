@@ -45,6 +45,15 @@ func (c *Client) Unsubscribe(s string, ref uint64) {
 	if element < len(c.subscriptions) {
 		c.subscriptions = append(c.subscriptions[:element], c.subscriptions[element+1:]...)
 	}
+	c.ws.WriteJSON(PhoenixMessage{
+		Event: PhxReplyEvent,
+		Topic: s,
+		Ref:   ref,
+		Payload: PhoenixReplyPayload{
+			Status:   "ok",
+			Response: map[string]string{},
+		},
+	})
 }
 
 func (c *Client) HandleHeartbeat(ref uint64) {

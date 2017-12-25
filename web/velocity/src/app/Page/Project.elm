@@ -22,7 +22,7 @@ import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Socket.Channel as Channel exposing (Channel)
 import Socket.Socket as Socket exposing (Socket)
-import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
 import Json.Encode as Encode
 import Json.Decode as Decode
 
@@ -117,15 +117,29 @@ channelName projectId =
 events : ProjectRoute.Route -> List ( String, Encode.Value -> Msg )
 events route =
     let
+        mapEvents fromMsg events =
+            List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) events
+
         subPageEvents =
             case route of
                 ProjectRoute.Commits _ _ ->
-                    List.map (Tuple.mapSecond (\msg -> msg >> CommitsMsg)) Commits.events
+                    mapEvents CommitsMsg Commits.events
+
+                ProjectRoute.Commit _ _ ->
+                    mapEvents CommitMsg Commit.events
 
                 _ ->
                     []
     in
-        subPageEvents ++ [ ( "project:update", UpdateProject ) ]
+        Debug.log "SubPageEvents"
+            (subPageEvents
+                ++ [ ( "project:update", UpdateProject )
+                   , ( "project:delete", ProjectDeleted )
+                   , ( "branch:new", RefreshBranches )
+                   , ( "branch:update", RefreshBranches )
+                   , ( "branch:delete", RefreshBranches )
+                   ]
+            )
 
 
 
@@ -340,6 +354,10 @@ type Msg
     | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
     | SettingsMsg Settings.Msg
     | UpdateProject Encode.Value
+    | AddBranch Encode.Value
+    | ProjectDeleted Encode.Value
+    | RefreshBranches Encode.Value
+    | RefreshBranchesComplete (Result Http.Error (PaginatedList Branch))
 
 
 getSubPage : SubPageState -> SubPage
@@ -388,15 +406,11 @@ setRoute session maybeRoute model =
                     loadFreshPage =
                         Just maybeRoute
                             |> Commit.init session model.project hash
-                            |> Task.andThen
-                                (\( ( model, cmd ), externalMsg ) ->
-                                    Task.succeed ( model, cmd )
-                                )
                             |> transition CommitLoaded
 
                     transitionSubPage subModel =
                         let
-                            ( ( newModel, newMsg ), externalMsg ) =
+                            ( newModel, newMsg ) =
                                 subModel
                                     |> Commit.update model.project session (Commit.SetRoute (Just maybeRoute))
                         in
@@ -491,7 +505,7 @@ updateSubPage session subPage msg model =
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
-                    ( ( newSubModel, newCmd ), externalMsg ) =
+                    ( newSubModel, newCmd ) =
                         Commit.update model.project session subMsg subModel
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
@@ -507,6 +521,29 @@ updateSubPage session subPage msg model =
                 in
                     { model | project = newProject }
                         => Cmd.none
+
+            ( AddBranch branchJson, _ ) ->
+                let
+                    branches =
+                        Decode.decodeValue Branch.decoder branchJson
+                            |> Result.toMaybe
+                            |> Maybe.map (\b -> b :: model.branches)
+                            |> Maybe.withDefault model.branches
+                in
+                    { model | branches = branches }
+                        => Cmd.none
+
+            ( RefreshBranches _, _ ) ->
+                model
+                    => Http.send RefreshBranchesComplete (Request.Project.branches model.project.id (Maybe.map .token session.user))
+
+            ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
+                { model | branches = results }
+                    => Cmd.none
+
+            ( ProjectDeleted _, _ ) ->
+                model
+                    => Route.modifyUrl Route.Projects
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page

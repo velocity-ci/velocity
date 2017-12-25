@@ -38,15 +38,8 @@ func BranchQueryOptsFromRequest(r *http.Request) BranchQuery {
 		page = p
 	}
 
-	active := 0
-	if reqQueries.Get("active") == "true" {
-		active = 1
-	} else if reqQueries.Get("active") == "false" {
-		active = -1
-	}
-
 	return BranchQuery{
-		Active: active,
+		Active: reqQueries.Get("active"),
 		Amount: amount,
 		Page:   page,
 	}

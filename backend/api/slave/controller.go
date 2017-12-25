@@ -48,17 +48,39 @@ func NewController(
 // Setup - Sets up the Auth Controller
 func (c Controller) Setup(router *mux.Router) {
 
+	// POST /v1/slaves
 	router.
 		HandleFunc("/v1/slaves", c.postSlavesHandler).
 		Methods("POST")
 
-	// /v1/slaves/ws
+	// GET /v1/slaves/ws
 	router.Handle("/v1/slaves/ws", negroni.New(
 		auth.NewJWT(c.render),
 		negroni.Wrap(http.HandlerFunc(c.wsSlavesHandler)),
 	)).Methods("GET")
 
+	// GET /v1/slaves/ws
+	router.Handle("/v1/slaves", negroni.New(
+		auth.NewJWT(c.render),
+		negroni.Wrap(http.HandlerFunc(c.getSlavesHandler)),
+	)).Methods("GET")
+
 	c.logger.Println("Set up Slave controller.")
+}
+
+func (c Controller) getSlavesHandler(w http.ResponseWriter, r *http.Request) {
+	opts := QueryOptsFromRequest(r)
+	slaves, count := c.manager.GetSlaves(opts)
+
+	responseSlaves := []ResponseSlave{}
+	for _, s := range slaves {
+		responseSlaves = append(responseSlaves, NewResponseSlave(s))
+	}
+
+	c.render.JSON(w, http.StatusOK, &ManyResponse{
+		Total:  count,
+		Result: responseSlaves,
+	})
 }
 
 func (c Controller) postSlavesHandler(w http.ResponseWriter, r *http.Request) {
@@ -176,6 +198,8 @@ func (c *Controller) monitor(s Slave) {
 					b.Status = velocity.StateSuccess
 					b.CompletedAt = time.Now()
 					c.buildManager.UpdateBuild(b)
+					s.State = "ready"
+					c.manager.Save(s)
 				}
 			} else if lM.Status == velocity.StateFailed {
 				buildStep.Status = velocity.StateFailed
@@ -184,6 +208,8 @@ func (c *Controller) monitor(s Slave) {
 				b.Status = velocity.StateFailed
 				b.CompletedAt = time.Now()
 				c.buildManager.UpdateBuild(b)
+				s.State = "ready"
+				c.manager.Save(s)
 			}
 
 		}

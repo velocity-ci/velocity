@@ -13,6 +13,7 @@ import (
 
 type gormBuild struct {
 	ID          string `gorm:"primary_key"`
+	ProjectID   string
 	TaskID      string
 	Parameters  []byte // Parameters as JSON
 	Status      string
@@ -76,6 +77,7 @@ func gormBuildFromBuild(b Build) gormBuild {
 	}
 	return gormBuild{
 		ID:          b.ID,
+		ProjectID:   b.ProjectID,
 		TaskID:      b.TaskID,
 		Parameters:  jsonParameters,
 		Status:      b.Status,
@@ -95,6 +97,7 @@ func buildFromGormBuild(g gormBuild) Build {
 	}
 	return Build{
 		ID:          g.ID,
+		ProjectID:   g.ProjectID,
 		TaskID:      g.TaskID,
 		Parameters:  parameters,
 		Status:      g.Status,

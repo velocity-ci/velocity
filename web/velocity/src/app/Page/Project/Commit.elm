@@ -25,6 +25,8 @@ import Page.Project.Commit.Build as CommitBuild
 import Socket.Channel as Channel exposing (Channel)
 import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList exposing (Paginated(..))
+import Json.Encode as Encode
+import Json.Decode as Decode
 
 
 -- SUB PAGES --
@@ -60,12 +62,7 @@ initialSubPage =
     Blank
 
 
-channels : Model -> List (Channel Msg)
-channels { builds } =
-    []
-
-
-init : Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), ExternalMsg )
+init : Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
 init session project hash maybeRoute =
     let
         maybeAuthToken =
@@ -106,10 +103,21 @@ init session project hash maybeRoute =
 
                         Nothing ->
                             ( successModel, Cmd.none )
-                                => NoOp
                                 |> Task.succeed
                 )
             |> Task.mapError handleLoadError
+
+
+
+-- CHANNELS --
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    [ ( "build:new", AddBuildEvent )
+    , ( "build:delete", DeleteBuildEvent )
+    , ( "build:update", UpdateBuildEvent )
+    ]
 
 
 
@@ -195,12 +203,9 @@ type Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
     | CommitBuildMsg CommitBuild.Msg
     | CommitBuildLoaded (Result PageLoadError (List Build))
-
-
-type ExternalMsg
-    = SetSocket (Socket Msg)
-    | JoinChannel (Channel Msg)
-    | NoOp
+    | AddBuildEvent Encode.Value
+    | UpdateBuildEvent Encode.Value
+    | DeleteBuildEvent Encode.Value
 
 
 getSubPage : SubPageState -> SubPage
@@ -228,13 +233,12 @@ findBuild builds id =
         |> List.head
 
 
-setRoute : Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+setRoute : Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
 setRoute session project maybeRoute model =
     let
         transition toMsg task =
             { model | subPageState = TransitioningFrom (getSubPage model.subPageState) }
                 => Task.attempt toMsg task
-                => NoOp
 
         errored =
             pageErrored model
@@ -245,11 +249,9 @@ setRoute session project maybeRoute model =
                     Just user ->
                         { model | subPageState = Overview.initialModel |> Overview |> Loaded }
                             => Cmd.none
-                            => NoOp
 
                     Nothing ->
                         errored Page.Project "Uhoh"
-                            => NoOp
 
             Just (CommitRoute.Task name) ->
                 case session.user of
@@ -259,27 +261,22 @@ setRoute session project maybeRoute model =
 
                     Nothing ->
                         errored Page.Project "Uhoh"
-                            => NoOp
 
             Just (CommitRoute.Build id) ->
                 case findBuild model.builds id of
                     Just build ->
                         { model | subPageState = CommitBuild.initialModel build |> CommitBuild |> Loaded }
                             => Cmd.none
-                            => NoOp
 
-                    --                            => JoinChannel (CommitBuild.channel build |> Channel.map CommitBuildMsg)
                     _ ->
                         errored Page.Project "Uhoh"
-                            => NoOp
 
             _ ->
                 { model | subPageState = Loaded Blank }
                     => Cmd.none
-                    => NoOp
 
 
-update : Project -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project session msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -294,40 +291,80 @@ update project session msg model =
 
         errored =
             pageErrored model
+
+        findBuild b =
+            List.filter (\a -> a.id == b.id) model.builds
+                |> List.head
     in
         case ( msg, subPage ) of
             ( NewUrl url, _ ) ->
                 model
                     => Navigation.newUrl url
-                    => NoOp
 
             ( SetRoute route, _ ) ->
                 setRoute session project route model
 
             ( OverviewMsg subMsg, Overview subModel ) ->
                 toPage Overview OverviewMsg (Overview.update project session) subMsg subModel
-                    => NoOp
 
             ( CommitTaskLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (CommitTask subModel) }
                     => Cmd.none
-                    => NoOp
 
             ( CommitTaskLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => NoOp
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 toPage CommitTask CommitTaskMsg (CommitTask.update project model.commit session) subMsg subModel
-                    => NoOp
 
             ( CommitBuildMsg subMsg, CommitBuild subModel ) ->
                 toPage CommitBuild CommitBuildMsg CommitBuild.update subMsg subModel
-                    => NoOp
+
+            ( AddBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map (\b -> b :: model.builds)
+                            |> Maybe.withDefault model.builds
+                in
+                    { model | builds = builds }
+                        => Cmd.none
+
+            ( DeleteBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
+                            |> Maybe.withDefault model.builds
+                in
+                    { model | builds = builds }
+                        => Cmd.none
+
+            ( UpdateBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map
+                                (\b ->
+                                    List.map
+                                        (\a ->
+                                            if b.id == a.id then
+                                                b
+                                            else
+                                                a
+                                        )
+                                        model.builds
+                                )
+                            |> Maybe.withDefault model.builds
+                in
+                    { model | builds = builds }
+                        => Cmd.none
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through" model)
                     => Cmd.none
-                    => NoOp

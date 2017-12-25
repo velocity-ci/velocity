@@ -112,10 +112,10 @@ func NewBuildStep(buildID string, n uint64) BuildStep {
 }
 
 type StreamLine struct {
-	BuildStepStreamID string
-	LineNumber        uint64
-	Timestamp         time.Time
-	Output            string
+	BuildStepStreamID string    `json:"streamId"`
+	LineNumber        uint64    `json:"lineNumber"`
+	Timestamp         time.Time `json:"timestamp"`
+	Output            string    `json:"output"`
 }
 
 func NewStreamLine(buildStepStreamID string, lineNumber uint64, timestamp time.Time, output string) StreamLine {
@@ -168,30 +168,33 @@ type StreamLineManyResponse struct {
 }
 
 type ResponseBuild struct {
-	ID     string `json:"id"`
-	TaskID string `json:"task"`
-	Status string `json:"status"`
+	ID     string              `json:"id"`
+	TaskID string              `json:"task"`
+	Status string              `json:"status"`
+	Steps  []ResponseBuildStep `json:"steps"`
 }
 
-func NewResponseBuild(b Build) ResponseBuild {
+func NewResponseBuild(b Build, steps []ResponseBuildStep) ResponseBuild {
 	return ResponseBuild{
 		ID:     b.ID,
 		TaskID: b.TaskID,
 		Status: b.Status,
+		Steps:  steps,
 	}
 }
 
 type ResponseBuildStep struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"`
-	Description string    `json:"description"`
-	Number      uint64    `json:"number"`
-	Status      string    `json:"status"`
-	StartedAt   time.Time `json:"startedAt"`
-	CompletedAt time.Time `json:"completedAt"`
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	Description string                 `json:"description"`
+	Number      uint64                 `json:"number"`
+	Status      string                 `json:"status"`
+	StartedAt   time.Time              `json:"startedAt"`
+	CompletedAt time.Time              `json:"completedAt"`
+	Streams     []ResponseOutputStream `json:"streams"`
 }
 
-func NewResponseBuildStep(bS BuildStep, s velocity.Step) ResponseBuildStep {
+func NewResponseBuildStep(bS BuildStep, s velocity.Step, streams []ResponseOutputStream) ResponseBuildStep {
 	return ResponseBuildStep{
 		ID:          bS.ID,
 		Type:        s.GetType(),
@@ -200,6 +203,7 @@ func NewResponseBuildStep(bS BuildStep, s velocity.Step) ResponseBuildStep {
 		Status:      bS.Status,
 		StartedAt:   bS.StartedAt,
 		CompletedAt: bS.CompletedAt,
+		Streams:     streams,
 	}
 }
 

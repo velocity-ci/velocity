@@ -11,6 +11,23 @@ type RequestSlave struct {
 	ID string `json:"id"`
 }
 
+type ResponseSlave struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+func NewResponseSlave(s Slave) ResponseSlave {
+	return ResponseSlave{
+		ID:    s.ID,
+		State: s.State,
+	}
+}
+
+type ManyResponse struct {
+	Total  uint64          `json:"total"`
+	Result []ResponseSlave `json:"result"`
+}
+
 type Slave struct {
 	ID      string
 	State   string // ready, busy, disconnected

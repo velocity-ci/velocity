@@ -73,7 +73,7 @@ func (m *Manager) GetSlaves(q SlaveQuery) ([]Slave, uint64) {
 			skipCounter++
 			break
 		}
-		if q.Status == "all" || q.Status == v.State {
+		if q.Status == "" || q.Status == v.State {
 			slaves = append(slaves, v)
 		}
 	}

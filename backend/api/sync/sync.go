@@ -17,6 +17,12 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 )
 
+func finishProjectSync(p project.Project, projectManager project.Repository) {
+	p.UpdatedAt = time.Now()
+	p.Synchronising = false
+	projectManager.Update(p)
+}
+
 func sync(
 	p project.Project,
 	projectManager project.Repository,
@@ -24,6 +30,7 @@ func sync(
 	taskManager task.Repository,
 	websocketManager *websocket.Manager,
 ) {
+	defer finishProjectSync(p, projectManager)
 	repo, dir, err := velocity.GitClone(&p.Repository, false, false, true, velocity.NewBlankWriter())
 	if err != nil {
 		log.Fatal(err)
@@ -88,6 +95,7 @@ func sync(
 
 				if err != nil {
 					fmt.Println(err)
+					break
 				}
 
 				SHA := r.Hash().String()
@@ -125,16 +133,15 @@ func sync(
 	}
 
 	// Set remaining local branches as inactive.
-	allKnownBranches, _ := commitManager.GetAllBranchesByProjectID(p.ID, commit.BranchQuery{})
+	allKnownBranches, _ := commitManager.GetAllBranchesByProjectID(p.ID, commit.BranchQuery{
+		Amount: 999,
+	})
 	localOnlyBranches := removeRemoteBranches(allKnownBranches, remoteBranchNames)
 	for _, b := range localOnlyBranches {
 		b.Active = false
 		commitManager.UpdateBranch(b)
 	}
 
-	p.UpdatedAt = time.Now()
-	p.Synchronising = false
-	projectManager.Update(p)
 }
 
 func removeRemoteBranches(haystack []commit.Branch, names []string) []commit.Branch {
