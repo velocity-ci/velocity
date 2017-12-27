@@ -9,14 +9,14 @@ import Util exposing ((=>))
 
 type Route
     = Overview
-    | Task ProjectTask.Name
+    | Task ProjectTask.Name (Maybe String)
 
 
 route : Parser (Route -> b) b
 route =
     oneOf
         [ Url.map Overview (s "overview")
-        , Url.map Task (s "tasks" </> ProjectTask.nameParser)
+        , Url.map Task (s "tasks" </> ProjectTask.nameParser <?> stringParam "build")
         ]
 
 
@@ -30,5 +30,5 @@ routeToPieces page =
         Overview ->
             [ "overview" ] => []
 
-        Task name ->
+        Task name maybeBuildId ->
             [ "tasks", ProjectTask.nameToString name ] => []

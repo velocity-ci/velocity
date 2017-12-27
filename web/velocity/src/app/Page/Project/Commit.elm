@@ -131,7 +131,8 @@ view project model =
                 |> Html.map OverviewMsg
 
         CommitTask subModel ->
-            CommitTask.view subModel
+            taskBuilds model.builds (Just subModel.task)
+                |> CommitTask.view subModel
                 |> frame model.commit
                 |> Html.map CommitTaskMsg
 
@@ -218,10 +219,18 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-findBuild : List Build -> Build.Id -> Maybe Build
-findBuild builds id =
-    List.filter (\b -> b.id == id) builds
-        |> List.head
+taskBuilds : List Build -> Maybe ProjectTask.Task -> List Build
+taskBuilds builds maybeTask =
+    builds
+        |> List.filter
+            (\b ->
+                case maybeTask of
+                    Just t ->
+                        t.id == b.taskId
+
+                    _ ->
+                        False
+            )
 
 
 setRoute : Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
@@ -244,29 +253,23 @@ setRoute session project maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (CommitRoute.Task name) ->
+            Just (CommitRoute.Task name _) ->
                 case session.user of
                     Just user ->
                         let
-                            task =
+                            maybeTask =
                                 model.tasks
                                     |> List.filter (\t -> t.name == name)
                                     |> List.head
-
-                            taskBuilds =
-                                model.builds
-                                    |> List.filter
-                                        (\b ->
-                                            case task of
-                                                Just t ->
-                                                    t.id == b.taskId
-
-                                                _ ->
-                                                    False
-                                        )
                         in
-                            CommitTask.init session project.id model.commit.hash name taskBuilds
-                                |> transition CommitTaskLoaded
+                            case maybeTask of
+                                Just task ->
+                                    taskBuilds model.builds (Just task)
+                                        |> CommitTask.init session project.id model.commit.hash task
+                                        |> transition CommitTaskLoaded
+
+                                Nothing ->
+                                    errored Page.Project "Could not find task"
 
                     Nothing ->
                         errored Page.Project "Uhoh"

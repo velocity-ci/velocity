@@ -1,5 +1,6 @@
 module Page.Project.Commit.Task exposing (..)
 
+import Ansi.Log
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
@@ -8,6 +9,7 @@ import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
 import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Data.AuthToken as AuthToken exposing (AuthToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
@@ -28,6 +30,7 @@ import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Views.Task exposing (viewStepList)
 import Views.Build exposing (viewBuildContainer)
+import Json.Encode as Encode
 
 
 -- MODEL --
@@ -39,6 +42,8 @@ type alias Model =
     , form : List Field
     , errors : List Error
     , build : Maybe BuildType
+    , output : Ansi.Log.Model
+    , selectedTab : Tab
     }
 
 
@@ -53,6 +58,11 @@ type StepType
 
 type BuildType
     = LoadedBuild Build (List BuildStep) (List BuildStreamOutput)
+
+
+type Tab
+    = NewFormTab
+    | BuildTab Build
 
 
 type alias InputFormField =
@@ -70,6 +80,10 @@ type alias ChoiceFormField =
     }
 
 
+loadFirstBuild :
+    Maybe AuthToken
+    -> List Build
+    -> Task Http.Error (Maybe BuildType)
 loadFirstBuild maybeAuthToken builds =
     case List.head builds of
         Just b ->
@@ -103,21 +117,16 @@ loadFirstBuild maybeAuthToken builds =
             Task.succeed Nothing
 
 
-init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Name -> List Build -> Task PageLoadError Model
-init session id hash name builds =
+init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> List Build -> Task PageLoadError Model
+init session id hash task builds =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
-        loadTask =
-            maybeAuthToken
-                |> Request.Commit.task id hash name
-                |> Http.toTask
-
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
 
-        initialModel task build =
+        initialModel build =
             let
                 toggledStep =
                     Nothing
@@ -127,18 +136,31 @@ init session id hash name builds =
 
                 errors =
                     List.concatMap validator form
+
+                output =
+                    List.foldl (\m s -> Ansi.Log.update m s)
+                        (Ansi.Log.init Ansi.Log.Cooked)
+                        (case build of
+                            Just (LoadedBuild b s o) ->
+                                List.map .output o
+
+                            _ ->
+                                []
+                        )
             in
                 { task = task
                 , toggledStep = toggledStep
                 , form = form
                 , errors = errors
                 , build = build
+                , selectedTab = NewFormTab
+                , output = output
                 }
 
         loadBuild =
             loadFirstBuild maybeAuthToken builds
     in
-        Task.map2 initialModel loadTask loadBuild
+        Task.map initialModel loadBuild
             |> Task.mapError handleLoadError
 
 
@@ -176,36 +198,79 @@ newField parameter =
 
 
 
+-- CHANNELS --
+
+
+events : List ( String, Encode.Value -> Msg )
+events =
+    []
+
+
+
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Model -> List Build -> Html Msg
+view model builds =
     let
         task =
             model.task
 
         stepList =
             viewStepList task.steps model.toggledStep
-
-        buildForm =
-            div [ class "card" ]
-                [ div [ class "card-body" ] <|
-                    viewBuildForm (ProjectTask.nameToString task.name) model.form model.errors
-                ]
-
-        buildContainer =
-            case model.build of
-                Just (LoadedBuild build steps output) ->
-                    viewBuildContainer build steps output
-
-                Nothing ->
-                    buildForm
     in
         div [ class "row" ]
             [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
-                [ buildContainer ]
+                [ h4 [] [ text (ProjectTask.nameToString task.name) ]
+                , viewTabs builds model.selectedTab
+                , viewTabFrame model
+                ]
             ]
+
+
+viewTabs : List Build -> Tab -> Html Msg
+viewTabs builds tab =
+    let
+        buildTab t =
+            let
+                tabText =
+                    case t of
+                        NewFormTab ->
+                            "+"
+
+                        BuildTab b ->
+                            Build.idToString b.id
+
+                tabClassList =
+                    [ ( "nav-link", True )
+                    , ( "active", t == tab )
+                    ]
+            in
+                li [ class "nav-item" ]
+                    [ a
+                        [ classList tabClassList
+                        , href "#"
+                        ]
+                        [ text tabText ]
+                    ]
+    in
+        List.append (List.map (BuildTab >> buildTab) builds) [ buildTab NewFormTab ]
+            |> ul [ class "nav nav-tabs" ]
+
+
+viewTabFrame : Model -> Html Msg
+viewTabFrame model =
+    let
+        buildForm =
+            div [ class "card-body" ] <|
+                viewBuildForm (ProjectTask.nameToString model.task.name) model.form model.errors
+    in
+        case model.selectedTab of
+            NewFormTab ->
+                buildForm
+
+            BuildTab _ ->
+                buildForm
 
 
 viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
@@ -249,11 +314,7 @@ viewBuildForm taskName fields errors =
                         ]
                         []
     in
-        [ h4 []
-            [ a []
-                [ text taskName ]
-            ]
-        , Html.form [ attribute "novalidate" "", onSubmit SubmitForm ] <|
+        [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ] <|
             List.map fieldInput fields
                 ++ [ button
                         [ class "btn btn-primary"
@@ -267,7 +328,7 @@ viewBuildForm taskName fields errors =
 
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )
 breadcrumb project commit task =
-    [ ( CommitRoute.Task task.name |> ProjectRoute.Commit commit.hash |> Route.Project project.id
+    [ ( CommitRoute.Task task.name Nothing |> ProjectRoute.Commit commit.hash |> Route.Project project.id
       , ProjectTask.nameToString task.name
       )
     ]

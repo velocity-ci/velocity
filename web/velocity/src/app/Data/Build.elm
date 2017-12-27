@@ -13,7 +13,6 @@ type alias Build =
     { id : Id
     , status : Status
     , taskId : Task.Id
-    , steps : List BuildStep
     }
 
 
@@ -27,7 +26,6 @@ decoder =
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
         |> required "task" Task.decodeId
-        |> required "steps" (Decode.list BuildStep.decoder)
 
 
 statusDecoder : Decoder Status

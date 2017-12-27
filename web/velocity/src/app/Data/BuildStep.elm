@@ -12,9 +12,10 @@ import Time.DateTime as DateTime exposing (DateTime)
 
 type alias BuildStep =
     { id : Id
-    , status : Status
-    , startedAt : DateTime
-    , completedAt : DateTime
+    , status :
+        Status
+        --    , startedAt : DateTime
+        --    , completedAt : DateTime
     , number : Int
     , description : String
     }
@@ -29,9 +30,10 @@ decoder =
     decode BuildStep
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
-        |> required "startedAt" stringToDateTime
-        |> required "completedAt" stringToDateTime
-        |> required "number" Decode.int
+        --       |> required "startedAt" stringToDateTime
+        --        |> required "completedAt" stringToDateTime
+        |>
+            required "number" Decode.int
         |> required "description" Decode.string
 
 
