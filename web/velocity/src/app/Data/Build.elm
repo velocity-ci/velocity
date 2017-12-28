@@ -60,6 +60,11 @@ idParser =
     UrlParser.custom "ID" (Ok << Id)
 
 
+idQueryParser : String -> UrlParser.QueryParser (Maybe String -> b) b
+idQueryParser id =
+    UrlParser.customParam id identity
+
+
 type Status
     = Waiting
     | Failed

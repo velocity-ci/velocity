@@ -132,7 +132,7 @@ view project model =
 
         CommitTask subModel ->
             taskBuilds model.builds (Just subModel.task)
-                |> CommitTask.view subModel
+                |> CommitTask.view project model.commit subModel
                 |> frame model.commit
                 |> Html.map CommitTaskMsg
 
@@ -253,7 +253,7 @@ setRoute session project maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (CommitRoute.Task name _) ->
+            Just (CommitRoute.Task name maybeTab) ->
                 case session.user of
                     Just user ->
                         let
@@ -265,7 +265,7 @@ setRoute session project maybeRoute model =
                             case maybeTask of
                                 Just task ->
                                     taskBuilds model.builds (Just task)
-                                        |> CommitTask.init session project.id model.commit.hash task
+                                        |> CommitTask.init session project.id model.commit.hash task maybeTab
                                         |> transition CommitTaskLoaded
 
                                 Nothing ->

@@ -16,7 +16,7 @@ route : Parser (Route -> b) b
 route =
     oneOf
         [ Url.map Overview (s "overview")
-        , Url.map Task (s "tasks" </> ProjectTask.nameParser <?> stringParam "build")
+        , Url.map Task (s "tasks" </> ProjectTask.nameParser <?> (Build.idQueryParser "tab"))
         ]
 
 
@@ -31,4 +31,10 @@ routeToPieces page =
             [ "overview" ] => []
 
         Task name maybeBuildId ->
-            [ "tasks", ProjectTask.nameToString name ] => []
+            let
+                queryParams =
+                    maybeBuildId
+                    |> Maybe.map (\id -> ["tab" => id])
+                    |> Maybe.withDefault []
+            in
+                [ "tasks", ProjectTask.nameToString name ] => queryParams

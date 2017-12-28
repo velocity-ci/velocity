@@ -31,6 +31,8 @@ import Page.Project.Commit.Route as CommitRoute
 import Views.Task exposing (viewStepList)
 import Views.Build exposing (viewBuildContainer)
 import Json.Encode as Encode
+import Views.Helpers exposing (onClickPage)
+import Navigation
 
 
 -- MODEL --
@@ -80,6 +82,37 @@ type alias ChoiceFormField =
     }
 
 
+loadBuild :
+    Maybe AuthToken
+    -> Build
+    -> Task Http.Error (Maybe BuildType)
+loadBuild maybeAuthToken build =
+    Request.Build.steps build.id maybeAuthToken
+        |> Http.toTask
+        |> Task.andThen
+            (\(Paginated steps) ->
+                steps.results
+                    |> List.map (.id >> (Request.Build.streams maybeAuthToken) >> Http.toTask)
+                    |> Task.sequence
+                    |> Task.andThen
+                        (\paginatedStreams ->
+                            paginatedStreams
+                                |> List.map (\(Paginated { results }) -> results)
+                                |> List.foldr (++) []
+                                |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
+                                |> Task.sequence
+                                |> Task.andThen
+                                    (\paginatedStreamOutputList ->
+                                        paginatedStreamOutputList
+                                            |> List.map (\(Paginated { results }) -> results)
+                                            |> List.foldr (++) []
+                                            |> LoadedBuild build steps.results
+                                            |> Just
+                                            |> Task.succeed
+                                    )
+                        )
+            )
+
 loadFirstBuild :
     Maybe AuthToken
     -> List Build
@@ -87,38 +120,14 @@ loadFirstBuild :
 loadFirstBuild maybeAuthToken builds =
     case List.head builds of
         Just b ->
-            Request.Build.steps b.id maybeAuthToken
-                |> Http.toTask
-                |> Task.andThen
-                    (\(Paginated steps) ->
-                        steps.results
-                            |> List.map (.id >> (Request.Build.streams maybeAuthToken) >> Http.toTask)
-                            |> Task.sequence
-                            |> Task.andThen
-                                (\paginatedStreams ->
-                                    paginatedStreams
-                                        |> List.map (\(Paginated { results }) -> results)
-                                        |> List.foldr (++) []
-                                        |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
-                                        |> Task.sequence
-                                        |> Task.andThen
-                                            (\paginatedStreamOutputList ->
-                                                paginatedStreamOutputList
-                                                    |> List.map (\(Paginated { results }) -> results)
-                                                    |> List.foldr (++) []
-                                                    |> LoadedBuild b steps.results
-                                                    |> Just
-                                                    |> Task.succeed
-                                            )
-                                )
-                    )
+            loadBuild maybeAuthToken b
 
         Nothing ->
             Task.succeed Nothing
 
 
-init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> List Build -> Task PageLoadError Model
-init session id hash task builds =
+init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
+init session id hash task maybeSelectedTab builds =
     let
         maybeAuthToken =
             Maybe.map .token session.user
@@ -147,13 +156,31 @@ init session id hash task builds =
                             _ ->
                                 []
                         )
+
+                selectedTab =
+                    case maybeSelectedTab of
+                        Just "new" ->
+                            NewFormTab
+
+                        Just buildId ->
+                            builds
+                                |> List.filter (\b -> (Build.idToString b.id) == buildId)
+                                |> List.head
+                                |> Maybe.map BuildTab
+                                |> Maybe.withDefault NewFormTab
+
+                        Nothing ->
+                            NewFormTab
+
+
+
             in
                 { task = task
                 , toggledStep = toggledStep
                 , form = form
                 , errors = errors
                 , build = build
-                , selectedTab = NewFormTab
+                , selectedTab = selectedTab
                 , output = output
                 }
 
@@ -210,8 +237,8 @@ events =
 -- VIEW --
 
 
-view : Model -> List Build -> Html Msg
-view model builds =
+view : Project -> Commit -> Model -> List Build -> Html Msg
+view project commit model builds =
     let
         task =
             model.task
@@ -222,14 +249,14 @@ view model builds =
         div [ class "row" ]
             [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
                 [ h4 [] [ text (ProjectTask.nameToString task.name) ]
-                , viewTabs builds model.selectedTab
+                , viewTabs project commit task builds model.selectedTab
                 , viewTabFrame model
                 ]
             ]
 
 
-viewTabs : List Build -> Tab -> Html Msg
-viewTabs builds tab =
+viewTabs : Project -> Commit -> ProjectTask.Task -> List Build -> Tab -> Html Msg
+viewTabs project commit task builds tab =
     let
         buildTab t =
             let
@@ -241,28 +268,44 @@ viewTabs builds tab =
                         BuildTab b ->
                             Build.idToString b.id
 
+
+                tabQueryParam =
+                    case t of
+                        NewFormTab ->
+                            "new"
+
+                        BuildTab b ->
+                            Build.idToString b.id
+
+                route =
+                    CommitRoute.Task task.name (Just tabQueryParam)
+                    |> ProjectRoute.Commit commit.hash
+                    |> Route.Project project.id
+
                 tabClassList =
                     [ ( "nav-link", True )
                     , ( "active", t == tab )
                     ]
+
             in
                 li [ class "nav-item" ]
                     [ a
                         [ classList tabClassList
-                        , href "#"
+                        , Route.href route
+                        , onClickPage NewUrl route
                         ]
                         [ text tabText ]
                     ]
     in
         List.append (List.map (BuildTab >> buildTab) builds) [ buildTab NewFormTab ]
-            |> ul [ class "nav nav-tabs" ]
+            |> ul [ class "nav nav-tabs nav-fill" ]
 
 
 viewTabFrame : Model -> Html Msg
 viewTabFrame model =
     let
         buildForm =
-            div [ class "card-body" ] <|
+            div [] <|
                 viewBuildForm (ProjectTask.nameToString model.task.name) model.form model.errors
     in
         case model.selectedTab of
@@ -344,7 +387,7 @@ type Msg
     | OnChange ChoiceFormField (Maybe Int)
     | SubmitForm
     | BuildCreated (Result Http.Error Build)
-
+    | NewUrl String
 
 update : Project -> Commit -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project commit session msg model =
@@ -460,6 +503,9 @@ update project commit session msg model =
 
             BuildCreated _ ->
                 model => Cmd.none
+
+            NewUrl url ->
+                model => Navigation.newUrl url
 
 
 
