@@ -43,29 +43,28 @@ type alias Model =
     , toggledStep : Maybe Step
     , form : List Field
     , errors : List Error
-    , build : Maybe BuildType
-    , output : Ansi.Log.Model
     , selectedTab : Tab
+    , frame : Frame
     }
-
 
 type Field
     = Input InputFormField
     | Choice ChoiceFormField
 
-
 type StepType
     = LoadedBuildStep BuildStep
 
-
 type BuildType
-    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput)
-
+    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
+    | LoadingBuild Build
 
 type Tab
     = NewFormTab
     | BuildTab Build
 
+type Frame
+    = BuildFrame BuildType
+    | NewFormFrame
 
 type alias InputFormField =
     { value : String
@@ -80,7 +79,6 @@ type alias ChoiceFormField =
     , field : String
     , options : List String
     }
-
 
 loadBuild :
     Maybe AuthToken
@@ -106,7 +104,10 @@ loadBuild maybeAuthToken build =
                                         paginatedStreamOutputList
                                             |> List.map (\(Paginated { results }) -> results)
                                             |> List.foldr (++) []
-                                            |> LoadedBuild build steps.results
+                                            |> (\outputStreams ->
+                                                    buildOutput outputStreams
+                                                    |> LoadedBuild build steps.results outputStreams
+                                               )
                                             |> Just
                                             |> Task.succeed
                                     )
@@ -118,13 +119,15 @@ loadFirstBuild :
     -> List Build
     -> Task Http.Error (Maybe BuildType)
 loadFirstBuild maybeAuthToken builds =
-    case List.head builds of
-        Just b ->
-            loadBuild maybeAuthToken b
+    List.head builds
+        |> Maybe.map (loadBuild maybeAuthToken)
+        |> Maybe.withDefault (Task.succeed Nothing)
 
-        Nothing ->
-            Task.succeed Nothing
-
+buildOutput : List BuildStreamOutput -> Ansi.Log.Model
+buildOutput buildOutput =
+    List.foldl Ansi.Log.update
+    (Ansi.Log.init Ansi.Log.Cooked)
+    (List.map .output buildOutput)
 
 init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
 init session id hash task maybeSelectedTab builds =
@@ -135,7 +138,24 @@ init session id hash task maybeSelectedTab builds =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
 
-        initialModel build =
+
+        selectedTab =
+            case maybeSelectedTab of
+                Just "new" ->
+                    NewFormTab
+
+                Just buildId ->
+                    builds
+                        |> List.filter (\b -> (Build.idToString b.id) == buildId)
+                        |> List.head
+                        |> Maybe.map BuildTab
+                        |> Maybe.withDefault NewFormTab
+
+                Nothing ->
+                    NewFormTab
+
+
+        initialModel frame =
             let
                 toggledStep =
                     Nothing
@@ -146,49 +166,27 @@ init session id hash task maybeSelectedTab builds =
                 errors =
                     List.concatMap validator form
 
-                output =
-                    List.foldl (\m s -> Ansi.Log.update m s)
-                        (Ansi.Log.init Ansi.Log.Cooked)
-                        (case build of
-                            Just (LoadedBuild b s o) ->
-                                List.map .output o
-
-                            _ ->
-                                []
-                        )
-
-                selectedTab =
-                    case maybeSelectedTab of
-                        Just "new" ->
-                            NewFormTab
-
-                        Just buildId ->
-                            builds
-                                |> List.filter (\b -> (Build.idToString b.id) == buildId)
-                                |> List.head
-                                |> Maybe.map BuildTab
-                                |> Maybe.withDefault NewFormTab
-
-                        Nothing ->
-                            NewFormTab
-
-
-
             in
                 { task = task
                 , toggledStep = toggledStep
                 , form = form
                 , errors = errors
-                , build = build
                 , selectedTab = selectedTab
-                , output = output
+                , frame = Maybe.withDefault NewFormFrame frame
                 }
 
-        loadBuild =
-            loadFirstBuild maybeAuthToken builds
     in
-        Task.map initialModel loadBuild
-            |> Task.mapError handleLoadError
+        case selectedTab of
+            NewFormTab ->
+                Task.succeed (initialModel (Just NewFormFrame))
+
+            BuildTab b ->
+                loadBuild maybeAuthToken b
+                    |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
+                    |> Task.map initialModel
+                    |> Task.mapError handleLoadError
+
+
 
 
 newField : Parameter -> Field
@@ -308,12 +306,17 @@ viewTabFrame model =
             div [] <|
                 viewBuildForm (ProjectTask.nameToString model.task.name) model.form model.errors
     in
-        case model.selectedTab of
-            NewFormTab ->
+        case model.frame of
+            NewFormFrame ->
                 buildForm
 
-            BuildTab _ ->
-                buildForm
+            BuildFrame f ->
+                case f of
+                    LoadedBuild _ _ _ o ->
+                        Ansi.Log.view o
+
+                    _ ->
+                        buildForm
 
 
 viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
@@ -388,6 +391,8 @@ type Msg
     | SubmitForm
     | BuildCreated (Result Http.Error Build)
     | NewUrl String
+    | LoadBuild Build
+    | BuildLoaded (Result Http.Error (Maybe BuildType))
 
 update : Project -> Commit -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project commit session msg model =
@@ -400,6 +405,10 @@ update project commit session msg model =
 
         taskName =
             model.task.name
+
+        maybeAuthToken =
+            Maybe.map .token session.user
+
     in
         case msg of
             ToggleStep maybeStep ->
@@ -445,7 +454,7 @@ update project commit session msg model =
                                         value =
                                             f.options
                                                 |> List.indexedMap (,)
-                                                |> List.filter (\i -> Tuple.first i == index)
+                                                |> List.filter (\(i, _) -> i == index)
                                                 |> List.head
                                                 |> Maybe.map Tuple.second
                                     in
@@ -501,11 +510,28 @@ update project commit session msg model =
                 in
                     model => cmd
 
+            LoadBuild build ->
+                let
+                    cmd =
+                        build
+                            |> loadBuild maybeAuthToken
+                            |> Task.attempt BuildLoaded
+                in
+                    model => cmd
+
+
+            BuildLoaded (Ok (Just loadedBuild)) ->
+                model => Cmd.none
+
+            BuildLoaded _ ->
+                model => Cmd.none
+
             BuildCreated _ ->
                 model => Cmd.none
 
             NewUrl url ->
                 model => Navigation.newUrl url
+
 
 
 
