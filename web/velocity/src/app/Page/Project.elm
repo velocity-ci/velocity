@@ -20,8 +20,6 @@ import Page.Project.Commit as Commit
 import Page.Project.Overview as Overview
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
-import Socket.Channel as Channel exposing (Channel)
-import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
 import Json.Encode as Encode
 import Json.Decode as Decode

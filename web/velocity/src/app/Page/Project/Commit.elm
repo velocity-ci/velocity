@@ -21,8 +21,6 @@ import Navigation
 import Views.Page as Page exposing (ActivePage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
-import Socket.Channel as Channel exposing (Channel)
-import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
 import Json.Decode as Decode

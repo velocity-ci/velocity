@@ -29,7 +29,6 @@ import Route
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Views.Task exposing (viewStepList)
-import Views.Build exposing (viewBuildContainer)
 import Json.Encode as Encode
 import Views.Helpers exposing (onClickPage)
 import Navigation
@@ -129,6 +128,22 @@ buildOutput buildOutput =
     (Ansi.Log.init Ansi.Log.Cooked)
     (List.map .output buildOutput)
 
+stringToTab : Maybe String -> List Build -> Tab
+stringToTab maybeSelectedTab builds =
+    case maybeSelectedTab of
+        Just "new" ->
+            NewFormTab
+
+        Just buildId ->
+            builds
+                |> List.filter (\b -> (Build.idToString b.id) == buildId)
+                |> List.head
+                |> Maybe.map BuildTab
+                |> Maybe.withDefault NewFormTab
+
+        Nothing ->
+            NewFormTab
+
 init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
 init session id hash task maybeSelectedTab builds =
     let
@@ -140,20 +155,7 @@ init session id hash task maybeSelectedTab builds =
 
 
         selectedTab =
-            case maybeSelectedTab of
-                Just "new" ->
-                    NewFormTab
-
-                Just buildId ->
-                    builds
-                        |> List.filter (\b -> (Build.idToString b.id) == buildId)
-                        |> List.head
-                        |> Maybe.map BuildTab
-                        |> Maybe.withDefault NewFormTab
-
-                Nothing ->
-                    NewFormTab
-
+            stringToTab maybeSelectedTab builds
 
         initialModel frame =
             let
@@ -290,7 +292,7 @@ viewTabs project commit task builds tab =
                     [ a
                         [ classList tabClassList
                         , Route.href route
-                        , onClickPage NewUrl route
+                        , onClickPage (SelectTab tab) route
                         ]
                         [ text tabText ]
                     ]
@@ -316,7 +318,7 @@ viewTabFrame model =
                         Ansi.Log.view o
 
                     _ ->
-                        buildForm
+                        text ""
 
 
 viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
@@ -390,7 +392,7 @@ type Msg
     | OnChange ChoiceFormField (Maybe Int)
     | SubmitForm
     | BuildCreated (Result Http.Error Build)
-    | NewUrl String
+    | SelectTab Tab String
     | LoadBuild Build
     | BuildLoaded (Result Http.Error (Maybe BuildType))
 
@@ -483,7 +485,7 @@ update project commit session msg model =
 
             SubmitForm ->
                 let
-                    stringParm { value, field } =
+                    stringParam { value, field } =
                         field => value
 
                     cmdFromAuth authToken =
@@ -499,11 +501,11 @@ update project commit session msg model =
                     mapFieldToParam field =
                         case field of
                             Input input ->
-                                Just (stringParm input)
+                                Just (stringParam input)
 
                             Choice choice ->
                                 choice.value
-                                    |> Maybe.map (\value -> stringParm { value = value, field = choice.field })
+                                    |> Maybe.map (\value -> stringParam { value = value, field = choice.field })
 
                     params =
                         List.filterMap mapFieldToParam model.form
@@ -529,8 +531,21 @@ update project commit session msg model =
             BuildCreated _ ->
                 model => Cmd.none
 
-            NewUrl url ->
-                model => Navigation.newUrl url
+            SelectTab tab url ->
+                let
+                    frame =
+                        case tab of
+                            BuildTab b ->
+                                BuildFrame (LoadingBuild b)
+                            _ ->
+                                NewFormFrame
+
+                in
+                    { model
+                    | selectedTab = tab
+                    , frame = frame
+                    }
+                        => Navigation.newUrl url
 
 
 

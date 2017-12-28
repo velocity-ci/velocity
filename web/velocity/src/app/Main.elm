@@ -2,7 +2,6 @@ module Main exposing (main)
 
 import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
-import Data.Project exposing (idToString)
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
 import Navigation exposing (Location)
