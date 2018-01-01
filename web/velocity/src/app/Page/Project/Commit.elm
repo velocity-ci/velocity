@@ -24,6 +24,7 @@ import Page.Project.Commit.Task as CommitTask
 import Data.PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
 import Json.Decode as Decode
+import Dict exposing (Dict)
 
 
 -- SUB PAGES --
@@ -108,12 +109,49 @@ init session project hash maybeRoute =
 -- CHANNELS --
 
 
-events : List ( String, Encode.Value -> Msg )
-events =
-    [ ( "build:new", AddBuildEvent )
-    , ( "build:delete", DeleteBuildEvent )
-    , ( "build:update", UpdateBuildEvent )
-    ]
+channelName : Project.Id -> String
+channelName projectId =
+    "project:" ++ (Project.idToString projectId)
+
+
+mapEvents :
+    (b -> c)
+    -> Dict comparable (List ( a1, a -> b ))
+    -> Dict comparable (List ( a1, a -> c ))
+mapEvents fromMsg events =
+    events
+        |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) v)
+
+
+initialEvents : Project.Id -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents projectId route =
+    let
+        subPageEvents =
+            case route of
+                CommitRoute.Task taskName maybeBuildName ->
+                    Dict.empty
+
+                _ ->
+                    Dict.empty
+
+        pageEvents =
+            [ ( "build:new", AddBuildEvent )
+            , ( "build:delete", DeleteBuildEvent )
+            , ( "build:update", UpdateBuildEvent )
+            ]
+    in
+        Dict.singleton (channelName projectId) (pageEvents)
+
+
+loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
+loadedEvents msg model =
+    case msg of
+        CommitTaskLoaded (Ok subModel) ->
+            CommitTask.events subModel
+                |> mapEvents CommitTaskMsg
+
+        _ ->
+            Dict.empty
 
 
 

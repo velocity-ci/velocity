@@ -2,7 +2,6 @@ module Page.Project.Route exposing (Route(..), routeToPieces, route, default)
 
 import UrlParser as Url exposing (parseHash, s, (</>), (<?>), string, stringParam, intParam, oneOf, Parser)
 import Data.Commit as Commit
-import Data.Task as ProjectTask
 import Data.Branch as Branch
 import Util exposing ((=>))
 import Page.Project.Commit.Route as CommitRoute

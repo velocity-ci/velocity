@@ -3,10 +3,6 @@ module Views.Task exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
-import Data.Commit as Commit exposing (Commit)
-import Data.Project as Project exposing (Project)
-import Data.Session as Session exposing (Session)
-import Data.Build as Build exposing (Build)
 import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, Step(..), Parameter(..))
 
 

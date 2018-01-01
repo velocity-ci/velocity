@@ -4,12 +4,7 @@ module Views.Page exposing (frame, ActivePage(..))
 -}
 
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Route exposing (Route)
-import Data.User as User exposing (User, Username)
-import Html.Lazy exposing (lazy2)
-import Views.Spinner exposing (spinner)
-import Views.Helpers exposing (onClickPage)
+import Data.User as User exposing (User)
 
 
 {-| Determines which navbar link (if any) will be rendered as active.

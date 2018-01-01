@@ -1,7 +1,5 @@
 module Data.Build exposing (..)
 
-import Data.Project as Project
-import Data.Commit as Commit
 import Data.Task as Task
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Json.Decode as Decode exposing (Decoder, int, string)
@@ -13,6 +11,7 @@ type alias Build =
     { id : Id
     , status : Status
     , taskId : Task.Id
+    , steps : List BuildStep
     }
 
 
@@ -26,6 +25,7 @@ decoder =
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
         |> required "task" Task.decodeId
+        |> required "steps" (Decode.list BuildStep.decoder)
 
 
 statusDecoder : Decoder Status

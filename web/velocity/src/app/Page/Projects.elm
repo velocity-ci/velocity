@@ -22,7 +22,6 @@ import Page.Project.Route as ProjectRoute
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
-import Socket.Channel as Channel exposing (Channel)
 
 
 -- MODEL --

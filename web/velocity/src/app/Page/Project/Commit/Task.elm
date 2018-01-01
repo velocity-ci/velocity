@@ -29,9 +29,10 @@ import Route
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Views.Task exposing (viewStepList)
-import Json.Encode as Encode
 import Views.Helpers exposing (onClickPage)
 import Navigation
+import Dict exposing (Dict)
+import Json.Encode as Encode
 
 
 -- MODEL --
@@ -46,24 +47,6 @@ type alias Model =
     , frame : Frame
     }
 
-type Field
-    = Input InputFormField
-    | Choice ChoiceFormField
-
-type StepType
-    = LoadedBuildStep BuildStep
-
-type BuildType
-    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
-    | LoadingBuild Build
-
-type Tab
-    = NewFormTab
-    | BuildTab Build
-
-type Frame
-    = BuildFrame BuildType
-    | NewFormFrame
 
 type alias InputFormField =
     { value : String
@@ -78,6 +61,31 @@ type alias ChoiceFormField =
     , field : String
     , options : List String
     }
+
+
+type Field
+    = Input InputFormField
+    | Choice ChoiceFormField
+
+
+type StepType
+    = LoadedBuildStep BuildStep
+
+
+type BuildType
+    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
+    | LoadingBuild Build
+
+
+type Tab
+    = NewFormTab
+    | BuildTab Build
+
+
+type Frame
+    = BuildFrame BuildType
+    | NewFormFrame
+
 
 loadBuild :
     Maybe AuthToken
@@ -105,13 +113,14 @@ loadBuild maybeAuthToken build =
                                             |> List.foldr (++) []
                                             |> (\outputStreams ->
                                                     buildOutput outputStreams
-                                                    |> LoadedBuild build steps.results outputStreams
+                                                        |> LoadedBuild build steps.results outputStreams
                                                )
                                             |> Just
                                             |> Task.succeed
                                     )
                         )
             )
+
 
 loadFirstBuild :
     Maybe AuthToken
@@ -122,11 +131,13 @@ loadFirstBuild maybeAuthToken builds =
         |> Maybe.map (loadBuild maybeAuthToken)
         |> Maybe.withDefault (Task.succeed Nothing)
 
+
 buildOutput : List BuildStreamOutput -> Ansi.Log.Model
 buildOutput buildOutput =
     List.foldl Ansi.Log.update
-    (Ansi.Log.init Ansi.Log.Cooked)
-    (List.map .output buildOutput)
+        (Ansi.Log.init Ansi.Log.Cooked)
+        (List.map .output buildOutput)
+
 
 stringToTab : Maybe String -> List Build -> Tab
 stringToTab maybeSelectedTab builds =
@@ -144,6 +155,7 @@ stringToTab maybeSelectedTab builds =
         Nothing ->
             NewFormTab
 
+
 init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
 init session id hash task maybeSelectedTab builds =
     let
@@ -152,7 +164,6 @@ init session id hash task maybeSelectedTab builds =
 
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
-
 
         selectedTab =
             stringToTab maybeSelectedTab builds
@@ -167,7 +178,6 @@ init session id hash task maybeSelectedTab builds =
 
                 errors =
                     List.concatMap validator form
-
             in
                 { task = task
                 , toggledStep = toggledStep
@@ -176,7 +186,6 @@ init session id hash task maybeSelectedTab builds =
                 , selectedTab = selectedTab
                 , frame = Maybe.withDefault NewFormFrame frame
                 }
-
     in
         case selectedTab of
             NewFormTab ->
@@ -187,8 +196,6 @@ init session id hash task maybeSelectedTab builds =
                     |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
                     |> Task.map initialModel
                     |> Task.mapError handleLoadError
-
-
 
 
 newField : Parameter -> Field
@@ -228,9 +235,34 @@ newField parameter =
 -- CHANNELS --
 
 
-events : List ( String, Encode.Value -> Msg )
-events =
-    []
+streamChannelName : BuildStream -> String
+streamChannelName stream =
+    "streams:" ++ (BuildStream.idToString stream.id)
+
+
+events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
+events model =
+    case model.frame of
+        BuildFrame (LoadedBuild build _ _ _) ->
+            let
+                streams =
+                    List.map .streams build.steps
+                        |> List.foldr (++) []
+
+                foldStreamEvents stream dict =
+                    let
+                        channelName =
+                            streamChannelName stream
+
+                        events =
+                            [ ( "streamLine:new", AddStreamOutput stream ) ]
+                    in
+                        Dict.insert channelName events dict
+            in
+                List.foldl foldStreamEvents Dict.empty streams
+
+        _ ->
+            Dict.empty
 
 
 
@@ -268,7 +300,6 @@ viewTabs project commit task builds tab =
                         BuildTab b ->
                             Build.idToString b.id
 
-
                 tabQueryParam =
                     case t of
                         NewFormTab ->
@@ -279,14 +310,13 @@ viewTabs project commit task builds tab =
 
                 route =
                     CommitRoute.Task task.name (Just tabQueryParam)
-                    |> ProjectRoute.Commit commit.hash
-                    |> Route.Project project.id
+                        |> ProjectRoute.Commit commit.hash
+                        |> Route.Project project.id
 
                 tabClassList =
                     [ ( "nav-link", True )
                     , ( "active", t == tab )
                     ]
-
             in
                 li [ class "nav-item" ]
                     [ a
@@ -395,6 +425,8 @@ type Msg
     | SelectTab Tab String
     | LoadBuild Build
     | BuildLoaded (Result Http.Error (Maybe BuildType))
+    | AddStreamOutput BuildStream Encode.Value
+
 
 update : Project -> Commit -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update project commit session msg model =
@@ -410,7 +442,6 @@ update project commit session msg model =
 
         maybeAuthToken =
             Maybe.map .token session.user
-
     in
         case msg of
             ToggleStep maybeStep ->
@@ -456,7 +487,7 @@ update project commit session msg model =
                                         value =
                                             f.options
                                                 |> List.indexedMap (,)
-                                                |> List.filter (\(i, _) -> i == index)
+                                                |> List.filter (\( i, _ ) -> i == index)
                                                 |> List.head
                                                 |> Maybe.map Tuple.second
                                     in
@@ -521,7 +552,6 @@ update project commit session msg model =
                 in
                     model => cmd
 
-
             BuildLoaded (Ok (Just loadedBuild)) ->
                 model => Cmd.none
 
@@ -537,16 +567,18 @@ update project commit session msg model =
                         case tab of
                             BuildTab b ->
                                 BuildFrame (LoadingBuild b)
+
                             _ ->
                                 NewFormFrame
-
                 in
                     { model
-                    | selectedTab = tab
-                    , frame = frame
+                        | selectedTab = tab
+                        , frame = frame
                     }
                         => Navigation.newUrl url
 
+            AddStreamOutput _ _ ->
+                model => Cmd.none
 
 
 

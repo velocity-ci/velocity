@@ -1,7 +1,6 @@
 module Page.Project.Commit.Route exposing (Route(..), routeToPieces, route)
 
 import UrlParser as Url exposing (parseHash, s, (</>), (<?>), string, stringParam, intParam, oneOf, Parser)
-import Data.Commit as Commit
 import Data.Task as ProjectTask
 import Data.Build as Build
 import Util exposing ((=>))
@@ -34,7 +33,7 @@ routeToPieces page =
             let
                 queryParams =
                     maybeBuildId
-                    |> Maybe.map (\id -> ["tab" => id])
-                    |> Maybe.withDefault []
+                        |> Maybe.map (\id -> [ "tab" => id ])
+                        |> Maybe.withDefault []
             in
                 [ "tasks", ProjectTask.nameToString name ] => queryParams

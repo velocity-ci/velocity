@@ -5,11 +5,8 @@ import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
-import Json.Decode as Decode
-import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
-import Util exposing ((=>))
 import Http
 
 

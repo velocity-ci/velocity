@@ -10,12 +10,8 @@ module Request.Project
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
-import Data.Commit as Commit exposing (Commit)
-import Data.Task as Task exposing (Task)
 import Data.Branch as Branch exposing (Branch)
-import Data.Build as Build exposing (Build)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
-import Json.Decode as Decode
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
