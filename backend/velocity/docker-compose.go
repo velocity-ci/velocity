@@ -3,9 +3,12 @@ package velocity
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"sync"
 
+	"github.com/docker/docker/client"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -57,11 +60,52 @@ func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
 }
 
 func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) error {
-	// Determine order to start services from links
+	serviceOrder := getServiceOrder(dC.Contents.Services, []string{})
 
-	// TODO: Get StepServiceWriter
+	services := []*serviceRunner{}
 
+	for _, serviceName := range serviceOrder {
+		writer := emitter.NewStreamWriter(serviceName)
+		writer.SetStatus(StateRunning)
+		writer.Write([]byte(fmt.Sprintf("Starting %s", serviceName)))
+
+		services = append(services)
+
+		go startService(&services, serviceName)
+	}
 	return nil
+}
+
+func NewServiceRunner() *serviceRunner {
+	return &serviceRunner{}
+}
+
+type serviceRunner struct {
+	writer      io.Writer
+	containerID string
+	exitCode    int
+	wg          *sync.WaitGroup
+}
+
+func (sR *serviceRunner) Start() {
+	cli, err := client.NewEnvClient()
+	if err != nil {
+
+	}
+}
+
+func (sR *serviceRunner) Stop() {
+
+}
+
+func stopAll(services []*serviceRunner) {
+	for _, s := range services {
+		s.Stop()
+	}
+}
+
+func startService(services *[]*serviceRunner, serviceName string) {
+
 }
 
 func (dC *DockerCompose) String() string {
