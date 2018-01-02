@@ -74,7 +74,7 @@ type StepType
 
 type BuildType
     = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
-    | LoadingBuild Build
+    | LoadingBuild
 
 
 type Tab
@@ -237,7 +237,7 @@ newField parameter =
 
 streamChannelName : BuildStream -> String
 streamChannelName stream =
-    "streams:" ++ (BuildStream.idToString stream.id)
+    "stream:" ++ (BuildStream.idToString stream.id)
 
 
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
@@ -288,7 +288,7 @@ view project commit model builds =
 
 
 viewTabs : Project -> Commit -> ProjectTask.Task -> List Build -> Tab -> Html Msg
-viewTabs project commit task builds tab =
+viewTabs project commit task builds selectedTab =
     let
         buildTab t =
             let
@@ -299,6 +299,7 @@ viewTabs project commit task builds tab =
 
                         BuildTab b ->
                             Build.idToString b.id
+                                |> String.slice 0 5
 
                 tabQueryParam =
                     case t of
@@ -313,16 +314,27 @@ viewTabs project commit task builds tab =
                         |> ProjectRoute.Commit commit.hash
                         |> Route.Project project.id
 
+                compare a b =
+                    case ( a, b ) of
+                        ( BuildTab c, BuildTab d ) ->
+                            Build.idToString c.id == Build.idToString d.id
+
+                        ( NewFormTab, NewFormTab ) ->
+                            True
+
+                        _ ->
+                            False
+
                 tabClassList =
                     [ ( "nav-link", True )
-                    , ( "active", t == tab )
+                    , ( "active", compare t selectedTab )
                     ]
             in
                 li [ class "nav-item" ]
                     [ a
                         [ classList tabClassList
                         , Route.href route
-                        , onClickPage (SelectTab tab) route
+                        , onClickPage (SelectTab selectedTab) route
                         ]
                         [ text tabText ]
                     ]
@@ -342,13 +354,11 @@ viewTabFrame model =
             NewFormFrame ->
                 buildForm
 
-            BuildFrame f ->
-                case f of
-                    LoadedBuild _ _ _ o ->
-                        Ansi.Log.view o
+            BuildFrame (LoadedBuild _ _ _ o) ->
+                Ansi.Log.view o
 
-                    _ ->
-                        text ""
+            BuildFrame LoadingBuild ->
+                text "Loading"
 
 
 viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
@@ -565,10 +575,10 @@ update project commit session msg model =
                 let
                     frame =
                         case tab of
-                            BuildTab b ->
-                                BuildFrame (LoadingBuild b)
+                            BuildTab _ ->
+                                BuildFrame LoadingBuild
 
-                            _ ->
+                            NewFormTab ->
                                 NewFormFrame
                 in
                     { model
@@ -577,8 +587,33 @@ update project commit session msg model =
                     }
                         => Navigation.newUrl url
 
-            AddStreamOutput _ _ ->
-                model => Cmd.none
+            AddStreamOutput _ outputJson ->
+                let
+                    maybeBuildStreamOutput =
+                        outputJson
+                            |> Decode.decodeValue BuildStream.outputDecoder
+                            |> Result.toMaybe
+
+                    outputStreams existing =
+                        maybeBuildStreamOutput
+                            |> Maybe.map (\b -> List.append existing [ b ])
+                            |> Maybe.withDefault existing
+
+                    output existingOutput =
+                        maybeBuildStreamOutput
+                            |> Maybe.map (\o -> Ansi.Log.update o.output existingOutput)
+                            |> Maybe.withDefault existingOutput
+
+                    frame =
+                        case model.frame of
+                            BuildFrame (LoadedBuild a b c d) ->
+                                BuildFrame (LoadedBuild a b (outputStreams c) (buildOutput c))
+
+                            _ ->
+                                model.frame
+                in
+                    { model | frame = frame }
+                        => Cmd.none
 
 
 
