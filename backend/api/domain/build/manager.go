@@ -116,11 +116,8 @@ func (m *Manager) CreateBuildStep(bS BuildStep) BuildStep {
 func (m *Manager) UpdateBuildStep(bS BuildStep) BuildStep {
 	bS.UpdatedAt = time.Now()
 	m.gormRepository.SaveBuildStep(nil, bS)
-	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
-		Topic:   fmt.Sprintf("step:%s", bS.ID),
-		Event:   websocket.VUpdateStep,
-		Payload: NewWebsocketBuildStep(bS),
-	})
+	b, _ := m.GetBuildByBuildID(bS.BuildID)
+	m.UpdateBuild(b)
 	return bS
 }
 
