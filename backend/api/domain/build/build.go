@@ -3,6 +3,8 @@ package build
 import (
 	"time"
 
+	"github.com/docker/go/canonical/json"
+
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
@@ -55,11 +57,18 @@ type Build struct {
 	TaskID     string                        `json:"taskId"`
 	Parameters map[string]velocity.Parameter `json:"parameters"`
 
+	Steps []BuildStep `json:"buildSteps"`
+
 	Status      string    `json:"status"` // waiting, running, success, failed
 	UpdatedAt   time.Time `json:"updatedAt"`
 	CreatedAt   time.Time `json:"createdAt"`
 	StartedAt   time.Time `json:"startedAt"`
 	CompletedAt time.Time `json:"completedAt"`
+}
+
+func (b Build) String() string {
+	bytes, _ := json.Marshal(b)
+	return string(bytes)
 }
 
 func NewBuild(projectId string, taskID string, params map[string]velocity.Parameter) Build {
@@ -71,6 +80,7 @@ func NewBuild(projectId string, taskID string, params map[string]velocity.Parame
 		Status:     "waiting",
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
+		Steps:      []BuildStep{},
 	}
 }
 
@@ -78,6 +88,8 @@ type BuildStep struct {
 	ID      string `json:"id"`
 	BuildID string `json:"build"`
 	Number  uint64 `json:"number"`
+
+	Streams []BuildStepStream `json:"streams"`
 
 	Status      string    `json:"status"` // waiting, running, success, failed
 	UpdatedAt   time.Time `json:"updatedAt"`
@@ -106,6 +118,7 @@ func NewBuildStep(buildID string, n uint64) BuildStep {
 		Status:    "waiting",
 		Number:    n,
 		UpdatedAt: time.Now(),
+		Streams:   []BuildStepStream{},
 	}
 
 	return bS

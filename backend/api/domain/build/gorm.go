@@ -17,6 +17,7 @@ type gormBuild struct {
 	TaskID      string
 	Parameters  []byte // Parameters as JSON
 	Status      string
+	Steps       []gormBuildStep `gorm:"ForeignKey:BuildID"`
 	UpdatedAt   time.Time
 	CreatedAt   time.Time
 	StartedAt   time.Time
@@ -32,6 +33,7 @@ type gormBuildStep struct {
 	BuildID     string
 	Number      uint64
 	Status      string
+	Streams     []gormBuildStepStream `gorm:"ForeignKey:BuildStepID"`
 	UpdatedAt   time.Time
 	StartedAt   time.Time
 	CompletedAt time.Time
@@ -75,6 +77,10 @@ func gormBuildFromBuild(b Build) gormBuild {
 		log.Printf("could not marshal build parameters from %v\n", b)
 		log.Fatal(err)
 	}
+	steps := []gormBuildStep{}
+	for _, bS := range b.Steps {
+		steps = append(steps, gormBuildStepFromBuildStep(bS))
+	}
 	return gormBuild{
 		ID:          b.ID,
 		ProjectID:   b.ProjectID,
@@ -85,6 +91,7 @@ func gormBuildFromBuild(b Build) gormBuild {
 		CreatedAt:   b.CreatedAt,
 		StartedAt:   b.StartedAt,
 		CompletedAt: b.CompletedAt,
+		Steps:       steps,
 	}
 }
 
@@ -94,6 +101,10 @@ func buildFromGormBuild(g gormBuild) Build {
 	if err != nil {
 		log.Printf("could not unmarshal build parameters from %v\n", g.Parameters)
 		log.Fatal(err)
+	}
+	steps := []BuildStep{}
+	for _, bS := range g.Steps {
+		steps = append(steps, buildStepFromGormBuildStep(bS))
 	}
 	return Build{
 		ID:          g.ID,
@@ -105,14 +116,21 @@ func buildFromGormBuild(g gormBuild) Build {
 		CreatedAt:   g.CreatedAt,
 		StartedAt:   g.StartedAt,
 		CompletedAt: g.CompletedAt,
+		Steps:       steps,
 	}
 }
 
 func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
+	streams := []BuildStepStream{}
+	for _, s := range g.Streams {
+		streams = append(streams, buildStepStreamFromGormBuildStepStream(s))
+	}
 	return BuildStep{
 		ID:      g.ID,
 		BuildID: g.BuildID,
 		Number:  g.Number,
+
+		Streams: streams,
 
 		Status:      g.Status,
 		UpdatedAt:   g.UpdatedAt,
@@ -122,10 +140,16 @@ func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
 }
 
 func gormBuildStepFromBuildStep(bS BuildStep) gormBuildStep {
+	streams := []gormBuildStepStream{}
+	for _, s := range bS.Streams {
+		streams = append(streams, gormBuildStepStreamFromBuildStepStream(s))
+	}
 	return gormBuildStep{
 		ID:      bS.ID,
 		BuildID: bS.BuildID,
 		Number:  bS.Number,
+
+		Streams: streams,
 
 		Status:      bS.Status,
 		UpdatedAt:   bS.UpdatedAt,
@@ -162,11 +186,18 @@ func (r *gormRepository) SaveBuild(b Build) Build {
 		tx.Save(&gB)
 	}
 
+	for _, bS := range b.Steps {
+		r.SaveBuildStep(tx, bS)
+		for _, bSS := range bS.Streams {
+			r.SaveStream(tx, bSS)
+		}
+	}
+
 	tx.Commit()
 
 	r.logger.Printf("saved build %s", b.ID)
 
-	return buildFromGormBuild(gB)
+	return b
 
 }
 func (r *gormRepository) DeleteBuild(b Build) {
@@ -257,6 +288,10 @@ func queryBuilds(preparedDB *gorm.DB, q BuildQuery) ([]Build, uint64) {
 		Find(&gBs).
 		Count(&count)
 	preparedDB.
+		// Joins("JOIN build_steps AS steps ON steps.build_id=builds.id").
+		// Joins("JOIN build_step_streams AS streams ON streams.build_step_id=steps.id").
+		Preload("Steps").
+		Preload("Steps.Streams").
 		Limit(int(q.Amount)).
 		Offset(int(q.Page - 1)).
 		Order("created_at desc").
@@ -269,8 +304,12 @@ func queryBuilds(preparedDB *gorm.DB, q BuildQuery) ([]Build, uint64) {
 	return builds, count
 }
 
-func (r *gormRepository) SaveBuildStep(bS BuildStep) BuildStep {
-	tx := r.gorm.Begin()
+func (r *gormRepository) SaveBuildStep(tx *gorm.DB, bS BuildStep) BuildStep {
+	isolated := false
+	if tx == nil {
+		tx = r.gorm.Begin()
+		isolated = true
+	}
 
 	gBS := gormBuildStepFromBuildStep(bS)
 
@@ -283,7 +322,9 @@ func (r *gormRepository) SaveBuildStep(bS BuildStep) BuildStep {
 		tx.Save(&gBS)
 	}
 
-	tx.Commit()
+	if isolated {
+		tx.Commit()
+	}
 
 	return buildStepFromGormBuildStep(gBS)
 }
@@ -347,8 +388,12 @@ func (r *gormRepository) GetBuildStepByBuildIDAndNumber(buildID string, stepNumb
 	return buildStepFromGormBuildStep(gBS), nil
 }
 
-func (r *gormRepository) SaveStream(s BuildStepStream) BuildStepStream {
-	tx := r.gorm.Begin()
+func (r *gormRepository) SaveStream(tx *gorm.DB, s BuildStepStream) BuildStepStream {
+	isolated := false
+	if tx == nil {
+		tx = r.gorm.Begin()
+		isolated = true
+	}
 
 	gS := gormBuildStepStreamFromBuildStepStream(s)
 
@@ -361,7 +406,9 @@ func (r *gormRepository) SaveStream(s BuildStepStream) BuildStepStream {
 		tx.Save(&gS)
 	}
 
-	tx.Commit()
+	if isolated {
+		tx.Commit()
+	}
 
 	return buildStepStreamFromGormBuildStepStream(gS)
 }

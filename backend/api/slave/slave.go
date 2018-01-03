@@ -3,6 +3,7 @@ package slave
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -28,10 +29,37 @@ type ManyResponse struct {
 	Result []ResponseSlave `json:"result"`
 }
 
+type safeWebsocket struct {
+	ws        *websocket.Conn
+	writeLock sync.RWMutex
+	readLock  sync.RWMutex
+}
+
+func (sws *safeWebsocket) WriteJSON(m interface{}) error {
+	sws.writeLock.Lock()
+	defer sws.writeLock.Unlock()
+
+	return sws.ws.WriteJSON(m)
+}
+
+func (sws *safeWebsocket) ReadJSON(m interface{}) error {
+	sws.readLock.Lock()
+	defer sws.readLock.Unlock()
+
+	return sws.ws.ReadJSON(m)
+}
+
+func (sws *safeWebsocket) Close() error {
+	sws.writeLock.Lock()
+	defer sws.writeLock.Unlock()
+
+	return sws.ws.Close()
+}
+
 type Slave struct {
 	ID      string
 	State   string // ready, busy, disconnected
-	ws      *websocket.Conn
+	ws      *safeWebsocket
 	Command CommandMessage
 }
 
@@ -49,7 +77,9 @@ func NewSlave(ID string) Slave {
 }
 
 func (s *Slave) SetWebSocket(ws *websocket.Conn) {
-	s.ws = ws
+	s.ws = &safeWebsocket{
+		ws: ws,
+	}
 }
 
 type SlaveMessage struct {
