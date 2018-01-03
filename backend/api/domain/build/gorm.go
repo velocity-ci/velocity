@@ -218,6 +218,8 @@ func (r *gormRepository) GetBuildByBuildID(buildID string) (Build, error) {
 	gB := gormBuild{}
 	if r.gorm.
 		Preload("Task").
+		Preload("Steps").
+		Preload("Steps.Streams").
 		Where(&gormBuild{
 			ID: buildID,
 		}).
