@@ -35,10 +35,8 @@ func (m *Manager) CreateBuild(b Build) Build {
 	b.CreatedAt = time.Now()
 	b.UpdatedAt = time.Now()
 
-	t, _ := m.taskManager.GetByTaskID(b.TaskID)
-
 	buildSteps := []BuildStep{}
-	for i, s := range t.Steps {
+	for i, s := range b.Task.Steps {
 		bS := NewBuildStep(
 			b.ID,
 			uint64(i),
@@ -59,7 +57,7 @@ func (m *Manager) CreateBuild(b Build) Build {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VNewBuild,
-		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
+		Payload: NewResponseBuild(b),
 	})
 	return b
 }
@@ -70,7 +68,7 @@ func (m *Manager) UpdateBuild(b Build) Build {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VUpdateBuild,
-		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
+		Payload: NewResponseBuild(b),
 	})
 	return b
 }
@@ -80,7 +78,7 @@ func (m *Manager) DeleteBuild(b Build) {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VDeleteBuild,
-		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
+		Payload: NewResponseBuild(b),
 	})
 }
 

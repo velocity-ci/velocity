@@ -8,12 +8,14 @@ import (
 
 	"github.com/docker/go/canonical/json"
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type gormBuild struct {
 	ID          string `gorm:"primary_key"`
 	ProjectID   string
+	Task        task.GormTask `gorm:"ForeignKey:TaskID"`
 	TaskID      string
 	Parameters  []byte // Parameters as JSON
 	Status      string
@@ -84,7 +86,7 @@ func gormBuildFromBuild(b Build) gormBuild {
 	return gormBuild{
 		ID:          b.ID,
 		ProjectID:   b.ProjectID,
-		TaskID:      b.TaskID,
+		Task:        task.GormTaskFromTask(b.Task),
 		Parameters:  jsonParameters,
 		Status:      b.Status,
 		UpdatedAt:   b.UpdatedAt,
@@ -109,7 +111,7 @@ func buildFromGormBuild(g gormBuild) Build {
 	return Build{
 		ID:          g.ID,
 		ProjectID:   g.ProjectID,
-		TaskID:      g.TaskID,
+		Task:        task.TaskFromGormTask(g.Task),
 		Parameters:  parameters,
 		Status:      g.Status,
 		UpdatedAt:   g.UpdatedAt,
@@ -215,6 +217,7 @@ func (r *gormRepository) DeleteBuild(b Build) {
 func (r *gormRepository) GetBuildByBuildID(buildID string) (Build, error) {
 	gB := gormBuild{}
 	if r.gorm.
+		Preload("Task").
 		Where(&gormBuild{
 			ID: buildID,
 		}).
@@ -254,7 +257,7 @@ func (r *gormRepository) GetBuildsByCommitID(commitID string, q BuildQuery) ([]B
 
 func (r *gormRepository) GetBuildsByTaskID(taskID string, q BuildQuery) ([]Build, uint64) {
 	query := r.gorm.
-		Where(gormBuild{TaskID: taskID})
+		Where(gormBuild{Task: task.GormTask{ID: taskID}})
 
 	if q.Status != "all" {
 		query = query.Where(&gormBuild{Status: q.Status})
@@ -290,6 +293,7 @@ func queryBuilds(preparedDB *gorm.DB, q BuildQuery) ([]Build, uint64) {
 	preparedDB.
 		// Joins("JOIN build_steps AS steps ON steps.build_id=builds.id").
 		// Joins("JOIN build_step_streams AS streams ON streams.build_step_id=steps.id").
+		Preload("Task").
 		Preload("Steps").
 		Preload("Steps.Streams").
 		Limit(int(q.Amount)).

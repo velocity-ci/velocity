@@ -6,6 +6,7 @@ import (
 	"github.com/docker/go/canonical/json"
 
 	uuid "github.com/satori/go.uuid"
+	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
@@ -54,7 +55,7 @@ type StreamLineQuery struct {
 type Build struct {
 	ID         string                        `json:"id"`
 	ProjectID  string                        `json:"projectId"`
-	TaskID     string                        `json:"taskId"`
+	Task       task.Task                     `json:"task"`
 	Parameters map[string]velocity.Parameter `json:"parameters"`
 
 	Steps []BuildStep `json:"buildSteps"`
@@ -71,11 +72,11 @@ func (b Build) String() string {
 	return string(bytes)
 }
 
-func NewBuild(projectId string, taskID string, params map[string]velocity.Parameter) Build {
+func NewBuild(projectId string, t task.Task, params map[string]velocity.Parameter) Build {
 	return Build{
-		ID:         uuid.NewV3(uuid.NewV1(), taskID).String(),
+		ID:         uuid.NewV3(uuid.NewV1(), t.ID).String(),
 		ProjectID:  projectId,
-		TaskID:     taskID,
+		Task:       t,
 		Parameters: params,
 		Status:     "waiting",
 		CreatedAt:  time.Now(),
@@ -187,10 +188,14 @@ type ResponseBuild struct {
 	Steps  []ResponseBuildStep `json:"steps"`
 }
 
-func NewResponseBuild(b Build, steps []ResponseBuildStep) ResponseBuild {
+func NewResponseBuild(b Build) ResponseBuild {
+	steps := []ResponseBuildStep{}
+	for i, s := range b.Steps {
+		steps = append(steps, NewResponseBuildStep(s, b.Task.Steps[i]))
+	}
 	return ResponseBuild{
 		ID:     b.ID,
-		TaskID: b.TaskID,
+		TaskID: b.Task.ID,
 		Status: b.Status,
 		Steps:  steps,
 	}
@@ -207,7 +212,14 @@ type ResponseBuildStep struct {
 	Streams     []ResponseOutputStream `json:"streams"`
 }
 
-func NewResponseBuildStep(bS BuildStep, s velocity.Step, streams []ResponseOutputStream) ResponseBuildStep {
+func NewResponseBuildStep(bS BuildStep, s velocity.Step) ResponseBuildStep {
+	streams := []ResponseOutputStream{}
+	for _, s := range bS.Streams {
+		streams = append(streams, ResponseOutputStream{
+			ID:   s.ID,
+			Name: s.Name,
+		})
+	}
 	return ResponseBuildStep{
 		ID:          bS.ID,
 		Type:        s.GetType(),

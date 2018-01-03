@@ -120,10 +120,7 @@ func (m *Manager) StartBuild(slave Slave, b build.Build) {
 	m.buildManager.UpdateBuild(b)
 	m.logger.Printf("set build %s as running", b.ID)
 
-	t, err := m.taskManager.GetByTaskID(b.TaskID)
-	if err != nil {
-		m.logger.Fatalf("task %s not found for build %s?!?!", b.TaskID, b.ID)
-	}
+	t := b.Task
 
 	c, err := m.commitManager.GetCommitByCommitID(t.CommitID)
 	if err != nil {

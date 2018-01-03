@@ -10,25 +10,25 @@ import (
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
-type gormTask struct {
+type GormTask struct {
 	ID       string `gorm:"primary_key"`
 	CommitID string
 	Name     string
 	VTask    []byte // JSON of task for storage
 }
 
-func (gormTask) TableName() string {
+func (GormTask) TableName() string {
 	return "tasks"
 }
 
-func gormTaskFromTask(t Task) gormTask {
+func GormTaskFromTask(t Task) GormTask {
 	jsonTask, err := json.Marshal(t.Task)
 	if err != nil {
 		log.Println("Could not marshal task")
 		log.Fatal(err)
 	}
 
-	return gormTask{
+	return GormTask{
 		ID:       t.ID,
 		CommitID: t.CommitID,
 		Name:     t.Name,
@@ -36,7 +36,7 @@ func gormTaskFromTask(t Task) gormTask {
 	}
 }
 
-func taskFromGormTask(g gormTask) Task {
+func TaskFromGormTask(g GormTask) Task {
 	var vTask velocity.Task
 	err := json.Unmarshal(g.VTask, &vTask)
 	if err != nil {
@@ -58,7 +58,7 @@ type gormRepository struct {
 }
 
 func newGORMRepository(db *gorm.DB) *gormRepository {
-	db.AutoMigrate(gormTask{})
+	db.AutoMigrate(GormTask{})
 	return &gormRepository{
 		logger: log.New(os.Stdout, "[gorm:task]", log.Lshortfile),
 		gorm:   db,
@@ -68,11 +68,11 @@ func newGORMRepository(db *gorm.DB) *gormRepository {
 func (r *gormRepository) Save(t Task) Task {
 	tx := r.gorm.Begin()
 
-	gT := gormTaskFromTask(t)
+	gT := GormTaskFromTask(t)
 
-	err := tx.Where(&gormTask{
+	err := tx.Where(&GormTask{
 		ID: t.ID,
-	}).First(&gormTask{}).Error
+	}).First(&GormTask{}).Error
 	if err != nil {
 		err = tx.Create(&gT).Error
 	} else {
@@ -81,13 +81,13 @@ func (r *gormRepository) Save(t Task) Task {
 
 	tx.Commit()
 	r.logger.Printf("saved task %s", t.ID)
-	return taskFromGormTask(gT)
+	return TaskFromGormTask(gT)
 }
 
 func (r *gormRepository) Delete(t Task) {
 	tx := r.gorm.Begin()
 
-	gT := gormTaskFromTask(t)
+	gT := GormTaskFromTask(t)
 
 	if err := tx.Delete(gT).Error; err != nil {
 		tx.Rollback()
@@ -98,10 +98,10 @@ func (r *gormRepository) Delete(t Task) {
 }
 
 func (r *gormRepository) GetByTaskID(taskID string) (Task, error) {
-	gT := gormTask{}
+	gT := GormTask{}
 
 	if r.gorm.
-		Where(&gormTask{
+		Where(&GormTask{
 			ID: taskID,
 		}).
 		First(&gT).RecordNotFound() {
@@ -109,14 +109,14 @@ func (r *gormRepository) GetByTaskID(taskID string) (Task, error) {
 		return Task{}, fmt.Errorf("could not find task %s", taskID)
 	}
 
-	return taskFromGormTask(gT), nil
+	return TaskFromGormTask(gT), nil
 }
 
 func (r *gormRepository) GetByCommitIDAndTaskName(commitID string, name string) (Task, error) {
-	gT := gormTask{}
+	gT := GormTask{}
 
 	if r.gorm.
-		Where(&gormTask{
+		Where(&GormTask{
 			CommitID: commitID,
 			Name:     name,
 		}).
@@ -125,15 +125,15 @@ func (r *gormRepository) GetByCommitIDAndTaskName(commitID string, name string) 
 		return Task{}, fmt.Errorf("could not find commit:task %s:%s", commitID, name)
 	}
 
-	return taskFromGormTask(gT), nil
+	return TaskFromGormTask(gT), nil
 }
 
 func (r *gormRepository) GetAllByCommitID(commitID string, q Query) ([]Task, uint64) {
-	gTs := []gormTask{}
+	gTs := []GormTask{}
 	var count uint64
 
 	r.gorm.
-		Where(&gormTask{
+		Where(&GormTask{
 			CommitID: commitID,
 		}).
 		Find(&gTs).
@@ -141,7 +141,7 @@ func (r *gormRepository) GetAllByCommitID(commitID string, q Query) ([]Task, uin
 
 	tasks := []Task{}
 	for _, gT := range gTs {
-		tasks = append(tasks, taskFromGormTask(gT))
+		tasks = append(tasks, TaskFromGormTask(gT))
 	}
 
 	return tasks, count
