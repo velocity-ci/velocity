@@ -39,7 +39,7 @@ func (c Clone) GetDetails() string {
 func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 	emitter.SetStreamName("clone")
 	emitter.SetStatus(StateRunning)
-	emitter.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, c.Description)))
+	emitter.Write([]byte(fmt.Sprintf("%s\n## Cloning %s\n\x1b[0m", infoANSI, c.GitRepository.Address)))
 
 	emitter.Write([]byte(fmt.Sprintf("Cloning %s", c.GitRepository.Address)))
 
