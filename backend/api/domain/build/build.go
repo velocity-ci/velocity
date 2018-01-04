@@ -1,6 +1,7 @@
 package build
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/docker/go/canonical/json"
@@ -137,7 +138,7 @@ func NewStreamLine(buildStepStreamID string, lineNumber uint64, timestamp time.T
 		BuildStepStreamID: buildStepStreamID,
 		LineNumber:        lineNumber,
 		Timestamp:         timestamp,
-		Output:            output,
+		Output:            fmt.Sprintf("%s\n", output),
 	}
 }
 
