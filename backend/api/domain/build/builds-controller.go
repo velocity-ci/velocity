@@ -87,7 +87,7 @@ func (c Controller) postProjectCommitTaskBuildsHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	c.manager.CreateBuild(build)
+	build = c.manager.CreateBuild(build)
 
 	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
 
