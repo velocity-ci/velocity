@@ -1,6 +1,5 @@
 module Views.Helpers exposing (onClickPage)
 
-import Html.Attributes exposing (href)
 import Html.Events exposing (onWithOptions, defaultOptions)
 import Html exposing (Attribute)
 import Json.Decode exposing (Decoder)

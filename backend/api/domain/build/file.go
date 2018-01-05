@@ -106,10 +106,10 @@ func (m *fileManager) SaveStreamLine(streamLine StreamLine) StreamLine {
 	defer logFile.mux.Unlock()
 
 	if streamLine.LineNumber >= logFile.totalLines {
-		logFile.contents = append(logFile.contents, fmt.Sprintf("%d %s\n", streamLine.Timestamp.UnixNano(), streamLine.Output))
+		logFile.contents = append(logFile.contents, fmt.Sprintf("%d %s", streamLine.Timestamp.UnixNano(), streamLine.Output))
 		logFile.totalLines++
 	} else {
-		logFile.contents[streamLine.LineNumber] = fmt.Sprintf("%d %s\n", streamLine.Timestamp.UnixNano(), streamLine.Output)
+		logFile.contents[streamLine.LineNumber] = fmt.Sprintf("%d %s", streamLine.Timestamp.UnixNano(), streamLine.Output)
 	}
 	logFile.needsFlush = true
 	return streamLine

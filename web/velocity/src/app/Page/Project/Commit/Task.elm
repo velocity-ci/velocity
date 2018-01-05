@@ -1,10 +1,15 @@
 module Page.Project.Commit.Task exposing (..)
 
+import Ansi.Log
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
-import Data.Build
-import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, Step(..), Parameter(..))
+import Data.Build as Build exposing (Build)
+import Data.BuildStep as BuildStep exposing (BuildStep)
+import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
+import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
+import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Data.AuthToken as AuthToken exposing (AuthToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
@@ -12,6 +17,7 @@ import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses)
 import Request.Commit
+import Request.Build
 import Task exposing (Task)
 import Util exposing ((=>))
 import Validate exposing (..)
@@ -22,6 +28,11 @@ import Html.Events.Extra exposing (targetSelectedIndex)
 import Route
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
+import Views.Task exposing (viewStepList)
+import Views.Helpers exposing (onClickPage)
+import Navigation
+import Dict exposing (Dict)
+import Json.Encode as Encode
 
 
 -- MODEL --
@@ -32,12 +43,9 @@ type alias Model =
     , toggledStep : Maybe Step
     , form : List Field
     , errors : List Error
+    , selectedTab : Tab
+    , frame : Frame
     }
-
-
-type Field
-    = Input InputFormField
-    | Choice ChoiceFormField
 
 
 type alias InputFormField =
@@ -55,21 +63,112 @@ type alias ChoiceFormField =
     }
 
 
-init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Name -> Task PageLoadError Model
-init session id hash name =
+type Field
+    = Input InputFormField
+    | Choice ChoiceFormField
+
+
+type StepType
+    = LoadedBuildStep BuildStep
+
+
+type BuildType
+    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
+    | LoadingBuild
+
+
+type Tab
+    = NewFormTab
+    | BuildTab Build
+
+
+type Frame
+    = BuildFrame BuildType
+    | NewFormFrame
+
+
+loadBuild :
+    Maybe AuthToken
+    -> Build
+    -> Task Http.Error (Maybe BuildType)
+loadBuild maybeAuthToken build =
+    Request.Build.steps build.id maybeAuthToken
+        |> Http.toTask
+        |> Task.andThen
+            (\(Paginated steps) ->
+                steps.results
+                    |> List.map (.id >> (Request.Build.streams maybeAuthToken) >> Http.toTask)
+                    |> Task.sequence
+                    |> Task.andThen
+                        (\paginatedStreams ->
+                            paginatedStreams
+                                |> List.map (\(Paginated { results }) -> results)
+                                |> List.foldr (++) []
+                                |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
+                                |> Task.sequence
+                                |> Task.andThen
+                                    (\paginatedStreamOutputList ->
+                                        paginatedStreamOutputList
+                                            |> List.map (\(Paginated { results }) -> results)
+                                            |> List.foldr (++) []
+                                            |> (\outputStreams ->
+                                                    buildOutput outputStreams
+                                                        |> LoadedBuild build steps.results outputStreams
+                                               )
+                                            |> Just
+                                            |> Task.succeed
+                                    )
+                        )
+            )
+
+
+loadFirstBuild :
+    Maybe AuthToken
+    -> List Build
+    -> Task Http.Error (Maybe BuildType)
+loadFirstBuild maybeAuthToken builds =
+    List.head builds
+        |> Maybe.map (loadBuild maybeAuthToken)
+        |> Maybe.withDefault (Task.succeed Nothing)
+
+
+buildOutput : List BuildStreamOutput -> Ansi.Log.Model
+buildOutput buildOutput =
+    List.foldl Ansi.Log.update
+        (Ansi.Log.init Ansi.Log.Cooked)
+        (List.map .output buildOutput)
+
+
+stringToTab : Maybe String -> List Build -> Tab
+stringToTab maybeSelectedTab builds =
+    case maybeSelectedTab of
+        Just "new" ->
+            NewFormTab
+
+        Just buildId ->
+            builds
+                |> List.filter (\b -> (Build.idToString b.id) == buildId)
+                |> List.head
+                |> Maybe.map BuildTab
+                |> Maybe.withDefault NewFormTab
+
+        Nothing ->
+            NewFormTab
+
+
+init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
+init session id hash task maybeSelectedTab builds =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
-        loadTask =
-            maybeAuthToken
-                |> Request.Commit.task id hash name
-                |> Http.toTask
-
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
 
-        initialModel task =
+        selectedTab =
+            stringToTab maybeSelectedTab builds
+
+        initialModel frame =
             let
                 toggledStep =
                     Nothing
@@ -84,10 +183,19 @@ init session id hash name =
                 , toggledStep = toggledStep
                 , form = form
                 , errors = errors
+                , selectedTab = selectedTab
+                , frame = Maybe.withDefault NewFormFrame frame
                 }
     in
-        Task.map initialModel loadTask
-            |> Task.mapError handleLoadError
+        case selectedTab of
+            NewFormTab ->
+                Task.succeed (initialModel (Just NewFormFrame))
+
+            BuildTab b ->
+                loadBuild maybeAuthToken b
+                    |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
+                    |> Task.map initialModel
+                    |> Task.mapError handleLoadError
 
 
 newField : Parameter -> Field
@@ -124,28 +232,133 @@ newField parameter =
 
 
 
+-- CHANNELS --
+
+
+streamChannelName : BuildStream -> String
+streamChannelName stream =
+    "stream:" ++ (BuildStream.idToString stream.id)
+
+
+events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
+events model =
+    case model.frame of
+        BuildFrame (LoadedBuild build _ _ _) ->
+            let
+                streams =
+                    List.map .streams build.steps
+                        |> List.foldr (++) []
+
+                foldStreamEvents stream dict =
+                    let
+                        channelName =
+                            streamChannelName stream
+
+                        events =
+                            [ ( "streamLine:new", AddStreamOutput stream ) ]
+                    in
+                        Dict.insert channelName events dict
+            in
+                List.foldl foldStreamEvents Dict.empty streams
+
+        _ ->
+            Dict.empty
+
+
+
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Project -> Commit -> Model -> List Build -> Html Msg
+view project commit model builds =
     let
         task =
             model.task
 
         stepList =
             viewStepList task.steps model.toggledStep
-
-        buildForm =
-            div [ class "card" ]
-                [ div [ class "card-body" ] <|
-                    viewBuildForm (ProjectTask.nameToString task.name) model.form model.errors
-                ]
     in
         div [ class "row" ]
-            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ] [ buildForm ]
-            , div [ class "col-sm-12 col-md-12 col-lg-12" ] stepList
+            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
+                [ h4 [] [ text (ProjectTask.nameToString task.name) ]
+                , viewTabs project commit task builds model.selectedTab
+                , viewTabFrame model
+                ]
             ]
+
+
+viewTabs : Project -> Commit -> ProjectTask.Task -> List Build -> Tab -> Html Msg
+viewTabs project commit task builds selectedTab =
+    let
+        buildTab t =
+            let
+                tabText =
+                    case t of
+                        NewFormTab ->
+                            "+"
+
+                        BuildTab b ->
+                            Build.idToString b.id
+                                |> String.slice 0 5
+
+                tabQueryParam =
+                    case t of
+                        NewFormTab ->
+                            "new"
+
+                        BuildTab b ->
+                            Build.idToString b.id
+
+                route =
+                    CommitRoute.Task task.name (Just tabQueryParam)
+                        |> ProjectRoute.Commit commit.hash
+                        |> Route.Project project.id
+
+                compare a b =
+                    case ( a, b ) of
+                        ( BuildTab c, BuildTab d ) ->
+                            Build.idToString c.id == Build.idToString d.id
+
+                        ( NewFormTab, NewFormTab ) ->
+                            True
+
+                        _ ->
+                            False
+
+                tabClassList =
+                    [ ( "nav-link", True )
+                    , ( "active", compare t selectedTab )
+                    ]
+            in
+                li [ class "nav-item" ]
+                    [ a
+                        [ classList tabClassList
+                        , Route.href route
+                        , onClickPage (SelectTab selectedTab) route
+                        ]
+                        [ text tabText ]
+                    ]
+    in
+        List.append (List.map (BuildTab >> buildTab) builds) [ buildTab NewFormTab ]
+            |> ul [ class "nav nav-tabs nav-fill" ]
+
+
+viewTabFrame : Model -> Html Msg
+viewTabFrame model =
+    let
+        buildForm =
+            div [] <|
+                viewBuildForm (ProjectTask.nameToString model.task.name) model.form model.errors
+    in
+        case model.frame of
+            NewFormFrame ->
+                buildForm
+
+            BuildFrame (LoadedBuild _ _ _ o) ->
+                Ansi.Log.view o
+
+            BuildFrame LoadingBuild ->
+                text "Loading"
 
 
 viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
@@ -189,11 +402,7 @@ viewBuildForm taskName fields errors =
                         ]
                         []
     in
-        [ h4 []
-            [ a []
-                [ text taskName ]
-            ]
-        , Html.form [ attribute "novalidate" "", onSubmit SubmitForm ] <|
+        [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ] <|
             List.map fieldInput fields
                 ++ [ button
                         [ class "btn btn-primary"
@@ -205,173 +414,9 @@ viewBuildForm taskName fields errors =
         ]
 
 
-viewStepList : List Step -> Maybe Step -> List (Html Msg)
-viewStepList steps toggledStep =
-    let
-        stepView i step =
-            let
-                stepNum =
-                    i + 1
-
-                runStep =
-                    viewRunStep stepNum
-
-                buildStep =
-                    viewBuildStep stepNum
-
-                cloneStep =
-                    viewCloneStep stepNum
-            in
-                case ( step, toggledStep ) of
-                    ( Run run, Just (Run toggled) ) ->
-                        runStep run (run == toggled)
-
-                    ( Build build, Just (Build toggled) ) ->
-                        buildStep build (build == toggled)
-
-                    ( Clone clone, Just (Clone toggled) ) ->
-                        cloneStep clone (clone == toggled)
-
-                    ( Run run, _ ) ->
-                        runStep run False
-
-                    ( Build build, _ ) ->
-                        buildStep build False
-
-                    ( Clone clone, _ ) ->
-                        cloneStep clone False
-    in
-        List.indexedMap stepView steps
-
-
-viewCloneStep : Int -> CloneStep -> Bool -> Html Msg
-viewCloneStep i cloneStep toggled =
-    let
-        title =
-            toString i ++ ". Clone" ++ cloneStep.description
-    in
-        viewStepCollapse (Clone cloneStep) title toggled <|
-            []
-
-
-viewBuildStep : Int -> BuildStep -> Bool -> Html Msg
-viewBuildStep i buildStep toggled =
-    let
-        tagList =
-            List.map (\t -> li [] [ text t ]) buildStep.tags
-                |> ul []
-
-        rightDl =
-            dl []
-                [ dt [] [ text "Tags" ]
-                , dd [] [ tagList ]
-                ]
-
-        leftDl =
-            dl []
-                [ dt [] [ text "Context" ]
-                , dd [] [ text buildStep.context ]
-                , dt [] [ text "Dockerfile" ]
-                , dd [] [ text buildStep.dockerfile ]
-                ]
-
-        title =
-            toString i ++ ". " ++ buildStep.description
-    in
-        viewStepCollapse (Build buildStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ rightDl ]
-                ]
-            ]
-
-
-viewRunStep : Int -> RunStep -> Bool -> Html Msg
-viewRunStep i runStep toggled =
-    let
-        command =
-            String.join " " runStep.command
-
-        envTable =
-            table [ class "table" ]
-                [ tbody []
-                    (List.map
-                        (\( k, v ) ->
-                            tr []
-                                [ th [] [ text k ]
-                                , td [] [ text v ]
-                                ]
-                        )
-                        runStep.environment
-                    )
-                ]
-
-        ignoreExitCode =
-            runStep.ignoreExitCode
-                |> toString
-                |> String.toLower
-
-        leftDl =
-            dl []
-                [ dt [] [ text "Ignore exit code" ]
-                , dd [] [ text ignoreExitCode ]
-                , dt [] [ text "Image" ]
-                , dd [] [ text runStep.image ]
-                , dt [] [ text "Mount point" ]
-                , dd [] [ text runStep.mountPoint ]
-                , dt [] [ text "Working dir" ]
-                , dd [] [ text runStep.workingDir ]
-                , dt [] [ text "Command" ]
-                , dd [] [ text command ]
-                ]
-
-        title =
-            toString i ++ ". " ++ runStep.description
-    in
-        viewStepCollapse (Run runStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ envTable ]
-                ]
-            ]
-
-
-viewStepCollapse : Step -> String -> Bool -> List (Html Msg) -> Html Msg
-viewStepCollapse step title toggled contents =
-    let
-        msg =
-            if toggled then
-                ToggleStep Nothing
-            else
-                ToggleStep (Just step)
-
-        caretClassList =
-            [ ( "fa-caret-square-o-down", toggled )
-            , ( "fa-caret-square-o-up", not toggled )
-            ]
-    in
-        div [ class "card" ]
-            [ div [ class "card-header collapse-header d-flex justify-content-between align-items-center", onClick msg ]
-                [ h5 [ class "mb-0" ] [ text title ]
-                , button
-                    [ type_ "button"
-                    , class "btn"
-                    ]
-                    [ i [ class "fa", classList caretClassList ] []
-                    ]
-                ]
-            , div
-                [ class "collapse"
-                , classList [ ( "show", toggled ) ]
-                ]
-                [ div [ class "card-body" ] contents
-                ]
-            ]
-
-
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )
 breadcrumb project commit task =
-    [ ( CommitRoute.Task task.name |> ProjectRoute.Commit commit.hash |> Route.Project project.id
+    [ ( CommitRoute.Task task.name Nothing |> ProjectRoute.Commit commit.hash |> Route.Project project.id
       , ProjectTask.nameToString task.name
       )
     ]
@@ -386,7 +431,11 @@ type Msg
     | OnInput InputFormField String
     | OnChange ChoiceFormField (Maybe Int)
     | SubmitForm
-    | BuildCreated (Result Http.Error Data.Build.Build)
+    | BuildCreated (Result Http.Error Build)
+    | SelectTab Tab String
+    | LoadBuild Build
+    | BuildLoaded (Result Http.Error (Maybe BuildType))
+    | AddStreamOutput BuildStream Encode.Value
 
 
 update : Project -> Commit -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -400,6 +449,9 @@ update project commit session msg model =
 
         taskName =
             model.task.name
+
+        maybeAuthToken =
+            Maybe.map .token session.user
     in
         case msg of
             ToggleStep maybeStep ->
@@ -445,7 +497,7 @@ update project commit session msg model =
                                         value =
                                             f.options
                                                 |> List.indexedMap (,)
-                                                |> List.filter (\i -> Tuple.first i == index)
+                                                |> List.filter (\( i, _ ) -> i == index)
                                                 |> List.head
                                                 |> Maybe.map Tuple.second
                                     in
@@ -474,7 +526,7 @@ update project commit session msg model =
 
             SubmitForm ->
                 let
-                    stringParm { value, field } =
+                    stringParam { value, field } =
                         field => value
 
                     cmdFromAuth authToken =
@@ -490,19 +542,78 @@ update project commit session msg model =
                     mapFieldToParam field =
                         case field of
                             Input input ->
-                                Just (stringParm input)
+                                Just (stringParam input)
 
                             Choice choice ->
                                 choice.value
-                                    |> Maybe.map (\value -> stringParm { value = value, field = choice.field })
+                                    |> Maybe.map (\value -> stringParam { value = value, field = choice.field })
 
                     params =
                         List.filterMap mapFieldToParam model.form
                 in
                     model => cmd
 
+            LoadBuild build ->
+                let
+                    cmd =
+                        build
+                            |> loadBuild maybeAuthToken
+                            |> Task.attempt BuildLoaded
+                in
+                    model => cmd
+
+            BuildLoaded (Ok (Just loadedBuild)) ->
+                model => Cmd.none
+
+            BuildLoaded _ ->
+                model => Cmd.none
+
             BuildCreated _ ->
                 model => Cmd.none
+
+            SelectTab tab url ->
+                let
+                    frame =
+                        case tab of
+                            BuildTab _ ->
+                                BuildFrame LoadingBuild
+
+                            NewFormTab ->
+                                NewFormFrame
+                in
+                    { model
+                        | selectedTab = tab
+                        , frame = frame
+                    }
+                        => Navigation.newUrl url
+
+            AddStreamOutput _ outputJson ->
+                let
+                    maybeBuildStreamOutput =
+                        outputJson
+                            |> Decode.decodeValue BuildStream.outputDecoder
+                            |> Result.toMaybe
+
+                    outputStreams existing =
+                        maybeBuildStreamOutput
+                            |> Maybe.map (\b -> List.append existing [ b ])
+                            |> Maybe.withDefault existing
+
+                    output existingOutput =
+                        maybeBuildStreamOutput
+                            |> Maybe.map (\o -> Ansi.Log.update o.output existingOutput)
+                            |> Maybe.withDefault existingOutput
+
+                    frame =
+                        case model.frame of
+                            BuildFrame (LoadedBuild a b c d) ->
+                                BuildFrame (LoadedBuild a b (outputStreams c) (buildOutput c))
+
+                            _ ->
+                                model.frame
+                in
+                    { model | frame = frame }
+                        => Cmd.none
 
 
 

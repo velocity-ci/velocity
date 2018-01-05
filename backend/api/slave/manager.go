@@ -105,6 +105,7 @@ func (m *Manager) GetSlaveByID(slaveID string) (Slave, error) {
 }
 
 func (m *Manager) StartBuild(slave Slave, b build.Build) {
+	m.logger.Printf("starting build: %s", b.String())
 	slave.State = "busy"
 	m.Save(slave)
 	m.logger.Printf("set slave %s as busy", slave.ID)
@@ -119,10 +120,7 @@ func (m *Manager) StartBuild(slave Slave, b build.Build) {
 	m.buildManager.UpdateBuild(b)
 	m.logger.Printf("set build %s as running", b.ID)
 
-	t, err := m.taskManager.GetByTaskID(b.TaskID)
-	if err != nil {
-		m.logger.Fatalf("task %s not found for build %s?!?!", b.TaskID, b.ID)
-	}
+	t := b.Task
 
 	c, err := m.commitManager.GetCommitByCommitID(t.CommitID)
 	if err != nil {
@@ -134,30 +132,7 @@ func (m *Manager) StartBuild(slave Slave, b build.Build) {
 		m.logger.Fatalf("project %s not found for commit %s?!?!", c.ProjectID, c.ID)
 	}
 
-	buildSteps, count := m.buildManager.GetBuildStepsByBuildID(b.ID)
-	if count > 1 {
-		// Remove existing buildSteps
-		for _, bS := range buildSteps {
-			m.buildManager.DeleteBuildStep(bS)
-		}
-		buildSteps = []build.BuildStep{}
-	}
-	for i, s := range t.Steps {
-		bS := build.NewBuildStep(
-			b.ID,
-			uint64(i),
-		)
-		m.buildManager.CreateBuildStep(bS)
-		buildSteps = append(buildSteps, bS)
-
-		for _, streamName := range s.GetOutputStreams() {
-			stream := build.NewBuildStepStream(bS.ID, streamName)
-			m.buildManager.SaveStream(stream)
-		}
-		m.logger.Printf("created streams for %s", bS.ID)
-	}
-	m.logger.Printf("created build steps for %s", b.ID)
-	slave.Command = NewBuildCommand(b, buildSteps, p, c, t)
+	slave.Command = NewBuildCommand(b, p, c, t)
 
 	slave.ws.WriteJSON(slave.Command)
 

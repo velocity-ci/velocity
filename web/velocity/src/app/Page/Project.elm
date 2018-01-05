@@ -20,11 +20,10 @@ import Page.Project.Commit as Commit
 import Page.Project.Overview as Overview
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
-import Socket.Channel as Channel exposing (Channel)
-import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
 import Json.Encode as Encode
 import Json.Decode as Decode
+import Dict exposing (Dict)
 
 
 -- SUB PAGES --
@@ -114,32 +113,52 @@ channelName projectId =
     "project:" ++ (Project.idToString projectId)
 
 
-events : ProjectRoute.Route -> List ( String, Encode.Value -> Msg )
-events route =
+initialEvents : Project.Id -> ProjectRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents id route =
     let
         mapEvents fromMsg events =
-            List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) events
+            events
+                |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) v)
 
         subPageEvents =
             case route of
                 ProjectRoute.Commits _ _ ->
-                    mapEvents CommitsMsg Commits.events
+                    mapEvents CommitsMsg (Commits.events id)
 
-                ProjectRoute.Commit _ _ ->
-                    mapEvents CommitMsg Commit.events
+                ProjectRoute.Commit _ subRoute ->
+                    mapEvents CommitMsg (Commit.initialEvents id subRoute)
 
                 _ ->
-                    []
+                    Dict.empty
+
+        pageEvents =
+            [ ( "project:update", UpdateProject )
+            , ( "project:delete", ProjectDeleted )
+            , ( "branch:new", RefreshBranches )
+            , ( "branch:update", RefreshBranches )
+            , ( "branch:delete", RefreshBranches )
+            ]
+
+        merge e =
+            let
+                existsInBoth key a b dict =
+                    Dict.insert key (List.append a b) dict
+            in
+                Dict.merge Dict.insert existsInBoth Dict.insert Dict.empty subPageEvents e
     in
-        Debug.log "SubPageEvents"
-            (subPageEvents
-                ++ [ ( "project:update", UpdateProject )
-                   , ( "project:delete", ProjectDeleted )
-                   , ( "branch:new", RefreshBranches )
-                   , ( "branch:update", RefreshBranches )
-                   , ( "branch:delete", RefreshBranches )
-                   ]
-            )
+        Dict.singleton (channelName id) pageEvents
+            |> merge
+
+
+loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
+loadedEvents msg model =
+    case ( msg, getSubPage model.subPageState ) of
+        ( CommitMsg subMsg, Commit subModel ) ->
+            Commit.loadedEvents subMsg subModel
+                |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> CommitMsg)) v)
+
+        _ ->
+            Dict.empty
 
 
 

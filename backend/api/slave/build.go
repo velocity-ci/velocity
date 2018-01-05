@@ -46,15 +46,14 @@ type SlaveBuildLogMessage struct {
 	Output      string `json:"output"`
 }
 
-func NewBuildCommand(b build.Build, bS []build.BuildStep, p project.Project, c commit.Commit, task task.Task) CommandMessage {
+func NewBuildCommand(b build.Build, p project.Project, c commit.Commit, task task.Task) CommandMessage {
 	return CommandMessage{
 		Command: "build",
 		Data: BuildCommand{
-			Build:      b,
-			Project:    p,
-			Commit:     c,
-			Task:       task,
-			BuildSteps: bS,
+			Build:   b,
+			Project: p,
+			Commit:  c,
+			Task:    task,
 		},
 	}
 }

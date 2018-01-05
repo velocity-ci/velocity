@@ -41,7 +41,7 @@ func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
 	writer := emitter.NewStreamWriter("clone")
 	writer.SetStatus(StateRunning)
 
-	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, c.Description)))
+	writer.Write([]byte(fmt.Sprintf("%s\n## Cloning %s\n\x1b[0m", infoANSI, c.GitRepository.Address)))
 
 	writer.Write([]byte(fmt.Sprintf("Cloning %s", c.GitRepository.Address)))
 

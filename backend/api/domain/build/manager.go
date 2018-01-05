@@ -2,26 +2,31 @@ package build
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jinzhu/gorm"
+	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/api/websocket"
 )
 
 type Manager struct {
 	gormRepository   *gormRepository
 	fileManager      *fileManager
+	taskManager      task.Repository
 	websocketManager *websocket.Manager
 }
 
 func NewManager(
 	db *gorm.DB,
 	fileManager *fileManager,
+	taskManager task.Repository,
 	websocketManager *websocket.Manager,
 ) *Manager {
 	return &Manager{
 		gormRepository:   newGORMRepository(db),
 		fileManager:      fileManager,
+		taskManager:      taskManager,
 		websocketManager: websocketManager,
 	}
 }
@@ -29,11 +34,30 @@ func NewManager(
 func (m *Manager) CreateBuild(b Build) Build {
 	b.CreatedAt = time.Now()
 	b.UpdatedAt = time.Now()
+
+	buildSteps := []BuildStep{}
+	for i, s := range b.Task.Steps {
+		bS := NewBuildStep(
+			b.ID,
+			uint64(i),
+		)
+		m.CreateBuildStep(bS)
+
+		for _, streamName := range s.GetOutputStreams() {
+			stream := NewBuildStepStream(bS.ID, streamName)
+			bS.Streams = append(bS.Streams, stream)
+		}
+		log.Printf("created streams for %s", bS.ID)
+		buildSteps = append(buildSteps, bS)
+	}
+	log.Printf("created build steps for %s", b.ID)
+	b.Steps = buildSteps
+
 	m.gormRepository.SaveBuild(b)
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VNewBuild,
-		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
+		Payload: NewResponseBuild(b),
 	})
 	return b
 }
@@ -44,7 +68,7 @@ func (m *Manager) UpdateBuild(b Build) Build {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VUpdateBuild,
-		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
+		Payload: NewResponseBuild(b),
 	})
 	return b
 }
@@ -54,7 +78,7 @@ func (m *Manager) DeleteBuild(b Build) {
 	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
 		Topic:   fmt.Sprintf("project:%s", b.ProjectID),
 		Event:   websocket.VDeleteBuild,
-		Payload: NewResponseBuild(b, []ResponseBuildStep{}),
+		Payload: NewResponseBuild(b),
 	})
 }
 
@@ -84,17 +108,14 @@ func (m *Manager) GetWaitingBuilds() ([]Build, uint64) {
 
 func (m *Manager) CreateBuildStep(bS BuildStep) BuildStep {
 	bS.UpdatedAt = time.Now()
-	return m.gormRepository.SaveBuildStep(bS)
+	return m.gormRepository.SaveBuildStep(nil, bS)
 }
 
 func (m *Manager) UpdateBuildStep(bS BuildStep) BuildStep {
 	bS.UpdatedAt = time.Now()
-	m.gormRepository.SaveBuildStep(bS)
-	m.websocketManager.EmitAll(&websocket.PhoenixMessage{
-		Topic:   fmt.Sprintf("step:%s", bS.ID),
-		Event:   websocket.VUpdateStep,
-		Payload: NewWebsocketBuildStep(bS),
-	})
+	m.gormRepository.SaveBuildStep(nil, bS)
+	b, _ := m.GetBuildByBuildID(bS.BuildID)
+	m.UpdateBuild(b)
 	return bS
 }
 
@@ -119,7 +140,7 @@ func (m *Manager) GetBuildStepsByBuildID(buildID string) ([]BuildStep, uint64) {
 }
 
 func (m *Manager) SaveStream(s BuildStepStream) BuildStepStream {
-	return m.gormRepository.SaveStream(s)
+	return m.gormRepository.SaveStream(nil, s)
 }
 
 func (m *Manager) DeleteStream(s BuildStepStream) {

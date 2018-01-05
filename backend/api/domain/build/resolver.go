@@ -49,7 +49,7 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, t task.Task) (Build, error)
 		log.Printf("could not find commit %s?!?!", t.CommitID)
 	}
 
-	build := NewBuild(cm.ProjectID, t.ID, t.Parameters)
+	build := NewBuild(cm.ProjectID, t, t.Parameters)
 
 	return build, nil
 }

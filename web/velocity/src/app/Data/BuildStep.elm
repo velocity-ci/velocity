@@ -1,17 +1,22 @@
-module Data.Build exposing (..)
+module Data.BuildStep exposing (..)
 
+import Data.Project as Project
+import Data.Commit as Commit
 import Data.Task as Task
-import Data.BuildStep as BuildStep exposing (BuildStep)
+import Data.BuildStream as BuildStream exposing (BuildStream)
 import Json.Decode as Decode exposing (Decoder, int, string)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
 import UrlParser
+import Data.Helpers exposing (stringToDateTime)
+import Time.DateTime as DateTime exposing (DateTime)
 
 
-type alias Build =
+type alias BuildStep =
     { id : Id
     , status : Status
-    , taskId : Task.Id
-    , steps : List BuildStep
+    , number : Int
+    , description : String
+    , streams : List BuildStream
     }
 
 
@@ -19,13 +24,14 @@ type alias Build =
 -- SERIALIZATION --
 
 
-decoder : Decoder Build
+decoder : Decoder BuildStep
 decoder =
-    decode Build
+    decode BuildStep
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
-        |> required "task" Task.decodeId
-        |> required "steps" (Decode.list BuildStep.decoder)
+        |> required "number" Decode.int
+        |> required "description" Decode.string
+        |> required "streams" (Decode.list BuildStream.decoder)
 
 
 statusDecoder : Decoder Status
@@ -58,11 +64,6 @@ statusDecoder =
 idParser : UrlParser.Parser (Id -> a) a
 idParser =
     UrlParser.custom "ID" (Ok << Id)
-
-
-idQueryParser : String -> UrlParser.QueryParser (Maybe String -> b) b
-idQueryParser id =
-    UrlParser.customParam id identity
 
 
 type Status

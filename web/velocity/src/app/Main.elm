@@ -2,7 +2,6 @@ module Main exposing (main)
 
 import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
-import Data.Project exposing (idToString)
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
 import Navigation exposing (Location)
@@ -21,6 +20,8 @@ import Views.Page as Page exposing (ActivePage)
 import Page.Header as Header
 import Socket.Socket as Socket exposing (Socket)
 import Socket.Channel as Channel exposing (Channel)
+import Json.Encode as Encode
+import Dict
 
 
 type Page
@@ -365,25 +366,10 @@ setRoute maybeRoute model =
 
             Just (Route.Project id subRoute) ->
                 let
-                    ( pageModel, pageCmd ) =
-                        Just subRoute
-                            |> Project.init model.session id
-                            |> transition ProjectLoaded
-                            |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
-                            |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
-
-                    channel =
-                        Channel.init (Project.channelName id)
-                            |> Channel.map ProjectMsg
-
-                    ( newSocket, socketCmd ) =
-                        Socket.join channel socket
-
-                    listeningSocket =
-                        List.foldl
-                            (\( event, msg ) s -> Socket.on event channel.name (msg >> ProjectMsg) s)
-                            newSocket
-                            (Project.events subRoute)
+                    ( listeningSocket, socketCmd ) =
+                        Project.initialEvents id subRoute
+                            |> Dict.toList
+                            |> List.foldl (foldChannel ProjectMsg) ( socket, Cmd.none )
 
                     transitionSubPage subModel =
                         let
@@ -395,6 +381,13 @@ setRoute maybeRoute model =
                                 , session = { session | socket = listeningSocket }
                             }
                                 ! [ Cmd.map ProjectMsg newMsg ]
+
+                    ( pageModel, pageCmd ) =
+                        Just subRoute
+                            |> Project.init model.session id
+                            |> transition ProjectLoaded
+                            |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
+                            |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
                 in
                     case ( model.session.user, model.pageState ) of
                         ( Just _, Loaded page ) ->
@@ -415,6 +408,28 @@ setRoute maybeRoute model =
 
                         ( Nothing, _ ) ->
                             model => Route.modifyUrl Route.Login
+
+
+foldChannel :
+    (msg1 -> msg2)
+    -> ( String, List ( String, Encode.Value -> msg1 ) )
+    -> ( Socket msg2, Cmd (Socket.Msg msg2) )
+    -> ( Socket msg2, Cmd (Socket.Msg msg2) )
+foldChannel toMsg ( channelName, events ) ( socket, cmd ) =
+    let
+        channel =
+            channelName
+                |> Channel.init
+                |> Channel.map toMsg
+
+        ( channelSocket, socketCmd ) =
+            Socket.join channel socket
+
+        foldEvents ( event, msg ) s =
+            Socket.on event channel.name (msg >> toMsg) s
+    in
+        List.foldl foldEvents channelSocket events
+            ! [ cmd, socketCmd ]
 
 
 pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
@@ -576,11 +591,26 @@ updatePage page msg model =
 
             ( ProjectMsg subMsg, Project subModel ) ->
                 let
+                    session =
+                        model.session
+
+                    socket =
+                        session.socket
+
                     ( newSubModel, newCmd ) =
                         Project.update session subMsg subModel
+
+                    ( listeningSocket, socketCmd ) =
+                        Project.loadedEvents subMsg subModel
+                            |> Dict.toList
+                            |> List.foldl (foldChannel ProjectMsg) ( model.session.socket, Cmd.none )
                 in
-                    { model | pageState = Loaded (Project newSubModel) }
+                    { model
+                        | pageState = Loaded (Project newSubModel)
+                        , session = { session | socket = listeningSocket }
+                    }
                         ! [ Cmd.map ProjectMsg newCmd
+                          , Cmd.map SocketMsg socketCmd
                           ]
 
             ( _, NotFound ) ->

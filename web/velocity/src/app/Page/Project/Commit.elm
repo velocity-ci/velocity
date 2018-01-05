@@ -21,12 +21,10 @@ import Navigation
 import Views.Page as Page exposing (ActivePage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
-import Page.Project.Commit.Build as CommitBuild
-import Socket.Channel as Channel exposing (Channel)
-import Socket.Socket as Socket exposing (Socket)
 import Data.PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
 import Json.Decode as Decode
+import Dict exposing (Dict)
 
 
 -- SUB PAGES --
@@ -37,7 +35,6 @@ type SubPage
     | Overview Overview.Model
     | Errored PageLoadError
     | CommitTask CommitTask.Model
-    | CommitBuild CommitBuild.Model
 
 
 type SubPageState
@@ -112,12 +109,49 @@ init session project hash maybeRoute =
 -- CHANNELS --
 
 
-events : List ( String, Encode.Value -> Msg )
-events =
-    [ ( "build:new", AddBuildEvent )
-    , ( "build:delete", DeleteBuildEvent )
-    , ( "build:update", UpdateBuildEvent )
-    ]
+channelName : Project.Id -> String
+channelName projectId =
+    "project:" ++ (Project.idToString projectId)
+
+
+mapEvents :
+    (b -> c)
+    -> Dict comparable (List ( a1, a -> b ))
+    -> Dict comparable (List ( a1, a -> c ))
+mapEvents fromMsg events =
+    events
+        |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) v)
+
+
+initialEvents : Project.Id -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents projectId route =
+    let
+        subPageEvents =
+            case route of
+                CommitRoute.Task taskName maybeBuildName ->
+                    Dict.empty
+
+                _ ->
+                    Dict.empty
+
+        pageEvents =
+            [ ( "build:new", AddBuildEvent )
+            , ( "build:delete", DeleteBuildEvent )
+            , ( "build:update", UpdateBuildEvent )
+            ]
+    in
+        Dict.singleton (channelName projectId) (pageEvents)
+
+
+loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
+loadedEvents msg model =
+    case msg of
+        CommitTaskLoaded (Ok subModel) ->
+            CommitTask.events subModel
+                |> mapEvents CommitTaskMsg
+
+        _ ->
+            Dict.empty
 
 
 
@@ -133,14 +167,10 @@ view project model =
                 |> Html.map OverviewMsg
 
         CommitTask subModel ->
-            CommitTask.view subModel
+            taskBuilds model.builds (Just subModel.task)
+                |> CommitTask.view project model.commit subModel
                 |> frame model.commit
                 |> Html.map CommitTaskMsg
-
-        CommitBuild subModel ->
-            CommitBuild.view subModel
-                |> frame model.commit
-                |> Html.map CommitBuildMsg
 
         _ ->
             Html.text "Nope"
@@ -201,8 +231,6 @@ type Msg
     | OverviewMsg Overview.Msg
     | CommitTaskMsg CommitTask.Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
-    | CommitBuildMsg CommitBuild.Msg
-    | CommitBuildLoaded (Result PageLoadError (List Build))
     | AddBuildEvent Encode.Value
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
@@ -227,10 +255,18 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-findBuild : List Build -> Build.Id -> Maybe Build
-findBuild builds id =
-    List.filter (\b -> b.id == id) builds
-        |> List.head
+taskBuilds : List Build -> Maybe ProjectTask.Task -> List Build
+taskBuilds builds maybeTask =
+    builds
+        |> List.filter
+            (\b ->
+                case maybeTask of
+                    Just t ->
+                        t.id == b.taskId
+
+                    _ ->
+                        False
+            )
 
 
 setRoute : Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
@@ -253,22 +289,25 @@ setRoute session project maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (CommitRoute.Task name) ->
+            Just (CommitRoute.Task name maybeTab) ->
                 case session.user of
                     Just user ->
-                        CommitTask.init session project.id model.commit.hash name
-                            |> transition CommitTaskLoaded
+                        let
+                            maybeTask =
+                                model.tasks
+                                    |> List.filter (\t -> t.name == name)
+                                    |> List.head
+                        in
+                            case maybeTask of
+                                Just task ->
+                                    taskBuilds model.builds (Just task)
+                                        |> CommitTask.init session project.id model.commit.hash task maybeTab
+                                        |> transition CommitTaskLoaded
+
+                                Nothing ->
+                                    errored Page.Project "Could not find task"
 
                     Nothing ->
-                        errored Page.Project "Uhoh"
-
-            Just (CommitRoute.Build id) ->
-                case findBuild model.builds id of
-                    Just build ->
-                        { model | subPageState = CommitBuild.initialModel build |> CommitBuild |> Loaded }
-                            => Cmd.none
-
-                    _ ->
                         errored Page.Project "Uhoh"
 
             _ ->
@@ -317,9 +356,6 @@ update project session msg model =
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 toPage CommitTask CommitTaskMsg (CommitTask.update project model.commit session) subMsg subModel
-
-            ( CommitBuildMsg subMsg, CommitBuild subModel ) ->
-                toPage CommitBuild CommitBuildMsg CommitBuild.update subMsg subModel
 
             ( AddBuildEvent buildJson, _ ) ->
                 let

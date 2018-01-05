@@ -33,15 +33,12 @@ func (c Controller) getBuildByUUIDStepsHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	t, err := c.taskManager.GetByTaskID(build.TaskID)
-	if err != nil {
-		handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s for build %s?!?!", build.TaskID, build.ID))
-	}
+	t := build.Task
 
 	buildSteps, count := c.manager.GetBuildStepsByBuildID(build.ID)
 	respBuildSteps := []ResponseBuildStep{}
 	for _, buildStep := range buildSteps {
-		respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number], []ResponseOutputStream{}))
+		respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number]))
 	}
 	c.render.JSON(w, http.StatusOK, BuildStepManyResponse{
 		Total:  count,
@@ -63,10 +60,7 @@ func (c Controller) getStepByUUID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := c.taskManager.GetByTaskID(build.TaskID)
-	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find task %s for build %s?!?!", build.TaskID, build.ID)) {
-		return
-	}
+	t := build.Task
 
-	c.render.JSON(w, http.StatusOK, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number], []ResponseOutputStream{}))
+	c.render.JSON(w, http.StatusOK, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number]))
 }

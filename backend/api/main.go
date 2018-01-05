@@ -131,7 +131,7 @@ func NewVelocity() App {
 	// Build
 	fileManager := build.NewFileManager(&velocityAPI.wg)
 	velocityAPI.workers = append(velocityAPI.workers, fileManager)
-	buildManager := build.NewManager(gorm, fileManager, websocketManager)
+	buildManager := build.NewManager(gorm, fileManager, taskManager, websocketManager)
 	buildResolver := build.NewResolver(commitManager)
 	buildController := build.NewController(buildResolver, buildManager, projectManager, commitManager, taskManager)
 

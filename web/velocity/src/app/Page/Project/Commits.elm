@@ -86,12 +86,21 @@ perPage =
 -- CHANNELS --
 
 
-events : List ( String, Encode.Value -> Msg )
-events =
-    [ ( "commit:new", RefreshCommitList )
-    , ( "commit:update", RefreshCommitList )
-    , ( "commit:deleted", RefreshCommitList )
-    ]
+channelName : Project.Id -> String
+channelName projectId =
+    "project:" ++ (Project.idToString projectId)
+
+
+events : Project.Id -> Dict String (List ( String, Encode.Value -> Msg ))
+events projectId =
+    let
+        pageEvents =
+            [ ( "commit:new", RefreshCommitList )
+            , ( "commit:update", RefreshCommitList )
+            , ( "commit:deleted", RefreshCommitList )
+            ]
+    in
+        Dict.singleton (channelName projectId) (pageEvents)
 
 
 
