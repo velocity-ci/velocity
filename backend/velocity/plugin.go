@@ -1,9 +1,14 @@
 package velocity
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"sync"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 )
 
 type Plugin struct {
@@ -42,13 +47,39 @@ func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
 		}
 	}
 
-	exitCode, err := runContainer(
-		resolvePullImage(p.Image),
+	var wg sync.WaitGroup
+	cli, _ := client.NewEnvClient()
+	ctx := context.Background()
+
+	networkResp, err := cli.NetworkCreate(ctx, "", types.NetworkCreate{
+		Labels: map[string]string{"owner": "velocity-ci"},
+	})
+	if err != nil {
+		log.Println(err)
+	}
+
+	sR := newServiceRunner(
+		cli,
+		ctx,
+		writer,
+		&wg,
+		params,
+		fmt.Sprintf("%s-%s", p.GetRunID(), "plugin"),
+		p.Image,
+		nil,
 		config,
 		hostConfig,
-		params,
-		writer,
+		networkResp.ID,
 	)
+
+	sR.setServices([]*serviceRunner{sR})
+	sR.PullOrBuild()
+	sR.Create()
+	go sR.Run()
+
+	wg.Wait()
+
+	exitCode := sR.exitCode
 
 	if err != nil {
 		return err

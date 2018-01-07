@@ -1,13 +1,16 @@
 package velocity
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"sync"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -64,73 +67,98 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 
 	services := []*serviceRunner{}
 	var wg sync.WaitGroup
+	cli, _ := client.NewEnvClient()
+	ctx := context.Background()
+
+	networkResp, err := cli.NetworkCreate(ctx, "", types.NetworkCreate{
+		Labels: map[string]string{"owner": "velocity-ci"},
+	})
+	if err != nil {
+		log.Println(err)
+	}
+
+	writers := map[string]StreamWriter{}
+	// Create writers
+	for _, serviceName := range serviceOrder {
+		writers[serviceName] = emitter.NewStreamWriter(serviceName)
+	}
 
 	for _, serviceName := range serviceOrder {
-		writer := emitter.NewStreamWriter(serviceName)
+		writer := writers[serviceName]
 		writer.SetStatus(StateRunning)
 		writer.Write([]byte(fmt.Sprintf("Starting %s", serviceName)))
 
-		// Create container (but don't start, get container ID)
+		s := dC.Contents.Services[serviceName]
 
-		sR := NewServiceRunner(&wg, "containerID", writer)
+		// generate containerConfig + hostConfig
+		containerConfig, hostConfig := generateContainerAndHostConfig(s)
+
+		// Create service runners
+		sR := newServiceRunner(
+			cli,
+			ctx,
+			writer,
+			&wg,
+			params,
+			serviceName,
+			s.Image,
+			&s.Build,
+			containerConfig,
+			hostConfig,
+			networkResp.ID,
+		)
 
 		services = append(services, sR)
 	}
 
-	// Start services
+	// Pull/Build images
 	for _, serviceRunner := range services {
 		serviceRunner.setServices(services)
-		go serviceRunner.Start()
+		serviceRunner.PullOrBuild()
+	}
+
+	// Create services
+	for _, serviceRunner := range services {
+		serviceRunner.Create()
+	}
+	// Start services
+	for _, serviceRunner := range services {
+		wg.Add(1)
+		go serviceRunner.Run()
+	}
+
+	wg.Wait()
+	success := true
+	for _, serviceRunner := range services {
+		if serviceRunner.exitCode != 0 {
+			success = false
+
+			break
+		}
+	}
+
+	if !success {
+		for _, serviceName := range serviceOrder {
+			writers[serviceName].SetStatus(StateFailed)
+			writers[serviceName].Write([]byte(fmt.Sprintf("%s\n### FAILED \x1b[0m", errorANSI)))
+		}
+	} else {
+		for _, serviceName := range serviceOrder {
+			writers[serviceName].SetStatus(StateSuccess)
+			writers[serviceName].Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
+		}
 	}
 
 	return nil
 }
 
-func NewServiceRunner(wg *sync.WaitGroup, containerID string, writer io.Writer) *serviceRunner {
-	return &serviceRunner{
-		wg:          wg,
-		writer:      writer,
-		containerID: containerID,
-	}
-}
-
-type serviceRunner struct {
-	writer      io.Writer
-	containerID string
-	exitCode    int
-	wg          *sync.WaitGroup
-	services    []*serviceRunner
-}
-
-func (sR *serviceRunner) setServices(s []*serviceRunner) {
-	sR.services = s
-}
-
-func (sR *serviceRunner) Start() {
-	sR.wg.Add(1)
-	cli, err := client.NewEnvClient()
-	if err != nil {
-
-	}
-}
-
-func (sR *serviceRunner) Stop() {
-
-}
-
-func stopAll(services []*serviceRunner) {
-	for _, s := range services {
-		s.Stop()
-	}
-}
-
-func startService(services *[]*serviceRunner, serviceName string) {
-
-}
-
 func (dC *DockerCompose) String() string {
 	j, _ := json.Marshal(dC)
 	return string(j)
+}
+
+func generateContainerAndHostConfig(s dockerComposeService) (*container.Config, *container.HostConfig) {
+	return &container.Config{}, &container.HostConfig{}
 }
 
 func getServiceOrder(services map[string]dockerComposeService, serviceOrder []string) []string {
@@ -175,6 +203,7 @@ type dockerComposeYaml struct {
 }
 
 type dockerComposeService struct {
+	Image       string                    `json:"image" yaml:"image"`
 	Build       dockerComposeServiceBuild `json:"build" yaml:"build"`
 	WorkingDir  string                    `json:"workingDir" yaml:"working_dir"`
 	Command     string                    `json:"command" yaml:"command"`

@@ -30,6 +30,7 @@ type BaseStep struct {
 	Type          string   `json:"type" yaml:"type"`
 	Description   string   `json:"description" yaml:"description"`
 	OutputStreams []string `json:"outputStreams" yaml:"-"`
+	runID         string
 }
 
 func (bS *BaseStep) GetType() string {
@@ -42,6 +43,14 @@ func (bS *BaseStep) GetDescription() string {
 
 func (bS *BaseStep) GetOutputStreams() []string {
 	return bS.OutputStreams
+}
+
+func (bS *BaseStep) GetRunID() string {
+	if bS.runID == "" {
+		bS.runID = time.Now().Format("060102150405")
+	}
+
+	return bS.runID
 }
 
 type StreamLine struct {
