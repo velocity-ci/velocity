@@ -63,21 +63,35 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 	serviceOrder := getServiceOrder(dC.Contents.Services, []string{})
 
 	services := []*serviceRunner{}
+	var wg sync.WaitGroup
 
 	for _, serviceName := range serviceOrder {
 		writer := emitter.NewStreamWriter(serviceName)
 		writer.SetStatus(StateRunning)
 		writer.Write([]byte(fmt.Sprintf("Starting %s", serviceName)))
 
-		services = append(services)
+		// Create container (but don't start, get container ID)
 
-		go startService(&services, serviceName)
+		sR := NewServiceRunner(&wg, "containerID", writer)
+
+		services = append(services, sR)
 	}
+
+	// Start services
+	for _, serviceRunner := range services {
+		serviceRunner.setServices(services)
+		go serviceRunner.Start()
+	}
+
 	return nil
 }
 
-func NewServiceRunner() *serviceRunner {
-	return &serviceRunner{}
+func NewServiceRunner(wg *sync.WaitGroup, containerID string, writer io.Writer) *serviceRunner {
+	return &serviceRunner{
+		wg:          wg,
+		writer:      writer,
+		containerID: containerID,
+	}
 }
 
 type serviceRunner struct {
@@ -85,9 +99,15 @@ type serviceRunner struct {
 	containerID string
 	exitCode    int
 	wg          *sync.WaitGroup
+	services    []*serviceRunner
+}
+
+func (sR *serviceRunner) setServices(s []*serviceRunner) {
+	sR.services = s
 }
 
 func (sR *serviceRunner) Start() {
+	sR.wg.Add(1)
 	cli, err := client.NewEnvClient()
 	if err != nil {
 
