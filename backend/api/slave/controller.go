@@ -160,18 +160,22 @@ func (c *Controller) monitor(s Slave) {
 
 		if message.Type == "log" {
 			lM := message.Data.(*SlaveBuildLogMessage)
-			buildStep, err := c.buildManager.GetBuildStepByBuildStepID(lM.BuildStepID)
+
+			outputStream, err := c.buildManager.GetStreamByID(lM.StreamID) // TODO: Cache in memory
 			if err != nil {
-				log.Printf("could not find buildStep %s", lM.BuildStepID)
+				log.Printf("could not find stream %s", lM.StreamID)
 				return
 			}
+
+			buildStep, err := c.buildManager.GetBuildStepByBuildStepID(outputStream.BuildStepID)
+			if err != nil {
+				log.Printf("could not find buildStep %s", outputStream.BuildStepID)
+				return
+			}
+
 			b, err := c.buildManager.GetBuildByBuildID(buildStep.BuildID)
 			if err != nil {
 				log.Printf("could not find build %s", buildStep.BuildID)
-			}
-			outputStream, err := c.buildManager.GetStreamByBuildStepIDAndStreamName(buildStep.ID, lM.StreamName) // TODO: Cache in memory
-			if err != nil {
-				log.Printf("could not find buildStep:stream %s:%s", lM.BuildStepID, lM.StreamName)
 				return
 			}
 

@@ -213,6 +213,11 @@ func (sR *serviceRunner) Stop() {
 	if err != nil {
 		log.Println(err)
 	}
+
+	err = sR.dockerCli.NetworkRemove(sR.context, sR.networkID)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func buildContainer(

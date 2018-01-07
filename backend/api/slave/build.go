@@ -22,11 +22,10 @@ func (c CommandMessage) String() string {
 }
 
 type BuildCommand struct {
-	Build      build.Build       `json:"build"`
-	Project    project.Project   `json:"project"`
-	Commit     commit.Commit     `json:"commit"`
-	Task       task.Task         `json:"task"`
-	BuildSteps []build.BuildStep `json:"buildSteps"`
+	Build   build.Build     `json:"build"`
+	Project project.Project `json:"project"`
+	Commit  commit.Commit   `json:"commit"`
+	Task    task.Task       `json:"task"`
 }
 
 func (c BuildCommand) String() string {
@@ -39,11 +38,10 @@ type KnownHostCommand struct {
 }
 
 type SlaveBuildLogMessage struct {
-	BuildStepID string `json:"buildStepId"`
-	StreamName  string `json:"streamName"`
-	LineNumber  uint64 `json:"lineNumber"`
-	Status      string `json:"status"`
-	Output      string `json:"output"`
+	StreamID   string `json:"streamId"`
+	LineNumber uint64 `json:"lineNumber"`
+	Status     string `json:"status"`
+	Output     string `json:"output"`
 }
 
 func NewBuildCommand(b build.Build, p project.Project, c commit.Commit, task task.Task) CommandMessage {

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/api/domain/build"
+
 	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/gorilla/websocket"
@@ -26,30 +28,42 @@ func (sws *safeWebsocket) WriteJSON(m interface{}) error {
 type StreamWriter struct {
 	ws         *safeWebsocket
 	StepNumber uint64
-	StreamName string
+	StreamID   string
 
-	BuildStepID string
-	LineNumber  uint64
-	status      string
+	LineNumber uint64
+	status     string
 }
 
 type Emitter struct {
 	ws          *safeWebsocket
 	BuildStepID string
-	StepNumber  uint64
+	Streams     []build.BuildStepStream
+
+	StepNumber uint64
 }
 
 func (e *Emitter) NewStreamWriter(streamName string) velocity.StreamWriter {
+	streamID := ""
+	for _, s := range e.Streams {
+		if s.Name == streamName {
+			streamID = s.ID
+			break
+		}
+	}
+	if streamID == "" {
+		log.Fatalf("could not find streamID for %s", streamName)
+	}
 	return &StreamWriter{
 		ws:         e.ws,
-		StreamName: streamName,
+		StreamID:   streamID,
 		StepNumber: e.StepNumber,
 		LineNumber: uint64(0),
 	}
 }
 
-func (e *Emitter) SetBuildStepID(buildStepID string) {
-	e.BuildStepID = buildStepID
+func (e *Emitter) SetBuildStep(buildStep build.BuildStep) {
+	e.BuildStepID = buildStep.ID
+	e.Streams = buildStep.Streams
 }
 
 func (e *Emitter) SetStepNumber(n uint64) {
@@ -64,17 +78,16 @@ func NewEmitter(ws *websocket.Conn) *Emitter {
 
 func (w *StreamWriter) Write(p []byte) (n int, err error) {
 	lM := slave.SlaveBuildLogMessage{
-		BuildStepID: w.BuildStepID,
-		StreamName:  w.StreamName,
-		LineNumber:  w.LineNumber,
-		Status:      w.status,
-		Output:      string(p),
+		StreamID:   w.StreamID,
+		LineNumber: w.LineNumber,
+		Status:     w.status,
+		Output:     string(p),
 	}
 	m := slave.SlaveMessage{
 		Type: "log",
 		Data: lM,
 	}
-	log.Printf("emitted %s:%s:%d\n%s", w.BuildStepID, w.StreamName, w.LineNumber, p)
+	log.Printf("emitted %s:%d\n%s", w.StreamID, w.LineNumber, p)
 	err = w.ws.WriteJSON(m)
 	if err != nil {
 		return 0, err
