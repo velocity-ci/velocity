@@ -183,10 +183,14 @@ type StreamLineManyResponse struct {
 }
 
 type ResponseBuild struct {
-	ID     string              `json:"id"`
-	TaskID string              `json:"task"`
-	Status string              `json:"status"`
-	Steps  []ResponseBuildStep `json:"steps"`
+	ID          string              `json:"id"`
+	TaskID      string              `json:"task"`
+	Status      string              `json:"status"`
+	UpdatedAt   time.Time           `json:"updatedAt"`
+	CreatedAt   time.Time           `json:"createdAt"`
+	StartedAt   time.Time           `json:"startedAt"`
+	CompletedAt time.Time           `json:"completedAt"`
+	Steps       []ResponseBuildStep `json:"steps"`
 }
 
 func NewResponseBuild(b Build) ResponseBuild {
@@ -195,10 +199,14 @@ func NewResponseBuild(b Build) ResponseBuild {
 		steps = append(steps, NewResponseBuildStep(s, b.Task.Steps[i]))
 	}
 	return ResponseBuild{
-		ID:     b.ID,
-		TaskID: b.Task.ID,
-		Status: b.Status,
-		Steps:  steps,
+		ID:          b.ID,
+		TaskID:      b.Task.ID,
+		Status:      b.Status,
+		UpdatedAt:   b.UpdatedAt,
+		CreatedAt:   b.CreatedAt,
+		StartedAt:   b.StartedAt,
+		CompletedAt: b.CompletedAt,
+		Steps:       steps,
 	}
 }
 
