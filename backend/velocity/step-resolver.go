@@ -20,6 +20,8 @@ func ResolveStepFromYAML(y string) Step {
 		return resolvePluginStep(y)
 	case "clone":
 		return resolveCloneStep(y)
+	case "docker-compose":
+		return resolveDockerComposeStep(y)
 	default:
 		return nil
 	}

@@ -17,7 +17,7 @@ import (
 
 type DockerCompose struct {
 	BaseStep
-	ComposeFile string `json:"composeFile" yaml:"compose_file"`
+	ComposeFile string `json:"composeFile" yaml:"composeFile"`
 	Contents    dockerComposeYaml
 }
 

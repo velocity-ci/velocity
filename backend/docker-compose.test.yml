@@ -2,14 +2,8 @@ version: '3'
 
 services:
 
-  velocity_test:
-    build:
-      context: .
-      dockerfile: dev.Dockerfile
-    command: /bin/sh -c "eval `ssh-agent` && go test -cover `glide novendor`"
-    environment:
-      ADMIN_PASSWORD: admin1234
-      JWT_SECRET: testing
-    volumes:
-      - "./:/go/src/github.com/velocity-ci/velocity/backend/"
-    working_dir: /go/src/github.com/velocity-ci/velocity/backend
+  a:
+    image: hello-world
+
+  b:
+    image: hello-world
