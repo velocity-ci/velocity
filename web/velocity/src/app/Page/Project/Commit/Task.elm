@@ -6,9 +6,8 @@ import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
 import Data.Build as Build exposing (Build)
 import Data.BuildStep as BuildStep exposing (BuildStep)
-import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
+import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
 import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
-import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Data.AuthToken as AuthToken exposing (AuthToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -33,6 +32,7 @@ import Views.Helpers exposing (onClickPage)
 import Navigation
 import Dict exposing (Dict)
 import Json.Encode as Encode
+import Array exposing (Array)
 
 
 -- MODEL --
@@ -80,8 +80,16 @@ type alias ToBuild =
     Build
 
 
+type Stream
+    = Stream BuildStream.Id
+
+
+type alias LoadedOutputStreams =
+    Dict String (Array BuildStreamOutput)
+
+
 type BuildType
-    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
+    = LoadedBuild Build (Array BuildStreamOutput) Ansi.Log.Model
     | LoadingBuild (Maybe FromBuild) ToBuild
 
 
@@ -100,33 +108,20 @@ loadBuild :
     -> Build
     -> Task Http.Error (Maybe BuildType)
 loadBuild maybeAuthToken build =
-    Request.Build.steps build.id maybeAuthToken
-        |> Http.toTask
+    build.steps
+        |> List.map .streams
+        |> List.foldr (++) []
+        |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
+        |> Task.sequence
         |> Task.andThen
-            (\(Paginated steps) ->
-                steps.results
-                    |> List.map (.id >> (Request.Build.streams maybeAuthToken) >> Http.toTask)
-                    |> Task.sequence
-                    |> Task.andThen
-                        (\paginatedStreams ->
-                            paginatedStreams
-                                |> List.map (\(Paginated { results }) -> results)
-                                |> List.foldr (++) []
-                                |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
-                                |> Task.sequence
-                                |> Task.andThen
-                                    (\paginatedStreamOutputList ->
-                                        paginatedStreamOutputList
-                                            |> List.map (\(Paginated { results }) -> results)
-                                            |> List.foldr (++) []
-                                            |> (\outputStreams ->
-                                                    buildOutput outputStreams
-                                                        |> LoadedBuild build steps.results outputStreams
-                                               )
-                                            |> Just
-                                            |> Task.succeed
-                                    )
-                        )
+            (\streamOutputList ->
+                streamOutputList
+                    |> List.foldr Array.append Array.empty
+                    |> (\outputStreams ->
+                            LoadedBuild build outputStreams (buildOutput outputStreams)
+                       )
+                    |> Just
+                    |> Task.succeed
             )
 
 
@@ -140,11 +135,11 @@ loadFirstBuild maybeAuthToken builds =
         |> Maybe.withDefault (Task.succeed Nothing)
 
 
-buildOutput : List BuildStreamOutput -> Ansi.Log.Model
+buildOutput : Array BuildStreamOutput -> Ansi.Log.Model
 buildOutput buildOutput =
-    List.foldl Ansi.Log.update
+    Array.foldl Ansi.Log.update
         (Ansi.Log.init Ansi.Log.Cooked)
-        (List.map .output buildOutput)
+        (Array.map .output buildOutput)
 
 
 stringToTab : Maybe String -> List Build -> Tab
@@ -271,7 +266,7 @@ buildEvents build =
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
 events model =
     case model.frame of
-        BuildFrame (LoadedBuild build _ _ _) ->
+        BuildFrame (LoadedBuild build _ _) ->
             buildEvents build
 
         _ ->
@@ -288,13 +283,13 @@ leaveChannels model maybeBuildId =
                 Dict.keys (buildEvents b)
     in
         case ( maybeBuildId, model.frame ) of
-            ( Just buildId, BuildFrame (LoadedBuild b _ _ _) ) ->
+            ( Just buildId, BuildFrame (LoadedBuild b _ _) ) ->
                 channels buildId b
 
             ( Just buildId, BuildFrame (LoadingBuild (Just b) _) ) ->
                 channels buildId b
 
-            ( _, BuildFrame (LoadedBuild b _ _ _) ) ->
+            ( _, BuildFrame (LoadedBuild b _ _) ) ->
                 Dict.keys (buildEvents b)
 
             ( _, BuildFrame (LoadingBuild (Just b) _) ) ->
@@ -393,7 +388,7 @@ viewTabFrame model =
             NewFormFrame ->
                 buildForm
 
-            BuildFrame (LoadedBuild _ _ _ o) ->
+            BuildFrame (LoadedBuild _ _ o) ->
                 Ansi.Log.view o
 
             BuildFrame (LoadingBuild _ _) ->
@@ -652,7 +647,7 @@ update project commit session msg model =
                                 let
                                     fromBuild =
                                         case model.frame of
-                                            BuildFrame (LoadedBuild b _ _ _) ->
+                                            BuildFrame (LoadedBuild b _ _) ->
                                                 Just b
 
                                             _ ->
@@ -672,25 +667,27 @@ update project commit session msg model =
 
             AddStreamOutput _ outputJson ->
                 let
-                    maybeBuildStreamOutput =
-                        outputJson
-                            |> Decode.decodeValue BuildStream.outputDecoder
-                            |> Result.toMaybe
-
-                    outputStreams existing =
-                        maybeBuildStreamOutput
-                            |> Maybe.map (\b -> List.append existing [ b ])
-                            |> Maybe.withDefault existing
-
-                    output existingOutput =
-                        maybeBuildStreamOutput
-                            |> Maybe.map (\o -> Ansi.Log.update o.output existingOutput)
-                            |> Maybe.withDefault existingOutput
-
                     frame =
                         case model.frame of
-                            BuildFrame (LoadedBuild a b c d) ->
-                                BuildFrame (LoadedBuild a b (outputStreams c) (buildOutput c))
+                            BuildFrame (LoadedBuild build streamLines _) ->
+                                let
+                                    updatedStreamLines =
+                                        outputJson
+                                            |> Decode.decodeValue BuildStream.outputDecoder
+                                            |> Result.toMaybe
+                                            |> Maybe.map
+                                                (\b ->
+                                                    if b.line > (Array.length streamLines - 1) then
+                                                        Array.push b streamLines
+                                                    else
+                                                        Array.set b.line b streamLines
+                                                )
+                                            |> Maybe.withDefault streamLines
+
+                                    ansiOutput =
+                                        buildOutput updatedStreamLines
+                                in
+                                    BuildFrame (LoadedBuild build updatedStreamLines ansiOutput)
 
                             _ ->
                                 model.frame
