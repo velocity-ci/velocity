@@ -33,6 +33,7 @@ import Navigation
 import Dict exposing (Dict)
 import Json.Encode as Encode
 import Array exposing (Array)
+import Html.Lazy as Lazy
 
 
 -- MODEL --
@@ -68,10 +69,6 @@ type Field
     | Choice ChoiceFormField
 
 
-type StepType
-    = LoadedBuildStep BuildStep
-
-
 type alias FromBuild =
     Build
 
@@ -89,7 +86,7 @@ type alias LoadedOutputStreams =
 
 
 type BuildType
-    = LoadedBuild Build (Array BuildStreamOutput) Ansi.Log.Model
+    = LoadedBuild Build LoadedOutputStreams
     | LoadingBuild (Maybe FromBuild) ToBuild
 
 
@@ -111,15 +108,19 @@ loadBuild maybeAuthToken build =
     build.steps
         |> List.map .streams
         |> List.foldr (++) []
-        |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
+        |> List.map
+            (\{ id } ->
+                id
+                    |> Request.Build.streamOutput maybeAuthToken
+                    |> Http.toTask
+                    |> Task.andThen (\o -> Task.succeed ( id, o ))
+            )
         |> Task.sequence
         |> Task.andThen
             (\streamOutputList ->
                 streamOutputList
-                    |> List.foldr Array.append Array.empty
-                    |> (\outputStreams ->
-                            LoadedBuild build outputStreams (buildOutput outputStreams)
-                       )
+                    |> List.foldr (\( id, outputStreams ) dict -> Dict.insert (BuildStream.idToString id) outputStreams dict) Dict.empty
+                    |> LoadedBuild build
                     |> Just
                     |> Task.succeed
             )
@@ -266,7 +267,7 @@ buildEvents build =
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
 events model =
     case model.frame of
-        BuildFrame (LoadedBuild build _ _) ->
+        BuildFrame (LoadedBuild build _) ->
             buildEvents build
 
         _ ->
@@ -283,13 +284,13 @@ leaveChannels model maybeBuildId =
                 Dict.keys (buildEvents b)
     in
         case ( maybeBuildId, model.frame ) of
-            ( Just buildId, BuildFrame (LoadedBuild b _ _) ) ->
+            ( Just buildId, BuildFrame (LoadedBuild b _) ) ->
                 channels buildId b
 
             ( Just buildId, BuildFrame (LoadingBuild (Just b) _) ) ->
                 channels buildId b
 
-            ( _, BuildFrame (LoadedBuild b _ _) ) ->
+            ( _, BuildFrame (LoadedBuild b _) ) ->
                 Dict.keys (buildEvents b)
 
             ( _, BuildFrame (LoadingBuild (Just b) _) ) ->
@@ -316,7 +317,7 @@ view project commit model builds =
             [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
                 [ h4 [] [ text (ProjectTask.nameToString task.name) ]
                 , viewTabs project commit task builds model.selectedTab
-                , viewTabFrame model
+                , Lazy.lazy viewTabFrame model
                 ]
             ]
 
@@ -388,11 +389,24 @@ viewTabFrame model =
             NewFormFrame ->
                 buildForm
 
-            BuildFrame (LoadedBuild _ _ o) ->
-                Ansi.Log.view o
+            BuildFrame (LoadedBuild _ streams) ->
+                let
+                    ansiInit =
+                        Ansi.Log.init Ansi.Log.Cooked
 
-            BuildFrame (LoadingBuild _ _) ->
-                text "Loading"
+                    ansiOutput =
+                        Dict.toList streams
+                            |> List.map
+                                (\( streamId, outputLines ) ->
+                                    Array.foldl (\outputLine ansi -> Ansi.Log.update outputLine.output ansi) ansiInit outputLines
+                                )
+                in
+                    ansiOutput
+                        |> List.map Ansi.Log.view
+                        |> div []
+
+            _ ->
+                text ""
 
 
 viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
@@ -647,7 +661,7 @@ update project commit session msg model =
                                 let
                                     fromBuild =
                                         case model.frame of
-                                            BuildFrame (LoadedBuild b _ _) ->
+                                            BuildFrame (LoadedBuild b _) ->
                                                 Just b
 
                                             _ ->
@@ -669,25 +683,39 @@ update project commit session msg model =
                 let
                     frame =
                         case model.frame of
-                            BuildFrame (LoadedBuild build streamLines _) ->
-                                let
-                                    updatedStreamLines =
-                                        outputJson
-                                            |> Decode.decodeValue BuildStream.outputDecoder
-                                            |> Result.toMaybe
-                                            |> Maybe.map
-                                                (\b ->
-                                                    if b.line > (Array.length streamLines - 1) then
-                                                        Array.push b streamLines
-                                                    else
-                                                        Array.set b.line b streamLines
-                                                )
-                                            |> Maybe.withDefault streamLines
+                            BuildFrame (LoadedBuild build streams) ->
+                                outputJson
+                                    |> Decode.decodeValue BuildStream.outputDecoder
+                                    |> Result.toMaybe
+                                    |> Maybe.map
+                                        (\b ->
+                                            let
+                                                streamKey =
+                                                    BuildStream.idToString b.streamId
 
-                                    ansiOutput =
-                                        buildOutput updatedStreamLines
-                                in
-                                    BuildFrame (LoadedBuild build updatedStreamLines ansiOutput)
+                                                streamLines =
+                                                    Dict.get streamKey streams
+                                            in
+                                                case streamLines of
+                                                    Just streamLines ->
+                                                        let
+                                                            streamLineLength =
+                                                                Array.length streamLines - 1
+
+                                                            updatedStreamLines =
+                                                                if b.line > streamLineLength then
+                                                                    Array.push b streamLines
+                                                                else
+                                                                    Array.set b.line b streamLines
+                                                        in
+                                                            Dict.insert streamKey updatedStreamLines streams
+
+                                                    _ ->
+                                                        streams
+                                        )
+                                    |> Maybe.withDefault streams
+                                    |> LoadedBuild build
+                                    |> BuildFrame
 
                             _ ->
                                 model.frame
