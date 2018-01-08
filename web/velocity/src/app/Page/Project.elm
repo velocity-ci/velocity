@@ -161,6 +161,41 @@ loadedEvents msg model =
             Dict.empty
 
 
+leaveChannels : Model -> Maybe Project.Id -> Maybe ProjectRoute.Route -> List String
+leaveChannels model maybeProjectId maybeProjectRoute =
+    let
+        currentProjectId =
+            model.project.id
+
+        projectChannel =
+            channelName currentProjectId
+    in
+        case ( getSubPage model.subPageState, maybeProjectId, maybeProjectRoute ) of
+            ( Commit subModel, Just routeProjectId, Just (ProjectRoute.Commit _ commitRoute) ) ->
+                if routeProjectId == currentProjectId then
+                    Commit.leaveChannels subModel (Just commitRoute)
+                else
+                    projectChannel :: Commit.leaveChannels subModel Nothing
+
+            ( Commit subModel, Just routeProjectId, _ ) ->
+                if routeProjectId == currentProjectId then
+                    Commit.leaveChannels subModel Nothing
+                else
+                    projectChannel :: Commit.leaveChannels subModel Nothing
+
+            ( Commit subModel, _, _ ) ->
+                projectChannel :: Commit.leaveChannels subModel Nothing
+
+            ( _, Just routeProjectId, _ ) ->
+                if routeProjectId == currentProjectId then
+                    []
+                else
+                    [ projectChannel ]
+
+            _ ->
+                [ projectChannel ]
+
+
 
 -- VIEW --
 

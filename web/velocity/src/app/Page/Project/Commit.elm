@@ -154,6 +154,19 @@ loadedEvents msg model =
             Dict.empty
 
 
+leaveChannels : Model -> Maybe CommitRoute.Route -> List String
+leaveChannels model maybeCommitRoute =
+    case ( getSubPage model.subPageState, maybeCommitRoute ) of
+        ( CommitTask subModel, Just (CommitRoute.Task _ buildName) ) ->
+            CommitTask.leaveChannels subModel buildName
+
+        ( CommitTask subModel, _ ) ->
+            CommitTask.leaveChannels subModel Nothing
+
+        _ ->
+            []
+
+
 
 -- VIEW --
 
@@ -219,6 +232,18 @@ breadcrumb project commit subPageState =
               ]
             , subPageCrumb
             ]
+
+
+addBuild : List Build -> Build -> List Build
+addBuild builds build =
+    let
+        found =
+            List.filter (Build.compare build) builds
+    in
+        if (List.length found == 0) then
+            build :: builds
+        else
+            builds
 
 
 
@@ -355,14 +380,27 @@ update project session msg model =
                     => Cmd.none
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
-                toPage CommitTask CommitTaskMsg (CommitTask.update project model.commit session) subMsg subModel
+                let
+                    ( ( newModel, newCmd ), externalMsg ) =
+                        CommitTask.update project model.commit session subMsg subModel
+
+                    model_ =
+                        case externalMsg of
+                            CommitTask.AddBuild b ->
+                                { model | builds = addBuild model.builds b }
+
+                            CommitTask.NoOp ->
+                                model
+                in
+                    { model_ | subPageState = Loaded (CommitTask newModel) }
+                        ! [ Cmd.map CommitTaskMsg newCmd ]
 
             ( AddBuildEvent buildJson, _ ) ->
                 let
                     builds =
                         Decode.decodeValue Build.decoder buildJson
                             |> Result.toMaybe
-                            |> Maybe.map (\b -> b :: model.builds)
+                            |> Maybe.map (addBuild model.builds)
                             |> Maybe.withDefault model.builds
                 in
                     { model | builds = builds }

@@ -72,9 +72,17 @@ type StepType
     = LoadedBuildStep BuildStep
 
 
+type alias FromBuild =
+    Build
+
+
+type alias ToBuild =
+    Build
+
+
 type BuildType
     = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
-    | LoadingBuild
+    | LoadingBuild (Maybe FromBuild) ToBuild
 
 
 type Tab
@@ -240,29 +248,60 @@ streamChannelName stream =
     "stream:" ++ (BuildStream.idToString stream.id)
 
 
+buildEvents : Build -> Dict String (List ( String, Encode.Value -> Msg ))
+buildEvents build =
+    let
+        streams =
+            List.map .streams build.steps
+                |> List.foldr (++) []
+
+        foldStreamEvents stream dict =
+            let
+                channelName =
+                    streamChannelName stream
+
+                events =
+                    [ ( "streamLine:new", AddStreamOutput stream ) ]
+            in
+                Dict.insert channelName events dict
+    in
+        List.foldl foldStreamEvents Dict.empty streams
+
+
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
 events model =
     case model.frame of
         BuildFrame (LoadedBuild build _ _ _) ->
-            let
-                streams =
-                    List.map .streams build.steps
-                        |> List.foldr (++) []
-
-                foldStreamEvents stream dict =
-                    let
-                        channelName =
-                            streamChannelName stream
-
-                        events =
-                            [ ( "streamLine:new", AddStreamOutput stream ) ]
-                    in
-                        Dict.insert channelName events dict
-            in
-                List.foldl foldStreamEvents Dict.empty streams
+            buildEvents build
 
         _ ->
             Dict.empty
+
+
+leaveChannels : Model -> Maybe String -> List String
+leaveChannels model maybeBuildId =
+    let
+        channels id b =
+            if id == Build.idToString b.id then
+                []
+            else
+                Dict.keys (buildEvents b)
+    in
+        case ( maybeBuildId, model.frame ) of
+            ( Just buildId, BuildFrame (LoadedBuild b _ _ _) ) ->
+                channels buildId b
+
+            ( Just buildId, BuildFrame (LoadingBuild (Just b) _) ) ->
+                channels buildId b
+
+            ( _, BuildFrame (LoadedBuild b _ _ _) ) ->
+                Dict.keys (buildEvents b)
+
+            ( _, BuildFrame (LoadingBuild (Just b) _) ) ->
+                Dict.keys (buildEvents b)
+
+            _ ->
+                []
 
 
 
@@ -357,7 +396,7 @@ viewTabFrame model =
             BuildFrame (LoadedBuild _ _ _ o) ->
                 Ansi.Log.view o
 
-            BuildFrame LoadingBuild ->
+            BuildFrame (LoadingBuild _ _) ->
                 text "Loading"
 
 
@@ -438,7 +477,12 @@ type Msg
     | AddStreamOutput BuildStream Encode.Value
 
 
-update : Project -> Commit -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+type ExternalMsg
+    = NoOp
+    | AddBuild Build
+
+
+update : Project -> Commit -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update project commit session msg model =
     let
         projectId =
@@ -457,6 +501,7 @@ update project commit session msg model =
             ToggleStep maybeStep ->
                 { model | toggledStep = maybeStep }
                     => Cmd.none
+                    => NoOp
 
             OnInput field value ->
                 let
@@ -486,6 +531,7 @@ update project commit session msg model =
                         , errors = errors
                     }
                         => Cmd.none
+                        => NoOp
 
             OnChange field maybeIndex ->
                 let
@@ -523,6 +569,7 @@ update project commit session msg model =
                         , errors = errors
                     }
                         => Cmd.none
+                        => NoOp
 
             SubmitForm ->
                 let
@@ -551,7 +598,9 @@ update project commit session msg model =
                     params =
                         List.filterMap mapFieldToParam model.form
                 in
-                    model => cmd
+                    model
+                        => cmd
+                        => NoOp
 
             LoadBuild build ->
                 let
@@ -560,23 +609,56 @@ update project commit session msg model =
                             |> loadBuild maybeAuthToken
                             |> Task.attempt BuildLoaded
                 in
-                    model => cmd
+                    model
+                        => cmd
+                        => NoOp
 
             BuildLoaded (Ok (Just loadedBuild)) ->
-                model => Cmd.none
+                model
+                    => Cmd.none
+                    => NoOp
 
             BuildLoaded _ ->
-                model => Cmd.none
+                model
+                    => Cmd.none
+                    => NoOp
 
-            BuildCreated _ ->
-                model => Cmd.none
+            BuildCreated (Ok build) ->
+                let
+                    tab =
+                        build.id
+                            |> Build.idToString
+                            |> Just
+
+                    route =
+                        CommitRoute.Task model.task.name tab
+                            |> ProjectRoute.Commit commit.hash
+                            |> Route.Project project.id
+                in
+                    model
+                        => Navigation.newUrl (Route.routeToString route)
+                        => AddBuild build
+
+            BuildCreated (Err _) ->
+                model
+                    => Cmd.none
+                    => NoOp
 
             SelectTab tab url ->
                 let
                     frame =
                         case tab of
-                            BuildTab _ ->
-                                BuildFrame LoadingBuild
+                            BuildTab toBuild ->
+                                let
+                                    fromBuild =
+                                        case model.frame of
+                                            BuildFrame (LoadedBuild b _ _ _) ->
+                                                Just b
+
+                                            _ ->
+                                                Nothing
+                                in
+                                    BuildFrame (LoadingBuild fromBuild toBuild)
 
                             NewFormTab ->
                                 NewFormFrame
@@ -586,6 +668,7 @@ update project commit session msg model =
                         , frame = frame
                     }
                         => Navigation.newUrl url
+                        => NoOp
 
             AddStreamOutput _ outputJson ->
                 let
@@ -614,6 +697,7 @@ update project commit session msg model =
                 in
                     { model | frame = frame }
                         => Cmd.none
+                        => NoOp
 
 
 

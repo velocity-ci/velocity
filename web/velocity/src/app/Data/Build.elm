@@ -55,6 +55,11 @@ statusDecoder =
 -- IDENTIFIERS --
 
 
+compare : Build -> Build -> Bool
+compare a b =
+    idToString a.id == idToString b.id
+
+
 idParser : UrlParser.Parser (Id -> a) a
 idParser =
     UrlParser.custom "ID" (Ok << Id)

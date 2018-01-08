@@ -236,8 +236,22 @@ type Msg
     | NoOp
 
 
-leaveChannels : Session Msg -> Page -> Maybe Route -> ( Session Msg, Cmd Msg )
-leaveChannels session page route =
+leaveChannels : List String -> Socket Msg -> ( Socket Msg, Cmd Msg )
+leaveChannels channels socket =
+    List.foldl
+        (\channel ( socket, cmd ) ->
+            let
+                ( leaveSocket, leaveCmd ) =
+                    Socket.leave channel socket
+            in
+                leaveSocket ! [ cmd, Cmd.map SocketMsg leaveCmd ]
+        )
+        ( socket, Cmd.none )
+        channels
+
+
+leavePageChannels : Session Msg -> Page -> Maybe Route -> ( Session Msg, Cmd Msg )
+leavePageChannels session page route =
     let
         ( newSocket, leaveCmd ) =
             case page of
@@ -245,30 +259,27 @@ leaveChannels session page route =
                     if route == Just Route.Projects then
                         session.socket => Cmd.none
                     else
-                        Socket.leave Projects.channelName session.socket
+                        leaveChannels [ Projects.channelName ] session.socket
 
                 Home _ ->
                     if route == Just Route.Home then
                         session.socket => Cmd.none
                     else
-                        Socket.leave Home.channelName session.socket
+                        leaveChannels [ Home.channelName ] session.socket
 
-                Project { project } ->
+                Project subModel ->
                     case route of
-                        Just (Route.Project projectId _) ->
-                            if projectId == project.id then
-                                session.socket => Cmd.none
-                            else
-                                Socket.leave (Project.channelName project.id) session.socket
+                        Just (Route.Project projectId subRoute) ->
+                            leaveChannels (Project.leaveChannels subModel (Just projectId) (Just subRoute)) session.socket
 
                         _ ->
-                            session.socket => Cmd.none
+                            leaveChannels (Project.leaveChannels subModel Nothing Nothing) session.socket
 
                 _ ->
                     session.socket => Cmd.none
     in
         { session | socket = newSocket }
-            => Cmd.map SocketMsg leaveCmd
+            => leaveCmd
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -481,7 +492,7 @@ updatePage page msg model =
             ( SetRoute route, _ ) ->
                 let
                     ( channelLeaveSession, channelLeaveCmd ) =
-                        leaveChannels model.session (getPage model.pageState) route
+                        leavePageChannels model.session (getPage model.pageState) route
 
                     ( routeModel, routeCmd ) =
                         setRoute route { model | session = channelLeaveSession }
