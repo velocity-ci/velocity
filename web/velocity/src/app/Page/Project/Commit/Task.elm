@@ -82,7 +82,7 @@ type Stream
 
 
 type alias LoadedOutputStreams =
-    Dict String (Array BuildStreamOutput)
+    Dict String ( Int, Maybe ProjectTask.Step, Array BuildStreamOutput )
 
 
 type BuildType
@@ -101,39 +101,51 @@ type Frame
 
 
 loadBuild :
-    Maybe AuthToken
+    ProjectTask.Task
+    -> Maybe AuthToken
     -> Build
     -> Task Http.Error (Maybe BuildType)
-loadBuild maybeAuthToken build =
+loadBuild task maybeAuthToken build =
     build.steps
-        |> List.map .streams
-        |> List.foldr (++) []
+        |> List.sortBy .number
         |> List.map
-            (\{ id } ->
-                id
-                    |> Request.Build.streamOutput maybeAuthToken
-                    |> Http.toTask
-                    |> Task.andThen (\o -> Task.succeed ( id, o ))
+            (\buildStep ->
+                let
+                    taskStep =
+                        task.steps
+                            |> Array.fromList
+                            |> Array.get buildStep.number
+                in
+                    ( taskStep, buildStep.number, buildStep.streams )
             )
+        |> List.map
+            (\( taskStep, number, streams ) ->
+                List.map
+                    (\{ id } ->
+                        Request.Build.streamOutput maybeAuthToken id
+                            |> Http.toTask
+                            |> Task.andThen (\output -> Task.succeed ( id, taskStep, number, output ))
+                    )
+                    streams
+            )
+        |> List.foldr (++) []
         |> Task.sequence
         |> Task.andThen
             (\streamOutputList ->
                 streamOutputList
-                    |> List.foldr (\( id, outputStreams ) dict -> Dict.insert (BuildStream.idToString id) outputStreams dict) Dict.empty
+                    |> List.foldr
+                        (\( id, taskStep, number, outputStreams ) dict ->
+                            let
+                                streamTuple =
+                                    ( number, taskStep, outputStreams )
+                            in
+                                Dict.insert (BuildStream.idToString id) streamTuple dict
+                        )
+                        Dict.empty
                     |> LoadedBuild build
                     |> Just
                     |> Task.succeed
             )
-
-
-loadFirstBuild :
-    Maybe AuthToken
-    -> List Build
-    -> Task Http.Error (Maybe BuildType)
-loadFirstBuild maybeAuthToken builds =
-    List.head builds
-        |> Maybe.map (loadBuild maybeAuthToken)
-        |> Maybe.withDefault (Task.succeed Nothing)
 
 
 buildOutput : Array BuildStreamOutput -> Ansi.Log.Model
@@ -196,7 +208,7 @@ init session id hash task maybeSelectedTab builds =
                 Task.succeed (initialModel (Just NewFormFrame))
 
             BuildTab b ->
-                loadBuild maybeAuthToken b
+                loadBuild task maybeAuthToken b
                     |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
                     |> Task.map initialModel
                     |> Task.mapError handleLoadError
@@ -396,14 +408,37 @@ viewTabFrame model =
 
                     ansiOutput =
                         Dict.toList streams
+                            |> List.sortBy (\( _, ( number, _, _ ) ) -> number)
                             |> List.map
-                                (\( streamId, outputLines ) ->
-                                    Array.foldl (\outputLine ansi -> Ansi.Log.update outputLine.output ansi) ansiInit outputLines
+                                (\( streamId, ( _, taskStep, outputLines ) ) ->
+                                    taskStep
+                                        => Array.foldl (\outputLine ansi -> Ansi.Log.update outputLine.output ansi) ansiInit outputLines
+                                )
+                            |> List.map (Tuple.mapSecond Ansi.Log.view)
+                            |> List.map
+                                (\( taskStep, ansi ) ->
+                                    let
+                                        cardTitle =
+                                            case taskStep of
+                                                Just (Build _) ->
+                                                    "Build"
+
+                                                Just (Run _) ->
+                                                    "Run"
+
+                                                Just (Clone _) ->
+                                                    "Clone"
+
+                                                Nothing ->
+                                                    ""
+                                    in
+                                        div [ class "card mt-3" ]
+                                            [ h5 [ class "card-header" ] [ text cardTitle ]
+                                            , div [ class "card-body" ] [ ansi ]
+                                            ]
                                 )
                 in
-                    ansiOutput
-                        |> List.map Ansi.Log.view
-                        |> div []
+                    div [] (ansiOutput)
 
             _ ->
                 text ""
@@ -615,7 +650,7 @@ update project commit session msg model =
                 let
                     cmd =
                         build
-                            |> loadBuild maybeAuthToken
+                            |> loadBuild model.task maybeAuthToken
                             |> Task.attempt BuildLoaded
                 in
                     model
@@ -697,7 +732,7 @@ update project commit session msg model =
                                                     Dict.get streamKey streams
                                             in
                                                 case streamLines of
-                                                    Just streamLines ->
+                                                    Just ( number, taskStep, streamLines ) ->
                                                         let
                                                             streamLineLength =
                                                                 Array.length streamLines - 1
@@ -708,7 +743,7 @@ update project commit session msg model =
                                                                 else
                                                                     Array.set b.line b streamLines
                                                         in
-                                                            Dict.insert streamKey updatedStreamLines streams
+                                                            Dict.insert streamKey ( number, taskStep, updatedStreamLines ) streams
 
                                                     _ ->
                                                         streams
