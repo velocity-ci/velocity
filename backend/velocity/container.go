@@ -91,7 +91,7 @@ func (sR *serviceRunner) setServices(s []*serviceRunner) {
 }
 
 func (sR *serviceRunner) PullOrBuild() {
-	if sR.build != nil {
+	if sR.build != nil && (sR.build.Dockerfile != "" || sR.build.Context != "") {
 		err := buildContainer(
 			sR.build.Context,
 			sR.build.Dockerfile,
@@ -103,11 +103,12 @@ func (sR *serviceRunner) PullOrBuild() {
 			log.Println(err)
 		}
 		sR.image = getImageName(sR.name)
+		sR.containerConfig.Image = getImageName(sR.name)
 	} else {
 		// check if image exists locally before pulling
 		if findImageLocally(sR.image, sR.dockerCli, sR.context) != nil {
 			sR.image = resolvePullImage(sR.image)
-
+			sR.containerConfig.Image = resolvePullImage(sR.image)
 			pullResp, err := sR.dockerCli.ImagePull(
 				sR.context,
 				sR.image,

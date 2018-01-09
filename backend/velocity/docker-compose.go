@@ -86,7 +86,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 	for _, serviceName := range serviceOrder {
 		writer := writers[serviceName]
 		writer.SetStatus(StateRunning)
-		writer.Write([]byte(fmt.Sprintf("Starting %s", serviceName)))
+		writer.Write([]byte(fmt.Sprintf("Configured %s", serviceName)))
 
 		s := dC.Contents.Services[serviceName]
 
@@ -158,7 +158,11 @@ func (dC *DockerCompose) String() string {
 }
 
 func generateContainerAndHostConfig(s dockerComposeService) (*container.Config, *container.HostConfig) {
-	return &container.Config{}, &container.HostConfig{}
+	containerConfig := &container.Config{}
+	if len(s.Command) > 0 {
+		// containerConfig.Cmd = s.Command
+	}
+	return containerConfig, &container.HostConfig{}
 }
 
 func getServiceOrder(services map[string]dockerComposeService, serviceOrder []string) []string {
@@ -206,12 +210,28 @@ type dockerComposeService struct {
 	Image       string                    `json:"image" yaml:"image"`
 	Build       dockerComposeServiceBuild `json:"build" yaml:"build"`
 	WorkingDir  string                    `json:"workingDir" yaml:"working_dir"`
-	Command     string                    `json:"command" yaml:"command"`
+	Command     []string                  `json:"command" yaml:"command"`
 	Links       []string                  `json:"links" yaml:"links"`
 	Environment map[string]string         `json:"environment" yaml:"environment"`
 	Volumes     []string                  `json:"volumes" yaml:"volumes"`
 	Expose      []string                  `json:"expose" yaml:"expose"`
 }
+
+// func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) error {
+// 	var multi []string
+// 	err := unmarshal(&multi)
+// 	if err != nil {
+// 		var single string
+// 		err := unmarshal(&single)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		*a = []string{single}
+// 	} else {
+// 		*a = multi
+// 	}
+// 	return nil
+// }
 
 type dockerComposeServiceBuild struct {
 	Context    string `json:"context" yaml:"context"`
