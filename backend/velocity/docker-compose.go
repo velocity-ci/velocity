@@ -27,19 +27,19 @@ func NewDockerCompose(y string) *DockerCompose {
 			Type: "compose",
 		},
 	}
-	err := yaml.Unmarshal([]byte(y), step)
+	err := yaml.Unmarshal([]byte(y), &step)
 	if err != nil {
 		panic(err)
 	}
 
 	dir, _ := os.Getwd()
 	dockerComposeYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, step.ComposeFile))
-	err = yaml.Unmarshal(dockerComposeYml, step.Contents)
+	err = yaml.Unmarshal(dockerComposeYml, &step.Contents)
 	if err != nil {
 		panic(err)
 	}
 
-	services := make([]string, 0, len(step.Contents.Services))
+	services := make([]string, len(step.Contents.Services))
 	i := 0
 	for k := range step.Contents.Services {
 		services[i] = k
