@@ -202,8 +202,8 @@ func (c *Controller) monitor(s Slave) {
 				b.StartedAt = time.Now()
 				c.buildManager.UpdateBuild(b)
 			}
-			_, total := c.buildManager.GetBuildStepsByBuildID(b.ID) // TODO: cache?
-			if buildStep.Number == total-1 && (lM.Status == velocity.StateSuccess || lM.Status == velocity.StateFailed) {
+
+			if buildStep.Number == uint64(len(b.Steps)-1) && (lM.Status == velocity.StateSuccess || lM.Status == velocity.StateFailed) {
 				b.Status = lM.Status
 				b.CompletedAt = time.Now()
 				c.buildManager.UpdateBuild(b)
