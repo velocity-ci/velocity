@@ -160,15 +160,13 @@ func (c *Controller) monitor(s Slave) {
 
 		if message.Type == "log" {
 			lM := message.Data.(*SlaveBuildLogMessage)
+			log.Printf("api received slave: %v", lM)
 			buildStep, err := c.buildManager.GetBuildStepByBuildStepID(lM.BuildStepID)
 			if err != nil {
 				log.Printf("could not find buildStep %s", lM.BuildStepID)
 				return
 			}
-			b, err := c.buildManager.GetBuildByBuildID(buildStep.BuildID)
-			if err != nil {
-				log.Printf("could not find build %s", buildStep.BuildID)
-			}
+
 			outputStream, err := c.buildManager.GetStreamByBuildStepIDAndStreamName(buildStep.ID, lM.StreamName) // TODO: Cache in memory
 			if err != nil {
 				log.Printf("could not find buildStep:stream %s:%s", lM.BuildStepID, lM.StreamName)
@@ -183,29 +181,30 @@ func (c *Controller) monitor(s Slave) {
 				buildStep.StartedAt = time.Now()
 				c.buildManager.UpdateBuildStep(buildStep)
 			}
-			if b.Status == velocity.StateWaiting || b.StartedAt.IsZero() {
-				b.Status = lM.Status
-				b.StartedAt = time.Now()
-				c.buildManager.UpdateBuild(b)
-			}
 
 			if lM.Status == velocity.StateSuccess {
 				buildStep.Status = velocity.StateSuccess
 				buildStep.CompletedAt = time.Now()
 				c.buildManager.UpdateBuildStep(buildStep)
-				_, total := c.buildManager.GetBuildStepsByBuildID(b.ID) // TODO: cache?
-				if buildStep.Number == total-1 {
-					b.Status = velocity.StateSuccess
-					b.CompletedAt = time.Now()
-					c.buildManager.UpdateBuild(b)
-					s.State = "ready"
-					c.manager.Save(s)
-				}
 			} else if lM.Status == velocity.StateFailed {
 				buildStep.Status = velocity.StateFailed
 				buildStep.CompletedAt = time.Now()
 				c.buildManager.UpdateBuildStep(buildStep)
-				b.Status = velocity.StateFailed
+			}
+
+			// Build update
+			b, err := c.buildManager.GetBuildByBuildID(buildStep.BuildID)
+			if err != nil {
+				log.Printf("could not find build %s", buildStep.BuildID)
+			}
+			if b.Status == velocity.StateWaiting || b.StartedAt.IsZero() {
+				b.Status = lM.Status
+				b.StartedAt = time.Now()
+				c.buildManager.UpdateBuild(b)
+			}
+			_, total := c.buildManager.GetBuildStepsByBuildID(b.ID) // TODO: cache?
+			if buildStep.Number == total-1 && (lM.Status == velocity.StateSuccess || lM.Status == velocity.StateFailed) {
+				b.Status = lM.Status
 				b.CompletedAt = time.Now()
 				c.buildManager.UpdateBuild(b)
 				s.State = "ready"

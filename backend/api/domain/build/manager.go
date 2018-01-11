@@ -115,6 +115,14 @@ func (m *Manager) UpdateBuildStep(bS BuildStep) BuildStep {
 	bS.UpdatedAt = time.Now()
 	m.gormRepository.SaveBuildStep(nil, bS)
 	b, _ := m.GetBuildByBuildID(bS.BuildID)
+	newSteps := []BuildStep{}
+	for _, s := range b.Steps {
+		if s.ID != bS.ID {
+			newSteps = append(newSteps, s)
+		} else {
+			newSteps = append(newSteps, bS)
+		}
+	}
 	m.UpdateBuild(b)
 	return bS
 }

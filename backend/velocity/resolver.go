@@ -1,6 +1,8 @@
 package velocity
 
 import (
+	"log"
+
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -43,12 +45,16 @@ func ResolveTaskFromYAML(y string, additionalParams map[string]Parameter) Task {
 			panic(err)
 		}
 		s := ResolveStepFromYAML(string(mStep[:]))
-		err = s.Validate(allParams)
-		if err != nil {
-			panic(err)
+		if s != nil {
+			err = s.Validate(allParams)
+			if err != nil {
+				panic(err)
+			}
+			s.SetParams(additionalParams)
+			task.Steps = append(task.Steps, s)
+		} else {
+			log.Printf("failed to resolve step: %s", yStep)
 		}
-		s.SetParams(additionalParams)
-		task.Steps = append(task.Steps, s)
 	}
 	return task
 }

@@ -35,7 +35,7 @@ func (w *SlaveWriter) Write(p []byte) (n int, err error) {
 		Type: "log",
 		Data: lM,
 	}
-	log.Printf("emitted %s:%s:%d\n%s", w.BuildStepID, w.StreamName, w.LineNumber, p)
+	log.Printf("emitted %s:%s:%d:%s\n%s", w.BuildStepID, w.StreamName, w.LineNumber, w.status, p)
 	err = w.ws.WriteJSON(m)
 	if err != nil {
 		return 0, err

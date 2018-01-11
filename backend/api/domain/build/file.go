@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
+
+	"github.com/docker/go/canonical/json"
 )
 
 type logFile struct {
-	contents   []string
+	contents   [][]byte
 	totalLines uint64
 
 	needsFlush bool
@@ -56,7 +56,7 @@ func (m *fileManager) StartWorker() {
 				}
 				writer := bufio.NewWriter(file)
 				for _, s := range lF.contents {
-					writer.WriteString(s)
+					writer.Write(s)
 				}
 				writer.Flush()
 				lF.needsFlush = false
@@ -79,7 +79,7 @@ func (m *fileManager) GetByID(id string, q StreamLineQuery) ([]StreamLine, uint6
 	logFile := m.getStreamLogFile(id)
 	skipCounter := uint64(0)
 
-	for i, l := range logFile.contents {
+	for _, l := range logFile.contents {
 		if uint64(len(outputStream)) >= q.Amount {
 			break
 		}
@@ -87,15 +87,21 @@ func (m *fileManager) GetByID(id string, q StreamLineQuery) ([]StreamLine, uint6
 			skipCounter++
 			break
 		}
-		parts := strings.SplitN(l, " ", 2)
-		timestampUnixNano, _ := strconv.ParseInt(parts[0], 10, 64)
-		outputStream = append(outputStream, StreamLine{
-			BuildStepStreamID: id,
-			LineNumber:        uint64(i),
-			Timestamp:         time.Unix(0, timestampUnixNano),
-			Output:            parts[1],
-		})
+		var sL StreamLine
+		err := json.Unmarshal(l, &sL)
+		if err != nil {
+			log.Println(err)
+		}
+		// parts := strings.SplitN(l, " ", 2)
+		// timestampUnixNano, _ := strconv.ParseInt(parts[0], 10, 64)
+		// outputStream = append(outputStream, StreamLine{
+		// 	BuildStepStreamID: id,
+		// 	LineNumber:        uint64(i),
+		// 	Timestamp:         time.Unix(0, timestampUnixNano),
+		// 	Output:            parts[1],
+		// })
 
+		outputStream = append(outputStream, sL)
 	}
 	return outputStream, logFile.totalLines
 }
@@ -105,11 +111,16 @@ func (m *fileManager) SaveStreamLine(streamLine StreamLine) StreamLine {
 	logFile.mux.Lock()
 	defer logFile.mux.Unlock()
 
+	jsonSL, err := json.Marshal(&streamLine)
+	if err != nil {
+		log.Println(err)
+	}
+
 	if streamLine.LineNumber >= logFile.totalLines {
-		logFile.contents = append(logFile.contents, fmt.Sprintf("%d %s", streamLine.Timestamp.UnixNano(), streamLine.Output))
+		logFile.contents = append(logFile.contents, jsonSL)
 		logFile.totalLines++
 	} else {
-		logFile.contents[streamLine.LineNumber] = fmt.Sprintf("%d %s", streamLine.Timestamp.UnixNano(), streamLine.Output)
+		logFile.contents[streamLine.LineNumber] = jsonSL
 	}
 	logFile.needsFlush = true
 	return streamLine
@@ -123,11 +134,11 @@ func (m *fileManager) getStreamLogFile(id string) *logFile {
 			log.Panic(err)
 			return nil
 		}
-		contents := []string{}
+		contents := [][]byte{}
 		totalLines := uint64(0)
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			contents = append(contents, scanner.Text())
+			contents = append(contents, scanner.Bytes())
 			totalLines++
 		}
 		m.logFiles[id] = &logFile{
