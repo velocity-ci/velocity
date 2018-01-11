@@ -173,12 +173,6 @@ func (c *Controller) monitor(s Slave) {
 				return
 			}
 
-			b, err := c.buildManager.GetBuildByBuildID(buildStep.BuildID)
-			if err != nil {
-				log.Printf("could not find build %s", buildStep.BuildID)
-				return
-			}
-
 			streamLine := build.NewStreamLine(outputStream.ID, lM.LineNumber, time.Now(), lM.Output)
 			c.buildManager.CreateStreamLine(streamLine)
 
@@ -187,29 +181,30 @@ func (c *Controller) monitor(s Slave) {
 				buildStep.StartedAt = time.Now()
 				c.buildManager.UpdateBuildStep(buildStep)
 			}
-			if b.Status == velocity.StateWaiting || b.StartedAt.IsZero() {
-				b.Status = lM.Status
-				b.StartedAt = time.Now()
-				c.buildManager.UpdateBuild(b)
-			}
 
 			if lM.Status == velocity.StateSuccess {
 				buildStep.Status = velocity.StateSuccess
 				buildStep.CompletedAt = time.Now()
 				c.buildManager.UpdateBuildStep(buildStep)
-				_, total := c.buildManager.GetBuildStepsByBuildID(b.ID) // TODO: cache?
-				if buildStep.Number == total-1 {
-					b.Status = velocity.StateSuccess
-					b.CompletedAt = time.Now()
-					c.buildManager.UpdateBuild(b)
-					s.State = "ready"
-					c.manager.Save(s)
-				}
 			} else if lM.Status == velocity.StateFailed {
 				buildStep.Status = velocity.StateFailed
 				buildStep.CompletedAt = time.Now()
 				c.buildManager.UpdateBuildStep(buildStep)
-				b.Status = velocity.StateFailed
+			}
+
+			// Build update
+			b, err := c.buildManager.GetBuildByBuildID(buildStep.BuildID)
+			if err != nil {
+				log.Printf("could not find build %s", buildStep.BuildID)
+			}
+			if b.Status == velocity.StateWaiting || b.StartedAt.IsZero() {
+				b.Status = lM.Status
+				b.StartedAt = time.Now()
+				c.buildManager.UpdateBuild(b)
+			}
+			_, total := c.buildManager.GetBuildStepsByBuildID(b.ID) // TODO: cache?
+			if buildStep.Number == total-1 && (lM.Status == velocity.StateSuccess || lM.Status == velocity.StateFailed) {
+				b.Status = lM.Status
 				b.CompletedAt = time.Now()
 				c.buildManager.UpdateBuild(b)
 				s.State = "ready"

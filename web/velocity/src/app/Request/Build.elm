@@ -8,6 +8,8 @@ import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Request.Helpers exposing (apiUrl)
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Http
+import Array exposing (Array)
+import Json.Decode as Decode
 
 
 steps :
@@ -49,12 +51,13 @@ streams maybeToken id =
 streamOutput :
     Maybe AuthToken
     -> BuildStream.Id
-    -> Http.Request (PaginatedList BuildStreamOutput)
+    -> Http.Request (Array BuildStreamOutput)
 streamOutput maybeToken id =
     let
         expect =
             BuildStream.outputDecoder
-                |> PaginatedList.decoder
+                |> Decode.array
+                |> Decode.at [ "result" ]
                 |> Http.expectJson
     in
         apiUrl ("/streams/" ++ BuildStream.idToString id)

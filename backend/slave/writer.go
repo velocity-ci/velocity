@@ -87,7 +87,7 @@ func (w *StreamWriter) Write(p []byte) (n int, err error) {
 		Type: "log",
 		Data: lM,
 	}
-	log.Printf("emitted %s:%d\n%s", w.StreamID, w.LineNumber, p)
+	log.Printf("emitted %s:%d:%s\n%s", w.StreamID, w.LineNumber, w.status, p)
 	err = w.ws.WriteJSON(m)
 	if err != nil {
 		return 0, err

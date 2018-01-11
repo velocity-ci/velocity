@@ -6,9 +6,8 @@ import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
 import Data.Build as Build exposing (Build)
 import Data.BuildStep as BuildStep exposing (BuildStep)
-import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
+import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
 import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
-import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Data.AuthToken as AuthToken exposing (AuthToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -33,6 +32,8 @@ import Views.Helpers exposing (onClickPage)
 import Navigation
 import Dict exposing (Dict)
 import Json.Encode as Encode
+import Array exposing (Array)
+import Html.Lazy as Lazy
 
 
 -- MODEL --
@@ -68,26 +69,30 @@ type Field
     | Choice ChoiceFormField
 
 
-type StepType
-    = LoadedBuildStep BuildStep
-
-
 type alias FromBuild =
-    Build
+    Build.Id
 
 
 type alias ToBuild =
-    Build
+    Build.Id
+
+
+type Stream
+    = Stream BuildStream.Id
+
+
+type alias LoadedOutputStreams =
+    Dict String ( Int, Maybe ProjectTask.Step, BuildStep.Id, Array BuildStreamOutput )
 
 
 type BuildType
-    = LoadedBuild Build (List BuildStep) (List BuildStreamOutput) Ansi.Log.Model
+    = LoadedBuild Build.Id LoadedOutputStreams
     | LoadingBuild (Maybe FromBuild) ToBuild
 
 
 type Tab
     = NewFormTab
-    | BuildTab Build
+    | BuildTab Build.Id
 
 
 type Frame
@@ -96,55 +101,58 @@ type Frame
 
 
 loadBuild :
-    Maybe AuthToken
+    ProjectTask.Task
+    -> Maybe AuthToken
     -> Build
     -> Task Http.Error (Maybe BuildType)
-loadBuild maybeAuthToken build =
-    Request.Build.steps build.id maybeAuthToken
-        |> Http.toTask
+loadBuild task maybeAuthToken build =
+    build.steps
+        |> List.sortBy .number
+        |> List.map
+            (\buildStep ->
+                let
+                    taskStep =
+                        task.steps
+                            |> Array.fromList
+                            |> Array.get buildStep.number
+                in
+                    ( taskStep, buildStep )
+            )
+        |> List.map
+            (\( taskStep, buildStep ) ->
+                List.map
+                    (\{ id } ->
+                        Request.Build.streamOutput maybeAuthToken id
+                            |> Http.toTask
+                            |> Task.andThen (\output -> Task.succeed ( id, taskStep, buildStep, output ))
+                    )
+                    buildStep.streams
+            )
+        |> List.foldr (++) []
+        |> Task.sequence
         |> Task.andThen
-            (\(Paginated steps) ->
-                steps.results
-                    |> List.map (.id >> (Request.Build.streams maybeAuthToken) >> Http.toTask)
-                    |> Task.sequence
-                    |> Task.andThen
-                        (\paginatedStreams ->
-                            paginatedStreams
-                                |> List.map (\(Paginated { results }) -> results)
-                                |> List.foldr (++) []
-                                |> List.map (.id >> (Request.Build.streamOutput maybeAuthToken) >> Http.toTask)
-                                |> Task.sequence
-                                |> Task.andThen
-                                    (\paginatedStreamOutputList ->
-                                        paginatedStreamOutputList
-                                            |> List.map (\(Paginated { results }) -> results)
-                                            |> List.foldr (++) []
-                                            |> (\outputStreams ->
-                                                    buildOutput outputStreams
-                                                        |> LoadedBuild build steps.results outputStreams
-                                               )
-                                            |> Just
-                                            |> Task.succeed
-                                    )
+            (\streamOutputList ->
+                streamOutputList
+                    |> List.foldr
+                        (\( id, taskStep, buildStep, outputStreams ) dict ->
+                            let
+                                streamTuple =
+                                    ( buildStep.number, taskStep, buildStep.id, outputStreams )
+                            in
+                                Dict.insert (BuildStream.idToString id) streamTuple dict
                         )
+                        Dict.empty
+                    |> LoadedBuild build.id
+                    |> Just
+                    |> Task.succeed
             )
 
 
-loadFirstBuild :
-    Maybe AuthToken
-    -> List Build
-    -> Task Http.Error (Maybe BuildType)
-loadFirstBuild maybeAuthToken builds =
-    List.head builds
-        |> Maybe.map (loadBuild maybeAuthToken)
-        |> Maybe.withDefault (Task.succeed Nothing)
-
-
-buildOutput : List BuildStreamOutput -> Ansi.Log.Model
+buildOutput : Array BuildStreamOutput -> Ansi.Log.Model
 buildOutput buildOutput =
-    List.foldl Ansi.Log.update
+    Array.foldl Ansi.Log.update
         (Ansi.Log.init Ansi.Log.Cooked)
-        (List.map .output buildOutput)
+        (Array.map .output buildOutput)
 
 
 stringToTab : Maybe String -> List Build -> Tab
@@ -154,11 +162,7 @@ stringToTab maybeSelectedTab builds =
             NewFormTab
 
         Just buildId ->
-            builds
-                |> List.filter (\b -> (Build.idToString b.id) == buildId)
-                |> List.head
-                |> Maybe.map BuildTab
-                |> Maybe.withDefault NewFormTab
+            BuildTab (Build.Id buildId)
 
         Nothing ->
             NewFormTab
@@ -199,11 +203,22 @@ init session id hash task maybeSelectedTab builds =
             NewFormTab ->
                 Task.succeed (initialModel (Just NewFormFrame))
 
-            BuildTab b ->
-                loadBuild maybeAuthToken b
-                    |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
-                    |> Task.map initialModel
-                    |> Task.mapError handleLoadError
+            BuildTab buildId ->
+                let
+                    build =
+                        builds
+                            |> List.filter (\a -> a.id == buildId)
+                            |> List.head
+                in
+                    case build of
+                        Just b ->
+                            loadBuild task maybeAuthToken b
+                                |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
+                                |> Task.map initialModel
+                                |> Task.mapError handleLoadError
+
+                        Nothing ->
+                            Task.succeed (initialModel (Just NewFormFrame))
 
 
 newField : Parameter -> Field
@@ -248,12 +263,19 @@ streamChannelName stream =
     "stream:" ++ (BuildStream.idToString stream.id)
 
 
-buildEvents : Build -> Dict String (List ( String, Encode.Value -> Msg ))
-buildEvents build =
+buildEvents : List Build -> Build.Id -> Dict String (List ( String, Encode.Value -> Msg ))
+buildEvents builds buildId =
     let
+        build =
+            builds
+                |> List.filter (\b -> b.id == buildId)
+                |> List.head
+
         streams =
-            List.map .streams build.steps
-                |> List.foldr (++) []
+            build
+                |> Maybe.map (\build -> List.map .streams build.steps)
+                |> Maybe.map (List.foldr (++) [])
+                |> Maybe.withDefault []
 
         foldStreamEvents stream dict =
             let
@@ -268,37 +290,37 @@ buildEvents build =
         List.foldl foldStreamEvents Dict.empty streams
 
 
-events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
-events model =
+events : List Build -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
+events builds model =
     case model.frame of
-        BuildFrame (LoadedBuild build _ _ _) ->
-            buildEvents build
+        BuildFrame (LoadedBuild id _) ->
+            buildEvents builds id
 
         _ ->
             Dict.empty
 
 
-leaveChannels : Model -> Maybe String -> List String
-leaveChannels model maybeBuildId =
+leaveChannels : List Build -> Model -> Maybe String -> List String
+leaveChannels builds model maybeBuildId =
     let
         channels id b =
-            if id == Build.idToString b.id then
+            if id == Build.idToString b then
                 []
             else
-                Dict.keys (buildEvents b)
+                Dict.keys (buildEvents builds b)
     in
         case ( maybeBuildId, model.frame ) of
-            ( Just buildId, BuildFrame (LoadedBuild b _ _ _) ) ->
-                channels buildId b
+            ( Just buildId, BuildFrame (LoadedBuild id _) ) ->
+                channels buildId id
 
-            ( Just buildId, BuildFrame (LoadingBuild (Just b) _) ) ->
-                channels buildId b
+            ( Just buildId, BuildFrame (LoadingBuild (Just id) _) ) ->
+                channels buildId id
 
-            ( _, BuildFrame (LoadedBuild b _ _ _) ) ->
-                Dict.keys (buildEvents b)
+            ( _, BuildFrame (LoadedBuild id _) ) ->
+                Dict.keys (buildEvents builds id)
 
             ( _, BuildFrame (LoadingBuild (Just b) _) ) ->
-                Dict.keys (buildEvents b)
+                Dict.keys (buildEvents builds b)
 
             _ ->
                 []
@@ -321,7 +343,7 @@ view project commit model builds =
             [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
                 [ h4 [] [ text (ProjectTask.nameToString task.name) ]
                 , viewTabs project commit task builds model.selectedTab
-                , viewTabFrame model
+                , Lazy.lazy (viewTabFrame model) builds
                 ]
             ]
 
@@ -337,7 +359,7 @@ viewTabs project commit task builds selectedTab =
                             "+"
 
                         BuildTab b ->
-                            Build.idToString b.id
+                            Build.idToString b
                                 |> String.slice 0 5
 
                 tabQueryParam =
@@ -346,7 +368,7 @@ viewTabs project commit task builds selectedTab =
                             "new"
 
                         BuildTab b ->
-                            Build.idToString b.id
+                            Build.idToString b
 
                 route =
                     CommitRoute.Task task.name (Just tabQueryParam)
@@ -356,7 +378,7 @@ viewTabs project commit task builds selectedTab =
                 compare a b =
                     case ( a, b ) of
                         ( BuildTab c, BuildTab d ) ->
-                            Build.idToString c.id == Build.idToString d.id
+                            Build.idToString c == Build.idToString d
 
                         ( NewFormTab, NewFormTab ) ->
                             True
@@ -378,26 +400,102 @@ viewTabs project commit task builds selectedTab =
                         [ text tabText ]
                     ]
     in
-        List.append (List.map (BuildTab >> buildTab) builds) [ buildTab NewFormTab ]
+        List.append (List.map (.id >> BuildTab >> buildTab) builds) [ buildTab NewFormTab ]
             |> ul [ class "nav nav-tabs nav-fill" ]
 
 
-viewTabFrame : Model -> Html Msg
-viewTabFrame model =
+viewTabFrame : Model -> List Build -> Html Msg
+viewTabFrame model builds =
     let
         buildForm =
             div [] <|
                 viewBuildForm (ProjectTask.nameToString model.task.name) model.form model.errors
+
+        findBuild id =
+            builds
+                |> List.filter (\a -> a.id == id)
+                |> List.head
     in
         case model.frame of
             NewFormFrame ->
                 buildForm
 
-            BuildFrame (LoadedBuild _ _ _ o) ->
-                Ansi.Log.view o
+            BuildFrame (LoadedBuild id streams) ->
+                let
+                    ansiInit =
+                        Ansi.Log.init Ansi.Log.Cooked
 
-            BuildFrame (LoadingBuild _ _) ->
-                text "Loading"
+                    build =
+                        findBuild id
+
+                    ansiOutput =
+                        Dict.toList streams
+                            |> List.sortBy (\( _, ( number, _, _, _ ) ) -> number)
+                            |> List.map
+                                (\( streamId, ( number, taskStep, buildStepId, outputLines ) ) ->
+                                    let
+                                        lineAnsi outputLine ansi =
+                                            Ansi.Log.update outputLine.output ansi
+
+                                        ansi =
+                                            outputLines
+                                                |> Array.foldl lineAnsi ansiInit
+                                                |> Ansi.Log.view
+                                    in
+                                        ( ansi, taskStep, buildStepId )
+                                )
+                            |> List.map
+                                (\( ansi, taskStep, buildStepId ) ->
+                                    let
+                                        cardTitle =
+                                            case taskStep of
+                                                Just (Build _) ->
+                                                    "Build"
+
+                                                Just (Run _) ->
+                                                    "Run"
+
+                                                Just (Clone _) ->
+                                                    "Clone"
+
+                                                Nothing ->
+                                                    ""
+
+                                        buildStep =
+                                            build
+                                                |> Maybe.map (.steps >> List.filter (\s -> s.id == buildStepId))
+                                                |> Maybe.andThen (List.head)
+                                    in
+                                        case buildStep of
+                                            Just buildStep ->
+                                                let
+                                                    cardClasses =
+                                                        case buildStep.status of
+                                                            BuildStep.Waiting ->
+                                                                ( "bg-warning", True )
+
+                                                            BuildStep.Running ->
+                                                                ( "bg-primary", True )
+
+                                                            BuildStep.Success ->
+                                                                ( "bg-light", True )
+
+                                                            BuildStep.Failed ->
+                                                                ( "bg-danger", True )
+                                                in
+                                                    div [ class "card  mt-3", classList [ cardClasses ] ]
+                                                        [ h5 [ class "card-header" ] [ text cardTitle ]
+                                                        , div [ class "card-body text-white" ] [ ansi ]
+                                                        ]
+
+                                            _ ->
+                                                text ""
+                                )
+                in
+                    div [] (ansiOutput)
+
+            _ ->
+                text ""
 
 
 viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
@@ -475,11 +573,13 @@ type Msg
     | LoadBuild Build
     | BuildLoaded (Result Http.Error (Maybe BuildType))
     | AddStreamOutput BuildStream Encode.Value
+    | BuildUpdated Encode.Value
 
 
 type ExternalMsg
     = NoOp
     | AddBuild Build
+    | UpdateBuild Build
 
 
 update : Project -> Commit -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
@@ -606,7 +706,7 @@ update project commit session msg model =
                 let
                     cmd =
                         build
-                            |> loadBuild maybeAuthToken
+                            |> loadBuild model.task maybeAuthToken
                             |> Task.attempt BuildLoaded
                 in
                     model
@@ -639,6 +739,19 @@ update project commit session msg model =
                         => Navigation.newUrl (Route.routeToString route)
                         => AddBuild build
 
+            BuildUpdated buildJson ->
+                let
+                    externalMsg =
+                        buildJson
+                            |> Decode.decodeValue Build.decoder
+                            |> Result.toMaybe
+                            |> Maybe.map UpdateBuild
+                            |> Maybe.withDefault NoOp
+                in
+                    model
+                        => Cmd.none
+                        => externalMsg
+
             BuildCreated (Err _) ->
                 model
                     => Cmd.none
@@ -652,7 +765,7 @@ update project commit session msg model =
                                 let
                                     fromBuild =
                                         case model.frame of
-                                            BuildFrame (LoadedBuild b _ _ _) ->
+                                            BuildFrame (LoadedBuild b _) ->
                                                 Just b
 
                                             _ ->
@@ -672,25 +785,44 @@ update project commit session msg model =
 
             AddStreamOutput _ outputJson ->
                 let
-                    maybeBuildStreamOutput =
-                        outputJson
-                            |> Decode.decodeValue BuildStream.outputDecoder
-                            |> Result.toMaybe
-
-                    outputStreams existing =
-                        maybeBuildStreamOutput
-                            |> Maybe.map (\b -> List.append existing [ b ])
-                            |> Maybe.withDefault existing
-
-                    output existingOutput =
-                        maybeBuildStreamOutput
-                            |> Maybe.map (\o -> Ansi.Log.update o.output existingOutput)
-                            |> Maybe.withDefault existingOutput
-
                     frame =
                         case model.frame of
-                            BuildFrame (LoadedBuild a b c d) ->
-                                BuildFrame (LoadedBuild a b (outputStreams c) (buildOutput c))
+                            BuildFrame (LoadedBuild build streams) ->
+                                outputJson
+                                    |> Decode.decodeValue BuildStream.outputDecoder
+                                    |> Result.toMaybe
+                                    |> Maybe.map
+                                        (\b ->
+                                            let
+                                                streamKey =
+                                                    BuildStream.idToString b.streamId
+
+                                                streamLines =
+                                                    Dict.get streamKey streams
+                                            in
+                                                case streamLines of
+                                                    Just ( number, taskStep, buildStepId, streamLines ) ->
+                                                        let
+                                                            streamLineLength =
+                                                                Array.length streamLines - 1
+
+                                                            updatedStreamLines =
+                                                                if b.line > streamLineLength then
+                                                                    Array.push b streamLines
+                                                                else
+                                                                    Array.set b.line b streamLines
+
+                                                            streamTuple =
+                                                                ( number, taskStep, buildStepId, updatedStreamLines )
+                                                        in
+                                                            Dict.insert streamKey streamTuple streams
+
+                                                    _ ->
+                                                        streams
+                                        )
+                                    |> Maybe.withDefault streams
+                                    |> LoadedBuild build
+                                    |> BuildFrame
 
                             _ ->
                                 model.frame

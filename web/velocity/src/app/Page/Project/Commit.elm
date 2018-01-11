@@ -147,7 +147,7 @@ loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg )
 loadedEvents msg model =
     case msg of
         CommitTaskLoaded (Ok subModel) ->
-            CommitTask.events subModel
+            CommitTask.events model.builds subModel
                 |> mapEvents CommitTaskMsg
 
         _ ->
@@ -158,10 +158,10 @@ leaveChannels : Model -> Maybe CommitRoute.Route -> List String
 leaveChannels model maybeCommitRoute =
     case ( getSubPage model.subPageState, maybeCommitRoute ) of
         ( CommitTask subModel, Just (CommitRoute.Task _ buildName) ) ->
-            CommitTask.leaveChannels subModel buildName
+            CommitTask.leaveChannels model.builds subModel buildName
 
         ( CommitTask subModel, _ ) ->
-            CommitTask.leaveChannels subModel Nothing
+            CommitTask.leaveChannels model.builds subModel Nothing
 
         _ ->
             []
@@ -389,6 +389,20 @@ update project session msg model =
                             CommitTask.AddBuild b ->
                                 { model | builds = addBuild model.builds b }
 
+                            CommitTask.UpdateBuild b ->
+                                let
+                                    builds =
+                                        List.map
+                                            (\c ->
+                                                if c.id == b.id then
+                                                    b
+                                                else
+                                                    c
+                                            )
+                                            model.builds
+                                in
+                                    { model | builds = builds }
+
                             CommitTask.NoOp ->
                                 model
                 in
@@ -427,9 +441,9 @@ update project session msg model =
                                     List.map
                                         (\a ->
                                             if b.id == a.id then
-                                                b
+                                                Debug.log "YAAAAAY" b
                                             else
-                                                a
+                                                Debug.log "NOOOOOO" a
                                         )
                                         model.builds
                                 )
