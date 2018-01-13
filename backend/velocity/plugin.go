@@ -72,12 +72,19 @@ func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
 		networkResp.ID,
 	)
 
-	sR.setServices([]*serviceRunner{sR})
 	sR.PullOrBuild()
 	sR.Create()
-	go sR.Run()
+	stopServicesChannel := make(chan string, 32)
+	wg.Add(1)
+	go sR.Run(stopServicesChannel)
+	_ = <-stopServicesChannel
+	sR.Stop()
 
 	wg.Wait()
+	err = cli.NetworkRemove(ctx, networkResp.ID)
+	if err != nil {
+		log.Printf("network %s remove err: %s", networkResp.ID, err)
+	}
 
 	exitCode := sR.exitCode
 

@@ -70,12 +70,13 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
 
-	networkResp, err := cli.NetworkCreate(ctx, "", types.NetworkCreate{
+	networkResp, err := cli.NetworkCreate(ctx, fmt.Sprintf("vci-%s", dC.GetRunID()), types.NetworkCreate{
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
 		log.Println(err)
 	}
+	log.Println(networkResp.ID)
 
 	writers := map[string]StreamWriter{}
 	// Create writers
@@ -100,7 +101,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 			writer,
 			&wg,
 			params,
-			serviceName,
+			fmt.Sprintf("%s-%s", dC.GetRunID(), serviceName),
 			s.Image,
 			&s.Build,
 			containerConfig,
@@ -113,7 +114,6 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 
 	// Pull/Build images
 	for _, serviceRunner := range services {
-		serviceRunner.setServices(services)
 		serviceRunner.PullOrBuild()
 	}
 
@@ -121,13 +121,22 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 	for _, serviceRunner := range services {
 		serviceRunner.Create()
 	}
+	stopServicesChannel := make(chan string, 32)
 	// Start services
 	for _, serviceRunner := range services {
 		wg.Add(1)
-		go serviceRunner.Run()
+		go serviceRunner.Run(stopServicesChannel)
 	}
 
+	_ = <-stopServicesChannel
+	for _, s := range services {
+		s.Stop()
+	}
 	wg.Wait()
+	err = cli.NetworkRemove(ctx, networkResp.ID)
+	if err != nil {
+		log.Printf("network %s remove err: %s", networkResp.ID, err)
+	}
 	success := true
 	for _, serviceRunner := range services {
 		if serviceRunner.exitCode != 0 {

@@ -46,6 +46,7 @@ func newServiceRunner(
 		containerConfig: containerConfig,
 		hostConfig:      hostConfig,
 		networkID:       networkID,
+		removing:        false,
 	}
 }
 
@@ -63,11 +64,10 @@ type serviceRunner struct {
 	networkID   string
 	containerID string
 	exitCode    int
+	removing    bool
 
 	wg     *sync.WaitGroup
 	params map[string]Parameter
-
-	allServices []*serviceRunner
 }
 
 func getContainerName(serviceName string) string {
@@ -86,10 +86,6 @@ func getImageName(serviceName string) string {
 	)
 }
 
-func (sR *serviceRunner) setServices(s []*serviceRunner) {
-	sR.allServices = s
-}
-
 func (sR *serviceRunner) PullOrBuild() {
 	if sR.build != nil && (sR.build.Dockerfile != "" || sR.build.Context != "") {
 		err := buildContainer(
@@ -100,7 +96,7 @@ func (sR *serviceRunner) PullOrBuild() {
 			sR.writer,
 		)
 		if err != nil {
-			log.Println(err)
+			log.Printf("build image err: %s", err)
 		}
 		sR.image = getImageName(sR.name)
 		sR.containerConfig.Image = getImageName(sR.name)
@@ -115,7 +111,7 @@ func (sR *serviceRunner) PullOrBuild() {
 				types.ImagePullOptions{},
 			)
 			if err != nil {
-				log.Println(err)
+				log.Printf("pull image err: %s", err)
 			}
 			defer pullResp.Close()
 			handleOutput(pullResp, sR.params, sR.writer)
@@ -131,7 +127,7 @@ func (sR *serviceRunner) PullOrBuild() {
 func findImageLocally(imageName string, cli *client.Client, ctx context.Context) error {
 	images, err := cli.ImageList(ctx, types.ImageListOptions{})
 	if err != nil {
-		log.Println(err)
+		log.Printf("image find err: %s", err)
 		return err
 	}
 	for _, i := range images {
@@ -154,20 +150,20 @@ func (sR *serviceRunner) Create() {
 		getContainerName(sR.name),
 	)
 	if err != nil {
-		log.Println(err)
+		log.Printf("container create err: %s", err)
 	}
 	sR.containerID = createResp.ID
 }
 
-func (sR *serviceRunner) Run() {
-	sR.writer.Write([]byte(fmt.Sprintf("Running container: %s", getContainerName(sR.name))))
+func (sR *serviceRunner) Run(stop chan string) {
+	sR.writer.Write([]byte(fmt.Sprintf("Running container: %s (%s)", getContainerName(sR.name), sR.containerID)))
 	err := sR.dockerCli.ContainerStart(
 		sR.context,
 		sR.containerID,
 		types.ContainerStartOptions{},
 	)
 	if err != nil {
-		log.Println(err)
+		log.Printf("container %s start err: %s", sR.containerID, err)
 	}
 	logsResp, err := sR.dockerCli.ContainerLogs(
 		sR.context,
@@ -175,14 +171,12 @@ func (sR *serviceRunner) Run() {
 		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true},
 	)
 	if err != nil {
-		log.Println(err)
+		log.Printf("container %s logs err: %s", sR.containerID, err)
 	}
 	defer logsResp.Close()
 	handleOutput(logsResp, sR.params, sR.writer)
 
-	for _, s := range sR.allServices {
-		go s.Stop()
-	}
+	stop <- sR.name
 }
 
 func (sR *serviceRunner) Stop() {
@@ -195,29 +189,29 @@ func (sR *serviceRunner) Stop() {
 		&stopTimeout,
 	)
 	if err != nil {
-		log.Println(err)
+		log.Printf("container %s stop err: %s", sR.containerID, err)
 	}
 
 	container, err := sR.dockerCli.ContainerInspect(sR.context, sR.containerID)
 	if err != nil {
-		log.Println(err)
+		log.Printf("container %s inspect err: %s", sR.containerID, err)
 	}
 
 	sR.exitCode = container.State.ExitCode
-	sR.writer.Write([]byte(fmt.Sprintf("Container %s exited: %d", getContainerName(sR.name), sR.exitCode)))
+	sR.writer.Write([]byte(fmt.Sprintf("Container %s exited: %d", sR.containerID, sR.exitCode)))
+	sR.writer.Write([]byte(fmt.Sprintf("container %s status: %s", sR.containerID, container.State.Status)))
 
-	err = sR.dockerCli.ContainerRemove(
-		sR.context,
-		sR.containerID,
-		types.ContainerRemoveOptions{RemoveVolumes: true},
-	)
-	if err != nil {
-		log.Println(err)
-	}
-
-	err = sR.dockerCli.NetworkRemove(sR.context, sR.networkID)
-	if err != nil {
-		log.Println(err)
+	if !sR.removing {
+		sR.removing = true
+		err = sR.dockerCli.ContainerRemove(
+			sR.context,
+			sR.containerID,
+			types.ContainerRemoveOptions{RemoveVolumes: true},
+		)
+		if err != nil {
+			log.Printf("container %s remove err: %s", sR.containerID, err)
+		}
+		sR.writer.Write([]byte(fmt.Sprintf("Removed container: %s (%s)", getContainerName(sR.name), sR.containerID)))
 	}
 }
 
