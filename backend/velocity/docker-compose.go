@@ -281,6 +281,15 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 		break
 	}
 
+	// working_dir
+	switch x := serviceMap["working_dir"].(type) {
+	case interface{}:
+		a.WorkingDir = x.(string)
+		break
+	default:
+		break
+	}
+
 	// environment
 	a.Environment = map[string]string{}
 	switch x := serviceMap["environment"].(type) {
@@ -301,7 +310,7 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 		}
 		break
 	default:
-		log.Println("no environment specified")
+		// log.Println("no environment specified")
 		break
 	}
 

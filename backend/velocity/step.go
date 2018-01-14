@@ -13,9 +13,9 @@ type Step interface {
 }
 
 const (
-	successANSI = "\x1b[1m\x1b[40m\x1b[32m"
-	errorANSI   = "\x1b[1m\x1b[40m\x1b[31m"
-	infoANSI    = "\x1b[1m\x1b[40m\x1b[34m"
+	successANSI = "\x1b[1m\x1b[49m\x1b[32m"
+	errorANSI   = "\x1b[1m\x1b[49m\x1b[31m"
+	infoANSI    = "\x1b[1m\x1b[49m\x1b[34m"
 )
 
 // Step state constants
