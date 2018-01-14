@@ -188,7 +188,7 @@ func (r *gormRepository) GetAllCommitsByProjectID(projectID string, q CommitQuer
 
 	db.
 		Limit(int(q.Amount)).
-		Offset(int(q.Page - 1)).
+		Offset(int(q.Page-1) * int(q.Amount)).
 		Find(&gCs)
 
 	commits := []Commit{}
@@ -272,7 +272,7 @@ func (r *gormRepository) GetAllBranchesByProjectID(projectID string, q BranchQue
 
 	db.
 		Limit(int(q.Amount)).
-		Offset(int(q.Page - 1)).
+		Offset(int(q.Page-1) * int(q.Amount)).
 		Find(&gBs)
 
 	branches := []Branch{}
