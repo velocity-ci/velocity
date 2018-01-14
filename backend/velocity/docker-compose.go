@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -226,21 +228,112 @@ type dockerComposeService struct {
 	Expose      []string                  `json:"expose" yaml:"expose"`
 }
 
-// func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) error {
-// 	var multi []string
-// 	err := unmarshal(&multi)
-// 	if err != nil {
-// 		var single string
-// 		err := unmarshal(&single)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		*a = []string{single}
-// 	} else {
-// 		*a = multi
-// 	}
-// 	return nil
-// }
+func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var serviceMap map[string]interface{}
+	err := unmarshal(&serviceMap)
+	if err != nil {
+		log.Printf("unable to unmarshal service")
+		return err
+	}
+	// log.Printf("serviceMap: %+v\n", serviceMap)
+
+	// image
+	switch x := serviceMap["image"].(type) {
+	case interface{}:
+		a.Image = x.(string)
+		break
+	default:
+		break
+	}
+
+	// build
+	switch x := serviceMap["build"].(type) {
+	case string:
+		// use string as context path. Dockerfile in root of that path
+		a.Build = dockerComposeServiceBuild{
+			Context:    x, // get path of docker-compose file
+			Dockerfile: "Dockerfile",
+		}
+		// a.Image = x.(string)
+		break
+	case map[interface{}]interface{}:
+		a.Build = dockerComposeServiceBuild{
+			Context:    x["context"].(string), // get path of docker-compose file
+			Dockerfile: x["dockerfile"].(string),
+		}
+		break
+	default:
+		break
+	}
+
+	// command
+	switch x := serviceMap["command"].(type) {
+	case []interface{}:
+		for _, p := range x {
+			a.Command = append(a.Command, p.(string))
+		}
+		break
+	case interface{}:
+		// TODO: handle /bin/sh -c "sleep 3"; should be: ["/bin/sh", "-c", "\"sleep 3\""]
+		a.Command = strings.Split(x.(string), " ")
+		break
+	default:
+		break
+	}
+
+	// environment
+	a.Environment = map[string]string{}
+	switch x := serviceMap["environment"].(type) {
+	case []interface{}:
+		for _, e := range x {
+			parts := strings.Split(e.(string), "=")
+			key := parts[0]
+			val := parts[1]
+			a.Environment[key] = val
+		}
+		break
+	case map[interface{}]interface{}:
+		for k, v := range x {
+			if num, ok := v.(int); ok {
+				v = strconv.Itoa(num)
+			}
+			a.Environment[k.(string)] = v.(string)
+		}
+		break
+	default:
+		log.Println("no environment specified")
+		break
+	}
+
+	// volumes
+	switch x := serviceMap["volumes"].(type) {
+	case []interface{}:
+		for _, v := range x {
+			a.Volumes = append(a.Volumes, v.(string))
+		}
+		break
+	}
+
+	// links
+	switch x := serviceMap["links"].(type) {
+	case []interface{}:
+		for _, v := range x {
+			a.Links = append(a.Links, v.(string))
+		}
+		break
+	}
+
+	// expose
+	switch x := serviceMap["expose"].(type) {
+	case []interface{}:
+		for _, v := range x {
+			a.Expose = append(a.Expose, v.(string))
+		}
+		break
+	}
+
+	return nil
+}
 
 type dockerComposeServiceBuild struct {
 	Context    string `json:"context" yaml:"context"`
