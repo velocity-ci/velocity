@@ -4,9 +4,12 @@ services:
 
   a:
     image: busybox
-    command: ls -al /app
+    command: ping -c 3 b
     volumes:
-      - "../:/app"
+      - "./:/app"
+    links:
+      - "b"
 
   b:
-    image: hello-world
+    image: busybox
+    command: sleep 10s

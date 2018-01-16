@@ -90,9 +90,8 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 	for _, serviceName := range serviceOrder {
 		writer := writers[serviceName]
 		writer.SetStatus(StateRunning)
-		writer.Write([]byte(fmt.Sprintf("Configured %s", serviceName)))
-
 		s := dC.Contents.Services[serviceName]
+		writer.Write([]byte(fmt.Sprintf("Configured %+v", s)))
 
 		// generate containerConfig + hostConfig
 		containerConfig, hostConfig := dC.generateContainerAndHostConfig(s)
@@ -181,7 +180,7 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService) 
 		parts := strings.Split(v, ":")
 		if len(parts) == 1 {
 			volumes[parts[0]] = struct{}{}
-		} else if len(parts) > 2 {
+		} else if len(parts) > 1 {
 			hostMount := parts[0]
 			guestMount := parts[1:]
 			volumes[parts[1]] = struct{}{}
@@ -204,8 +203,26 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService) 
 		WorkingDir: s.WorkingDir,
 	}
 
+	links := []string{}
+	for _, l := range s.Links {
+		parts := strings.Split(l, ":")
+		var target string
+		var alias string
+		if len(parts) == 1 {
+			target = getContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), l))
+			alias = l
+		} else {
+			target = parts[0]
+			target = getContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), target))
+			alias = parts[1]
+		}
+		links = append(links, fmt.Sprintf("%s:%s", target, alias))
+	}
+	log.Printf("linked: %v", links)
+
 	hostConfig := &container.HostConfig{
 		Binds: binds,
+		Links: links,
 	}
 	return containerConfig, hostConfig
 }
