@@ -3,7 +3,10 @@ version: '3'
 services:
 
   a:
-    image: hello-world
+    image: busybox
+    command: ls -al /app
+    volumes:
+      - "../:/app"
 
   b:
     image: hello-world

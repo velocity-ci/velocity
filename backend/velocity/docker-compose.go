@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -94,7 +95,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 		s := dC.Contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig
-		containerConfig, hostConfig := generateContainerAndHostConfig(s)
+		containerConfig, hostConfig := dC.generateContainerAndHostConfig(s)
 
 		// Create service runners
 		sR := newServiceRunner(
@@ -168,12 +169,45 @@ func (dC *DockerCompose) String() string {
 	return string(j)
 }
 
-func generateContainerAndHostConfig(s dockerComposeService) (*container.Config, *container.HostConfig) {
-	containerConfig := &container.Config{}
-	if len(s.Command) > 0 {
-		// containerConfig.Cmd = s.Command
+func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService) (*container.Config, *container.HostConfig) {
+	env := []string{}
+	projectRoot, _ := os.Getwd()
+	for k, v := range s.Environment {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
-	return containerConfig, &container.HostConfig{}
+	volumes := map[string]struct{}{}
+	binds := []string{}
+	for _, v := range s.Volumes {
+		parts := strings.Split(v, ":")
+		if len(parts) == 1 {
+			volumes[parts[0]] = struct{}{}
+		} else if len(parts) > 2 {
+			hostMount := parts[0]
+			guestMount := parts[1:]
+			volumes[parts[1]] = struct{}{}
+			if !filepath.IsAbs(hostMount) { // no absolute paths allowed.
+				hostMount = filepath.Join(projectRoot, filepath.Dir(dC.ComposeFile), hostMount)
+				if strings.Contains(hostMount, projectRoot) { // no further up from project root
+					binds = append(binds, strings.Join(append([]string{hostMount}, guestMount...), ":"))
+				}
+			}
+		}
+	}
+
+	log.Printf("bound: %v", binds)
+
+	containerConfig := &container.Config{
+		Image:      s.Image,
+		Cmd:        s.Command,
+		Env:        env,
+		Volumes:    volumes,
+		WorkingDir: s.WorkingDir,
+	}
+
+	hostConfig := &container.HostConfig{
+		Binds: binds,
+	}
+	return containerConfig, hostConfig
 }
 
 func getServiceOrder(services map[string]dockerComposeService, serviceOrder []string) []string {
