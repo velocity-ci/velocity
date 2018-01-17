@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types/network"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/builder/dockerignore"
@@ -32,6 +34,7 @@ func newServiceRunner(
 	build *dockerComposeServiceBuild,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
+	networkConfig *network.NetworkingConfig,
 	networkID string,
 ) *serviceRunner {
 	return &serviceRunner{
@@ -45,6 +48,7 @@ func newServiceRunner(
 		build:           build,
 		containerConfig: containerConfig,
 		hostConfig:      hostConfig,
+		networkConfig:   networkConfig,
 		networkID:       networkID,
 		removing:        false,
 	}
@@ -60,6 +64,7 @@ type serviceRunner struct {
 	build           *dockerComposeServiceBuild
 	containerConfig *container.Config
 	hostConfig      *container.HostConfig
+	networkConfig   *network.NetworkingConfig
 
 	networkID   string
 	containerID string
@@ -146,7 +151,7 @@ func (sR *serviceRunner) Create() {
 		sR.context,
 		sR.containerConfig,
 		sR.hostConfig,
-		nil,
+		sR.networkConfig,
 		getContainerName(sR.name),
 	)
 	if err != nil {

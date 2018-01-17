@@ -8,9 +8,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/docker/docker/api/types/network"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -94,7 +97,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 		writer.Write([]byte(fmt.Sprintf("Configured %+v", s)))
 
 		// generate containerConfig + hostConfig
-		containerConfig, hostConfig := dC.generateContainerAndHostConfig(s)
+		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, networkResp.ID)
 
 		// Create service runners
 		sR := newServiceRunner(
@@ -108,6 +111,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 			&s.Build,
 			containerConfig,
 			hostConfig,
+			networkConfig,
 			networkResp.ID,
 		)
 
@@ -168,7 +172,7 @@ func (dC *DockerCompose) String() string {
 	return string(j)
 }
 
-func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService) (*container.Config, *container.HostConfig) {
+func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
 	env := []string{}
 	projectRoot, _ := os.Getwd()
 	for k, v := range s.Environment {
@@ -224,7 +228,16 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService) 
 		Binds: binds,
 		Links: links,
 	}
-	return containerConfig, hostConfig
+
+	networkConfig := &network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
+			networkID: &network.EndpointSettings{
+				Aliases: s.Networks["default"].Aliases,
+			},
+		},
+	}
+
+	return containerConfig, hostConfig, networkConfig
 }
 
 func getServiceOrder(services map[string]dockerComposeService, serviceOrder []string) []string {
@@ -269,14 +282,24 @@ type dockerComposeYaml struct {
 }
 
 type dockerComposeService struct {
-	Image       string                    `json:"image" yaml:"image"`
-	Build       dockerComposeServiceBuild `json:"build" yaml:"build"`
-	WorkingDir  string                    `json:"workingDir" yaml:"working_dir"`
-	Command     []string                  `json:"command" yaml:"command"`
-	Links       []string                  `json:"links" yaml:"links"`
-	Environment map[string]string         `json:"environment" yaml:"environment"`
-	Volumes     []string                  `json:"volumes" yaml:"volumes"`
-	Expose      []string                  `json:"expose" yaml:"expose"`
+	Image       string                                 `json:"image" yaml:"image"`
+	Build       dockerComposeServiceBuild              `json:"build" yaml:"build"`
+	WorkingDir  string                                 `json:"workingDir" yaml:"working_dir"`
+	Command     []string                               `json:"command" yaml:"command"`
+	Links       []string                               `json:"links" yaml:"links"`
+	Environment map[string]string                      `json:"environment" yaml:"environment"`
+	Volumes     []string                               `json:"volumes" yaml:"volumes"`
+	Expose      []string                               `json:"expose" yaml:"expose"`
+	Networks    map[string]dockerComposeServiceNetwork `json:"networks" yaml:"networks"`
+}
+
+type dockerComposeServiceNetwork struct {
+	Aliases []string `json:"aliases" yaml:"aliases"`
+}
+
+type dockerComposeServiceBuild struct {
+	Context    string `json:"context" yaml:"context"`
+	Dockerfile string `json:"dockerfile" yaml:"dockerfile"`
 }
 
 func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -286,7 +309,6 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 		log.Printf("unable to unmarshal service")
 		return err
 	}
-	// log.Printf("serviceMap: %+v\n", serviceMap)
 
 	// image
 	switch x := serviceMap["image"].(type) {
@@ -305,7 +327,6 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 			Context:    x, // get path of docker-compose file
 			Dockerfile: "Dockerfile",
 		}
-		// a.Image = x.(string)
 		break
 	case map[interface{}]interface{}:
 		a.Build = dockerComposeServiceBuild{
@@ -361,7 +382,6 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 		}
 		break
 	default:
-		// log.Println("no environment specified")
 		break
 	}
 
@@ -392,10 +412,26 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 		break
 	}
 
-	return nil
-}
+	// networks
+	fmt.Println(reflect.TypeOf(serviceMap["networks"]))
+	switch x := serviceMap["networks"].(type) {
+	case map[interface{}]interface{}:
+		fmt.Println(x)
+		d := x["default"].(map[interface{}]interface{})
+		iA := d["aliases"].([]interface{})
+		aliases := []string{}
+		for _, i := range iA {
+			aliases = append(aliases, i.(string))
+		}
+		a.Networks = map[string]dockerComposeServiceNetwork{
+			"default": dockerComposeServiceNetwork{
+				Aliases: aliases,
+			},
+		}
+		break
+	default:
+		break
+	}
 
-type dockerComposeServiceBuild struct {
-	Context    string `json:"context" yaml:"context"`
-	Dockerfile string `json:"dockerfile" yaml:"dockerfile"`
+	return nil
 }

@@ -99,6 +99,7 @@ func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error
 		nil,
 		config,
 		hostConfig,
+		nil,
 		networkResp.ID,
 	)
 

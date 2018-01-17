@@ -4,7 +4,7 @@ services:
 
   a:
     image: busybox
-    command: ping -c 3 b
+    command: ping -c 3 c
     volumes:
       - "./:/app"
     links:
@@ -13,3 +13,7 @@ services:
   b:
     image: busybox
     command: sleep 10s
+    networks:
+      default:
+        aliases:
+          - "c"
