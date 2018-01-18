@@ -1,0 +1,27 @@
+{{ define "main" }}
+{{ $pagesLen := len .Data.Pages }}
+{{ range $i, $page := .Data.Pages.ByDate }}
+{{ if modBool $i 3 }}
+    <div class="row">
+{{ end }}
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-10">
+                        <h4 class="pull-left">
+                            <a href="{{ $page.Permalink }}">{{ $page.Title }}</a>
+                        </h4>
+                    </div>
+                </div>
+                <p>{{ $page.Params.short_description }}</p>
+            </div>
+        </div>
+    </div>
+{{ if modBool (add $i 1) 3 }}
+    </div>
+{{ else if eq $pagesLen (add $i 1) }}
+    </div>
+{{ end }}
+{{ end }}
+{{ end }}

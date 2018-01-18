@@ -1,0 +1,10 @@
+baseurl = "https://velocityci.io"
+title = "Velocity CI"
+languageCode = "en-gb"
+
+[params]
+    github_username = "velocity-ci"
+
+[params.meta]
+    description = ""
+    keywords = ""
