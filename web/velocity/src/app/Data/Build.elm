@@ -4,6 +4,8 @@ import Data.Task as Task
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Json.Decode as Decode exposing (Decoder, int, string)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
+import Data.Helpers exposing (stringToDateTime)
+import Time.DateTime as DateTime exposing (DateTime)
 import UrlParser
 
 
@@ -12,6 +14,7 @@ type alias Build =
     , status : Status
     , taskId : Task.Id
     , steps : List BuildStep
+    , createdAt : DateTime
     }
 
 
@@ -26,6 +29,7 @@ decoder =
         |> required "status" statusDecoder
         |> required "task" Task.decodeId
         |> required "steps" (Decode.list BuildStep.decoder)
+        |> required "createdAt" stringToDateTime
 
 
 statusDecoder : Decoder Status

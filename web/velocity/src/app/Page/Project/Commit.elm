@@ -25,6 +25,7 @@ import Data.PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
+import Page.Helpers exposing (sortByDatetime)
 
 
 -- SUB PAGES --
@@ -83,7 +84,7 @@ init session project hash maybeRoute =
         initialModel commit (Paginated tasks) (Paginated builds) =
             { commit = commit
             , tasks = tasks.results
-            , builds = builds.results
+            , builds = sortByDatetime .createdAt builds.results |> List.reverse
             , subPageState = Loaded initialSubPage
             }
 
@@ -241,7 +242,7 @@ addBuild builds build =
             List.filter (Build.compare build) builds
     in
         if (List.length found == 0) then
-            build :: builds
+            List.append builds [ build ]
         else
             builds
 
@@ -382,7 +383,7 @@ update project session msg model =
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 let
                     ( ( newModel, newCmd ), externalMsg ) =
-                        CommitTask.update project model.commit session subMsg subModel
+                        CommitTask.update project model.commit model.builds session subMsg subModel
 
                     model_ =
                         case externalMsg of
@@ -417,7 +418,7 @@ update project session msg model =
                             |> Maybe.map (addBuild model.builds)
                             |> Maybe.withDefault model.builds
                 in
-                    { model | builds = builds }
+                    { model | builds = sortByDatetime .createdAt builds |> List.reverse }
                         => Cmd.none
 
             ( DeleteBuildEvent buildJson, _ ) ->
@@ -441,9 +442,9 @@ update project session msg model =
                                     List.map
                                         (\a ->
                                             if b.id == a.id then
-                                                Debug.log "YAAAAAY" b
+                                                b
                                             else
-                                                Debug.log "NOOOOOO" a
+                                                a
                                         )
                                         model.builds
                                 )

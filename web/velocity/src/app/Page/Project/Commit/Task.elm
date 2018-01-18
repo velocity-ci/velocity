@@ -14,7 +14,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Page.Helpers exposing (validClasses)
+import Page.Helpers exposing (validClasses, formatDateTime)
 import Request.Commit
 import Request.Build
 import Task exposing (Task)
@@ -87,12 +87,12 @@ type alias LoadedOutputStreams =
 
 type BuildType
     = LoadedBuild Build.Id LoadedOutputStreams
-    | LoadingBuild (Maybe FromBuild) ToBuild
+    | LoadingBuild (Maybe FromBuild) (Maybe ToBuild)
 
 
 type Tab
     = NewFormTab
-    | BuildTab Build.Id
+    | BuildTab Int
 
 
 type Frame
@@ -161,8 +161,14 @@ stringToTab maybeSelectedTab builds =
         Just "new" ->
             NewFormTab
 
-        Just buildId ->
-            BuildTab (Build.Id buildId)
+        Just tabText ->
+            tabText
+                |> String.split "-"
+                |> List.reverse
+                |> List.head
+                |> Maybe.andThen (String.toInt >> Result.toMaybe)
+                |> Maybe.map BuildTab
+                |> Maybe.withDefault NewFormTab
 
         Nothing ->
             NewFormTab
@@ -203,12 +209,12 @@ init session id hash task maybeSelectedTab builds =
             NewFormTab ->
                 Task.succeed (initialModel (Just NewFormFrame))
 
-            BuildTab buildId ->
+            BuildTab buildIndex ->
                 let
                     build =
                         builds
-                            |> List.filter (\a -> a.id == buildId)
-                            |> List.head
+                            |> Array.fromList
+                            |> Array.get (buildIndex - 1)
                 in
                     case build of
                         Just b ->
@@ -351,16 +357,35 @@ view project commit model builds =
 viewTabs : Project -> Commit -> ProjectTask.Task -> List Build -> Tab -> Html Msg
 viewTabs project commit task builds selectedTab =
     let
+        compare a b =
+            case ( a, b ) of
+                ( BuildTab c, BuildTab d ) ->
+                    c == d
+
+                ( NewFormTab, NewFormTab ) ->
+                    True
+
+                _ ->
+                    False
+
         buildTab t =
             let
+                build =
+                    case t of
+                        NewFormTab ->
+                            Nothing
+
+                        BuildTab b ->
+                            Array.fromList builds
+                                |> Array.get (b - 1)
+
                 tabText =
                     case t of
                         NewFormTab ->
                             "+"
 
                         BuildTab b ->
-                            Build.idToString b
-                                |> String.slice 0 5
+                            "Build #" ++ (toString b)
 
                 tabQueryParam =
                     case t of
@@ -368,30 +393,39 @@ viewTabs project commit task builds selectedTab =
                             "new"
 
                         BuildTab b ->
-                            Build.idToString b
+                            "build-" ++ (toString b)
 
                 route =
-                    CommitRoute.Task task.name (Just tabQueryParam)
+                    Just tabQueryParam
+                        |> CommitRoute.Task task.name
                         |> ProjectRoute.Commit commit.hash
                         |> Route.Project project.id
 
-                compare a b =
-                    case ( a, b ) of
-                        ( BuildTab c, BuildTab d ) ->
-                            Build.idToString c == Build.idToString d
+                tabBgColour =
+                    build
+                        |> Maybe.map
+                            (\b ->
+                                case b.status of
+                                    Build.Waiting ->
+                                        ( "bg-warning", True )
 
-                        ( NewFormTab, NewFormTab ) ->
-                            True
+                                    Build.Running ->
+                                        ( "bg-primary", True )
 
-                        _ ->
-                            False
+                                    Build.Success ->
+                                        ( "bg-success", True )
+
+                                    Build.Failed ->
+                                        ( "bg-danger", True )
+                            )
+                        |> Maybe.withDefault ( "", True )
 
                 tabClassList =
                     [ ( "nav-link", True )
                     , ( "active", compare t selectedTab )
                     ]
             in
-                li [ class "nav-item" ]
+                li [ class "nav-item", classList [ tabBgColour ] ]
                     [ a
                         [ classList tabClassList
                         , Route.href route
@@ -399,8 +433,12 @@ viewTabs project commit task builds selectedTab =
                         ]
                         [ text tabText ]
                     ]
+
+        buildTabs =
+            builds
+                |> List.indexedMap (\i -> (\_ -> buildTab (BuildTab (i + 1))))
     in
-        List.append (List.map (.id >> BuildTab >> buildTab) builds) [ buildTab NewFormTab ]
+        List.append buildTabs [ buildTab NewFormTab ]
             |> ul [ class "nav nav-tabs nav-fill" ]
 
 
@@ -427,6 +465,11 @@ viewTabFrame model builds =
 
                     build =
                         findBuild id
+
+                    titleOutput =
+                        build
+                            |> Maybe.map (.createdAt >> formatDateTime >> text)
+                            |> Maybe.withDefault (text "")
 
                     ansiOutput =
                         Dict.toList streams
@@ -464,7 +507,7 @@ viewTabFrame model builds =
                                         buildStep =
                                             build
                                                 |> Maybe.map (.steps >> List.filter (\s -> s.id == buildStepId))
-                                                |> Maybe.andThen (List.head)
+                                                |> Maybe.andThen List.head
                                     in
                                         case buildStep of
                                             Just buildStep ->
@@ -492,7 +535,7 @@ viewTabFrame model builds =
                                                 text ""
                                 )
                 in
-                    div [] (ansiOutput)
+                    div [] (titleOutput :: ansiOutput)
 
             _ ->
                 text ""
@@ -539,10 +582,10 @@ viewBuildForm taskName fields errors =
                         ]
                         []
     in
-        [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ] <|
+        [ Html.form [ class "mt-3", attribute "novalidate" "", onSubmit SubmitForm ] <|
             List.map fieldInput fields
                 ++ [ button
-                        [ class "btn btn-primary"
+                        [ class "btn btn-lg btn-block btn-primary"
                         , type_ "submit"
                         , disabled <| not (List.isEmpty errors)
                         ]
@@ -582,8 +625,8 @@ type ExternalMsg
     | UpdateBuild Build
 
 
-update : Project -> Commit -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
-update project commit session msg model =
+update : Project -> Commit -> List Build -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update project commit builds session msg model =
     let
         projectId =
             project.id
@@ -726,8 +769,9 @@ update project commit session msg model =
             BuildCreated (Ok build) ->
                 let
                     tab =
-                        build.id
-                            |> Build.idToString
+                        List.length builds
+                            |> toString
+                            |> (\i -> "build-" ++ i)
                             |> Just
 
                     route =
@@ -761,8 +805,14 @@ update project commit session msg model =
                 let
                     frame =
                         case tab of
-                            BuildTab toBuild ->
+                            BuildTab toBuildIndex ->
                                 let
+                                    toBuild =
+                                        builds
+                                            |> Array.fromList
+                                            |> Array.get (toBuildIndex - 1)
+                                            |> Maybe.map .id
+
                                     fromBuild =
                                         case model.frame of
                                             BuildFrame (LoadedBuild b _) ->

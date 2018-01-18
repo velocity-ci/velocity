@@ -191,4 +191,65 @@ h1 {
   line-height: 1.1;
 }
 
-.ansi-bold{font-weight:700}.ansi-black-fg{color:#5D6D7E}.ansi-red-fg{color:#E74C3C}.ansi-green-fg{color:#2ECC71}.ansi-yellow-fg{color:#F1C40F}.ansi-blue-fg{color:#3498DB}.ansi-magenta-fg{color:#9B59B6}.ansi-cyan-fg{color:#1ABC9C}.ansi-white-fg{color:#ECF0F1}.ansi-bright-black-fg{color:#5D6D7E;font-weight:700}.ansi-bright-red-fg{color:#E74C3C;font-weight:700}.ansi-bright-green-fg{color:#2ECC71;font-weight:700}.ansi-bright-yellow-fg{color:#F1C40F;font-weight:700}.ansi-bright-blue-fg{color:#3498DB;font-weight:700}.ansi-bright-magenta-fg{color:#9B59B6;font-weight:700}.ansi-bright-cyan-fg{color:#1ABC9C;font-weight:700}.ansi-bright-white-fg{color:#ECF0F1;font-weight:700}.ansi-black-bg{background-color:#5D6D7E}.ansi-red-bg{background-color:#E74C3C}.ansi-green-bg{background-color:#2ECC71}.ansi-yellow-bg{background-color:#F1C40F}.ansi-blue-bg{background-color:#3498DB}.ansi-magenta-bg{background-color:#9B59B6}.ansi-cyan-bg{background-color:#1ABC9C}.ansi-white-bg{background-color:#ECF0F1}.ansi-bright-black-bg{background-color:#5D6D7E;font-weight:700}.ansi-bright-red-bg{background-color:#E74C3C;font-weight:700}.ansi-bright-green-bg{background-color:#2ECC71;font-weight:700}.ansi-bright-yellow-bg{background-color:#F1C40F;font-weight:700}.ansi-bright-blue-bg{background-color:#3498DB;font-weight:700}.ansi-bright-magenta-bg{background-color:#9B59B6;font-weight:700}.ansi-bright-cyan-bg{background-color:#1ABC9C;font-weight:700}.ansi-bright-white-bg{background-color:#ECF0F1;font-weight:700}.ansi-blink{animation:1s blinker step-end infinite}
+.ansi-bold{font-weight:700}
+.ansi-black-fg{color:#5D6D7E}
+.ansi-red-fg{color:#E74C3C}
+.ansi-green-fg{color:#2ECC71}
+.ansi-yellow-fg{color:#F1C40F}
+.ansi-blue-fg{color:#3498DB}
+.ansi-magenta-fg{color:#9B59B6}
+.ansi-cyan-fg{color:#1ABC9C}
+.ansi-white-fg{color:#ECF0F1}
+.ansi-bright-black-fg{color:#5D6D7E;font-weight:700}
+.ansi-bright-red-fg{color:#E74C3C;font-weight:700}
+.ansi-bright-green-fg{color:#2ECC71;font-weight:700}
+.ansi-bright-yellow-fg{color:#F1C40F;font-weight:700}
+.ansi-bright-blue-fg{color:#3498DB;font-weight:700}
+.ansi-bright-magenta-fg{color:#9B59B6;font-weight:700}
+.ansi-bright-cyan-fg{color:#1ABC9C;font-weight:700}
+.ansi-bright-white-fg{color:#ECF0F1;font-weight:700}
+.ansi-black-bg{background-color:#5D6D7E}
+.ansi-red-bg{background-color:#E74C3C}
+.ansi-green-bg{background-color:#2ECC71}
+.ansi-yellow-bg{background-color:#F1C40F}
+.ansi-blue-bg{background-color:#3498DB}
+.ansi-magenta-bg{background-color:#9B59B6}
+.ansi-cyan-bg{background-color:#1ABC9C}
+.ansi-white-bg{background-color:#ECF0F1}
+
+.ansi-bright-black-bg {
+  background-color:#5D6D7E;
+  font-weight:700
+}
+
+.ansi-bright-red-bg {
+  background-color:#E74C3C;
+  font-weight:700
+}
+.ansi-bright-green-bg{
+  background-color:#2ECC71;
+  font-weight:700
+}
+.ansi-bright-yellow-bg{
+  background-color:#F1C40F;
+  font-weight:700
+}
+.ansi-bright-blue-bg{
+  background-color:#3498DB;
+  font-weight:700
+}
+.ansi-bright-magenta-bg{
+  background-color:#9B59B6;
+  font-weight:700
+}
+.ansi-bright-cyan-bg{
+  background-color:#1ABC9C;
+  font-weight:700
+}
+.ansi-bright-white-bg{
+  background-color:#ECF0F1;
+  font-weight:700
+}
+.ansi-blink{
+  animation:1s blinker step-end infinite
+}
