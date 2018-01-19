@@ -1,0 +1,64 @@
+name: Deploy
+description: Deploys application to given environment
+
+parameters: 
+  - name: environment
+    default: testing
+    branchMap:
+      master: production
+  - name: example_secret
+    secret: true
+  # Haved default exports to keep DRY
+  # * Default to secret, but can be not secret.
+  - use: civelocity/aws-credentials # by default, export AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+  - use: civelocity/s3-credentials
+    secret: true
+    arguments:
+      uri: s3://mybucket/secrets/registry_credentials # path on S3
+    exports:
+      username: registry_username
+      password: registry_password
+
+# Run these before each step if timed-out
+# * can set timeout on individual container metadata
+# * have default arguments too to keep DRY
+docker: 
+  registries:
+    # AWS ECR
+    - address: xxxxxxxx.dkr.ecr.eu-west-1.amazonaws.com
+      use: civelocity/ecr-login
+    # Random private
+    - address: mydockerregistry.com
+      use: civelocity/docker-login
+      arguments:
+        USERNAME: ${registry_username}
+        PASSWORD: ${registry_password}
+
+steps:
+  - type: run
+    name: Initialise Terraform
+    image: hashicorp/terraform
+    command: terraform init
+    environment:
+      TFVAR_ENVIRONMENT: ${environment}
+
+  - type: compose
+    name: Run tests
+    compose-file: docker-compose.test.yml
+
+  - type: build
+    name: Build release image
+    dockerfile: app.Dockerfile
+    context: ./
+    tags: 
+     - xxxxxxx.dkr.ecr.eu-west-1.amazonaws.com/my-website:latest
+     - xxxxxxx.dkr.ecr.eu-west-1.amazonaws.com/my-website:${GIT_DESCRIBE}
+     - mydockerregistry.com/my-website:latest
+     - mydockerregistry.com/my-website:${GIT_DESCRIBE}
+
+  - type: push
+    images:
+     - xxxxxxx.dkr.ecr.eu-west-1.amazonaws.com/my-website:latest
+     - xxxxxxx.dkr.ecr.eu-west-1.amazonaws.com/my-website:${GIT_DESCRIBE}
+     - mydockerregistry.com/my-website:latest
+     - mydockerregistry.com/my-website:${GIT_DESCRIBE}
