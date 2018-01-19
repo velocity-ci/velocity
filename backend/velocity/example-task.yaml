@@ -1,6 +1,12 @@
 name: Deploy
 description: Deploys application to given environment
 
+## Remove clone step, emit a workspace setup/prep stage 
+# that clones repository and resolves parameters
+git: 
+  submodule: false
+
+## Parameters are mixed
 parameters: 
   - name: environment
     default: testing
