@@ -6,6 +6,11 @@ parameters:
     default: testing
     branchMap:
       master: production
+  - name: altEnvironment
+    default: testing
+    otherOptions:
+      - production
+      - staging
   - name: example_secret
     secret: true
   # Haved default exports to keep DRY
