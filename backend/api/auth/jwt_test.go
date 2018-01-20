@@ -3,7 +3,6 @@ package auth_test
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -166,7 +165,6 @@ func createInvalidClaimsToken() string {
 			NotBefore: time.Now().Unix() - 1000,
 		},
 	})
-	log.Println(token.Claims, token.Header, token.Raw)
 
 	tokenString, _ := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	return tokenString

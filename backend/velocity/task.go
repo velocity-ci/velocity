@@ -2,13 +2,7 @@ package velocity
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
-	"os"
-	"time"
-
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 type Task struct {
@@ -22,74 +16,6 @@ type Task struct {
 
 type TaskGit struct {
 	Submodule bool `json:"submodule"`
-}
-
-// Maybe pass git repository to clone?
-func (t *Task) Setup(
-	emitter Emitter,
-	backupResolver BackupResolver,
-	repository *GitRepository,
-	commitHash string,
-) error {
-	t.runID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
-
-	writer := emitter.GetStreamWriter("setup")
-	writer.SetStatus(StateRunning)
-
-	// Resolve parameters
-	parameters := map[string]Parameter{}
-	for _, config := range t.Parameters {
-		writer.Write([]byte(fmt.Sprintf("Resolving parameter %s", config.GetInfo())))
-		params, err := config.GetParameters(writer, t.runID, backupResolver)
-		if err != nil {
-			writer.SetStatus(StateFailed)
-			log.Printf("could not resolve parameter: %v", err)
-		}
-		for _, param := range params {
-			parameters[param.Name] = param
-			writer.Write([]byte(fmt.Sprintf("Added parameter %s", param.Name)))
-		}
-	}
-
-	// Update params on steps
-	for _, s := range t.Steps {
-		s.SetParams(parameters)
-	}
-
-	// Clone repository if necessary
-	if repository != nil {
-		repo, dir, err := GitClone(repository, false, true, t.Git.Submodule, writer)
-		if err != nil {
-			log.Println(err)
-			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
-			return err
-		}
-		w, err := repo.Worktree()
-		if err != nil {
-			log.Println(err)
-			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
-			return err
-		}
-		log.Printf("Checking out %s", commitHash)
-		err = w.Checkout(&git.CheckoutOptions{
-			Hash: plumbing.NewHash(commitHash),
-		})
-		if err != nil {
-			log.Println(err)
-			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
-			return err
-		}
-		os.Chdir(dir)
-	}
-
-	writer.SetStatus(StateSuccess)
-	writer.Write([]byte(""))
-	writer.Write([]byte("Setup success.\n"))
-
-	return nil
 }
 
 func (t *Task) String() string {
@@ -179,6 +105,9 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 
 		var s Step
 		switch m["type"] {
+		case "setup":
+			s = NewSetup()
+			break
 		case "run":
 			s = NewDockerRun()
 			break
@@ -267,18 +196,30 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				switch y["type"] {
 				case "run":
 					s := NewDockerRun()
-					s.UnmarshalYamlInterface(y)
-					t.Steps = append(t.Steps, s)
+					err = s.UnmarshalYamlInterface(y)
+					if err == nil {
+						t.Steps = append(t.Steps, s)
+					} else {
+						log.Println(err)
+					}
 					break
 				case "build":
 					s := NewDockerBuild()
-					s.UnmarshalYamlInterface(y)
-					t.Steps = append(t.Steps, s)
+					err = s.UnmarshalYamlInterface(y)
+					if err == nil {
+						t.Steps = append(t.Steps, s)
+					} else {
+						log.Println(err)
+					}
 					break
 				case "compose":
 					s := NewDockerCompose()
-					s.UnmarshalYamlInterface(y)
-					t.Steps = append(t.Steps, s)
+					err = s.UnmarshalYamlInterface(y)
+					if err == nil {
+						t.Steps = append(t.Steps, s)
+					} else {
+						log.Println(err)
+					}
 					break
 				// case "plugin":
 				// 	var s Plugin

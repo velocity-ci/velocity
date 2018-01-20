@@ -27,7 +27,7 @@ func knownHostFromGormKnownHost(gK gormKnownHost) KnownHost {
 	hosts := []string{}
 	err := json.Unmarshal(gK.Hosts, &hosts)
 	if err != nil {
-		log.Println("Could not unmarshal knownhost hosts")
+		log.Println("could not unmarshal knownhost hosts")
 		log.Fatal(err)
 	}
 	return KnownHost{
@@ -43,7 +43,7 @@ func knownHostFromGormKnownHost(gK gormKnownHost) KnownHost {
 func gormKnownHostFromKnownHost(k KnownHost) gormKnownHost {
 	jsonHosts, err := json.Marshal(k.Hosts)
 	if err != nil {
-		log.Println("Could not marshal knownhost hosts")
+		log.Println("could not marshal knownhost hosts")
 		log.Fatal(err)
 	}
 

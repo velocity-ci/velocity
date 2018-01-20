@@ -41,7 +41,7 @@ func (s *DockerCompose) UnmarshalYamlInterface(y map[interface{}]interface{}) er
 		s.ComposeFile = x.(string)
 		break
 	}
-	return nil
+	return s.parseDockerComposeFile()
 }
 
 func (dC DockerCompose) GetDetails() string {
@@ -57,9 +57,15 @@ func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
 }
 
 func (dC *DockerCompose) parseDockerComposeFile() error {
-	dir, _ := os.Getwd()
-	dockerComposeYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, dC.ComposeFile))
-	err := yaml.Unmarshal(dockerComposeYml, &dC.Contents)
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	dockerComposeYml, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, dC.ComposeFile))
+	if err != nil {
+		return err
+	}
+	err = yaml.Unmarshal(dockerComposeYml, &dC.Contents)
 	if err != nil {
 		return err
 	}
@@ -95,7 +101,6 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(networkResp.ID)
 
 	writers := map[string]StreamWriter{}
 	// Create writers

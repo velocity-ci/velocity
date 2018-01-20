@@ -148,7 +148,6 @@ func (c *Controller) monitor(s Slave) {
 			s.ws.Close()
 			s.ws = nil
 			s.State = "disconnected"
-			log.Println(s.Command)
 			if s.Command.Command == "build" {
 				buildCommand := s.Command.Data.(BuildCommand)
 				buildCommand.Build.Status = "waiting"

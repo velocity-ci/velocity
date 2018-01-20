@@ -30,7 +30,7 @@ func (gormProject) TableName() string {
 func gormProjectFromProject(p Project) gormProject {
 	jsonRepo, err := json.Marshal(p.Repository)
 	if err != nil {
-		log.Println("Could not marshal repository")
+		log.Println("could not marshal repository")
 		log.Fatal(err)
 	}
 	return gormProject{
@@ -47,7 +47,7 @@ func projectFromGormProject(g gormProject) Project {
 	var repo velocity.GitRepository
 	err := json.Unmarshal(g.Repository, &repo)
 	if err != nil {
-		log.Println("Could not unmarshal repository")
+		log.Println("could not unmarshal repository")
 		log.Fatal(err)
 	}
 	return Project{

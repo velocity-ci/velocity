@@ -102,17 +102,19 @@ func run(taskName string, gitParams map[string]velocity.Parameter) {
 	// }
 
 	emitter := NewEmitter()
-	t.Setup(emitter, &ParameterResolver{}, nil, "")
+
+	t.Steps = append([]velocity.Step{velocity.NewSetup()}, t.Steps...)
 
 	// emitter.SetTotalSteps(uint64(len(t.Steps)))
 	// Run each step unless they fail (optional)
 	for i, step := range t.Steps {
+		if step.GetType() == "setup" {
+			step.(*velocity.Setup).Init(t, &ParameterResolver{}, nil, "")
+		}
 		emitter.SetStepNumber(uint64(i))
-		if step.GetType() != "clone" {
-			err := step.Execute(emitter, map[string]velocity.Parameter{})
-			if err != nil {
-				break
-			}
+		err := step.Execute(emitter, map[string]velocity.Parameter{})
+		if err != nil {
+			break
 		}
 	}
 }

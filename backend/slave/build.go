@@ -10,17 +10,19 @@ func runBuild(build *slave.BuildCommand, ws *websocket.Conn) {
 	emitter := NewEmitter(ws)
 
 	backupResolver := NewParameterResolver(build.Build.Parameters)
-	build.Task.Setup(
-		emitter,
-		&backupResolver,
-		&build.Project.Repository,
-		build.Commit.Hash,
-	)
 
-	for i, step := range build.Task.Steps {
-		emitter.SetBuildStep(build.Build.Steps[i])
+	for _, step := range build.Build.Steps {
+		emitter.SetBuildStep(step)
 
-		err := step.Execute(emitter, map[string]velocity.Parameter{})
+		if step.VStep.GetType() == "setup" {
+			step.VStep.(*velocity.Setup).Init(
+				&build.Task.Task,
+				&backupResolver,
+				&build.Project.Repository,
+				build.Commit.Hash)
+		}
+
+		err := step.VStep.Execute(emitter, map[string]velocity.Parameter{})
 		if err != nil {
 			break
 		}

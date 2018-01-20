@@ -116,8 +116,9 @@ func sync(
 						Value: describe,
 					},
 				}
-
+				xd, _ := os.Getwd()
 				if _, err := os.Stat(fmt.Sprintf("%s/tasks/", dir)); err == nil {
+					os.Chdir(dir)
 					filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
 						if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
 							taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
@@ -127,6 +128,7 @@ func sync(
 						}
 						return nil
 					})
+					os.Chdir(xd)
 				}
 			}
 		}

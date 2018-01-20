@@ -110,7 +110,7 @@ func (c Controller) postTaskByUUIDBuildsHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	c.manager.CreateBuild(build)
+	build = c.manager.CreateBuild(build)
 
 	c.render.JSON(w, http.StatusCreated, NewResponseBuild(build))
 }

@@ -48,7 +48,7 @@ func (r *gormRepository) Delete(u User) {
 func (r *gormRepository) GetByUsername(username string) (User, error) {
 	u := User{}
 	if r.gorm.Where(&User{Username: username}).First(&u).RecordNotFound() {
-		log.Printf("Could not find User %s", username)
+		log.Printf("could not find User %s", username)
 		return User{}, fmt.Errorf("could not find User %s", username)
 	}
 

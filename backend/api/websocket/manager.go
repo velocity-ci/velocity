@@ -41,5 +41,5 @@ func (m *Manager) EmitAll(message *PhoenixMessage) {
 			}
 		}
 	}
-	log.Printf("Emitted %s to %d clients", message.Topic, clientCount)
+	// log.Printf("Emitted %s to %d clients", message.Topic, clientCount)
 }

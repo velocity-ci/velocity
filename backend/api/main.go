@@ -39,7 +39,7 @@ func main() {
 		// wait for our os signal to stop the app
 		// on the graceful stop channel
 		sig := <-gracefulStop
-		log.Printf("Caught signal: %+s\n", sig)
+		log.Printf("caught signal: %+s\n", sig)
 
 		// send message on "finish up" channel to tell the app to
 		// gracefully shutdown

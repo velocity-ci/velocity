@@ -8,6 +8,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
 	"github.com/velocity-ci/velocity/backend/api/websocket"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type Manager struct {
@@ -36,10 +37,12 @@ func (m *Manager) CreateBuild(b Build) Build {
 	b.UpdatedAt = time.Now()
 
 	buildSteps := []BuildStep{}
-	for i, s := range b.Task.Steps {
+	// Add steps (including setup)
+	for i, s := range append([]velocity.Step{velocity.NewSetup()}, b.Task.Steps...) {
 		bS := NewBuildStep(
 			b.ID,
 			uint64(i),
+			s,
 		)
 		m.CreateBuildStep(bS)
 

@@ -33,12 +33,10 @@ func (c Controller) getBuildByUUIDStepsHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	t := build.Task
-
 	buildSteps, count := c.manager.GetBuildStepsByBuildID(build.ID)
 	respBuildSteps := []ResponseBuildStep{}
 	for _, buildStep := range buildSteps {
-		respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number]))
+		respBuildSteps = append(respBuildSteps, NewResponseBuildStep(buildStep))
 	}
 	c.render.JSON(w, http.StatusOK, BuildStepManyResponse{
 		Total:  count,
@@ -55,12 +53,7 @@ func (c Controller) getStepByUUID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	build, err := c.manager.GetBuildByBuildID(buildStep.BuildID)
-	if handleResourceError(c.render, w, err, fmt.Sprintf("could not find build %s for build step %s?!?!", buildStep.BuildID, buildStep.ID)) {
-		return
-	}
+	rBS := NewResponseBuildStep(buildStep)
 
-	t := build.Task
-
-	c.render.JSON(w, http.StatusOK, NewResponseBuildStep(buildStep, t.Steps[buildStep.Number]))
+	c.render.JSON(w, http.StatusOK, rBS)
 }

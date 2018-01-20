@@ -9,6 +9,7 @@ import (
 	"github.com/docker/go/canonical/json"
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
+	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type gormBuild struct {
@@ -34,6 +35,7 @@ type gormBuildStep struct {
 	BuildID     string
 	Number      uint64
 	Status      string
+	VStep       []byte
 	Streams     []gormBuildStepStream `gorm:"ForeignKey:BuildStepID"`
 	UpdatedAt   time.Time
 	StartedAt   time.Time
@@ -122,6 +124,33 @@ func buildFromGormBuild(g gormBuild) Build {
 }
 
 func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
+	var gStep map[string]interface{}
+	err := json.Unmarshal(g.VStep, &gStep)
+	if err != nil {
+		log.Printf("could not unmarshal step from %s", g.VStep)
+		log.Fatal(err)
+	}
+
+	var vStep velocity.Step
+	switch gStep["type"] {
+	case "setup":
+		vStep = velocity.NewSetup()
+		break
+	case "run":
+		vStep = velocity.NewDockerRun()
+		break
+	case "build":
+		vStep = velocity.NewDockerBuild()
+		break
+	case "compose":
+		vStep = velocity.NewDockerCompose()
+		break
+	default:
+		log.Printf("could not determine step type: %s", gStep["type"])
+	}
+
+	json.Unmarshal(g.VStep, vStep)
+
 	streams := []BuildStepStream{}
 	for _, s := range g.Streams {
 		streams = append(streams, buildStepStreamFromGormBuildStepStream(s))
@@ -133,6 +162,8 @@ func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
 
 		Streams: streams,
 
+		VStep: vStep,
+
 		Status:      g.Status,
 		UpdatedAt:   g.UpdatedAt,
 		StartedAt:   g.StartedAt,
@@ -141,6 +172,11 @@ func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
 }
 
 func gormBuildStepFromBuildStep(bS BuildStep) gormBuildStep {
+	jsonStep, err := json.Marshal(bS.VStep)
+	if err != nil {
+		log.Println("could not marshal step")
+		log.Fatal(err)
+	}
 	streams := []gormBuildStepStream{}
 	for _, s := range bS.Streams {
 		streams = append(streams, gormBuildStepStreamFromBuildStepStream(s))
@@ -151,6 +187,8 @@ func gormBuildStepFromBuildStep(bS BuildStep) gormBuildStep {
 		Number:  bS.Number,
 
 		Streams: streams,
+
+		VStep: jsonStep,
 
 		Status:      bS.Status,
 		UpdatedAt:   bS.UpdatedAt,

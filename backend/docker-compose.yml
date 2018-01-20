@@ -45,3 +45,5 @@ services:
     environment:
       MASTER_ADDRESS: http://api
       SLAVE_SECRET: development
+      AWS_ACCESS_KEY_ID: aaaa
+      AWS_SECRET_ACCESS_KEY: aaaa

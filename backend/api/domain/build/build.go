@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/docker/go/canonical/json"
@@ -91,12 +92,107 @@ type BuildStep struct {
 	BuildID string `json:"build"`
 	Number  uint64 `json:"number"`
 
+	VStep velocity.Step `json:"step"`
+
 	Streams []BuildStepStream `json:"streams"`
 
 	Status      string    `json:"status"` // waiting, running, success, failed
 	UpdatedAt   time.Time `json:"updatedAt"`
 	StartedAt   time.Time `json:"startedAt"`
 	CompletedAt time.Time `json:"completedAt"`
+}
+
+func (bS *BuildStep) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(*objMap["id"], &bS.ID)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(*objMap["build"], &bS.BuildID)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(*objMap["number"], &bS.Number)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(*objMap["status"], &bS.Status)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(*objMap["updatedAt"], &bS.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(*objMap["startedAt"], &bS.StartedAt)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(*objMap["completedAt"], &bS.CompletedAt)
+	if err != nil {
+		return err
+	}
+
+	var rawStep *json.RawMessage
+	err = json.Unmarshal(*objMap["step"], &rawStep)
+	if err != nil {
+		log.Println("could not find step")
+		return err
+	}
+
+	var m map[string]interface{}
+	err = json.Unmarshal(*rawStep, &m)
+	if err != nil {
+		log.Println("could not unmarshal step")
+		return err
+	}
+
+	var s velocity.Step
+	switch m["type"] {
+	case "setup":
+		s = velocity.NewSetup()
+		break
+	case "run":
+		s = velocity.NewDockerRun()
+		break
+	case "build":
+		s = velocity.NewDockerBuild()
+		break
+	case "compose":
+		s = velocity.NewDockerCompose()
+		break
+	// case "plugin":
+	// s = NewPlugin()
+	default:
+		log.Printf("could not determine step %s", m["type"])
+		// return fmt.Errorf("unsupported type in json.Unmarshal: %s", m["type"])
+	}
+	if s != nil {
+		err := json.Unmarshal(*rawStep, s)
+		if err != nil {
+			return err
+		}
+		bS.VStep = s
+	}
+
+	bS.Streams = []BuildStepStream{}
+	err = json.Unmarshal(*objMap["streams"], &bS.Streams)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type BuildStepStream struct {
@@ -113,12 +209,13 @@ func NewBuildStepStream(buildStepID string, name string) BuildStepStream {
 	}
 }
 
-func NewBuildStep(buildID string, n uint64) BuildStep {
+func NewBuildStep(buildID string, n uint64, vStep velocity.Step) BuildStep {
 	bS := BuildStep{
 		ID:        uuid.NewV3(uuid.NewV1(), buildID).String(),
 		BuildID:   buildID,
 		Status:    "waiting",
 		Number:    n,
+		VStep:     vStep,
 		UpdatedAt: time.Now(),
 		Streams:   []BuildStepStream{},
 	}
@@ -195,8 +292,8 @@ type ResponseBuild struct {
 
 func NewResponseBuild(b Build) ResponseBuild {
 	steps := []ResponseBuildStep{}
-	for i, s := range b.Steps {
-		steps = append(steps, NewResponseBuildStep(s, b.Task.Steps[i]))
+	for _, s := range b.Steps {
+		steps = append(steps, NewResponseBuildStep(s))
 	}
 	return ResponseBuild{
 		ID:          b.ID,
@@ -221,7 +318,7 @@ type ResponseBuildStep struct {
 	Streams     []ResponseOutputStream `json:"streams"`
 }
 
-func NewResponseBuildStep(bS BuildStep, s velocity.Step) ResponseBuildStep {
+func NewResponseBuildStep(bS BuildStep) ResponseBuildStep {
 	streams := []ResponseOutputStream{}
 	for _, s := range bS.Streams {
 		streams = append(streams, ResponseOutputStream{
@@ -231,8 +328,8 @@ func NewResponseBuildStep(bS BuildStep, s velocity.Step) ResponseBuildStep {
 	}
 	return ResponseBuildStep{
 		ID:          bS.ID,
-		Type:        s.GetType(),
-		Description: s.GetDescription(),
+		Type:        bS.VStep.GetType(),
+		Description: bS.VStep.GetDescription(),
 		Number:      bS.Number,
 		Status:      bS.Status,
 		StartedAt:   bS.StartedAt,

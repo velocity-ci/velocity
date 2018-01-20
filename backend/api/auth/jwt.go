@@ -61,7 +61,6 @@ func (m *JWT) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Handl
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid &&
 		claims.VerifyIssuer("Velocity", true) {
-		log.Println(claims)
 		ctx = context.WithValue(ctx, requestUsername, claims["username"])
 	}
 

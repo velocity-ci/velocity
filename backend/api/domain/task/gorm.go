@@ -24,7 +24,7 @@ func (GormTask) TableName() string {
 func GormTaskFromTask(t Task) GormTask {
 	jsonTask, err := json.Marshal(t.Task)
 	if err != nil {
-		log.Println("Could not marshal task")
+		log.Println("could not marshal task")
 		log.Fatal(err)
 	}
 
@@ -40,7 +40,7 @@ func TaskFromGormTask(g GormTask) Task {
 	var vTask velocity.Task
 	err := json.Unmarshal(g.VTask, &vTask)
 	if err != nil {
-		log.Printf("Could not unmarshal task from %s", g.VTask)
+		log.Printf("could not unmarshal task from %s", g.VTask)
 		log.Fatal(err)
 	}
 
