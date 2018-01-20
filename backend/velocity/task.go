@@ -127,30 +127,53 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	}
 
 	// Deserialize Parameters
-	var rawParameters map[string]*json.RawMessage
+	var rawParameters []*json.RawMessage
 	err = json.Unmarshal(*objMap["parameters"], &rawParameters)
 	if err != nil {
+		log.Println("could not find parameters")
 		return err
 	}
 	t.Parameters = []ConfigParameter{}
 	for _, rawMessage := range rawParameters {
-		var p ConfigParameter
-		err = json.Unmarshal(*rawMessage, &p)
-		// p.Name = paramName
-		t.Parameters = append(t.Parameters, p)
+		var m map[string]interface{}
+		err = json.Unmarshal(*rawMessage, &m)
+		if err != nil {
+			log.Println("could not unmarshal parameters")
+			return err
+		}
+		if _, ok := m["use"]; ok { // derivedParam
+			p := DerivedParameter{}
+			err = json.Unmarshal(*rawMessage, &p)
+			if err != nil {
+				log.Println("could not unmarshal determined parameter")
+				return err
+			}
+			t.Parameters = append(t.Parameters, p)
+		} else if _, ok := m["name"]; ok { // basicParam
+			p := BasicParameter{}
+			err = json.Unmarshal(*rawMessage, &p)
+			if err != nil {
+				log.Println("could not unmarshal determined parameter")
+				return err
+			}
+			t.Parameters = append(t.Parameters, p)
+		}
+
 	}
 
 	// Deserialize Steps by type
 	var rawSteps []*json.RawMessage
 	err = json.Unmarshal(*objMap["steps"], &rawSteps)
 	if err != nil {
+		log.Println("could not find steps")
 		return err
 	}
-	t.Steps = make([]Step, len(rawSteps))
+	t.Steps = []Step{}
 	var m map[string]interface{}
-	for index, rawMessage := range rawSteps {
+	for _, rawMessage := range rawSteps {
 		err = json.Unmarshal(*rawMessage, &m)
 		if err != nil {
+			log.Println("could not unmarshal step")
 			return err
 		}
 
@@ -166,14 +189,16 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 			s = NewClone()
 			break
 		default:
-			return fmt.Errorf("unsupported type in json.Unmarshal: %s", m["type"])
+			log.Println("could not determine step")
+			// return fmt.Errorf("unsupported type in json.Unmarshal: %s", m["type"])
 		}
-
-		err := json.Unmarshal(*rawMessage, s)
-		if err != nil {
-			return err
+		if s != nil {
+			err := json.Unmarshal(*rawMessage, s)
+			if err != nil {
+				return err
+			}
+			t.Steps = append(t.Steps, s)
 		}
-		t.Steps[index] = s
 	}
 
 	return nil

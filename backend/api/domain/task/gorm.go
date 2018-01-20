@@ -40,7 +40,7 @@ func TaskFromGormTask(g GormTask) Task {
 	var vTask velocity.Task
 	err := json.Unmarshal(g.VTask, &vTask)
 	if err != nil {
-		log.Println("Could not unmarshal task from %v", g.VTask)
+		log.Printf("Could not unmarshal task from %s", g.VTask)
 		log.Fatal(err)
 	}
 
