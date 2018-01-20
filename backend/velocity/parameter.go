@@ -2,12 +2,15 @@ package velocity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/docker/go/canonical/json"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -21,7 +24,12 @@ type Parameter struct {
 }
 
 type ConfigParameter interface {
-	GetParameters(writer io.Writer, runID string) ([]Parameter, error)
+	GetInfo() string
+	GetParameters(writer io.Writer, runID string, backupResolver BackupResolver) ([]Parameter, error)
+}
+
+type BackupResolver interface {
+	Resolve(paramName string) (string, error)
 }
 
 type BasicParameter struct {
@@ -32,7 +40,11 @@ type BasicParameter struct {
 	Value        string   `json:"value"`
 }
 
-func (p BasicParameter) GetParameters(writer io.Writer, runID string) ([]Parameter, error) {
+func (p BasicParameter) GetInfo() string {
+	return p.Name
+}
+
+func (p BasicParameter) GetParameters(writer io.Writer, runID string, backupResolver BackupResolver) ([]Parameter, error) {
 	v := p.Default
 	if len(p.Value) > 0 {
 		v = p.Value
@@ -46,6 +58,35 @@ func (p BasicParameter) GetParameters(writer io.Writer, runID string) ([]Paramet
 	}, nil
 }
 
+func (p *BasicParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	switch x := y["name"].(type) {
+	case interface{}:
+		p.Name = x.(string)
+		break
+	}
+	switch x := y["default"].(type) {
+	case interface{}:
+		p.Default = x.(string)
+		break
+	}
+	switch x := y["secret"].(type) {
+	case interface{}:
+		p.Secret = x.(bool)
+		break
+	}
+
+	p.OtherOptions = []string{}
+	switch x := y["otherOptions"].(type) {
+	case []interface{}:
+		for _, o := range x {
+			p.OtherOptions = append(p.OtherOptions, o.(string))
+		}
+		break
+	}
+
+	return nil
+}
+
 type DerivedParameter struct {
 	Use       string            `json:"use" yaml:"use"`
 	Secret    bool              `json:"secret" yaml:"secret"`
@@ -54,7 +95,11 @@ type DerivedParameter struct {
 	// Timeout   uint64
 }
 
-func (p DerivedParameter) GetParameters(writer io.Writer, runID string) ([]Parameter, error) {
+func (p DerivedParameter) GetInfo() string {
+	return p.Use
+}
+
+func (p DerivedParameter) GetParameters(writer io.Writer, runID string, backupResolver BackupResolver) ([]Parameter, error) {
 	env := []string{}
 	for k, v := range p.Arguments {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -74,11 +119,12 @@ func (p DerivedParameter) GetParameters(writer io.Writer, runID string) ([]Param
 	if err != nil {
 		log.Println(err)
 	}
-
+	blankEmitter := NewBlankEmitter()
+	w := blankEmitter.GetStreamWriter("setup")
 	sR := newServiceRunner(
 		cli,
 		ctx,
-		writer,
+		w,
 		&wg,
 		map[string]Parameter{},
 		fmt.Sprintf("%s-%s", runID, "dParam"),
@@ -105,11 +151,10 @@ func (p DerivedParameter) GetParameters(writer io.Writer, runID string) ([]Param
 	if err != nil {
 		log.Printf("param container %s logs err: %s", sR.containerID, err)
 	}
+	headerBytes := make([]byte, 8)
+	logsResp.Read(headerBytes)
 	content, _ := ioutil.ReadAll(logsResp)
 	logsResp.Close()
-
-	fmt.Println(content)
-
 	sR.Stop()
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
@@ -117,9 +162,66 @@ func (p DerivedParameter) GetParameters(writer io.Writer, runID string) ([]Param
 		log.Printf("network %s remove err: %s", networkResp.ID, err)
 	}
 
-	// exitCode := sR.exitCode
+	params := []Parameter{}
+	var dOutput derivedOutput
+	json.Unmarshal(content, &dOutput)
+	if dOutput.State == "warning" {
+		for paramName := range dOutput.Exports {
+			val, err := backupResolver.Resolve(paramName)
+			if err != nil {
+				return []Parameter{}, err
+			}
+			params = append(params, Parameter{
+				Name:     paramName,
+				Value:    val,
+				IsSecret: dOutput.Secret,
+			})
+		}
+	} else if dOutput.State == "success" {
+		for paramName, val := range dOutput.Exports {
+			params = append(params, Parameter{
+				Name:     paramName,
+				Value:    val,
+				IsSecret: dOutput.Secret,
+			})
+		}
+	} else { // failed
+		return []Parameter{}, errors.New(dOutput.Error)
+	}
 
-	return []Parameter{}, nil
+	return params, nil
+}
+
+func (p *DerivedParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+
+	switch x := y["use"].(type) {
+	case interface{}:
+		p.Use = x.(string)
+		break
+	}
+	switch x := y["secret"].(type) {
+	case interface{}:
+		p.Secret = x.(bool)
+		break
+	}
+	p.Arguments = map[string]string{}
+	switch x := y["arguments"].(type) {
+	case map[interface{}]interface{}:
+		for k, v := range x {
+			p.Arguments[k.(string)] = v.(string)
+		}
+		break
+	}
+	p.Exports = map[string]string{}
+	switch x := y["exports"].(type) {
+	case map[interface{}]interface{}:
+		for k, v := range x {
+			p.Exports[k.(string)] = v.(string)
+		}
+		break
+	}
+
+	return nil
 }
 
 type derivedOutput struct {

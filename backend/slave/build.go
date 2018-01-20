@@ -9,6 +9,8 @@ import (
 func runBuild(build *slave.BuildCommand, ws *websocket.Conn) {
 	emitter := NewEmitter(ws)
 
+	build.Task.Setup(emitter)
+
 	for i, step := range build.Task.Steps {
 		emitter.SetBuildStep(build.Build.Steps[i])
 

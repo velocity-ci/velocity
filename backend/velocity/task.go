@@ -8,11 +8,11 @@ import (
 )
 
 type Task struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Git         TaskGit           `json:"git"`
-	Parameters  []ConfigParameter `json:"parameters"`
-	Steps       []Step            `json:"steps"`
+	Name        string            `json:"name" yaml:"name"`
+	Description string            `json:"description" yaml:"description"`
+	Git         TaskGit           `json:"git" yaml:"git"`
+	Parameters  []ConfigParameter `json:"parameters" yaml:"parameters"`
+	Steps       []Step            `json:"steps" yaml:"steps"`
 	runID       string
 }
 
@@ -21,7 +21,7 @@ type TaskGit struct {
 }
 
 // Maybe pass git repository to clone?
-func (t *Task) Setup(emitter Emitter) error {
+func (t *Task) Setup(emitter Emitter, backupResolver BackupResolver) error {
 	t.runID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
 
 	writer := emitter.GetStreamWriter("setup")
@@ -30,13 +30,15 @@ func (t *Task) Setup(emitter Emitter) error {
 	// Resolve parameters
 	parameters := map[string]Parameter{}
 	for _, config := range t.Parameters {
-		params, err := config.GetParameters(writer, t.runID)
+		writer.Write([]byte(fmt.Sprintf("Resolving parameter %s", config.GetInfo())))
+		params, err := config.GetParameters(writer, t.runID, backupResolver)
 		if err != nil {
 			writer.SetStatus(StateFailed)
 			log.Printf("could not resolve parameter: %v", err)
 		}
 		for _, param := range params {
 			parameters[param.Name] = param
+			writer.Write([]byte(fmt.Sprintf("Added parameter %s", param.Name)))
 		}
 	}
 
@@ -46,7 +48,8 @@ func (t *Task) Setup(emitter Emitter) error {
 	}
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte("\nSetup success.\n"))
+	writer.Write([]byte(""))
+	writer.Write([]byte("Setup success.\n"))
 
 	return nil
 }
@@ -135,5 +138,92 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		t.Steps[index] = s
 	}
 
+	return nil
+}
+
+func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var taskMap map[string]interface{}
+	err := unmarshal(&taskMap)
+	if err != nil {
+		log.Printf("unable to unmarshal task")
+		return err
+	}
+
+	switch x := taskMap["name"].(type) {
+	case string:
+		t.Name = x
+		break
+	}
+
+	switch x := taskMap["description"].(type) {
+	case string:
+		t.Description = x
+		break
+	}
+
+	t.Git = TaskGit{
+		Submodule: false,
+	}
+	switch x := taskMap["git"].(type) {
+	case map[interface{}]interface{}:
+		t.Git = TaskGit{
+			Submodule: x["submodule"].(bool),
+		}
+		break
+	}
+
+	t.Parameters = []ConfigParameter{}
+	switch x := taskMap["parameters"].(type) {
+	case []interface{}:
+		for _, p := range x {
+			switch y := p.(type) {
+			case map[interface{}]interface{}:
+				if _, ok := y["use"]; ok { // derivedParam
+					var dP DerivedParameter
+					dP.UnmarshalYamlInterface(y)
+					t.Parameters = append(t.Parameters, dP)
+				} else if _, ok := y["name"]; ok { // basicParam
+					var bP BasicParameter
+					bP.UnmarshalYamlInterface(y)
+					t.Parameters = append(t.Parameters, bP)
+				}
+				break
+			}
+		}
+		break
+	}
+
+	t.Steps = []Step{}
+	switch x := taskMap["steps"].(type) {
+	case []interface{}:
+		for _, s := range x {
+			switch y := s.(type) {
+			case map[interface{}]interface{}:
+				switch y["type"] {
+				case "run":
+					var s DockerRun
+					s.UnmarshalYamlInterface(y)
+					t.Steps = append(t.Steps, &s)
+					break
+					// case "build":
+					// 	var s DockerBuild
+					// 	s.UnmarshalYamlInterface(y)
+					// 	break
+					// case "docker-compose":
+					// 	var s DockerCompose
+					// 	s.UnmarshalYamlInterface(y)
+					// 	break
+					// case "plugin":
+					// 	var s Plugin
+					// 	s.UnmarshalYamlInterface(y)
+					// 	break
+				}
+				break
+			}
+		}
+		break
+	}
+
+	// log.Printf("Unmarshalled Task: %+v", t)
 	return nil
 }

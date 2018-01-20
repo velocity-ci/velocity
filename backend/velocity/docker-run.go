@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -20,9 +21,67 @@ type DockerRun struct {
 	Image          string            `json:"image" yaml:"image"`
 	Command        []string          `json:"command" yaml:"command"`
 	Environment    map[string]string `json:"environment" yaml:"environment"`
-	WorkingDir     string            `json:"workingDir" yaml:"working_dir"`
-	MountPoint     string            `json:"mountPoint" yaml:"mount_point"`
-	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignore_exit"`
+	WorkingDir     string            `json:"workingDir" yaml:"workingDir"`
+	MountPoint     string            `json:"mountPoint" yaml:"mountPoint"`
+	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignoreExit"`
+}
+
+func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	switch x := y["image"].(type) {
+	case interface{}:
+		s.Image = x.(string)
+		break
+	}
+
+	s.Command = []string{}
+	switch x := y["command"].(type) {
+	case []interface{}:
+		for _, p := range x {
+			s.Command = append(s.Command, p.(string))
+		}
+		break
+	case interface{}:
+		// TODO: handle /bin/sh -c "sleep 3"; should be: ["/bin/sh", "-c", "\"sleep 3\""]
+		s.Command = strings.Split(x.(string), " ")
+		break
+	}
+
+	s.Environment = map[string]string{}
+	switch x := y["environment"].(type) {
+	case []interface{}:
+		for _, e := range x {
+			parts := strings.Split(e.(string), "=")
+			key := parts[0]
+			val := parts[1]
+			s.Environment[key] = val
+		}
+		break
+	case map[interface{}]interface{}:
+		for k, v := range x {
+			if num, ok := v.(int); ok {
+				v = strconv.Itoa(num)
+			}
+			s.Environment[k.(string)] = v.(string)
+		}
+		break
+	}
+
+	switch x := y["workingDir"].(type) {
+	case interface{}:
+		s.WorkingDir = x.(string)
+		break
+	}
+	switch x := y["mountPoint"].(type) {
+	case interface{}:
+		s.MountPoint = x.(string)
+		break
+	}
+	switch x := y["ignoreExit"].(type) {
+	case interface{}:
+		s.IgnoreExitCode = x.(bool)
+		break
+	}
+	return nil
 }
 
 func NewDockerRun() *DockerRun {
