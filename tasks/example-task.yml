@@ -7,12 +7,9 @@ parameters:
       roleName: testRole
 
 steps: 
-  - type: clone
-    submodule: false
-      
   - type: run
     description: Hello Docker
     image: hello-world:latest
 
-  - type: docker-compose
+  - type: compose
     composeFile: backend/docker-compose.test.yml

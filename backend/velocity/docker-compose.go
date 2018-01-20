@@ -27,33 +27,21 @@ type DockerCompose struct {
 	Contents    dockerComposeYaml
 }
 
-func NewDockerCompose(y string) *DockerCompose {
-	step := DockerCompose{
+func NewDockerCompose() *DockerCompose {
+	return &DockerCompose{
 		BaseStep: BaseStep{
 			Type: "compose",
 		},
 	}
-	err := yaml.Unmarshal([]byte(y), &step)
-	if err != nil {
-		panic(err)
-	}
+}
 
-	dir, _ := os.Getwd()
-	dockerComposeYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, step.ComposeFile))
-	err = yaml.Unmarshal(dockerComposeYml, &step.Contents)
-	if err != nil {
-		panic(err)
+func (s *DockerCompose) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	switch x := y["composeFile"].(type) {
+	case interface{}:
+		s.ComposeFile = x.(string)
+		break
 	}
-
-	services := make([]string, len(step.Contents.Services))
-	i := 0
-	for k := range step.Contents.Services {
-		services[i] = k
-		i++
-	}
-	step.OutputStreams = services
-
-	return &step
+	return nil
 }
 
 func (dC DockerCompose) GetDetails() string {
@@ -68,7 +56,32 @@ func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
 	return nil
 }
 
+func (dC *DockerCompose) parseDockerComposeFile() error {
+	dir, _ := os.Getwd()
+	dockerComposeYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, dC.ComposeFile))
+	err := yaml.Unmarshal(dockerComposeYml, &dC.Contents)
+	if err != nil {
+		return err
+	}
+
+	services := make([]string, len(dC.Contents.Services))
+	i := 0
+	for k := range dC.Contents.Services {
+		services[i] = k
+		i++
+	}
+	dC.OutputStreams = services
+
+	return nil
+}
+
 func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) error {
+
+	err := dC.parseDockerComposeFile()
+	if err != nil {
+		return err
+	}
+
 	serviceOrder := getServiceOrder(dC.Contents.Services, []string{})
 
 	services := []*serviceRunner{}
