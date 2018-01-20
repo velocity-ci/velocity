@@ -29,7 +29,7 @@ func (dB DockerBuild) GetDetails() string {
 }
 
 func (dB *DockerBuild) Execute(emitter Emitter, params map[string]Parameter) error {
-	writer := emitter.NewStreamWriter("build")
+	writer := emitter.GetStreamWriter("build")
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
 

@@ -281,7 +281,7 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io
 
 		if o != "*" {
 			for _, p := range parameters {
-				if p.Secret {
+				if p.IsSecret {
 					o = strings.Replace(o, p.Value, "***", -1)
 				}
 			}

@@ -42,7 +42,7 @@ type Emitter struct {
 	StepNumber uint64
 }
 
-func (e *Emitter) NewStreamWriter(streamName string) velocity.StreamWriter {
+func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 	streamID := ""
 	for _, s := range e.Streams {
 		if s.Name == streamName {

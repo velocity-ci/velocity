@@ -3,19 +3,52 @@ package velocity
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"time"
 )
 
 type Task struct {
-	Name        string               `json:"name"`
-	Description string               `json:"description"`
-	Parameters  map[string]Parameter `json:"parameters"`
-	Steps       []Step               `json:"steps"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Git         TaskGit           `json:"git"`
+	Parameters  []ConfigParameter `json:"parameters"`
+	Steps       []Step            `json:"steps"`
+	runID       string
 }
 
-func (t *Task) UpdateParams() {
-	for _, s := range t.Steps {
-		s.SetParams(t.Parameters)
+type TaskGit struct {
+	Submodule bool `json:"submodule"`
+}
+
+// Maybe pass git repository to clone?
+func (t *Task) Setup(emitter Emitter) error {
+	t.runID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
+
+	writer := emitter.GetStreamWriter("setup")
+	writer.SetStatus(StateRunning)
+
+	// Resolve parameters
+	parameters := map[string]Parameter{}
+	for _, config := range t.Parameters {
+		params, err := config.GetParameters(writer, t.runID)
+		if err != nil {
+			writer.SetStatus(StateFailed)
+			log.Printf("could not resolve parameter: %v", err)
+		}
+		for _, param := range params {
+			parameters[param.Name] = param
+		}
 	}
+
+	// Update params on steps
+	for _, s := range t.Steps {
+		s.SetParams(parameters)
+	}
+
+	writer.SetStatus(StateSuccess)
+	writer.Write([]byte("\nSetup success.\n"))
+
+	return nil
 }
 
 func (t *Task) String() string {
@@ -27,7 +60,7 @@ func NewTask() Task {
 	return Task{
 		Name:        "",
 		Description: "",
-		Parameters:  map[string]Parameter{},
+		Parameters:  []ConfigParameter{},
 		Steps:       []Step{},
 	}
 }
@@ -58,12 +91,12 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	t.Parameters = make(map[string]Parameter)
-	for paramName, rawMessage := range rawParameters {
-		var p Parameter
+	t.Parameters = []ConfigParameter{}
+	for _, rawMessage := range rawParameters {
+		var p ConfigParameter
 		err = json.Unmarshal(*rawMessage, &p)
-		p.Name = paramName
-		t.Parameters[paramName] = p
+		// p.Name = paramName
+		t.Parameters = append(t.Parameters, p)
 	}
 
 	// Deserialize Steps by type

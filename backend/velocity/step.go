@@ -27,9 +27,10 @@ const (
 )
 
 type BaseStep struct {
-	Type          string   `json:"type" yaml:"type"`
-	Description   string   `json:"description" yaml:"description"`
-	OutputStreams []string `json:"outputStreams" yaml:"-"`
+	Type          string               `json:"type" yaml:"type"`
+	Description   string               `json:"description" yaml:"description"`
+	OutputStreams []string             `json:"outputStreams" yaml:"-"`
+	Params        map[string]Parameter `json:"params" yaml:"-"`
 	runID         string
 }
 
@@ -43,6 +44,10 @@ func (bS *BaseStep) GetDescription() string {
 
 func (bS *BaseStep) GetOutputStreams() []string {
 	return bS.OutputStreams
+}
+
+func (bS *BaseStep) SetParams(params map[string]Parameter) {
+	bS.Params = params
 }
 
 func (bS *BaseStep) GetRunID() string {

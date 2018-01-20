@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -32,8 +31,8 @@ func main() {
 		// iterate through tasks in memory and list them.
 		for _, task := range tasks {
 			fmt.Printf("%s: %s (", task.Name, task.Description)
-			for paramName, parameter := range task.Parameters {
-				fmt.Printf(" %s= %s ", paramName, parameter.Value)
+			for paramName, _ := range task.Parameters {
+				fmt.Printf(" %s ", paramName)
 			}
 			fmt.Println(")")
 			for _, step := range task.Steps {
@@ -88,29 +87,29 @@ func run(taskName string, gitParams map[string]velocity.Parameter) {
 	fmt.Printf("Running task: %s (from: %s)\n", t.Name, taskName)
 
 	// Resolve parameters
-	reader := bufio.NewReader(os.Stdin)
-	resolvedParams := map[string]velocity.Parameter{}
-	for paramName, p := range t.Parameters {
-		// get real value for parameter (ask or from env)
-		inputText := ""
-		for len(strings.TrimSpace(inputText)) < 1 {
-			fmt.Printf("Enter a value for %s (default: %s): ", paramName, p.Value)
-			inputText, _ = reader.ReadString('\n')
-		}
-		p.Value = strings.TrimSpace(inputText)
-		resolvedParams[paramName] = p
-		t.Parameters[paramName] = p
-	}
-
-	t.UpdateParams()
+	// reader := bufio.NewReader(os.Stdin)
+	// resolvedParams := map[string]velocity.Parameter{}
+	// for paramName, p := range t.Parameters {
+	// 	// get real value for parameter (ask or from env)
+	// 	inputText := ""
+	// 	for len(strings.TrimSpace(inputText)) < 1 {
+	// 		fmt.Printf("Enter a value for %s (default: %s): ", paramName, p.Value)
+	// 		inputText, _ = reader.ReadString('\n')
+	// 	}
+	// 	p.Value = strings.TrimSpace(inputText)
+	// 	resolvedParams[paramName] = p
+	// 	t.Parameters[paramName] = p
+	// }
 
 	emitter := NewEmitter()
+	t.Setup(emitter)
+
 	// emitter.SetTotalSteps(uint64(len(t.Steps)))
 	// Run each step unless they fail (optional)
 	for i, step := range t.Steps {
 		emitter.SetStepNumber(uint64(i))
 		if step.GetType() != "clone" {
-			err := step.Execute(emitter, t.Parameters)
+			err := step.Execute(emitter, map[string]velocity.Parameter{})
 			if err != nil {
 				break
 			}

@@ -7,7 +7,7 @@ type StreamWriter interface {
 
 // Emitter for forwarding bytes of output onwards
 type Emitter interface {
-	NewStreamWriter(streamName string) StreamWriter
+	GetStreamWriter(streamName string) StreamWriter
 }
 
 type BlankEmitter struct {
@@ -17,7 +17,7 @@ func NewBlankEmitter() *BlankEmitter {
 	return &BlankEmitter{}
 }
 
-func (w *BlankEmitter) NewStreamWriter(streamName string) StreamWriter {
+func (w *BlankEmitter) GetStreamWriter(streamName string) StreamWriter {
 	return &BlankWriter{}
 }
 

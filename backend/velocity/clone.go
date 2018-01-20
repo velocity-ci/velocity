@@ -38,7 +38,7 @@ func (c Clone) GetDetails() string {
 }
 
 func (c *Clone) Execute(emitter Emitter, params map[string]Parameter) error {
-	writer := emitter.NewStreamWriter("clone")
+	writer := emitter.GetStreamWriter("clone")
 	writer.SetStatus(StateRunning)
 
 	writer.Write([]byte(fmt.Sprintf("%s\n## Cloning %s\n\x1b[0m", infoANSI, c.GitRepository.Address)))

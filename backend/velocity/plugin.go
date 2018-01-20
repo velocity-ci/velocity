@@ -23,7 +23,7 @@ func (p Plugin) GetDetails() string {
 }
 
 func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
-	writer := emitter.NewStreamWriter("plugin")
+	writer := emitter.GetStreamWriter("plugin")
 	writer.SetStatus(StateRunning)
 	env := []string{}
 	for k, v := range p.Environment {

@@ -25,7 +25,7 @@ func (e *Emitter) SetStepNumber(n uint64) {
 	e.StepNumber = n
 }
 
-func (e *Emitter) NewStreamWriter(streamName string) velocity.StreamWriter {
+func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 	return &StreamWriter{
 		StreamName: streamName,
 		StepNumber: e.StepNumber,

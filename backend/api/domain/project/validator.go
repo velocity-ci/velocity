@@ -82,7 +82,7 @@ func (v *Validator) ValidateProjectRepository(sl validator.StructLevel) {
 		PrivateKey: p.PrivateKey,
 	})
 
-	_, dir, err := v.projectManager.Sync(&apiProject.Repository, true, false, true, velocity.NewBlankEmitter().NewStreamWriter("clone"))
+	_, dir, err := v.projectManager.Sync(&apiProject.Repository, true, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
 
 	if err != nil {
 		log.Println(err, reflect.TypeOf(err))

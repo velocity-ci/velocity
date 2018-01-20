@@ -87,7 +87,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 	writers := map[string]StreamWriter{}
 	// Create writers
 	for _, serviceName := range serviceOrder {
-		writers[serviceName] = emitter.NewStreamWriter(serviceName)
+		writers[serviceName] = emitter.GetStreamWriter(serviceName)
 	}
 
 	for _, serviceName := range serviceOrder {

@@ -1,5 +1,11 @@
 description: "Hello Velocity"
 name: hello-velocity
+
+parameters:
+  - use: civelocity/aws-credentials
+    arguments:
+      roleName: testRole
+
 steps: 
   - type: clone
     submodule: false

@@ -9,7 +9,7 @@ import (
 type yamlTask struct {
 	Name        string                   `yaml:"name"`
 	Description string                   `yaml:"description"`
-	Parameters  map[string]Parameter     `yaml:"parameters"`
+	Parameters  []ConfigParameter        `yaml:"parameters"`
 	Steps       []map[string]interface{} `yaml:"steps"`
 }
 
@@ -17,7 +17,7 @@ func ResolveTaskFromYAML(y string, additionalParams map[string]Parameter) Task {
 	yTask := yamlTask{
 		Name:        "",
 		Description: "",
-		Parameters:  map[string]Parameter{},
+		Parameters:  []ConfigParameter{},
 	}
 	err := yaml.Unmarshal([]byte(y), &yTask)
 	if err != nil {
@@ -31,13 +31,13 @@ func ResolveTaskFromYAML(y string, additionalParams map[string]Parameter) Task {
 		Steps:       []Step{},
 	}
 
-	allParams := map[string]Parameter{}
-	for k, v := range task.Parameters {
-		allParams[k] = v
-	}
-	for k, v := range additionalParams {
-		allParams[k] = v
-	}
+	// allParams := map[string]Parameter{}
+	// for k, v := range task.Parameters {
+	// 	allParams[k] = v
+	// }
+	// for k, v := range additionalParams {
+	// 	allParams[k] = v
+	// }
 
 	for _, yStep := range yTask.Steps {
 		mStep, err := yaml.Marshal(yStep)
@@ -46,7 +46,7 @@ func ResolveTaskFromYAML(y string, additionalParams map[string]Parameter) Task {
 		}
 		s := ResolveStepFromYAML(string(mStep[:]))
 		if s != nil {
-			err = s.Validate(allParams)
+			// err = s.Validate(allParams)
 			if err != nil {
 				panic(err)
 			}
