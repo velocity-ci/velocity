@@ -191,7 +191,7 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		// case "plugin":
 		// s = NewPlugin()
 		default:
-			log.Println("could not determine step")
+			log.Printf("could not determine step %s", m["type"])
 			// return fmt.Errorf("unsupported type in json.Unmarshal: %s", m["type"])
 		}
 		if s != nil {
@@ -266,18 +266,19 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			case map[interface{}]interface{}:
 				switch y["type"] {
 				case "run":
-					var s DockerRun
+					s := NewDockerRun()
 					s.UnmarshalYamlInterface(y)
-					t.Steps = append(t.Steps, &s)
+					t.Steps = append(t.Steps, s)
 					break
 				case "build":
-					var s DockerBuild
+					s := NewDockerBuild()
 					s.UnmarshalYamlInterface(y)
+					t.Steps = append(t.Steps, s)
 					break
 				case "compose":
-					var s DockerCompose
+					s := NewDockerCompose()
 					s.UnmarshalYamlInterface(y)
-					t.Steps = append(t.Steps, &s)
+					t.Steps = append(t.Steps, s)
 					break
 				// case "plugin":
 				// 	var s Plugin
