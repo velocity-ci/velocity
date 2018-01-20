@@ -58,7 +58,7 @@ steps:
 
   - type: compose
     name: Run tests
-    compose-file: docker-compose.test.yml
+    composeFile: docker-compose.test.yml
 
   - type: build
     name: Build release image

@@ -24,6 +24,22 @@ func NewDockerBuild() *DockerBuild {
 	}
 }
 
+func (s *DockerBuild) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	switch x := y["dockerfile"].(type) {
+	case interface{}:
+		s.Dockerfile = x.(string)
+		break
+	}
+
+	switch x := y["context"].(type) {
+	case interface{}:
+		s.Dockerfile = x.(string)
+		break
+	}
+
+	return nil
+}
+
 func (dB DockerBuild) GetDetails() string {
 	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }

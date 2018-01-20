@@ -270,10 +270,10 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 					s.UnmarshalYamlInterface(y)
 					t.Steps = append(t.Steps, &s)
 					break
-				// case "build":
-				// 	var s DockerBuild
-				// 	s.UnmarshalYamlInterface(y)
-				// 	break
+				case "build":
+					var s DockerBuild
+					s.UnmarshalYamlInterface(y)
+					break
 				case "compose":
 					var s DockerCompose
 					s.UnmarshalYamlInterface(y)
