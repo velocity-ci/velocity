@@ -102,7 +102,7 @@ func run(taskName string, gitParams map[string]velocity.Parameter) {
 	// }
 
 	emitter := NewEmitter()
-	t.Setup(emitter, &ParameterResolver{})
+	t.Setup(emitter, &ParameterResolver{}, nil, "")
 
 	// emitter.SetTotalSteps(uint64(len(t.Steps)))
 	// Run each step unless they fail (optional)

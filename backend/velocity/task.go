@@ -4,7 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
+
+	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 type Task struct {
@@ -21,7 +25,12 @@ type TaskGit struct {
 }
 
 // Maybe pass git repository to clone?
-func (t *Task) Setup(emitter Emitter, backupResolver BackupResolver) error {
+func (t *Task) Setup(
+	emitter Emitter,
+	backupResolver BackupResolver,
+	repository *GitRepository,
+	commitHash string,
+) error {
 	t.runID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
 
 	writer := emitter.GetStreamWriter("setup")
@@ -45,6 +54,35 @@ func (t *Task) Setup(emitter Emitter, backupResolver BackupResolver) error {
 	// Update params on steps
 	for _, s := range t.Steps {
 		s.SetParams(parameters)
+	}
+
+	// Clone repository if necessary
+	if repository != nil {
+		repo, dir, err := GitClone(repository, false, true, t.Git.Submodule, writer)
+		if err != nil {
+			log.Println(err)
+			writer.SetStatus(StateFailed)
+			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+			return err
+		}
+		w, err := repo.Worktree()
+		if err != nil {
+			log.Println(err)
+			writer.SetStatus(StateFailed)
+			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+			return err
+		}
+		log.Printf("Checking out %s", commitHash)
+		err = w.Checkout(&git.CheckoutOptions{
+			Hash: plumbing.NewHash(commitHash),
+		})
+		if err != nil {
+			log.Println(err)
+			writer.SetStatus(StateFailed)
+			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+			return err
+		}
+		os.Chdir(dir)
 	}
 
 	writer.SetStatus(StateSuccess)
