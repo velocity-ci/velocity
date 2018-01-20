@@ -9,12 +9,12 @@ import (
 func runBuild(build *slave.BuildCommand, ws *websocket.Conn) {
 	emitter := NewEmitter(ws)
 
-	build.Task.Setup(emitter)
+	backupResolver := NewParameterResolver(build.Build.Parameters)
+	build.Task.Setup(emitter, &backupResolver)
 
 	for i, step := range build.Task.Steps {
 		emitter.SetBuildStep(build.Build.Steps[i])
 
-		step.SetParams(build.Build.Parameters)
 		if step.GetType() == "clone" {
 			step.(*velocity.Clone).SetGitRepositoryAndCommitHash(
 				build.Project.Repository,
@@ -22,7 +22,7 @@ func runBuild(build *slave.BuildCommand, ws *websocket.Conn) {
 			)
 		}
 
-		err := step.Execute(emitter, build.Build.Parameters)
+		err := step.Execute(emitter, map[string]velocity.Parameter{})
 		if err != nil {
 			break
 		}

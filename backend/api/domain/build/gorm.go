@@ -9,7 +9,6 @@ import (
 	"github.com/docker/go/canonical/json"
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/api/domain/task"
-	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type gormBuild struct {
@@ -98,7 +97,7 @@ func gormBuildFromBuild(b Build) gormBuild {
 }
 
 func buildFromGormBuild(g gormBuild) Build {
-	var parameters map[string]velocity.Parameter
+	var parameters map[string]string
 	err := json.Unmarshal(g.Parameters, &parameters)
 	if err != nil {
 		log.Printf("could not unmarshal build parameters from %v\n", g.Parameters)

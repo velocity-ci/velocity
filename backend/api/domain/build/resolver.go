@@ -36,20 +36,18 @@ func (r *Resolver) BuildFromRequest(b io.ReadCloser, t task.Task) (Build, error)
 		reqBuild.Parameters[i].Value = strings.TrimSpace(rP.Value)
 	}
 
-	// err = r.buildValidator.Validate(&reqBuild)
+	// err = r.buildValidator.Validate(&reqBuild) Should validate params match up
 
 	// if err != nil {
 	// 	return nil, err
 	// }
-
-	setTaskParametersFromRequest(&t, reqBuild.Parameters)
 
 	cm, err := r.commitManager.GetCommitByCommitID(t.CommitID)
 	if err != nil {
 		log.Printf("could not find commit %s?!?!", t.CommitID)
 	}
 
-	build := NewBuild(cm.ProjectID, t, t.Parameters)
+	build := NewBuild(cm.ProjectID, t, getParametersFromRequest(reqBuild.Parameters))
 
 	return build, nil
 }
@@ -98,11 +96,11 @@ func StreamLineQueryOptsFromRequest(r *http.Request) StreamLineQuery {
 	}
 }
 
-func setTaskParametersFromRequest(t *task.Task, reqParams []RequestParameter) {
+func getParametersFromRequest(reqParams []RequestParameter) map[string]string {
+	res := map[string]string{}
 	for _, reqParam := range reqParams {
-		if param, ok := t.Parameters[reqParam.Name]; ok {
-			param.Value = reqParam.Value
-			t.Parameters[reqParam.Name] = param
-		}
+		res[reqParam.Name] = reqParam.Value
 	}
+
+	return res
 }

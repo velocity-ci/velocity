@@ -54,10 +54,10 @@ type StreamLineQuery struct {
 }
 
 type Build struct {
-	ID         string                        `json:"id"`
-	ProjectID  string                        `json:"projectId"`
-	Task       task.Task                     `json:"task"`
-	Parameters map[string]velocity.Parameter `json:"parameters"`
+	ID         string            `json:"id"`
+	ProjectID  string            `json:"projectId"`
+	Task       task.Task         `json:"task"`
+	Parameters map[string]string `json:"parameters"`
 
 	Steps []BuildStep `json:"buildSteps"`
 
@@ -73,7 +73,7 @@ func (b Build) String() string {
 	return string(bytes)
 }
 
-func NewBuild(projectId string, t task.Task, params map[string]velocity.Parameter) Build {
+func NewBuild(projectId string, t task.Task, params map[string]string) Build {
 	return Build{
 		ID:         uuid.NewV3(uuid.NewV1(), t.ID).String(),
 		ProjectID:  projectId,
