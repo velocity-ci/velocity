@@ -226,7 +226,7 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				// 	s.UnmarshalYamlInterface(y)
 				// 	break
 				default:
-					log.Printf("could determine step %s", y["type"])
+					log.Printf("could not determine step %s", y["type"])
 				}
 				break
 			}

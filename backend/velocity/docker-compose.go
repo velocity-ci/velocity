@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -431,10 +430,8 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 	}
 
 	// networks
-	fmt.Println(reflect.TypeOf(serviceMap["networks"]))
 	switch x := serviceMap["networks"].(type) {
 	case map[interface{}]interface{}:
-		fmt.Println(x)
 		d := x["default"].(map[interface{}]interface{})
 		iA := d["aliases"].([]interface{})
 		aliases := []string{}
