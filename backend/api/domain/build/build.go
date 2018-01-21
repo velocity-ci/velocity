@@ -287,7 +287,7 @@ type ResponseBuild struct {
 	CreatedAt   time.Time           `json:"createdAt"`
 	StartedAt   time.Time           `json:"startedAt"`
 	CompletedAt time.Time           `json:"completedAt"`
-	Steps       []ResponseBuildStep `json:"steps"`
+	Steps       []ResponseBuildStep `json:"buildSteps"`
 }
 
 func NewResponseBuild(b Build) ResponseBuild {
@@ -309,8 +309,7 @@ func NewResponseBuild(b Build) ResponseBuild {
 
 type ResponseBuildStep struct {
 	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
+	Step        velocity.Step          `json:"step"`
 	Number      uint64                 `json:"number"`
 	Status      string                 `json:"status"`
 	StartedAt   time.Time              `json:"startedAt"`
@@ -328,8 +327,7 @@ func NewResponseBuildStep(bS BuildStep) ResponseBuildStep {
 	}
 	return ResponseBuildStep{
 		ID:          bS.ID,
-		Type:        bS.VStep.GetType(),
-		Description: bS.VStep.GetDescription(),
+		Step:        bS.VStep,
 		Number:      bS.Number,
 		Status:      bS.Status,
 		StartedAt:   bS.StartedAt,
