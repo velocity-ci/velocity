@@ -131,25 +131,12 @@ func buildStepFromGormBuildStep(g gormBuildStep) BuildStep {
 		log.Fatal(err)
 	}
 
-	var vStep velocity.Step
-	switch gStep["type"] {
-	case "setup":
-		vStep = velocity.NewSetup()
-		break
-	case "run":
-		vStep = velocity.NewDockerRun()
-		break
-	case "build":
-		vStep = velocity.NewDockerBuild()
-		break
-	case "compose":
-		vStep = velocity.NewDockerCompose()
-		break
-	default:
-		log.Printf("could not determine step type: %s", gStep["type"])
+	vStep, err := velocity.DetermineStepFromInterface(gStep)
+	if err != nil {
+		log.Println(err)
+	} else {
+		json.Unmarshal(g.VStep, vStep)
 	}
-
-	json.Unmarshal(g.VStep, vStep)
 
 	streams := []BuildStepStream{}
 	for _, s := range g.Streams {

@@ -103,33 +103,18 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 			return err
 		}
 
-		var s Step
-		switch m["type"] {
-		case "setup":
-			s = NewSetup()
-			break
-		case "run":
-			s = NewDockerRun()
-			break
-		case "build":
-			s = NewDockerBuild()
-			break
-		case "compose":
-			s = NewDockerCompose()
-			break
-		// case "plugin":
-		// s = NewPlugin()
-		default:
-			log.Printf("could not determine step %s", m["type"])
-			// return fmt.Errorf("unsupported type in json.Unmarshal: %s", m["type"])
-		}
-		if s != nil {
+		s, err := DetermineStepFromInterface(m)
+		if err != nil {
+			log.Println(err)
+		} else {
 			err := json.Unmarshal(*rawMessage, s)
 			if err != nil {
-				return err
+				log.Println(err)
+			} else {
+				t.Steps = append(t.Steps, s)
 			}
-			t.Steps = append(t.Steps, s)
 		}
+
 	}
 
 	return nil
@@ -193,40 +178,20 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		for _, s := range x {
 			switch y := s.(type) {
 			case map[interface{}]interface{}:
-				switch y["type"] {
-				case "run":
-					s := NewDockerRun()
+				m := map[string]interface{}{} // generate map[string]interface{}
+				for k, v := range y {
+					m[k.(string)] = v
+				}
+				s, err := DetermineStepFromInterface(m)
+				if err != nil {
+					log.Println(err)
+				} else {
 					err = s.UnmarshalYamlInterface(y)
-					if err == nil {
-						t.Steps = append(t.Steps, s)
-					} else {
+					if err != nil {
 						log.Println(err)
-					}
-					break
-				case "build":
-					s := NewDockerBuild()
-					err = s.UnmarshalYamlInterface(y)
-					if err == nil {
-						t.Steps = append(t.Steps, s)
 					} else {
-						log.Println(err)
-					}
-					break
-				case "compose":
-					s := NewDockerCompose()
-					err = s.UnmarshalYamlInterface(y)
-					if err == nil {
 						t.Steps = append(t.Steps, s)
-					} else {
-						log.Println(err)
 					}
-					break
-				// case "plugin":
-				// 	var s Plugin
-				// 	s.UnmarshalYamlInterface(y)
-				// 	break
-				default:
-					log.Printf("could not determine step %s", y["type"])
 				}
 				break
 			}

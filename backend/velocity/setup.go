@@ -27,6 +27,10 @@ func NewSetup() *Setup {
 	}
 }
 
+func (s *Setup) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	return nil
+}
+
 func (s Setup) GetDetails() string {
 	return ""
 }

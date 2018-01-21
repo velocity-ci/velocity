@@ -1,6 +1,9 @@
 package velocity
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Step interface {
 	Execute(emitter Emitter, parameters map[string]Parameter) error
@@ -10,6 +13,7 @@ type Step interface {
 	Validate(map[string]Parameter) error
 	SetParams(map[string]Parameter) error
 	GetOutputStreams() []string
+	UnmarshalYamlInterface(map[interface{}]interface{}) error
 }
 
 const (
@@ -62,4 +66,22 @@ type StreamLine struct {
 	LineNumber uint64    `json:"lineNumber"`
 	Timestamp  time.Time `json:"timestamp"`
 	Output     string    `json:"output"`
+}
+
+func DetermineStepFromInterface(i map[string]interface{}) (Step, error) {
+	switch i["type"] {
+	case "setup":
+		return NewSetup(), nil
+	case "run":
+		return NewDockerRun(), nil
+	case "build":
+		return NewDockerBuild(), nil
+	case "compose":
+		return NewDockerCompose(), nil
+		// case "plugin":
+		// 	var s Plugin
+		// 	s.UnmarshalYamlInterface(y)
+		// 	break
+	}
+	return nil, fmt.Errorf("could not determine step %s", i["type"])
 }

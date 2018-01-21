@@ -158,32 +158,16 @@ func (bS *BuildStep) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	var s velocity.Step
-	switch m["type"] {
-	case "setup":
-		s = velocity.NewSetup()
-		break
-	case "run":
-		s = velocity.NewDockerRun()
-		break
-	case "build":
-		s = velocity.NewDockerBuild()
-		break
-	case "compose":
-		s = velocity.NewDockerCompose()
-		break
-	// case "plugin":
-	// s = NewPlugin()
-	default:
-		log.Printf("could not determine step %s", m["type"])
-		// return fmt.Errorf("unsupported type in json.Unmarshal: %s", m["type"])
-	}
-	if s != nil {
+	s, err := velocity.DetermineStepFromInterface(m)
+	if err != nil {
+		log.Println(err)
+	} else {
 		err := json.Unmarshal(*rawStep, s)
 		if err != nil {
-			return err
+			log.Println(err)
+		} else {
+			bS.VStep = s
 		}
-		bS.VStep = s
 	}
 
 	bS.Streams = []BuildStepStream{}
