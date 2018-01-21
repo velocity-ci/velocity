@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/velocity-ci/velocity/backend/velocity"
 	git "gopkg.in/src-d/go-git.v4"
@@ -20,14 +23,12 @@ func main() {
 
 	flag.Parse()
 
-	gitParams := getGitParams()
-
 	if *version {
 		fmt.Println("Version")
 		os.Exit(0)
 	} else if *list {
 		// look for task ymls and parse them into memory.
-		tasks := getTasksFromDirectory("./tasks/", gitParams)
+		tasks := getTasksFromDirectory("./tasks/")
 		// iterate through tasks in memory and list them.
 		for _, task := range tasks {
 			fmt.Printf("%s: %s (", task.Name, task.Description)
@@ -45,22 +46,27 @@ func main() {
 
 	switch os.Args[1] {
 	case "run":
-		run(os.Args[2], gitParams)
+		run(os.Args[2])
 		break
 	default:
-		run(os.Args[1], gitParams)
+		run(os.Args[1])
 		break
 	}
 }
 
-func getTasksFromDirectory(dir string, gitParams map[string]velocity.Parameter) []velocity.Task {
+func getTasksFromDirectory(dir string) []velocity.Task {
 	tasks := []velocity.Task{}
 
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
 			taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s%s", dir, f.Name()))
-			task := velocity.ResolveTaskFromYAML(string(taskYml), gitParams)
-			tasks = append(tasks, task)
+			var t velocity.Task
+			err := yaml.Unmarshal(taskYml, &t)
+			if err != nil {
+				log.Println(err)
+			} else {
+				tasks = append(tasks, t)
+			}
 		}
 		return nil
 	})
@@ -68,8 +74,8 @@ func getTasksFromDirectory(dir string, gitParams map[string]velocity.Parameter) 
 	return tasks
 }
 
-func run(taskName string, gitParams map[string]velocity.Parameter) {
-	tasks := getTasksFromDirectory("./tasks/", gitParams)
+func run(taskName string) {
+	tasks := getTasksFromDirectory("./tasks/")
 
 	var t *velocity.Task
 	// find Task requested

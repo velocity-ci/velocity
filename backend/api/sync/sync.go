@@ -15,6 +15,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/api/websocket"
 	"github.com/velocity-ci/velocity/backend/velocity"
 	git "gopkg.in/src-d/go-git.v4"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func finishProjectSync(p project.Project, projectManager project.Repository) {
@@ -98,33 +99,20 @@ func sync(
 					break
 				}
 
-				SHA := r.Hash().String()
-				shortSHA := SHA[:7]
-				describe := shortSHA
-
-				gitParams := map[string]velocity.Parameter{
-					"GIT_SHA": velocity.Parameter{
-						Value: SHA,
-					},
-					"GIT_SHORT_SHA": velocity.Parameter{
-						Value: shortSHA,
-					},
-					"GIT_BRANCH": velocity.Parameter{
-						Value: branchName,
-					},
-					"GIT_DESCRIBE": velocity.Parameter{
-						Value: describe,
-					},
-				}
 				xd, _ := os.Getwd()
 				if _, err := os.Stat(fmt.Sprintf("%s/tasks/", dir)); err == nil {
 					os.Chdir(dir)
 					filepath.Walk(fmt.Sprintf("%s/tasks/", dir), func(path string, f os.FileInfo, err error) error {
 						if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
 							taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", dir, f.Name()))
-							t := velocity.ResolveTaskFromYAML(string(taskYml), gitParams)
-							apiTask := task.NewTask(c.ID, t)
-							taskManager.Create(apiTask)
+							var t velocity.Task
+							err := yaml.Unmarshal(taskYml, &t)
+							if err != nil {
+								log.Println(err)
+							} else {
+								apiTask := task.NewTask(c.ID, t)
+								taskManager.Create(apiTask)
+							}
 						}
 						return nil
 					})
