@@ -30,6 +30,27 @@ type DockerRegistry struct {
 }
 
 func (d *DockerRegistry) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+
+	switch x := y["address"].(type) {
+	case interface{}:
+		d.Address = x.(string)
+		break
+	}
+
+	switch x := y["use"].(type) {
+	case interface{}:
+		d.Use = x.(string)
+		break
+	}
+
+	d.Arguments = map[string]string{}
+	switch x := y["arguments"].(type) {
+	case map[interface{}]interface{}:
+		for k, v := range x {
+			d.Arguments[k.(string)] = v.(string)
+		}
+		break
+	}
 	return nil
 }
 
@@ -174,7 +195,12 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		switch y := x["registries"].(type) {
 		case []interface{}:
 			for _, r := range y {
-
+				switch z := r.(type) {
+				case map[interface{}]interface{}:
+					d := DockerRegistry{}
+					d.UnmarshalYamlInterface(z)
+					t.Docker.Registries = append(t.Docker.Registries, d)
+				}
 			}
 			break
 		}
