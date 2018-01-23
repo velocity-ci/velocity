@@ -9,6 +9,7 @@ type Task struct {
 	Name        string            `json:"name" yaml:"name"`
 	Description string            `json:"description" yaml:"description"`
 	Git         TaskGit           `json:"git" yaml:"git"`
+	Docker      TaskDocker        `json:"docker" yaml:"docker"`
 	Parameters  []ConfigParameter `json:"parameters" yaml:"parameters"`
 	Steps       []Step            `json:"steps" yaml:"steps"`
 	runID       string
@@ -16,6 +17,16 @@ type Task struct {
 
 type TaskGit struct {
 	Submodule bool `json:"submodule"`
+}
+
+type TaskDocker struct {
+	Registries []DockerRegistry `json:"registries" yaml:"registries`
+}
+
+type DockerRegistry struct {
+	Address   string            `json:"address" yaml:"address"`
+	Use       string            `json:"use" yaml:"use"`
+	Arguments map[string]string `json:"arguments" yaml:"arguments"`
 }
 
 func (t *Task) String() string {
