@@ -33,6 +33,7 @@ type BackupResolver interface {
 }
 
 type BasicParameter struct {
+	Type         string   `json:"type"`
 	Name         string   `json:"name" yaml:"name"`
 	Default      string   `json:"default" yaml:"default"`
 	OtherOptions []string `json:"otherOptions" yaml:"otherOptions"`
@@ -59,6 +60,7 @@ func (p BasicParameter) GetParameters(writer io.Writer, runID string, backupReso
 }
 
 func (p *BasicParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	p.Type = "basic"
 	switch x := y["name"].(type) {
 	case interface{}:
 		p.Name = x.(string)
@@ -88,6 +90,7 @@ func (p *BasicParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) e
 }
 
 type DerivedParameter struct {
+	Type      string            `json:"type"`
 	Use       string            `json:"use" yaml:"use"`
 	Secret    bool              `json:"secret" yaml:"secret"`
 	Arguments map[string]string `json:"arguments" yaml:"arguments"`
@@ -193,6 +196,8 @@ func (p DerivedParameter) GetParameters(writer io.Writer, runID string, backupRe
 }
 
 func (p *DerivedParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+
+	p.Type = "derived"
 
 	switch x := y["use"].(type) {
 	case interface{}:
