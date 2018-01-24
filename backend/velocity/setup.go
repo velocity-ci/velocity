@@ -1,14 +1,21 @@
 package velocity
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -99,7 +106,7 @@ func (s *Setup) Execute(emitter Emitter, params map[string]Parameter) error {
 		params, err := config.GetParameters(writer, s.task.runID, s.backupResolver)
 		if err != nil {
 			writer.SetStatus(StateFailed)
-			log.Printf("could not resolve parameter: %v", err)
+			writer.Write([]byte(fmt.Sprintf("could not resolve parameter: %v", err)))
 			return fmt.Errorf("could not resolve %v", err)
 		}
 		for _, param := range params {
@@ -115,6 +122,17 @@ func (s *Setup) Execute(emitter Emitter, params map[string]Parameter) error {
 	// Update params on steps
 	for _, s := range s.task.Steps {
 		s.SetParams(parameters)
+	}
+
+	// Login to docker registries
+	for _, registry := range s.task.Docker.Registries {
+		err := dockerLogin(registry, writer, s.task.runID, parameters)
+		if err != nil {
+			writer.SetStatus(StateFailed)
+			writer.Write([]byte(fmt.Sprintf("could not login to Docker registry: %v", err)))
+			return err
+		}
+		writer.Write([]byte(fmt.Sprintf("Authenticated with Docker registry: %s", registry.Address)))
 	}
 
 	writer.SetStatus(StateSuccess)
@@ -225,4 +243,98 @@ func getGitParams() map[string]Parameter {
 			IsSecret: false,
 		},
 	}
+}
+
+func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parameters map[string]Parameter) error {
+	env := []string{
+		fmt.Sprintf("address=%s", registry.Address),
+	}
+	for k, v := range registry.Arguments {
+		for pK, pV := range parameters {
+			if k == pK {
+				v = pV.Value
+				break
+			}
+		}
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	containerConfig := &container.Config{
+		Image: registry.Use,
+		Env:   env,
+		Volumes: map[string]struct{}{
+			"/var/run/docker.sock": struct{}{},
+		},
+	}
+
+	hostConfig := &container.HostConfig{
+		Binds: []string{
+			"/var/run/docker.sock:/var/run/docker.sock",
+		},
+	}
+
+	var wg sync.WaitGroup
+	cli, _ := client.NewEnvClient()
+	ctx := context.Background()
+
+	networkResp, err := cli.NetworkCreate(ctx, runID, types.NetworkCreate{
+		Labels: map[string]string{"owner": "velocity-ci"},
+	})
+	if err != nil {
+		log.Println(err)
+	}
+	blankEmitter := NewBlankEmitter()
+	w := blankEmitter.GetStreamWriter("setup")
+	sR := newServiceRunner(
+		cli,
+		ctx,
+		w,
+		&wg,
+		map[string]Parameter{},
+		fmt.Sprintf("%s-%s", runID, "dLogin"),
+		registry.Use,
+		nil,
+		containerConfig,
+		hostConfig,
+		nil,
+		networkResp.ID,
+	)
+
+	sR.PullOrBuild()
+	sR.Create()
+	stopServicesChannel := make(chan string, 32)
+	wg.Add(1)
+	go sR.Run(stopServicesChannel)
+	_ = <-stopServicesChannel
+
+	logsResp, err := sR.dockerCli.ContainerLogs(
+		sR.context,
+		sR.containerID,
+		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: false},
+	)
+	if err != nil {
+		log.Printf("param container %s logs err: %s", sR.containerID, err)
+	}
+	headerBytes := make([]byte, 8)
+	logsResp.Read(headerBytes)
+	content, _ := ioutil.ReadAll(logsResp)
+	logsResp.Close()
+	sR.Stop()
+	wg.Wait()
+	err = cli.NetworkRemove(ctx, networkResp.ID)
+	if err != nil {
+		log.Printf("network %s remove err: %s", networkResp.ID, err)
+	}
+
+	var dOutput dockerLoginOutput
+	json.Unmarshal(content, &dOutput)
+	if dOutput.State != "success" {
+		return fmt.Errorf(dOutput.Error)
+	}
+
+	return nil
+}
+
+type dockerLoginOutput struct {
+	State string `json:"state"`
+	Error string `json:"error"`
 }

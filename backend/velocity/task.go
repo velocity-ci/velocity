@@ -123,6 +123,13 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 
 	}
 
+	t.Docker = TaskDocker{}
+	err = json.Unmarshal(*objMap["docker"], &t.Docker)
+	if err != nil {
+		log.Println("could not unmarshal task.docker")
+		return err
+	}
+
 	// Deserialize Steps by type
 	var rawSteps []*json.RawMessage
 	err = json.Unmarshal(*objMap["steps"], &rawSteps)
