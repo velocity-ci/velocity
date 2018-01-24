@@ -24,9 +24,10 @@ type TaskDocker struct {
 }
 
 type DockerRegistry struct {
-	Address   string            `json:"address" yaml:"address"`
-	Use       string            `json:"use" yaml:"use"`
-	Arguments map[string]string `json:"arguments" yaml:"arguments"`
+	Address            string            `json:"address" yaml:"address"`
+	Use                string            `json:"use" yaml:"use"`
+	Arguments          map[string]string `json:"arguments" yaml:"arguments"`
+	AuthorizationToken string            `json:"authToken"`
 }
 
 func (d *DockerRegistry) UnmarshalYamlInterface(y map[interface{}]interface{}) error {

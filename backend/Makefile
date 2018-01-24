@@ -40,13 +40,13 @@ build-api:
 	docker tag civelocity/api:${GIT_VERSION} civelocity/api:latest
 
 build-cli:
-	docker run --rm \
-	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
-	--workdir /go/src/github.com/velocity-ci/velocity/backend \
- 	--env CGO_ENABLED=0 \
- 	--env GOOS=linux \
-	golang \
-	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_cli ./cli"
+	# docker run --rm \
+	# --volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
+	# --workdir /go/src/github.com/velocity-ci/velocity/backend \
+ 	# --env CGO_ENABLED=0 \
+ 	# --env GOOS=linux \
+	# golang \
+	# /bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_cli ./cli"
 
 	docker build -t civelocity/cli:${GIT_VERSION} -f cli.Dockerfile .
 	docker tag civelocity/cli:${GIT_VERSION} civelocity/cli:latest

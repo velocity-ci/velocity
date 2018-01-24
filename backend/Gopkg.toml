@@ -30,10 +30,6 @@ ignored = ["github.com/velocity-ci/velocity"]
   version = "v1.13.1"
 
 [[constraint]]
-  name = "github.com/docker/distribution"
-  branch = "docker/1.13"
-
-[[constraint]]
   branch = "master"
   name = "github.com/docker/go"
 
@@ -91,7 +87,7 @@ ignored = ["github.com/velocity-ci/velocity"]
 
 [[constraint]]
   name = "gopkg.in/src-d/go-git.v4"
-  branch = "v4"
+  version = "v4.1.0"
 
 [[constraint]]
   branch = "v2"

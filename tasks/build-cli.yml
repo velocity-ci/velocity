@@ -1,44 +1,29 @@
 description: "Builds CLI"
 name: build-cli
+
+parameters:
+  - name: docker_hub_username
+    secret: true
+  - name: docker_hub_password
+    secret: true
+
+docker:
+  registries:
+    - use: civelocity/auth-docker-hub
+      arguments:
+        USERNAME: ${docker_hub_username}
+        PASSWORD: ${docker_hub_password}
+
 steps: 
-  - type: clone
-    submodule: false
-
-  - type: build
-    description: Build development image
-    dockerfile: dev.Dockerfile
-    context: ./backend
-    tags:
-      - civelocity/dev:latest
-  
-  - type: run
-    description: Install dependencies
-    image: civelocity/dev:latest
-    mount_point: /go/src/github.com/velocity-ci/velocity/
-    working_dir: backend
-    command: ["dep", "ensure", "-v"]
-
-  - type: run
-    description: Prune dependencies
-    image: civelocity/dev:latest
-    mount_point: /go/src/github.com/velocity-ci/velocity/
-    working_dir: backend
-    command: ["dep", "prune"]
-
-  - type: run
-    description: Build binary
-    image: golang
-    mount_point: /go/src/github.com/velocity-ci/velocity/
-    working_dir: backend
-    environment:
-      GOOS: linux
-      CGO_ENABLED: 0
-    command: ["go", "build", "-a", "-installsuffix", "cgo", "-o", "dist/velocity_cli", "./cli"]
 
   - type: build
     description: Build release image
-    dockerfile: cli.Dockerfile
+    dockerfile: test.Dockerfile
     context: ./backend
     tags:
-      - civelocity/cli:${GIT_DESCRIBE}
-      - civelocity/cli:latest
+      - vjftw/test:${GIT_DESCRIBE}
+
+  - type: push
+    description: Pushes built image
+    tags:
+      - vjftw/test:${GIT_DESCRIBE}

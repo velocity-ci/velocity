@@ -125,15 +125,23 @@ func (s *Setup) Execute(emitter Emitter, params map[string]Parameter) error {
 	}
 
 	// Login to docker registries
+	authedRegistries := []DockerRegistry{}
 	for _, registry := range s.task.Docker.Registries {
-		err := dockerLogin(registry, writer, s.task.runID, parameters)
+		r, err := dockerLogin(registry, writer, s.task.runID, parameters)
 		if err != nil {
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("could not login to Docker registry: %v", err)))
 			return err
 		}
-		writer.Write([]byte(fmt.Sprintf("Authenticated with Docker registry: %s", registry.Address)))
+		authedRegistries = append(authedRegistries, r)
+		writer.Write([]byte(fmt.Sprintf("Authenticated with Docker registry: %s (%s)", r.Address, r.AuthorizationToken)))
 	}
+
+	for _, s := range s.task.Steps {
+		s.SetDockerRegistries(authedRegistries)
+	}
+
+	log.Printf("%+v", s.task.Docker.Registries)
 
 	writer.SetStatus(StateSuccess)
 	writer.Write([]byte(""))
@@ -245,16 +253,14 @@ func getGitParams() map[string]Parameter {
 	}
 }
 
-func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parameters map[string]Parameter) error {
+func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parameters map[string]Parameter) (DockerRegistry, error) {
 	env := []string{
 		fmt.Sprintf("address=%s", registry.Address),
 	}
 	for k, v := range registry.Arguments {
-		for pK, pV := range parameters {
-			if k == pK {
-				v = pV.Value
-				break
-			}
+		for _, pV := range parameters {
+			v = strings.Replace(v, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
+			k = strings.Replace(k, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 		}
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -328,13 +334,15 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parame
 	var dOutput dockerLoginOutput
 	json.Unmarshal(content, &dOutput)
 	if dOutput.State != "success" {
-		return fmt.Errorf(dOutput.Error)
+		return registry, fmt.Errorf(dOutput.Error)
 	}
 
-	return nil
+	registry.AuthorizationToken = dOutput.AuthorizationToken
+	return registry, nil
 }
 
 type dockerLoginOutput struct {
-	State string `json:"state"`
-	Error string `json:"error"`
+	State              string `json:"state"`
+	Error              string `json:"error"`
+	AuthorizationToken string `json:"authToken"`
 }

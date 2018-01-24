@@ -74,7 +74,7 @@ steps:
      - mydockerregistry.com/my-website:${GIT_DESCRIBE}
 
   - type: push
-    images:
+    tags:
      - xxxxxxx.dkr.ecr.eu-west-1.amazonaws.com/my-website:latest
      - xxxxxxx.dkr.ecr.eu-west-1.amazonaws.com/my-website:${GIT_DESCRIBE}
      - mydockerregistry.com/my-website:latest

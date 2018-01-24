@@ -49,6 +49,12 @@ func (p BasicParameter) GetParameters(writer io.Writer, runID string, backupReso
 	v := p.Default
 	if len(p.Value) > 0 {
 		v = p.Value
+	} else {
+		val, err := backupResolver.Resolve(p.Name)
+		if err != nil {
+			return []Parameter{}, err
+		}
+		v = val
 	}
 	return []Parameter{
 		Parameter{

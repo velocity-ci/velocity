@@ -92,26 +92,10 @@ func run(taskName string) {
 
 	fmt.Printf("Running task: %s (from: %s)\n", t.Name, taskName)
 
-	// Resolve parameters
-	// reader := bufio.NewReader(os.Stdin)
-	// resolvedParams := map[string]velocity.Parameter{}
-	// for paramName, p := range t.Parameters {
-	// 	// get real value for parameter (ask or from env)
-	// 	inputText := ""
-	// 	for len(strings.TrimSpace(inputText)) < 1 {
-	// 		fmt.Printf("Enter a value for %s (default: %s): ", paramName, p.Value)
-	// 		inputText, _ = reader.ReadString('\n')
-	// 	}
-	// 	p.Value = strings.TrimSpace(inputText)
-	// 	resolvedParams[paramName] = p
-	// 	t.Parameters[paramName] = p
-	// }
-
 	emitter := NewEmitter()
 
 	t.Steps = append([]velocity.Step{velocity.NewSetup()}, t.Steps...)
 
-	// emitter.SetTotalSteps(uint64(len(t.Steps)))
 	// Run each step unless they fail (optional)
 	for i, step := range t.Steps {
 		if step.GetType() == "setup" {

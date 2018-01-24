@@ -33,7 +33,7 @@ func (s *DockerBuild) UnmarshalYamlInterface(y map[interface{}]interface{}) erro
 
 	switch x := y["context"].(type) {
 	case interface{}:
-		s.Dockerfile = x.(string)
+		s.Context = x.(string)
 		break
 	}
 
