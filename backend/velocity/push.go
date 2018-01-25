@@ -47,28 +47,8 @@ func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 	ctx := context.Background()
 
 	for _, t := range dP.Tags {
-
 		// Determine correct authToken
-		var authToken string
-		tagParts := strings.Split(t, "/")
-		registry := tagParts[0]
-		if !strings.Contains(registry, ".") {
-			// docker hub
-			for _, r := range tsk.Docker.Registries {
-				if strings.Contains(r.Address, "https://registry.hub.docker.com") || strings.Contains(r.Address, "https://index.docker.io") {
-					authToken = r.AuthorizationToken
-					break
-				}
-			}
-		} else {
-			// private
-			for _, r := range tsk.Docker.Registries {
-				if r.Address == registry {
-					authToken = r.AuthorizationToken
-					break
-				}
-			}
-		}
+		authToken := getAuthToken(t, tsk.Docker.Registries)
 		reader, err := cli.ImagePush(ctx, t, types.ImagePushOptions{
 			All:          true,
 			RegistryAuth: authToken,

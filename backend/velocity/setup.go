@@ -133,12 +133,10 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			return err
 		}
 		authedRegistries = append(authedRegistries, r)
-		writer.Write([]byte(fmt.Sprintf("Authenticated with Docker registry: %s (%s)", r.Address, r.AuthorizationToken)))
+		writer.Write([]byte(fmt.Sprintf("Authenticated with Docker registry: %s", r.Address)))
 	}
 
 	t.Docker.Registries = authedRegistries
-
-	log.Printf("%+v", t.Docker.Registries)
 
 	writer.SetStatus(StateSuccess)
 	writer.Write([]byte(""))

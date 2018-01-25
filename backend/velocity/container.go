@@ -92,18 +92,45 @@ func getImageName(serviceName string) string {
 	)
 }
 
+func getAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthConfig {
+	authConfigs := map[string]types.AuthConfig{}
+	for _, r := range dockerRegistries {
+		jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
+		if err != nil {
+			log.Println(err)
+		}
+		var authConfig types.AuthConfig
+		err = json.Unmarshal(jsonAuthConfig, &authConfig)
+		authConfigs[r.Address] = authConfig
+	}
+
+	return authConfigs
+}
+
+func getAuthToken(image string, dockerRegistries []DockerRegistry) string {
+	tagParts := strings.Split(image, "/")
+	registry := tagParts[0]
+	if strings.Contains(registry, ".") {
+		// private
+		for _, r := range dockerRegistries {
+			if r.Address == image {
+				return r.AuthorizationToken
+			}
+		}
+	} else {
+		for _, r := range dockerRegistries {
+			if strings.Contains(r.Address, "https://registry.hub.docker.com") || strings.Contains(r.Address, "https://index.docker.io") {
+				return r.AuthorizationToken
+			}
+		}
+	}
+
+	return ""
+}
+
 func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 	if sR.build != nil && (sR.build.Dockerfile != "" || sR.build.Context != "") {
-		authConfigs := map[string]types.AuthConfig{}
-		for _, r := range dockerRegistries {
-			jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
-			if err != nil {
-				log.Println(err)
-			}
-			var authConfig types.AuthConfig
-			err = json.Unmarshal(jsonAuthConfig, &authConfig)
-			authConfigs[r.Address] = authConfig
-		}
+		authConfigs := getAuthConfigsMap(dockerRegistries)
 		err := buildContainer(
 			sR.build.Context,
 			sR.build.Dockerfile,
@@ -122,16 +149,7 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 		if findImageLocally(sR.image, sR.dockerCli, sR.context) != nil {
 			sR.image = resolvePullImage(sR.image)
 			sR.containerConfig.Image = resolvePullImage(sR.image)
-			var authToken string
-			if strings.Contains(sR.image, ".") {
-				// private
-				for _, r := range dockerRegistries {
-					if r.Address == sR.image {
-						authToken = r.AuthorizationToken
-						break
-					}
-				}
-			}
+			authToken := getAuthToken(sR.image, dockerRegistries)
 			pullResp, err := sR.dockerCli.ImagePull(
 				sR.context,
 				sR.image,
@@ -296,11 +314,15 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
 
+		// log.Println(string(allBytes))
+
 		o := ""
 		if strings.Contains(string(allBytes), "status") {
 			o = handlePullOutput(allBytes)
 		} else if strings.Contains(string(allBytes), "stream") {
 			o = handleBuildOutput(allBytes)
+		} else if strings.Contains(string(allBytes), "progressDetail") {
+			o = "*"
 		} else {
 			o = handleLogOutput(allBytes)
 		}
@@ -334,7 +356,10 @@ func handlePullOutput(b []byte) string {
 
 	if strings.Contains(o.Status, "Pulling") ||
 		strings.Contains(o.Status, "Download complete") ||
-		strings.Contains(o.Status, "Digest") {
+		strings.Contains(o.Status, "Digest") ||
+		strings.Contains(o.Status, "Pushing") ||
+		strings.Contains(o.Status, "Pushed") ||
+		strings.Contains(o.Status, "Layer") {
 		return fmt.Sprintf("%s: %s",
 			o.ID,
 			strings.TrimSpace(o.Status),

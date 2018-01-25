@@ -1,13 +1,8 @@
 package velocity
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
-
-	"github.com/docker/docker/api/types"
 )
 
 type DockerBuild struct {
@@ -63,16 +58,7 @@ func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
 
-	authConfigs := map[string]types.AuthConfig{}
-	for _, r := range t.Docker.Registries {
-		jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
-		if err != nil {
-			log.Println(err)
-		}
-		var authConfig types.AuthConfig
-		err = json.Unmarshal(jsonAuthConfig, &authConfig)
-		authConfigs[r.Address] = authConfig
-	}
+	authConfigs := getAuthConfigsMap(t.Docker.Registries)
 
 	err := buildContainer(
 		dB.Context,
