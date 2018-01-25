@@ -22,7 +22,7 @@ func (p Plugin) GetDetails() string {
 	return fmt.Sprintf("image: %s dind: %v", p.Image, p.DockerInDocker)
 }
 
-func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
+func (p *Plugin) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("plugin")
 	writer.SetStatus(StateRunning)
 	env := []string{}
@@ -63,7 +63,7 @@ func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
 		ctx,
 		writer,
 		&wg,
-		params,
+		t.ResolvedParameters,
 		fmt.Sprintf("%s-%s", p.GetRunID(), "plugin"),
 		p.Image,
 		nil,
@@ -73,7 +73,7 @@ func (p *Plugin) Execute(emitter Emitter, params map[string]Parameter) error {
 		networkResp.ID,
 	)
 
-	sR.PullOrBuild()
+	sR.PullOrBuild(t.Docker.Registries)
 	sR.Create()
 	stopServicesChannel := make(chan string, 32)
 	wg.Add(1)

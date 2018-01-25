@@ -38,7 +38,7 @@ func (dP DockerPush) GetDetails() string {
 	return fmt.Sprintf("tags: %s", dP.Tags)
 }
 
-func (dP *DockerPush) Execute(emitter Emitter, params map[string]Parameter) error {
+func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 	writer := emitter.GetStreamWriter("run")
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dP.Description)))
@@ -54,8 +54,7 @@ func (dP *DockerPush) Execute(emitter Emitter, params map[string]Parameter) erro
 		registry := tagParts[0]
 		if !strings.Contains(registry, ".") {
 			// docker hub
-			for _, r := range dP.dockerRegistries {
-				log.Printf("checking registry %s:%s", r.Address, authToken)
+			for _, r := range tsk.Docker.Registries {
 				if strings.Contains(r.Address, "https://registry.hub.docker.com") || strings.Contains(r.Address, "https://index.docker.io") {
 					authToken = r.AuthorizationToken
 					break
@@ -63,15 +62,13 @@ func (dP *DockerPush) Execute(emitter Emitter, params map[string]Parameter) erro
 			}
 		} else {
 			// private
-			for _, r := range dP.dockerRegistries {
-				log.Printf("checking registry %s:%s", r.Address, authToken)
+			for _, r := range tsk.Docker.Registries {
 				if r.Address == registry {
 					authToken = r.AuthorizationToken
 					break
 				}
 			}
 		}
-		log.Printf("using authToken: %s", authToken)
 		reader, err := cli.ImagePush(ctx, t, types.ImagePushOptions{
 			All:          true,
 			RegistryAuth: authToken,
@@ -82,7 +79,7 @@ func (dP *DockerPush) Execute(emitter Emitter, params map[string]Parameter) erro
 			writer.Write([]byte(fmt.Sprintf("Push failed: %s", err)))
 			return err
 		}
-		handleOutput(reader, params, writer)
+		handleOutput(reader, tsk.ResolvedParameters, writer)
 		writer.Write([]byte(fmt.Sprintf("Pushed: %s", t)))
 	}
 

@@ -2,14 +2,25 @@ description: "Hello Velocity"
 name: hello-velocity
 
 parameters:
-  - use: civelocity/aws-credentials
-    arguments:
-      roleName: testRole
+  - name: docker_hub_username
+    secret: true
+  - name: docker_hub_password
+    secret: true
+
+docker:
+  registries:
+    - use: civelocity/auth-docker-hub
+      arguments:
+        USERNAME: ${docker_hub_username}
+        PASSWORD: ${docker_hub_password}
 
 steps: 
-  - type: run
-    description: Hello Docker
-    image: hello-world:latest
+  - type: build
+    context: ./backend
+    dockerfile: test.Dockerfile
+    tags:
+      - vjftw/test
 
-  - type: compose
-    composeFile: backend/docker-compose.test.yml
+  - type: push
+    tags:
+      - vjftw/test

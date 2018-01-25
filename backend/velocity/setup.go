@@ -23,7 +23,6 @@ import (
 
 type Setup struct {
 	BaseStep
-	task           *Task
 	backupResolver BackupResolver
 	repository     *GitRepository
 	commitHash     string
@@ -38,6 +37,16 @@ func NewSetup() *Setup {
 	}
 }
 
+func (s *Setup) Init(
+	backupResolver BackupResolver,
+	repository *GitRepository,
+	commitHash string,
+) {
+	s.backupResolver = backupResolver
+	s.repository = repository
+	s.commitHash = commitHash
+}
+
 func (s *Setup) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
 	return nil
 }
@@ -46,27 +55,15 @@ func (s Setup) GetDetails() string {
 	return ""
 }
 
-func (s *Setup) Init(
-	task *Task,
-	backupResolver BackupResolver,
-	repository *GitRepository,
-	commitHash string,
-) {
-	s.task = task
-	s.backupResolver = backupResolver
-	s.repository = repository
-	s.commitHash = commitHash
-}
-
-func (s *Setup) Execute(emitter Emitter, params map[string]Parameter) error {
-	s.task.runID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
+func (s *Setup) Execute(emitter Emitter, t *Task) error {
+	t.RunID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
 
 	writer := emitter.GetStreamWriter("setup")
 	writer.SetStatus(StateRunning)
 
 	// Clone repository if necessary
 	if s.repository != nil {
-		repo, dir, err := GitClone(s.repository, false, true, s.task.Git.Submodule, writer)
+		repo, dir, err := GitClone(s.repository, false, true, t.Git.Submodule, writer)
 		if err != nil {
 			log.Println(err)
 			writer.SetStatus(StateFailed)
@@ -101,9 +98,9 @@ func (s *Setup) Execute(emitter Emitter, params map[string]Parameter) error {
 	}
 
 	// config
-	for _, config := range s.task.Parameters {
+	for _, config := range t.Parameters {
 		writer.Write([]byte(fmt.Sprintf("Resolving parameter %s", config.GetInfo())))
-		params, err := config.GetParameters(writer, s.task.runID, s.backupResolver)
+		params, err := config.GetParameters(writer, t, s.backupResolver)
 		if err != nil {
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("could not resolve parameter: %v", err)))
@@ -119,15 +116,17 @@ func (s *Setup) Execute(emitter Emitter, params map[string]Parameter) error {
 		}
 	}
 
+	t.ResolvedParameters = parameters
+
 	// Update params on steps
-	for _, s := range s.task.Steps {
+	for _, s := range t.Steps {
 		s.SetParams(parameters)
 	}
 
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}
-	for _, registry := range s.task.Docker.Registries {
-		r, err := dockerLogin(registry, writer, s.task.runID, parameters)
+	for _, registry := range t.Docker.Registries {
+		r, err := dockerLogin(registry, writer, t.RunID, parameters, t.Docker.Registries)
 		if err != nil {
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("could not login to Docker registry: %v", err)))
@@ -137,11 +136,9 @@ func (s *Setup) Execute(emitter Emitter, params map[string]Parameter) error {
 		writer.Write([]byte(fmt.Sprintf("Authenticated with Docker registry: %s (%s)", r.Address, r.AuthorizationToken)))
 	}
 
-	for _, s := range s.task.Steps {
-		s.SetDockerRegistries(authedRegistries)
-	}
+	t.Docker.Registries = authedRegistries
 
-	log.Printf("%+v", s.task.Docker.Registries)
+	log.Printf("%+v", t.Docker.Registries)
 
 	writer.SetStatus(StateSuccess)
 	writer.Write([]byte(""))
@@ -253,7 +250,7 @@ func getGitParams() map[string]Parameter {
 	}
 }
 
-func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parameters map[string]Parameter) (DockerRegistry, error) {
+func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parameters map[string]Parameter, authConfigs []DockerRegistry) (DockerRegistry, error) {
 	env := []string{
 		fmt.Sprintf("address=%s", registry.Address),
 	}
@@ -282,7 +279,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parame
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
 
-	networkResp, err := cli.NetworkCreate(ctx, runID, types.NetworkCreate{
+	networkResp, err := cli.NetworkCreate(ctx, RunID, types.NetworkCreate{
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
@@ -296,7 +293,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parame
 		w,
 		&wg,
 		map[string]Parameter{},
-		fmt.Sprintf("%s-%s", runID, "dLogin"),
+		fmt.Sprintf("%s-%s", RunID, "dLogin"),
 		registry.Use,
 		nil,
 		containerConfig,
@@ -305,7 +302,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parame
 		networkResp.ID,
 	)
 
-	sR.PullOrBuild()
+	sR.PullOrBuild(authConfigs)
 	sR.Create()
 	stopServicesChannel := make(chan string, 32)
 	wg.Add(1)
@@ -338,6 +335,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, runID string, parame
 	}
 
 	registry.AuthorizationToken = dOutput.AuthorizationToken
+	registry.Address = dOutput.Address
 	return registry, nil
 }
 
@@ -345,4 +343,5 @@ type dockerLoginOutput struct {
 	State              string `json:"state"`
 	Error              string `json:"error"`
 	AuthorizationToken string `json:"authToken"`
+	Address            string `json:"address"`
 }

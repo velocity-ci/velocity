@@ -25,7 +25,7 @@ type Parameter struct {
 
 type ConfigParameter interface {
 	GetInfo() string
-	GetParameters(writer io.Writer, runID string, backupResolver BackupResolver) ([]Parameter, error)
+	GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) ([]Parameter, error)
 }
 
 type BackupResolver interface {
@@ -45,7 +45,7 @@ func (p BasicParameter) GetInfo() string {
 	return p.Name
 }
 
-func (p BasicParameter) GetParameters(writer io.Writer, runID string, backupResolver BackupResolver) ([]Parameter, error) {
+func (p BasicParameter) GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) ([]Parameter, error) {
 	v := p.Default
 	if len(p.Value) > 0 {
 		v = p.Value
@@ -108,7 +108,7 @@ func (p DerivedParameter) GetInfo() string {
 	return p.Use
 }
 
-func (p DerivedParameter) GetParameters(writer io.Writer, runID string, backupResolver BackupResolver) ([]Parameter, error) {
+func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) ([]Parameter, error) {
 	env := []string{}
 	for k, v := range p.Arguments {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -122,7 +122,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, runID string, backupRe
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
 
-	networkResp, err := cli.NetworkCreate(ctx, runID, types.NetworkCreate{
+	networkResp, err := cli.NetworkCreate(ctx, t.RunID, types.NetworkCreate{
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
@@ -136,7 +136,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, runID string, backupRe
 		w,
 		&wg,
 		map[string]Parameter{},
-		fmt.Sprintf("%s-%s", runID, "dParam"),
+		fmt.Sprintf("%s-%s", t.RunID, "dParam"),
 		p.Use,
 		nil,
 		containerConfig,
@@ -145,7 +145,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, runID string, backupRe
 		networkResp.ID,
 	)
 
-	sR.PullOrBuild()
+	sR.PullOrBuild(t.Docker.Registries)
 	sR.Create()
 	stopServicesChannel := make(chan string, 32)
 	wg.Add(1)

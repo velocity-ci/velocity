@@ -12,7 +12,9 @@ type Task struct {
 	Docker      TaskDocker        `json:"docker" yaml:"docker"`
 	Parameters  []ConfigParameter `json:"parameters" yaml:"parameters"`
 	Steps       []Step            `json:"steps" yaml:"steps"`
-	runID       string
+
+	RunID              string               `json:"-" yaml:"-"`
+	ResolvedParameters map[string]Parameter `json:"-" yaml:"-"`
 }
 
 type TaskGit struct {

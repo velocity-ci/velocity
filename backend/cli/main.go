@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,8 +12,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/velocity-ci/velocity/backend/velocity"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 func main() {
@@ -99,83 +96,12 @@ func run(taskName string) {
 	// Run each step unless they fail (optional)
 	for i, step := range t.Steps {
 		if step.GetType() == "setup" {
-			step.(*velocity.Setup).Init(t, &ParameterResolver{}, nil, "")
+			step.(*velocity.Setup).Init(&ParameterResolver{}, nil, "")
 		}
 		emitter.SetStepNumber(uint64(i))
-		err := step.Execute(emitter, map[string]velocity.Parameter{})
+		err := step.Execute(emitter, t)
 		if err != nil {
 			break
 		}
-	}
-}
-
-func getGitParams() map[string]velocity.Parameter {
-	path, _ := os.Getwd()
-
-	// We instance a new repository targeting the given path (the .git folder)
-	r, err := git.PlainOpen(fmt.Sprintf("%s/", path))
-	if err != nil {
-		panic(err)
-	}
-
-	// ... retrieving the HEAD reference
-	ref, err := r.Head()
-	if err != nil {
-		panic(err)
-	}
-	SHA := ref.Hash().String()
-	shortSHA := SHA[:7]
-	branch := ref.Name().Short()
-	describe := shortSHA
-
-	tags, _ := r.Tags()
-	defer tags.Close()
-	var lastTag *object.Tag
-	for {
-		t, err := tags.Next()
-		if err == io.EOF {
-			break
-		}
-
-		tObj, err := r.TagObject(t.Hash())
-		if err != nil {
-			panic(err)
-		}
-
-		c, _ := tObj.Commit()
-		if c.Hash.String() == SHA {
-			describe = tObj.Name
-		}
-		lastTag = tObj
-	}
-
-	if describe == shortSHA {
-		if lastTag == nil {
-			describe = shortSHA
-		} else {
-			describe = fmt.Sprintf("%s+%s", lastTag.Name, shortSHA)
-		}
-	}
-
-	fmt.Printf("----\nGIT_SHA: %s\nGIT_SHORT_SHA: %s\nGIT_BRANCH: %s\nGIT_DESCRIBE: %s\n----\n",
-		SHA,
-		shortSHA,
-		branch,
-		describe,
-	)
-
-	return map[string]velocity.Parameter{
-		"GIT_SHA": velocity.Parameter{
-			Value: SHA,
-		},
-		"GIT_SHORT_SHA": velocity.Parameter{
-			Value: shortSHA,
-		},
-		"GIT_BRANCH": velocity.Parameter{
-			Value: branch,
-		},
-		"GIT_DESCRIBE": velocity.Parameter{
-			Value: describe,
-		},
 	}
 }

@@ -103,7 +103,7 @@ func (dR DockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error {
+func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("run")
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description)))
@@ -152,7 +152,7 @@ func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error
 		ctx,
 		writer,
 		&wg,
-		params,
+		t.ResolvedParameters,
 		fmt.Sprintf("%s-%s", dR.GetRunID(), "run"),
 		dR.Image,
 		nil,
@@ -162,7 +162,7 @@ func (dR *DockerRun) Execute(emitter Emitter, params map[string]Parameter) error
 		networkResp.ID,
 	)
 
-	sR.PullOrBuild()
+	sR.PullOrBuild(t.Docker.Registries)
 	sR.Create()
 	stopServicesChannel := make(chan string, 32)
 	wg.Add(1)

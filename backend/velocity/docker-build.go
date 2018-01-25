@@ -1,8 +1,13 @@
 package velocity
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
+
+	"github.com/docker/docker/api/types"
 )
 
 type DockerBuild struct {
@@ -37,6 +42,15 @@ func (s *DockerBuild) UnmarshalYamlInterface(y map[interface{}]interface{}) erro
 		break
 	}
 
+	s.Tags = []string{}
+	switch x := y["tags"].(type) {
+	case []interface{}:
+		for _, p := range x {
+			s.Tags = append(s.Tags, p.(string))
+		}
+		break
+	}
+
 	return nil
 }
 
@@ -44,17 +58,29 @@ func (dB DockerBuild) GetDetails() string {
 	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }
 
-func (dB *DockerBuild) Execute(emitter Emitter, params map[string]Parameter) error {
+func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("build")
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
+
+	authConfigs := map[string]types.AuthConfig{}
+	for _, r := range t.Docker.Registries {
+		jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
+		if err != nil {
+			log.Println(err)
+		}
+		var authConfig types.AuthConfig
+		err = json.Unmarshal(jsonAuthConfig, &authConfig)
+		authConfigs[r.Address] = authConfig
+	}
 
 	err := buildContainer(
 		dB.Context,
 		dB.Dockerfile,
 		dB.Tags,
-		params,
+		t.ResolvedParameters,
 		writer,
+		authConfigs,
 	)
 
 	if err != nil {

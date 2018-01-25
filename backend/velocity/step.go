@@ -6,13 +6,12 @@ import (
 )
 
 type Step interface {
-	Execute(emitter Emitter, parameters map[string]Parameter) error
+	Execute(emitter Emitter, t *Task) error
 	GetType() string
 	GetDescription() string
 	GetDetails() string
 	Validate(map[string]Parameter) error
 	SetParams(map[string]Parameter) error
-	SetDockerRegistries([]DockerRegistry)
 	GetOutputStreams() []string
 	UnmarshalYamlInterface(map[interface{}]interface{}) error
 }
@@ -32,12 +31,11 @@ const (
 )
 
 type BaseStep struct {
-	Type             string               `json:"type" yaml:"type"`
-	Description      string               `json:"description" yaml:"description"`
-	OutputStreams    []string             `json:"outputStreams" yaml:"-"`
-	Params           map[string]Parameter `json:"params" yaml:"-"`
-	dockerRegistries []DockerRegistry
-	runID            string
+	Type          string               `json:"type" yaml:"type"`
+	Description   string               `json:"description" yaml:"description"`
+	OutputStreams []string             `json:"outputStreams" yaml:"-"`
+	Params        map[string]Parameter `json:"params" yaml:"-"`
+	runID         string
 }
 
 func (bS *BaseStep) GetType() string {
@@ -54,10 +52,6 @@ func (bS *BaseStep) GetOutputStreams() []string {
 
 func (bS *BaseStep) SetParams(params map[string]Parameter) {
 	bS.Params = params
-}
-
-func (bS *BaseStep) SetDockerRegistries(r []DockerRegistry) {
-	bS.dockerRegistries = r
 }
 
 func (bS *BaseStep) GetRunID() string {

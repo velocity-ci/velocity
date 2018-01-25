@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -91,14 +92,25 @@ func getImageName(serviceName string) string {
 	)
 }
 
-func (sR *serviceRunner) PullOrBuild() {
+func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 	if sR.build != nil && (sR.build.Dockerfile != "" || sR.build.Context != "") {
+		authConfigs := map[string]types.AuthConfig{}
+		for _, r := range dockerRegistries {
+			jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
+			if err != nil {
+				log.Println(err)
+			}
+			var authConfig types.AuthConfig
+			err = json.Unmarshal(jsonAuthConfig, &authConfig)
+			authConfigs[r.Address] = authConfig
+		}
 		err := buildContainer(
 			sR.build.Context,
 			sR.build.Dockerfile,
 			[]string{getImageName(sR.name)},
 			sR.params,
 			sR.writer,
+			authConfigs,
 		)
 		if err != nil {
 			log.Printf("build image err: %s", err)
@@ -110,10 +122,22 @@ func (sR *serviceRunner) PullOrBuild() {
 		if findImageLocally(sR.image, sR.dockerCli, sR.context) != nil {
 			sR.image = resolvePullImage(sR.image)
 			sR.containerConfig.Image = resolvePullImage(sR.image)
+			var authToken string
+			if strings.Contains(sR.image, ".") {
+				// private
+				for _, r := range dockerRegistries {
+					if r.Address == sR.image {
+						authToken = r.AuthorizationToken
+						break
+					}
+				}
+			}
 			pullResp, err := sR.dockerCli.ImagePull(
 				sR.context,
 				sR.image,
-				types.ImagePullOptions{},
+				types.ImagePullOptions{
+					RegistryAuth: authToken,
+				},
 			)
 			if err != nil {
 				log.Printf("pull image err: %s", err)
@@ -226,6 +250,7 @@ func buildContainer(
 	tags []string,
 	parameters map[string]Parameter,
 	writer io.Writer,
+	authConfigs map[string]types.AuthConfig,
 ) error {
 	cwd, _ := os.Getwd()
 	buildContext = fmt.Sprintf("%s/%s", cwd, buildContext)
@@ -250,10 +275,11 @@ func buildContainer(
 	ctx := context.Background()
 
 	buildResp, err := cli.ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
-		PullParent: true,
-		Remove:     true,
-		Dockerfile: dockerfile,
-		Tags:       tags,
+		AuthConfigs: authConfigs,
+		PullParent:  true,
+		Remove:      true,
+		Dockerfile:  dockerfile,
+		Tags:        tags,
 	})
 	if err != nil {
 		return err

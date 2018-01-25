@@ -80,7 +80,7 @@ func (dC *DockerCompose) parseDockerComposeFile() error {
 	return nil
 }
 
-func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) error {
+func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 
 	err := dC.parseDockerComposeFile()
 	if err != nil {
@@ -122,7 +122,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 			ctx,
 			writer,
 			&wg,
-			params,
+			t.ResolvedParameters,
 			fmt.Sprintf("%s-%s", dC.GetRunID(), serviceName),
 			s.Image,
 			&s.Build,
@@ -137,7 +137,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, params map[string]Parameter) e
 
 	// Pull/Build images
 	for _, serviceRunner := range services {
-		serviceRunner.PullOrBuild()
+		serviceRunner.PullOrBuild(t.Docker.Registries)
 	}
 
 	// Create services
