@@ -28,7 +28,7 @@ decoder =
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
         |> required "task" Task.decodeId
-        |> required "steps" (Decode.list BuildStep.decoder)
+        |> required "buildSteps" (Decode.list BuildStep.decoder)
         |> required "createdAt" stringToDateTime
 
 

@@ -15,7 +15,6 @@ type alias BuildStep =
     { id : Id
     , status : Status
     , number : Int
-    , description : String
     , streams : List BuildStream
     }
 
@@ -30,7 +29,6 @@ decoder =
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
         |> required "number" Decode.int
-        |> required "description" Decode.string
         |> required "streams" (Decode.list BuildStream.decoder)
 
 
