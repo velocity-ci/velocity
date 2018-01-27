@@ -21,6 +21,7 @@ type Step
     = Build BuildStep
     | Run RunStep
     | Clone CloneStep
+    | Compose ComposeStep
 
 
 type alias CloneStep =
@@ -48,9 +49,14 @@ type alias RunStep =
     }
 
 
+type alias ComposeStep =
+    { description : String }
+
+
 type Parameter
     = StringParam StringParameter
     | ChoiceParam ChoiceParameter
+    | DerivedParam DerivedParameter
 
 
 type alias StringParameter =
@@ -68,6 +74,10 @@ type alias ChoiceParameter =
     }
 
 
+type alias DerivedParameter =
+    { use : String }
+
+
 
 -- SERIALIZATION --
 
@@ -79,13 +89,7 @@ decoder =
         |> required "name" decodeName
         |> optional "description" Decode.string ""
         |> optional "steps" (Decode.list stepDecoder) []
-        |> optional "parameters" parameterKeyValuePairDecoder []
-
-
-parameterKeyValuePairDecoder : Decoder (List Parameter)
-parameterKeyValuePairDecoder =
-    Decode.keyValuePairs parameterOptionsDecoder
-        |> Decode.andThen (List.map Tuple.second >> Decode.succeed)
+        |> optional "parameters" (Decode.list parameterDecoder) []
 
 
 stringParameterDecoder : Decoder StringParameter
@@ -105,8 +109,19 @@ choiceParameterDecoder =
         |> required "otherOptions" (Decode.list Decode.string)
 
 
-parameterOptionsDecoder : Decoder Parameter
-parameterOptionsDecoder =
+derivedParameterDecoder : Decoder DerivedParameter
+derivedParameterDecoder =
+    decode DerivedParameter
+        |> required "use" Decode.string
+
+
+parameterDecoder : Decoder Parameter
+parameterDecoder =
+    Decode.succeed (DerivedParam { use = "hello" })
+
+
+basicParameterDecoder : Decoder Parameter
+basicParameterDecoder =
     Decode.string
         |> Decode.list
         |> Decode.nullable
@@ -117,7 +132,7 @@ parameterOptionsDecoder =
                     Nothing ->
                         Decode.map StringParam stringParameterDecoder
 
-                    Just options ->
+                    Just _ ->
                         Decode.map ChoiceParam choiceParameterDecoder
             )
 
@@ -136,6 +151,9 @@ stepDecoder =
 
                     "clone" ->
                         Decode.map Clone cloneStepDecoder
+
+                    "compose" ->
+                        Decode.map Compose composeStepDecoder
 
                     unknown ->
                         Decode.fail <| "Unknown type: " ++ unknown
@@ -168,6 +186,12 @@ cloneStepDecoder =
     decode CloneStep
         |> required "description" Decode.string
         |> required "submodule" Decode.bool
+
+
+composeStepDecoder : Decoder ComposeStep
+composeStepDecoder =
+    decode ComposeStep
+        |> required "description" Decode.string
 
 
 

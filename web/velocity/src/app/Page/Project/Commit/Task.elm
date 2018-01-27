@@ -192,7 +192,7 @@ init session id hash task maybeSelectedTab builds =
                     Nothing
 
                 form =
-                    List.map newField task.parameters
+                    List.filterMap newField task.parameters
 
                 errors =
                     List.concatMap validator form
@@ -227,7 +227,7 @@ init session id hash task maybeSelectedTab builds =
                             Task.succeed (initialModel (Just NewFormFrame))
 
 
-newField : Parameter -> Field
+newField : Parameter -> Maybe Field
 newField parameter =
     case parameter of
         StringParam param ->
@@ -240,6 +240,7 @@ newField parameter =
             in
                 InputFormField value dirty param.name
                     |> Input
+                    |> Just
 
         ChoiceParam param ->
             let
@@ -258,6 +259,10 @@ newField parameter =
             in
                 ChoiceFormField value True param.name options
                     |> Choice
+                    |> Just
+
+        DerivedParam _ ->
+            Nothing
 
 
 
@@ -500,6 +505,9 @@ viewTabFrame model builds =
 
                                                 Just (Clone _) ->
                                                     "Clone"
+
+                                                Just (Compose _) ->
+                                                    "Compose"
 
                                                 Nothing ->
                                                     ""

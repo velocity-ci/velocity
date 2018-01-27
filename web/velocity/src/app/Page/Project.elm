@@ -554,7 +554,7 @@ updateSubPage session subPage msg model =
                     => Cmd.map CommitMsg subMsg
 
             ( CommitLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored error) }
+                { model | subPageState = Loaded (Errored (Debug.log "ERROR " error)) }
                     => Cmd.none
 
             ( CommitMsg subMsg, Commit subModel ) ->
