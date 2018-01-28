@@ -188,10 +188,10 @@ createBuild id hash taskName params token =
             let
                 enc =
                     params
-                        |> List.map (\( field, value ) -> field => Encode.string value)
+                        |> List.map (\( field, value ) -> Encode.object [ ( "name", Encode.string field ), ( "value", Encode.string value ) ])
             in
                 if (List.length params) > 0 then
-                    Encode.object enc
+                    Encode.list enc
                 else
                     Encode.list []
 

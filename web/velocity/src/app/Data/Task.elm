@@ -117,7 +117,20 @@ derivedParameterDecoder =
 
 parameterDecoder : Decoder Parameter
 parameterDecoder =
-    Decode.succeed (DerivedParam { use = "hello" })
+    Decode.string
+        |> Decode.field "type"
+        |> Decode.andThen
+            (\paramType ->
+                case paramType of
+                    "basic" ->
+                        basicParameterDecoder
+
+                    "derived" ->
+                        Decode.map DerivedParam derivedParameterDecoder
+
+                    unknown ->
+                        Decode.fail <| "Unknown parameter type: " ++ unknown
+            )
 
 
 basicParameterDecoder : Decoder Parameter
@@ -128,12 +141,22 @@ basicParameterDecoder =
         |> Decode.field "otherOptions"
         |> Decode.andThen
             (\otherOptions ->
-                case otherOptions of
-                    Nothing ->
+                let
+                    string =
                         Decode.map StringParam stringParameterDecoder
 
-                    Just _ ->
+                    choice =
                         Decode.map ChoiceParam choiceParameterDecoder
+                in
+                    case otherOptions of
+                        Nothing ->
+                            string
+
+                        Just options ->
+                            if List.isEmpty options then
+                                string
+                            else
+                                choice
             )
 
 
