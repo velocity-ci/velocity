@@ -50,7 +50,7 @@ func (bS *BuildScheduler) StartWorker() {
 			}
 		}
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 	log.Println("Stopped Build Scheduler")
 	bS.wg.Done()

@@ -9,13 +9,9 @@ import (
 )
 
 func TestNewToken(t *testing.T) {
-	// Given a user
-	user := &auth.User{
-		Username: "Bob",
-	}
 
 	// When generating a new AuthToken
-	authToken := auth.NewAuthToken(user)
+	authToken := auth.NewAuthToken("Bob")
 
 	// Then the username should be correct
 	assert.Equal(t, authToken.Username, "Bob")

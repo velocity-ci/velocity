@@ -6,7 +6,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
+	"testing"
 	"time"
+
+	"github.com/velocity-ci/velocity/backend/api/domain/knownhost"
 
 	"github.com/DATA-DOG/godog"
 	"github.com/jinzhu/gorm"
@@ -19,12 +23,50 @@ var db *gorm.DB
 var client *http.Client
 var response *http.Response
 var responseBody []byte
+var headers http.Header
+
+func TestMain(m *testing.M) {
+	format := "progress" // non verbose mode
+	concurrency := 1
+
+	var specific bool
+	for _, arg := range os.Args[1:] {
+		if arg == "-test.v=true" { // go test transforms -v option - verbose mode
+			format = "pretty"
+			concurrency = 1
+			break
+		}
+		if strings.Index(arg, "-test.run") == 0 {
+			specific = true
+		}
+	}
+	var status int
+	if !specific {
+		status = godog.RunWithOptions("godog", func(s *godog.Suite) {
+			FeatureContext(s)
+		}, godog.Options{
+			Format:      format, // pretty format for verbose mode, otherwise - progress
+			Paths:       []string{"features"},
+			Concurrency: concurrency,           // concurrency for verbose mode is 1
+			Randomize:   time.Now().UnixNano(), // randomize scenario execution order
+		})
+	}
+
+	if st := m.Run(); st > status {
+		status = st
+	}
+	os.Exit(status)
+}
 
 func FeatureContext(s *godog.Suite) {
 	s.Step(`^the following users exist:$`, theFollowingUsersExist)
 	s.Step(`^I authenticate with the following credentials:$`, iAuthenticateWithTheFollowingCredentials)
 	s.Step(`^the response has status "([^"]*)"$`, theResponseHasStatus)
 	s.Step(`^the response has the following attributes:$`, theResponseHasTheFollowingAttributes)
+	s.Step(`^I am authenticated$`, iAmAuthenticated)
+	s.Step(`^I create the following known host:$`, iCreateTheFollowingKnownHost)
+	s.Step(`^the following known host exists:$`, theFollowingKnownHostExists)
+	s.Step(`^I list the known hosts$`, iListTheKnownHosts)
 
 	s.BeforeSuite(func() {
 		db = NewGORMDB("test.db")
@@ -35,6 +77,8 @@ func FeatureContext(s *godog.Suite) {
 		client = &http.Client{
 			Timeout: time.Second * 10,
 		}
+
+		headers = http.Header{}
 
 		testServer.Start()
 	})
@@ -64,6 +108,10 @@ func FeatureContext(s *godog.Suite) {
 		if err != nil {
 			log.Printf("could not truncate database %s", err)
 		}
+
+		// clean known hosts
+		fM := knownhost.NewFileManager()
+		fM.Clear()
 	})
 
 	s.AfterScenario(func(interface{}, error) {
