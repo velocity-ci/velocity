@@ -124,7 +124,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 		Image: dR.Image,
 		Cmd:   dR.Command,
 		Volumes: map[string]struct{}{
-			dR.MountPoint: struct{}{},
+			dR.MountPoint: {},
 		},
 		WorkingDir: fmt.Sprintf("%s/%s", dR.MountPoint, dR.WorkingDir),
 		Env:        env,
@@ -256,7 +256,7 @@ func (dR *DockerRun) String() string {
 func isAllInParams(matches [][]string, params map[string]Parameter) bool {
 	for _, match := range matches {
 		found := false
-		for paramName, _ := range params {
+		for paramName := range params {
 			if paramName == match[1] {
 				found = true
 				break

@@ -248,7 +248,7 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, 
 
 	networkConfig := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
-			networkID: &network.EndpointSettings{
+			networkID: {
 				Aliases: s.Networks["default"].Aliases,
 			},
 		},
@@ -439,7 +439,7 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 			aliases = append(aliases, i.(string))
 		}
 		a.Networks = map[string]dockerComposeServiceNetwork{
-			"default": dockerComposeServiceNetwork{
+			"default": {
 				Aliases: aliases,
 			},
 		}

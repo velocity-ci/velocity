@@ -66,7 +66,7 @@ func (c Controller) syncProjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	if p.Synchronising {
 		c.render.JSON(w, http.StatusBadRequest, map[string][]string{
-			"project": []string{"Already synchronising."},
+			"project": {"Already synchronising."},
 		},
 		)
 		return

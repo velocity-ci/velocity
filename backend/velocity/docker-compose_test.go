@@ -12,73 +12,73 @@ func Test_getServiceOrder(t *testing.T) {
 	}
 
 	services := map[string]dockerComposeService{
-		"proxy": dockerComposeService{
+		"proxy": {
 			Links: []string{
 				"backend",
 				"frontend",
 			},
 		},
-		"database": dockerComposeService{
+		"database": {
 			Links: []string{
 				"redis",
 			},
 		},
-		"redis": dockerComposeService{
+		"redis": {
 			Links: []string{
 				"frontend",
 			},
 		},
-		"frontend": dockerComposeService{
+		"frontend": {
 			Links: []string{},
 		},
-		"backend": dockerComposeService{
+		"backend": {
 			Links: []string{"database"},
 		},
 	}
 
 	services2 := map[string]dockerComposeService{
-		"database": dockerComposeService{
+		"database": {
 			Links: []string{
 				"redis",
 			},
 		},
-		"proxy": dockerComposeService{
+		"proxy": {
 			Links: []string{
 				"backend",
 				"frontend",
 			},
 		},
-		"redis": dockerComposeService{
+		"redis": {
 			Links: []string{
 				"frontend",
 			},
 		},
-		"frontend": dockerComposeService{
+		"frontend": {
 			Links: []string{},
 		},
-		"backend": dockerComposeService{
+		"backend": {
 			Links: []string{"database"},
 		},
 	}
 
 	services3 := map[string]dockerComposeService{
-		"redis": dockerComposeService{
+		"redis": {
 			Links: []string{
 				"frontend",
 			},
 		},
-		"database": dockerComposeService{
+		"database": {
 			Links: []string{
 				"redis",
 			},
 		},
-		"frontend": dockerComposeService{
+		"frontend": {
 			Links: []string{},
 		},
-		"backend": dockerComposeService{
+		"backend": {
 			Links: []string{"database"},
 		},
-		"proxy": dockerComposeService{
+		"proxy": {
 			Links: []string{
 				"backend",
 				"frontend",

@@ -29,7 +29,7 @@ func main() {
 		// iterate through tasks in memory and list them.
 		for _, task := range tasks {
 			fmt.Printf("%s: %s (", task.Name, task.Description)
-			for paramName, _ := range task.Parameters {
+			for paramName := range task.Parameters {
 				fmt.Printf(" %s ", paramName)
 			}
 			fmt.Println(")")

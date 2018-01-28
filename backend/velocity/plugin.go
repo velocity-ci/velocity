@@ -40,7 +40,7 @@ func (p *Plugin) Execute(emitter Emitter, t *Task) error {
 
 	if p.DockerInDocker {
 		config.Volumes = map[string]struct{}{
-			"/var/run/docker.sock": struct{}{},
+			"/var/run/docker.sock": {},
 		}
 		hostConfig.Binds = []string{
 			"/var/run/docker.sock:/var/run/docker.sock",

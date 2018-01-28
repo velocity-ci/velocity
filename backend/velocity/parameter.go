@@ -57,7 +57,7 @@ func (p BasicParameter) GetParameters(writer io.Writer, t *Task, backupResolver 
 		v = val
 	}
 	return []Parameter{
-		Parameter{
+		{
 			Name:     p.Name,
 			Value:    v,
 			IsSecret: p.Secret,

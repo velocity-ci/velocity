@@ -213,35 +213,35 @@ func getGitParams() map[string]Parameter {
 	}
 
 	return map[string]Parameter{
-		"GIT_COMMIT_LONG_SHA": Parameter{
+		"GIT_COMMIT_LONG_SHA": {
 			Value:    SHA,
 			IsSecret: false,
 		},
-		"GIT_COMMIT_SHORT_SHA": Parameter{
+		"GIT_COMMIT_SHORT_SHA": {
 			Value:    shortSHA,
 			IsSecret: false,
 		},
-		"GIT_BRANCH": Parameter{
+		"GIT_BRANCH": {
 			Value:    branch,
 			IsSecret: false,
 		},
-		"GIT_DESCRIBE": Parameter{
+		"GIT_DESCRIBE": {
 			Value:    describe,
 			IsSecret: false,
 		},
-		"GIT_COMMIT_AUTHOR": Parameter{
+		"GIT_COMMIT_AUTHOR": {
 			Value:    commit.Author.Email,
 			IsSecret: false,
 		},
-		"GIT_COMMIT_MESSAGE": Parameter{
+		"GIT_COMMIT_MESSAGE": {
 			Value:    message,
 			IsSecret: false,
 		},
-		"GIT_COMMIT_TIMESTAMP": Parameter{
+		"GIT_COMMIT_TIMESTAMP": {
 			Value:    commit.Committer.When.String(),
 			IsSecret: false,
 		},
-		"GIT_COMMIT_TIMESTAMP_EPOCH": Parameter{
+		"GIT_COMMIT_TIMESTAMP_EPOCH": {
 			Value:    strconv.FormatInt(commit.Committer.When.Unix(), 10),
 			IsSecret: false,
 		},
@@ -263,7 +263,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 		Image: registry.Use,
 		Env:   env,
 		Volumes: map[string]struct{}{
-			"/var/run/docker.sock": struct{}{},
+			"/var/run/docker.sock": {},
 		},
 	}
 

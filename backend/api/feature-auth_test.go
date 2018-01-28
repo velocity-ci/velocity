@@ -15,22 +15,22 @@ func iAmAuthenticated() error {
 
 	err := theFollowingUsersExist(&gherkin.DataTable{
 		Rows: []*gherkin.TableRow{
-			&gherkin.TableRow{
+			{
 				Cells: []*gherkin.TableCell{
-					&gherkin.TableCell{
+					{
 						Value: "username",
 					},
-					&gherkin.TableCell{
+					{
 						Value: "password",
 					},
 				},
 			},
-			&gherkin.TableRow{
+			{
 				Cells: []*gherkin.TableCell{
-					&gherkin.TableCell{
+					{
 						Value: "admin",
 					},
-					&gherkin.TableCell{
+					{
 						Value: "testPassword",
 					},
 				},
@@ -44,22 +44,22 @@ func iAmAuthenticated() error {
 
 	err = iAuthenticateWithTheFollowingCredentials(&gherkin.DataTable{
 		Rows: []*gherkin.TableRow{
-			&gherkin.TableRow{
+			{
 				Cells: []*gherkin.TableCell{
-					&gherkin.TableCell{
+					{
 						Value: "username",
 					},
-					&gherkin.TableCell{
+					{
 						Value: "admin",
 					},
 				},
 			},
-			&gherkin.TableRow{
+			{
 				Cells: []*gherkin.TableCell{
-					&gherkin.TableCell{
+					{
 						Value: "password",
 					},
-					&gherkin.TableCell{
+					{
 						Value: "testPassword",
 					},
 				},
