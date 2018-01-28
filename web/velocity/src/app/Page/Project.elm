@@ -24,6 +24,7 @@ import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedLis
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
+import FontAwesome as Icon
 
 
 -- SUB PAGES --
