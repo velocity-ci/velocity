@@ -46,7 +46,7 @@ func TestValidToken(t *testing.T) {
 
 	// From Authorization Header
 	request, _ := http.NewRequest("GET", ts.URL, nil)
-	authToken := auth.NewAuthToken(&auth.User{Username: "Bob"})
+	authToken := auth.NewAuthToken("Bob")
 	request.Header.Set("Authorization", fmt.Sprintf("bearer %s", authToken.Token))
 	res, _ := ts.Client().Do(request)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
@@ -76,7 +76,7 @@ func TestInvalidParseToken(t *testing.T) {
 	defer ts.Close()
 
 	request, _ := http.NewRequest("GET", ts.URL, nil)
-	authToken := auth.NewAuthToken(&auth.User{Username: "Bob"})
+	authToken := auth.NewAuthToken("Bob")
 	request.Header.Set("Authorization", fmt.Sprintf("bearer dd%s", authToken.Token))
 	res, _ := ts.Client().Do(request)
 	assert.Equal(t, res.StatusCode, http.StatusUnauthorized)
@@ -96,7 +96,7 @@ func TestNoBearerToken(t *testing.T) {
 	defer ts.Close()
 
 	request, _ := http.NewRequest("GET", ts.URL, nil)
-	authToken := auth.NewAuthToken(&auth.User{Username: "Bob"})
+	authToken := auth.NewAuthToken("Bob")
 	request.Header.Set("Authorization", fmt.Sprintf("%s", authToken.Token))
 	res, _ := ts.Client().Do(request)
 	assert.Equal(t, res.StatusCode, http.StatusUnauthorized)

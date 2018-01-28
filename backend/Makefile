@@ -28,18 +28,19 @@ dep-status:
 	/bin/sh -c "dep status"
 
 build-api:
-	# docker run --rm \
-	# --volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
-	# --workdir /go/src/github.com/velocity-ci/velocity/backend \
- 	# --env CGO_ENABLED=1 \
- 	# --env GOOS=linux \
-	# golang \
-	# /bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_api ./api"
+	docker run --rm \
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+ 	--env CGO_ENABLED=1 \
+ 	--env GOOS=linux \
+	golang \
+	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_api ./api"
 
+build-api-image:
 	docker build -t civelocity/api:${GIT_VERSION} -f api.Dockerfile .
 	docker tag civelocity/api:${GIT_VERSION} civelocity/api:latest
 
-gox-cli:
+build-cli:
 	docker run --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
@@ -48,19 +49,20 @@ gox-cli:
 	golang \
 	/bin/sh -c 'go get github.com/mitchellh/gox && gox -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}" -osarch="darwin/386 darwin/amd64 linux/386 linux/amd64 linux/arm" ./cli'
 
-build-cli:
+build-cli-image:
 	docker build -t civelocity/cli:${GIT_VERSION} -f cli.Dockerfile .
 	docker tag civelocity/cli:${GIT_VERSION} civelocity/cli:latest
 
 build-slave:
-	# docker run --rm \
-	# --volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
-	# --workdir /go/src/github.com/velocity-ci/velocity/backend \
- 	# --env CGO_ENABLED=0 \
- 	# --env GOOS=linux \
-	# golang \
-	# /bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_slave ./slave"
+	docker run --rm \
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+ 	--env CGO_ENABLED=0 \
+ 	--env GOOS=linux \
+	golang \
+	/bin/sh -c "go build -a -installsuffix cgo -o dist/velocity_slave ./slave"
 
+build-slave-image:
 	docker build -t civelocity/slave:${GIT_VERSION} -f slave.Dockerfile .
 	docker tag civelocity/slave:${GIT_VERSION} civelocity/slave:latest
 

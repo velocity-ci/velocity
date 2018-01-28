@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/api/domain/build"
 	"github.com/velocity-ci/velocity/backend/api/domain/commit"
 	"github.com/velocity-ci/velocity/backend/api/domain/knownhost"
@@ -56,7 +57,9 @@ func main() {
 		}
 	}()
 
-	a := NewVelocity()
+	// Persistence
+	gorm := NewGORMDB("api.db")
+	a := NewVelocity(gorm)
 	go a.Start()
 
 	fmt.Println("Waiting for finish")
@@ -77,25 +80,16 @@ type VelocityAPI struct {
 	workers []Worker
 }
 
-// App - For starting and stopping gracefully.
-type App interface {
-	Start()
-	Stop()
-}
-
 type Worker interface {
 	StartWorker()
 	StopWorker()
 }
 
 // New - Returns a new Velocity API app
-func NewVelocity() App {
+func NewVelocity(gorm *gorm.DB) *VelocityAPI {
 	velocityAPI := &VelocityAPI{}
 
 	validate, translator := newValidator()
-
-	// Persistence
-	gorm := NewGORMDB()
 
 	// Client Websocket
 	websocketManager := websocket.NewManager()
