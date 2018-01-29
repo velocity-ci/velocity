@@ -407,7 +407,7 @@ viewTabs project commit task builds selectedTab =
                 tabContent =
                     case t of
                         NewFormTab ->
-                            i [ class "fa fa-plus-circle" ] []
+                            i [ class "fa fa-plus-circle text-secondary" ] []
 
                         BuildTab b ->
                             text ("Build #" ++ (toString b))
@@ -432,7 +432,7 @@ viewTabs project commit task builds selectedTab =
                             (\b ->
                                 case b.status of
                                     Build.Waiting ->
-                                        i [ class "fa hourglass-start" ] []
+                                        i [ class "fa fa-clock-o" ] []
 
                                     Build.Running ->
                                         i [ class "fa fa-cog fa-spin fa-fw" ] []
