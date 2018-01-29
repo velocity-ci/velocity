@@ -350,11 +350,17 @@ view project commit model builds =
 
         stepList =
             viewStepList task.steps model.toggledStep
+
+        navigation =
+            if List.isEmpty builds then
+                text ""
+            else
+                viewTabs project commit task builds model.selectedTab
     in
         div [ class "row" ]
             [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
                 [ h4 [] [ text (ProjectTask.nameToString task.name) ]
-                , viewTabs project commit task builds model.selectedTab
+                , navigation
                 , Lazy.lazy (viewTabFrame model) builds
                 ]
             ]
@@ -388,7 +394,7 @@ viewTabs project commit task builds selectedTab =
                 tabContent =
                     case t of
                         NewFormTab ->
-                            i [ class "fa fa-plus" ] []
+                            i [ class "fa fa-plus-circle" ] []
 
                         BuildTab b ->
                             text ("Build #" ++ (toString b))
@@ -413,7 +419,7 @@ viewTabs project commit task builds selectedTab =
                             (\b ->
                                 case b.status of
                                     Build.Waiting ->
-                                        i [ class "fa fa-cog fa-spin fa-fw" ] []
+                                        i [ class "fa hourglass-start" ] []
 
                                     Build.Running ->
                                         i [ class "fa fa-cog fa-spin fa-fw" ] []
@@ -426,8 +432,28 @@ viewTabs project commit task builds selectedTab =
                             )
                         |> Maybe.withDefault (text "")
 
+                textClass =
+                    build
+                        |> Maybe.map
+                            (\b ->
+                                case b.status of
+                                    Build.Waiting ->
+                                        "text-secondary"
+
+                                    Build.Running ->
+                                        "text-primary"
+
+                                    Build.Success ->
+                                        "text-success"
+
+                                    Build.Failed ->
+                                        "text-danger"
+                            )
+                        |> Maybe.withDefault ("")
+
                 tabClassList =
                     [ ( "nav-link", True )
+                    , ( textClass, True )
                     , ( "active", compare t selectedTab )
                     ]
             in
@@ -477,7 +503,23 @@ viewTabFrame model builds =
 
                     titleOutput =
                         build
-                            |> Maybe.map (.createdAt >> formatDateTime >> text)
+                            |> Maybe.map
+                                (\d ->
+                                    div [ class "card mt-3 border border-info" ]
+                                        [ div [ class "card-body" ]
+                                            [ dl [ class "row mb-0" ]
+                                                [ dt [ class "col-sm-3" ] [ text "Created" ]
+                                                , dd [ class "col-sm-9" ] [ text (formatDateTime (d.createdAt)) ]
+                                                , dt [ class "col-sm-3" ] [ text "Started" ]
+                                                , dd [ class "col-sm-9" ] [ text (Maybe.map formatDateTime d.startedAt |> Maybe.withDefault "-") ]
+                                                , dt [ class "col-sm-3" ] [ text "Completed" ]
+                                                , dd [ class "col-sm-9" ] [ text (Maybe.map formatDateTime d.completedAt |> Maybe.withDefault "-") ]
+                                                , dt [ class "col-sm-3" ] [ text "Status" ]
+                                                , dd [ class "col-sm-9" ] [ text (Build.statusToString d.status) ]
+                                                ]
+                                            ]
+                                        ]
+                                )
                             |> Maybe.withDefault (text "")
 
                     ansiOutput =
@@ -537,11 +579,46 @@ viewTabFrame model builds =
 
                                                             BuildStep.Failed ->
                                                                 i [ class "fa fa-times" ] []
+
+                                                    borderColor =
+                                                        case buildStep.status of
+                                                            BuildStep.Waiting ->
+                                                                "border border-light"
+
+                                                            BuildStep.Running ->
+                                                                "border border-primary"
+
+                                                            BuildStep.Success ->
+                                                                "border border-success text-white"
+
+                                                            BuildStep.Failed ->
+                                                                "border border-danger text-white"
+
+                                                    headerBgColor =
+                                                        case buildStep.status of
+                                                            BuildStep.Waiting ->
+                                                                ""
+
+                                                            BuildStep.Running ->
+                                                                ""
+
+                                                            BuildStep.Success ->
+                                                                "bg-success"
+
+                                                            BuildStep.Failed ->
+                                                                "bg-danger"
                                                 in
-                                                    div [ class "card mt-3" ]
-                                                        [ h5 [ class "card-header d-flex justify-content-between" ] [ text cardTitle, text " ", cardIcon ]
-                                                        , div [ class "card-body text-white" ] [ ansi ]
-                                                        ]
+                                                    if buildStep.status == BuildStep.Waiting then
+                                                        text ""
+                                                    else
+                                                        div [ class "card mt-3", classList [ borderColor => True ] ]
+                                                            [ h5
+                                                                [ class "card-header d-flex justify-content-between"
+                                                                , classList [ headerBgColor => True ]
+                                                                ]
+                                                                [ text cardTitle, text " ", cardIcon ]
+                                                            , div [ class "card-body text-white" ] [ ansi ]
+                                                            ]
 
                                             _ ->
                                                 text ""

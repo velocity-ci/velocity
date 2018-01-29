@@ -15,6 +15,9 @@ type alias Build =
     , taskId : Task.Id
     , steps : List BuildStep
     , createdAt : DateTime
+    , completedAt : Maybe DateTime
+    , updatedAt : Maybe DateTime
+    , startedAt : Maybe DateTime
     }
 
 
@@ -30,6 +33,9 @@ decoder =
         |> required "task" Task.decodeId
         |> required "buildSteps" (Decode.list BuildStep.decoder)
         |> required "createdAt" stringToDateTime
+        |> required "completedAt" (Decode.maybe stringToDateTime)
+        |> required "updatedAt" (Decode.maybe stringToDateTime)
+        |> required "startedAt" (Decode.maybe stringToDateTime)
 
 
 statusDecoder : Decoder Status
@@ -53,6 +59,22 @@ statusDecoder =
                     unknown ->
                         Decode.fail <| "Unknown status: " ++ unknown
             )
+
+
+statusToString : Status -> String
+statusToString status =
+    case status of
+        Waiting ->
+            "waiting"
+
+        Failed ->
+            "failed"
+
+        Running ->
+            "running"
+
+        Success ->
+            "success"
 
 
 
