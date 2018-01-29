@@ -26,6 +26,7 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime)
+import Views.Helpers exposing (onClickPage)
 
 
 -- SUB PAGES --
@@ -177,27 +178,36 @@ view project model =
     case getSubPage model.subPageState of
         Overview _ ->
             Overview.view project model.commit model.tasks model.builds
-                |> frame model.commit
-                |> Html.map OverviewMsg
+                |> frame project model.commit OverviewMsg
 
         CommitTask subModel ->
             taskBuilds model.builds (Just subModel.task)
                 |> CommitTask.view project model.commit subModel
-                |> frame model.commit
-                |> Html.map CommitTaskMsg
+                |> frame project model.commit CommitTaskMsg
 
         _ ->
             Html.text "Nope"
 
 
-frame : Commit -> Html msg -> Html msg
-frame commit content =
+frame :
+    { b | id : Project.Id }
+    -> { c | hash : Commit.Hash }
+    -> (a -> Msg)
+    -> Html a
+    -> Html Msg
+frame project commit toMsg content =
     let
         commitTitle =
             commit.hash
                 |> Commit.truncateHash
                 |> String.append "Commit "
                 |> text
+
+        route =
+            Route.Project project.id <| ProjectRoute.Commit commit.hash CommitRoute.Overview
+
+        link =
+            a [ Route.href route, onClickPage NewUrl route ] [ commitTitle ]
 
         commitTitleStyle =
             [ ( "position", "absolute" )
@@ -206,8 +216,8 @@ frame commit content =
             ]
     in
         div []
-            [ h2 [ style commitTitleStyle, class "display-7" ] [ commitTitle ]
-            , content
+            [ h2 [ style commitTitleStyle, class "display-7" ] [ link ]
+            , Html.map toMsg content
             ]
 
 

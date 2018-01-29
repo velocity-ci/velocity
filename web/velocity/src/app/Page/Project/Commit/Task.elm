@@ -359,11 +359,24 @@ view project commit model builds =
     in
         div [ class "row" ]
             [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
-                [ h4 [] [ text (ProjectTask.nameToString task.name) ]
+                [ viewTaskDescriptor task
                 , navigation
                 , Lazy.lazy (viewTabFrame model) builds
                 ]
             ]
+
+
+viewTaskDescriptor : ProjectTask.Task -> Html Msg
+viewTaskDescriptor task =
+    div [ class "card mb-3 border-secondary" ]
+        [ div [ class "card-body" ]
+            [ h3 []
+                [ text (ProjectTask.nameToString task.name)
+                , text " "
+                , small [ class "text-muted" ] [ text task.description ]
+                ]
+            ]
+        ]
 
 
 viewTabs : Project -> Commit -> ProjectTask.Task -> List Build -> Tab -> Html Msg
@@ -501,15 +514,33 @@ viewTabFrame model builds =
                     build =
                         findBuild id
 
+                    cardClasses =
+                        build
+                            |> Maybe.map
+                                (\b ->
+                                    case b.status of
+                                        Build.Success ->
+                                            [ "border-success" => True, "text-success" => True ]
+
+                                        Build.Failed ->
+                                            [ "border-danger" => True, "text-danger" => True ]
+
+                                        _ ->
+                                            []
+                                )
+                            |> Maybe.withDefault []
+
                     titleOutput =
                         build
                             |> Maybe.map
                                 (\d ->
-                                    div [ class "card mt-3 border border-info" ]
+                                    div [ class "card mt-3", classList cardClasses ]
                                         [ div [ class "card-body" ]
                                             [ dl [ class "row mb-0" ]
-                                                [ dt [ class "col-sm-3" ] [ text "Created" ]
-                                                , dd [ class "col-sm-9" ] [ text (formatDateTime (d.createdAt)) ]
+                                                [ dt [ class "col-sm-3" ] [ text "Id" ]
+                                                , dd [ class "col-sm-9" ] [ text (Build.idToString d.id) ]
+                                                , dt [ class "col-sm-3" ] [ text "Created" ]
+                                                , dd [ class "col-sm-9" ] [ text (formatDateTime d.createdAt) ]
                                                 , dt [ class "col-sm-3" ] [ text "Started" ]
                                                 , dd [ class "col-sm-9" ] [ text (Maybe.map formatDateTime d.startedAt |> Maybe.withDefault "-") ]
                                                 , dt [ class "col-sm-3" ] [ text "Completed" ]
