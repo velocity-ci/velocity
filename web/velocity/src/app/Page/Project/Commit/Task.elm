@@ -34,6 +34,7 @@ import Dict exposing (Dict)
 import Json.Encode as Encode
 import Array exposing (Array)
 import Html.Lazy as Lazy
+import Views.Spinner exposing (spinner)
 
 
 -- MODEL --
@@ -384,13 +385,13 @@ viewTabs project commit task builds selectedTab =
                             Array.fromList builds
                                 |> Array.get (b - 1)
 
-                tabText =
+                tabContent =
                     case t of
                         NewFormTab ->
-                            "+"
+                            i [ class "fa fa-plus" ] []
 
                         BuildTab b ->
-                            "Build #" ++ (toString b)
+                            text ("Build #" ++ (toString b))
 
                 tabQueryParam =
                     case t of
@@ -406,37 +407,40 @@ viewTabs project commit task builds selectedTab =
                         |> ProjectRoute.Commit commit.hash
                         |> Route.Project project.id
 
-                tabBgColour =
+                tabIcon =
                     build
                         |> Maybe.map
                             (\b ->
                                 case b.status of
                                     Build.Waiting ->
-                                        ( "bg-warning", True )
+                                        i [ class "fa fa-cog fa-spin fa-fw" ] []
 
                                     Build.Running ->
-                                        ( "bg-primary", True )
+                                        i [ class "fa fa-cog fa-spin fa-fw" ] []
 
                                     Build.Success ->
-                                        ( "bg-success", True )
+                                        i [ class "fa fa-check" ] []
 
                                     Build.Failed ->
-                                        ( "bg-danger", True )
+                                        i [ class "fa fa-times" ] []
                             )
-                        |> Maybe.withDefault ( "", True )
+                        |> Maybe.withDefault (text "")
 
                 tabClassList =
                     [ ( "nav-link", True )
                     , ( "active", compare t selectedTab )
                     ]
             in
-                li [ class "nav-item", classList [ tabBgColour ] ]
+                li [ class "nav-item" ]
                     [ a
                         [ classList tabClassList
                         , Route.href route
                         , onClickPage (SelectTab selectedTab) route
                         ]
-                        [ text tabText ]
+                        [ tabContent
+                        , text " "
+                        , tabIcon
+                        ]
                     ]
 
         buildTabs =
@@ -520,22 +524,22 @@ viewTabFrame model builds =
                                         case buildStep of
                                             Just buildStep ->
                                                 let
-                                                    cardClasses =
+                                                    cardIcon =
                                                         case buildStep.status of
                                                             BuildStep.Waiting ->
-                                                                ( "bg-warning", True )
+                                                                i [ class "fa fa-cog fa-spin fa-fw" ] []
 
                                                             BuildStep.Running ->
-                                                                ( "bg-primary", True )
+                                                                i [ class "fa fa-cog fa-spin fa-fw" ] []
 
                                                             BuildStep.Success ->
-                                                                ( "bg-light", True )
+                                                                i [ class "fa fa-check" ] []
 
                                                             BuildStep.Failed ->
-                                                                ( "bg-danger", True )
+                                                                i [ class "fa fa-times" ] []
                                                 in
-                                                    div [ class "card  mt-3", classList [ cardClasses ] ]
-                                                        [ h5 [ class "card-header" ] [ text cardTitle ]
+                                                    div [ class "card mt-3" ]
+                                                        [ h5 [ class "card-header d-flex justify-content-between" ] [ text cardTitle, text " ", cardIcon ]
                                                         , div [ class "card-body text-white" ] [ ansi ]
                                                         ]
 
