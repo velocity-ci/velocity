@@ -87,11 +87,11 @@ if (prod) {
     },
     output: {
       path: path.resolve(__dirname, './dist'),
-      filename: 'static/js/[name].bundle.js'
+      filename: 'static/js/[name].[hash].bundle.js'
     },
     plugins: [
       new ExtractTextPlugin({
-        filename: 'static/css/[name].css',
+        filename: 'static/css/[name].[chunkhash].css',
         allChunks: true,
       }),
       new webpack.optimize.UglifyJsPlugin()

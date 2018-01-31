@@ -8,9 +8,18 @@ install:
 serve:
 	docker run --rm -it -v ${CURDIR}/velocity:/app -p 4200:4200 -w /app node:8 /bin/sh -c './node_modules/.bin/webpack-dev-server --host 0.0.0.0 --history-api-fallback --port 4200 --colors'
 
+build:
+	@echo "Building frontend release"
+
+	docker run --rm \
+	--volume ${CURDIR}/velocity:/app \
+	--workdir /app \
+	node:8 \
+	sh -c "NODE_ENV=prod node_modules/.bin/webpack"
+
 test:
 	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --compiler ./node_modules/.bin/elm-make'
 
-
 test_watch:
 	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --watch --compiler ./node_modules/.bin/elm-make'
+
