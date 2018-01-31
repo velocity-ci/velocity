@@ -77,6 +77,18 @@ statusToString status =
             "success"
 
 
+addBuild : List Build -> Build -> List Build
+addBuild builds build =
+    let
+        found =
+            List.filter (compare build) builds
+    in
+        if (List.length found == 0) then
+            List.append builds [ build ]
+        else
+            builds
+
+
 
 -- IDENTIFIERS --
 

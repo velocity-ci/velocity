@@ -35,6 +35,7 @@ import Json.Encode as Encode
 import Array exposing (Array)
 import Html.Lazy as Lazy
 import Views.Spinner exposing (spinner)
+import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
 
 
 -- MODEL --
@@ -428,40 +429,12 @@ viewTabs project commit task builds selectedTab =
 
                 tabIcon =
                     build
-                        |> Maybe.map
-                            (\b ->
-                                case b.status of
-                                    Build.Waiting ->
-                                        i [ class "fa fa-clock-o" ] []
-
-                                    Build.Running ->
-                                        i [ class "fa fa-cog fa-spin fa-fw" ] []
-
-                                    Build.Success ->
-                                        i [ class "fa fa-check" ] []
-
-                                    Build.Failed ->
-                                        i [ class "fa fa-times" ] []
-                            )
+                        |> Maybe.map viewBuildStatusIcon
                         |> Maybe.withDefault (text "")
 
                 textClass =
                     build
-                        |> Maybe.map
-                            (\b ->
-                                case b.status of
-                                    Build.Waiting ->
-                                        "text-secondary"
-
-                                    Build.Running ->
-                                        "text-primary"
-
-                                    Build.Success ->
-                                        "text-success"
-
-                                    Build.Failed ->
-                                        "text-danger"
-                            )
+                        |> Maybe.map viewBuildTextClass
                         |> Maybe.withDefault ("")
 
                 tabClassList =
@@ -598,18 +571,7 @@ viewTabFrame model builds =
                                             Just buildStep ->
                                                 let
                                                     cardIcon =
-                                                        case buildStep.status of
-                                                            BuildStep.Waiting ->
-                                                                i [ class "fa fa-cog fa-spin fa-fw" ] []
-
-                                                            BuildStep.Running ->
-                                                                i [ class "fa fa-cog fa-spin fa-fw" ] []
-
-                                                            BuildStep.Success ->
-                                                                i [ class "fa fa-check" ] []
-
-                                                            BuildStep.Failed ->
-                                                                i [ class "fa fa-times" ] []
+                                                        viewBuildStepStatusIcon buildStep
 
                                                     borderColor =
                                                         case buildStep.status of

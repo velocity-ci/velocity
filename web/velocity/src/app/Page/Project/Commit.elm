@@ -6,7 +6,7 @@ import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Task as ProjectTask
-import Data.Build as Build exposing (Build)
+import Data.Build as Build exposing (Build, addBuild)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Project.Commits as Commits
 import Request.Commit
@@ -243,18 +243,6 @@ breadcrumb project commit subPageState =
               ]
             , subPageCrumb
             ]
-
-
-addBuild : List Build -> Build -> List Build
-addBuild builds build =
-    let
-        found =
-            List.filter (Build.compare build) builds
-    in
-        if (List.length found == 0) then
-            List.append builds [ build ]
-        else
-            builds
 
 
 

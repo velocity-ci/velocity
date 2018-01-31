@@ -24,7 +24,8 @@ import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedLis
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
-import FontAwesome as Icon
+import Data.Build as Build exposing (Build, addBuild)
+import Page.Helpers exposing (sortByDatetime)
 
 
 -- SUB PAGES --
@@ -32,7 +33,7 @@ import FontAwesome as Icon
 
 type SubPage
     = Blank
-    | Overview
+    | Overview Overview.Model
     | Commits Commits.Model
     | Commit Commit.Model
     | Settings Settings.Model
@@ -52,6 +53,7 @@ type alias Model =
     { project : Project
     , branches : List Branch
     , subPageState : SubPageState
+    , builds : List Build
     }
 
 
@@ -76,10 +78,16 @@ init session id maybeRoute =
                 |> Request.Project.branches id
                 |> Http.toTask
 
-        initialModel project (Paginated branches) =
+        loadBuilds =
+            maybeAuthToken
+                |> Request.Project.builds id
+                |> Http.toTask
+
+        initialModel project (Paginated branches) (Paginated builds) =
             { project = project
             , branches = branches.results
             , subPageState = Loaded initialSubPage
+            , builds = builds.results
             }
 
         handleLoadError e =
@@ -90,7 +98,7 @@ init session id maybeRoute =
                 _ ->
                     pageLoadError Page.Project "Project unavailable."
     in
-        Task.map2 initialModel loadProject loadBranches
+        Task.map3 initialModel loadProject loadBranches loadBuilds
             |> Task.andThen
                 (\successModel ->
                     case maybeRoute of
@@ -138,6 +146,9 @@ initialEvents id route =
             , ( "branch:new", RefreshBranches )
             , ( "branch:update", RefreshBranches )
             , ( "branch:delete", RefreshBranches )
+            , ( "build:new", AddBuildEvent )
+            , ( "build:delete", DeleteBuildEvent )
+            , ( "build:update", UpdateBuildEvent )
             ]
 
         merge e =
@@ -333,10 +344,10 @@ viewSubPage session model =
                 in
                     ( content, breadcrumb (text "") [] )
 
-            Overview ->
+            Overview _ ->
                 let
                     content =
-                        Overview.view project
+                        Overview.view project model.builds
                             |> pageFrame (sidebar OverviewPage)
                 in
                     ( content, breadcrumb (text "") [] )
@@ -404,6 +415,7 @@ type Msg
     = NewUrl String
     | SetRoute (Maybe ProjectRoute.Route)
     | CommitsMsg Commits.Msg
+    | OverviewMsg Overview.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
     | CommitMsg Commit.Msg
     | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
@@ -413,6 +425,9 @@ type Msg
     | ProjectDeleted Encode.Value
     | RefreshBranches Encode.Value
     | RefreshBranchesComplete (Result Http.Error (PaginatedList Branch))
+    | AddBuildEvent Encode.Value
+    | UpdateBuildEvent Encode.Value
+    | DeleteBuildEvent Encode.Value
 
 
 getSubPage : SubPageState -> SubPage
@@ -442,7 +457,7 @@ setRoute session maybeRoute model =
             Just (ProjectRoute.Overview) ->
                 case session.user of
                     Just user ->
-                        { model | subPageState = Loaded Overview } => Cmd.none
+                        { model | subPageState = Loaded (Overview Overview.initialModel) } => Cmd.none
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -550,6 +565,9 @@ updateSubPage session subPage msg model =
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
 
+            ( OverviewMsg subMsg, Overview subModel ) ->
+                toPage Overview OverviewMsg (Overview.update model.project session) subMsg subModel
+
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
@@ -599,6 +617,49 @@ updateSubPage session subPage msg model =
             ( ProjectDeleted _, _ ) ->
                 model
                     => Route.modifyUrl Route.Projects
+
+            ( AddBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map (addBuild model.builds)
+                            |> Maybe.withDefault model.builds
+                in
+                    { model | builds = sortByDatetime .createdAt builds }
+                        => Cmd.none
+
+            ( DeleteBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
+                            |> Maybe.withDefault model.builds
+                in
+                    { model | builds = builds }
+                        => Cmd.none
+
+            ( UpdateBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map
+                                (\b ->
+                                    List.map
+                                        (\a ->
+                                            if b.id == a.id then
+                                                b
+                                            else
+                                                a
+                                        )
+                                        model.builds
+                                )
+                            |> Maybe.withDefault model.builds
+                in
+                    { model | builds = builds }
+                        => Cmd.none
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page

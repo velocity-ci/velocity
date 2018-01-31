@@ -6,12 +6,14 @@ module Request.Project
         , sync
         , delete
         , branches
+        , builds
         )
 
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
+import Data.Build as Build exposing (Build)
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
@@ -74,6 +76,25 @@ branches id maybeToken =
                 |> Http.expectJson
     in
         apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/branches")
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> withAuthorization maybeToken
+            |> HttpBuilder.toRequest
+
+
+
+-- BUILDS --
+
+
+builds : Project.Id -> Maybe AuthToken -> Http.Request (PaginatedList Build)
+builds id maybeToken =
+    let
+        expect =
+            Build.decoder
+                |> PaginatedList.decoder
+                |> Http.expectJson
+    in
+        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/builds")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken

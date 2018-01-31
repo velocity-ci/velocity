@@ -16,17 +16,49 @@ viewBuildContainer build steps output =
         ]
 
 
+viewBuildStatusIcon : Build -> Html msg
+viewBuildStatusIcon build =
+    case build.status of
+        Build.Waiting ->
+            i [ class "fa fa-clock-o" ] []
 
---
---
---viewBuildOutput : BuildStreamOutput -> List (Html msg)
---viewBuildOutput { output } =
---    [ br [] []
---    , text output
---    ]
---
---
---viewBuildStep : BuildStep -> Html msg
---viewBuildStep step =
---    div []
---        [ text (BuildStep.idToString step.id) ]
+        Build.Running ->
+            i [ class "fa fa-cog fa-spin" ] []
+
+        Build.Success ->
+            i [ class "fa fa-check" ] []
+
+        Build.Failed ->
+            i [ class "fa fa-times" ] []
+
+
+viewBuildTextClass : Build -> String
+viewBuildTextClass build =
+    case build.status of
+        Build.Waiting ->
+            "text-secondary"
+
+        Build.Running ->
+            "text-primary"
+
+        Build.Success ->
+            "text-success"
+
+        Build.Failed ->
+            "text-danger"
+
+
+viewBuildStepStatusIcon : BuildStep -> Html msg
+viewBuildStepStatusIcon buildStep =
+    case buildStep.status of
+        BuildStep.Waiting ->
+            i [ class "fa fa-cog fa-spin" ] []
+
+        BuildStep.Running ->
+            i [ class "fa fa-cog fa-spin" ] []
+
+        BuildStep.Success ->
+            i [ class "fa fa-check" ] []
+
+        BuildStep.Failed ->
+            i [ class "fa fa-times" ] []
