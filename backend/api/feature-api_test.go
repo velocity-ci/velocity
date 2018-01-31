@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,6 +14,32 @@ import (
 	"github.com/DATA-DOG/godog/gherkin"
 	"github.com/docker/go/canonical/json"
 )
+
+func sendPOSTWithAttrsTable(reqAttrs *gherkin.DataTable, uri string) error {
+	payloadMap := map[string]string{}
+
+	for _, r := range reqAttrs.Rows[1:] {
+		k := r.Cells[0].Value
+		v := r.Cells[1].Value
+		payloadMap[k] = v
+	}
+
+	payloadJSON, _ := json.Marshal(payloadMap)
+
+	req, _ := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s%s", testServer.URL, uri),
+		bytes.NewBuffer(payloadJSON),
+	)
+
+	req.Header = headers
+
+	response, _ = client.Do(req)
+	responseBody, _ = ioutil.ReadAll(response.Body)
+	response.Body.Close()
+
+	return nil
+}
 
 func theResponseHasStatus(expectedStatus string) error {
 	if response.Status == expectedStatus {

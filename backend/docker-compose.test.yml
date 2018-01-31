@@ -2,18 +2,23 @@ version: '3'
 
 services:
 
-  a:
-    image: busybox
-    command: ping -c 3 c
+  gogs:
+    image: gogs/gogs
+    expose: 
+      - "3000"
+      - "22"
+    ports:
+      - "3000:3000"
     volumes:
-      - "./:/app"
-    links:
-      - "b"
-
-  b:
-    image: busybox
-    command: sleep 10s
+      - "./gogs-data:/data"
     networks:
       default:
         aliases:
-          - "c"
+          - gogs
+
+  godogs:
+    image: golang:1.9
+    command: go test -v
+    working_dir: /go/src/github.com/velocity-ci/velocity/backend/api
+    volumes:
+      - ".:/go/src/github.com/velocity-ci/velocity/backend"

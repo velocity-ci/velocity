@@ -1,4 +1,5 @@
 GIT_VERSION = $(shell git describe --always)
+AWS_DEFAULT_REGION ?= eu-west-1
 
 dep-install:
 	docker run -it --rm \
@@ -6,8 +7,8 @@ dep-install:
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
-	civelocity/dev \
-	/bin/sh -c "dep ensure -v && dep prune -v"
+	golang:1.9 \
+	/bin/sh -c "go get -u github.com/golang/dep/cmd/dep && dep ensure -v"
 
 dep-update:
 	docker run -it --rm \
@@ -15,8 +16,8 @@ dep-update:
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
-	civelocity/dev \
-	/bin/sh -c "dep ensure -v -update && dep prune -v"
+	golang:1.9 \
+	/bin/sh -c "go get -u github.com/golang/dep/cmd/dep && dep ensure -v -update"
 
 dep-status:
 	docker run -it --rm \
@@ -24,8 +25,8 @@ dep-status:
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
-	civelocity/dev \
-	/bin/sh -c "dep status"
+	golang:1.9 \
+	/bin/sh -c "go get -u github.com/golang/dep/cmd/dep && dep status"
 
 build-api:
 	docker run --rm \
@@ -68,21 +69,9 @@ build-slave-image:
 
 build-all: build-api build-cli build-slave
 
-build-dev:
-	docker build -t civelocity/dev -f dev.Dockerfile .
-
-test: build-dev
-	$(eval NOVENDOR=$(shell docker run --rm \
-	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
-	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	velocity-ci/velocity:backend-dev \
-	glide novendor))
-
-	docker run --rm \
-	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
-	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	civelocity/dev \
-	go test -v -cover ${NOVENDOR}
+test: download-test-repo
+	docker-compose -f docker-compose.test.yml down
+	docker-compose -f docker-compose.test.yml up --abort-on-container-exit
 
 lint:
 	$(eval NOVENDOR=$(shell docker run --rm \
@@ -96,3 +85,19 @@ lint:
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
 	civelocity/dev \
 	golint -set_exit_status ${NOVENDOR}
+
+download-test-repo:
+	curl -L https://s3-eu-west-1.amazonaws.com/velocityci.data/test/velocity-gogs-test-data.tar.gz > velocity-gogs-test-data.tar.gz
+	tar -xvzf velocity-gogs-test-data.tar.gz
+
+update-test-repo:
+	sudo tar -cvzf velocity-gogs-test-data.tar.gz gogs-data
+	docker run --rm \
+	--volume ${CURDIR}:/app \
+	--workdir /app \
+	--env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+	--env AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+	--env AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
+	anigeo/awscli:latest \
+	s3 cp velocity-gogs-test-data.tar.gz s3://velocityci.data/test/velocity-gogs-test-data.tar.gz --acl public-read --cache-control max-age=120
+	sudo rm velocity-gogs-test-data.tar.gz

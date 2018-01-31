@@ -1,0 +1,11 @@
+language: generic
+sudo: required
+services:
+  - docker
+env:
+  matrix:
+    - COMPONENT=backend
+
+script:
+  - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make dep-install
+  - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make test
