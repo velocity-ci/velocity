@@ -266,6 +266,7 @@ type StreamLineManyResponse struct {
 type ResponseBuild struct {
 	ID          string              `json:"id"`
 	TaskID      string              `json:"task"`
+	CommitID    string              `json:"commit"`
 	Status      string              `json:"status"`
 	UpdatedAt   time.Time           `json:"updatedAt"`
 	CreatedAt   time.Time           `json:"createdAt"`
@@ -282,6 +283,7 @@ func NewResponseBuild(b Build) ResponseBuild {
 	return ResponseBuild{
 		ID:          b.ID,
 		TaskID:      b.Task.ID,
+		CommitID:    b.Task.CommitID,
 		Status:      b.Status,
 		UpdatedAt:   b.UpdatedAt,
 		CreatedAt:   b.CreatedAt,
