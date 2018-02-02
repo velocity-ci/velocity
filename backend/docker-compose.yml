@@ -2,6 +2,20 @@ version: '3'
 
 services:
 
+  gogs:
+    image: gogs/gogs
+    expose: 
+      - "3000"
+      - "22"
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./gogs-data:/data"
+    networks:
+      default:
+        aliases:
+          - gogs
+
   swagger:
     image: swaggerapi/swagger-ui
     volumes:
@@ -11,39 +25,19 @@ services:
     ports:
       - "8080:8080"
 
-  api:
+  architect:
     build:
       context: .
       dockerfile: dev.Dockerfile
-    command: /bin/sh -c "eval `ssh-agent` && exec fresh"
+    command: /bin/sh -c "eval `ssh-agent` && go run architect.go"
     restart: unless-stopped
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/backend/"
       - "/tmp/velocity-workspace/logs:/tmp/velocity-workspace/logs"
-    working_dir: /go/src/github.com/velocity-ci/velocity/backend/api
+    working_dir: /go/src/github.com/velocity-ci/velocity/backend/architect
     environment:
       JWT_SECRET: development
       PORT: 80
-      SLAVE_SECRET: development
       ADMIN_PASSWORD: admin
     ports:
       - "80:80"
-
-  slave:
-    build:
-      context: .
-      dockerfile: dev.Dockerfile
-    command: /bin/sh -c "eval `ssh-agent` && exec fresh"
-    restart: unless-stopped
-    volumes:
-      - "./:/go/src/github.com/velocity-ci/velocity/backend/"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-      - "/tmp/velocity-workspace/:/tmp/velocity-workspace/"
-    working_dir: /go/src/github.com/velocity-ci/velocity/backend/slave
-    links:
-      - "api:api"
-    environment:
-      MASTER_ADDRESS: http://api
-      SLAVE_SECRET: development
-      AWS_ACCESS_KEY_ID: aaaa
-      AWS_SECRET_ACCESS_KEY: aaaa

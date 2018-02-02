@@ -16,9 +16,9 @@ services:
         aliases:
           - gogs
 
-  godogs:
+  test:
     image: golang:1.9
-    command: go test -v
-    working_dir: /go/src/github.com/velocity-ci/velocity/backend/api
+    command: go test ./... -cover
+    working_dir: /go/src/github.com/velocity-ci/velocity/backend/architect
     volumes:
       - ".:/go/src/github.com/velocity-ci/velocity/backend"

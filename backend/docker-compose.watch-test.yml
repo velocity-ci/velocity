@@ -2,16 +2,27 @@ version: '3'
 
 services:
 
-  velocity_test:
+  gogs:
+    image: gogs/gogs
+    expose: 
+      - "3000"
+      - "22"
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./gogs-data:/data"
+    networks:
+      default:
+        aliases:
+          - gogs
+
+  goconvey:
     build:
       context: .
-      dockerfile: dev.Dockerfile
+      dockerfile: docker/dev.Dockerfile
     command: /bin/sh -c "eval `ssh-agent` && goconvey -host='0.0.0.0'"
-    environment:
-      ADMIN_PASSWORD: admin1234
-      JWT_SECRET: testing
+    working_dir: /go/src/github.com/velocity-ci/velocity/backend/architect
     volumes:
-      - "./:/go/src/github.com/velocity-ci/velocity/backend/"
-    working_dir: /go/src/github.com/velocity-ci/velocity/backend
+      - ".:/go/src/github.com/velocity-ci/velocity/backend"
     ports:
-      - 8080:8080
+      - "8080:8080"
