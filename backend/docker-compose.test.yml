@@ -2,23 +2,23 @@ version: '3'
 
 services:
 
-  gogs:
-    image: gogs/gogs
-    expose: 
-      - "3000"
-      - "22"
-    ports:
-      - "3000:3000"
-    volumes:
-      - "./gogs-data:/data"
-    networks:
-      default:
-        aliases:
-          - gogs
+  # gogs:
+  #   image: gogs/gogs
+  #   expose: 
+  #     - "3000"
+  #     - "22"
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - "./gogs-data:/data"
+  #   networks:
+  #     default:
+  #       aliases:
+  #         - gogs
 
   test:
     image: golang:1.9
     command: go test ./... -cover
-    working_dir: /go/src/github.com/velocity-ci/velocity/backend/architect
+    working_dir: /go/src/github.com/velocity-ci/velocity/backend
     volumes:
       - ".:/go/src/github.com/velocity-ci/velocity/backend"

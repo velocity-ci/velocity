@@ -1,0 +1,74 @@
+package knownhost
+
+import (
+	"github.com/go-playground/universal-translator"
+	"github.com/jinzhu/gorm"
+	uuid "github.com/satori/go.uuid"
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
+	"golang.org/x/crypto/ssh"
+	govalidator "gopkg.in/go-playground/validator.v9"
+)
+
+type Manager struct {
+	validator *validator
+	db        *db
+}
+
+func NewManager(
+	db *gorm.DB,
+	validator *govalidator.Validate,
+	translator ut.Translator,
+) *Manager {
+	db.AutoMigrate(&gormKnownHost{})
+	m := &Manager{
+		db: newDB(db),
+	}
+	m.validator = newValidator(validator, translator, m)
+	return m
+}
+
+func (m *Manager) New(entry string) (*KnownHost, *domain.ValidationErrors) {
+	k := &KnownHost{
+		Entry: entry,
+	}
+
+	if err := m.validator.Validate(k); err != nil {
+		return nil, err
+	}
+
+	_, hosts, pubKey, comment, _, _ := ssh.ParseKnownHosts([]byte(entry))
+
+	k.UUID = uuid.NewV1().String()
+	k.Hosts = hosts
+	k.Comment = comment
+
+	if pubKey != nil {
+		k.SHA256Fingerprint = ssh.FingerprintSHA256(pubKey)
+		k.MD5Fingerprint = ssh.FingerprintLegacyMD5(pubKey)
+	}
+
+	return k, nil
+}
+
+func (m *Manager) Exists(entry string) bool {
+	return m.db.exists(entry)
+}
+
+func (m *Manager) Save(k *KnownHost) error {
+	if err := m.db.save(k); err != nil {
+		return err
+	}
+	// update file
+	return nil
+}
+
+func (m *Manager) Delete(k *KnownHost) error {
+	if err := m.db.delete(k); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *Manager) GetAll(q *domain.PagingQuery) ([]*KnownHost, int) {
+	return m.db.getAll(q)
+}
