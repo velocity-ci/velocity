@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
+
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
@@ -65,19 +67,6 @@ func newCommitDB(gorm *gorm.DB) *commitDB {
 	}
 }
 
-func (db *commitDB) delete(c *Commit) error {
-	tx := db.db.Begin()
-
-	g := c.ToGormCommit()
-
-	if err := tx.Delete(g).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
-}
-
 func (db *commitDB) save(c *Commit) error {
 	tx := db.db.Begin()
 
@@ -101,4 +90,28 @@ func (db *commitDB) getByProjectAndHash(p *project.Project, hash string) (*Commi
 		return nil, fmt.Errorf("could not find project:commit %s:%s", p.UUID, hash)
 	}
 	return g.ToCommit(), nil
+}
+
+func (db *commitDB) getAllForProject(p *project.Project, q *domain.PagingQuery) (r []*Commit, t int) {
+	t = 0
+	gS := []GormCommit{}
+	d := db.db
+
+	d = d.
+		Preload("Branches").
+		Preload("Project").
+		Where("commits.project_id = ?", p.UUID)
+
+	d.Find(&gS).Count(&t)
+
+	d.
+		Limit(q.Limit).
+		Offset((q.Page - 1) * q.Limit).
+		Find(&gS)
+
+	for _, g := range gS {
+		r = append(r, g.ToCommit())
+	}
+
+	return r, t
 }

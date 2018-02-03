@@ -80,87 +80,76 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	}
 
 	// Deserialize Name
-	err = json.Unmarshal(*objMap["name"], &t.Name)
-	if err != nil {
-		return err
-	}
+	json.Unmarshal(*objMap["name"], &t.Name)
 
 	// Deserialize Description
-	err = json.Unmarshal(*objMap["description"], &t.Description)
-	if err != nil {
-		return err
-	}
+	json.Unmarshal(*objMap["description"], &t.Description)
 
 	// Deserialize Parameters
-	var rawParameters []*json.RawMessage
-	err = json.Unmarshal(*objMap["parameters"], &rawParameters)
-	if err != nil {
-		log.Println("could not find parameters")
-		return err
-	}
-	t.Parameters = []ConfigParameter{}
-	for _, rawMessage := range rawParameters {
-		var m map[string]interface{}
-		err = json.Unmarshal(*rawMessage, &m)
-		if err != nil {
-			log.Println("could not unmarshal parameters")
-			return err
-		}
-		if _, ok := m["use"]; ok { // derivedParam
-			p := DerivedParameter{}
-			err = json.Unmarshal(*rawMessage, &p)
-			if err != nil {
-				log.Println("could not unmarshal determined parameter")
-				return err
-			}
-			t.Parameters = append(t.Parameters, p)
-		} else if _, ok := m["name"]; ok { // basicParam
-			p := BasicParameter{}
-			err = json.Unmarshal(*rawMessage, &p)
-			if err != nil {
-				log.Println("could not unmarshal determined parameter")
-				return err
-			}
-			t.Parameters = append(t.Parameters, p)
-		}
+	if val, _ := objMap["parameters"]; val != nil {
+		var rawParameters []*json.RawMessage
+		err = json.Unmarshal(*val, &rawParameters)
+		if err == nil {
+			t.Parameters = []ConfigParameter{}
+			for _, rawMessage := range rawParameters {
+				var m map[string]interface{}
+				err = json.Unmarshal(*rawMessage, &m)
+				if err != nil {
+					log.Println("could not unmarshal parameters")
+					return err
+				}
+				if _, ok := m["use"]; ok { // derivedParam
+					p := DerivedParameter{}
+					err = json.Unmarshal(*rawMessage, &p)
+					if err != nil {
+						log.Println("could not unmarshal determined parameter")
+						return err
+					}
+					t.Parameters = append(t.Parameters, p)
+				} else if _, ok := m["name"]; ok { // basicParam
+					p := BasicParameter{}
+					err = json.Unmarshal(*rawMessage, &p)
+					if err != nil {
+						log.Println("could not unmarshal determined parameter")
+						return err
+					}
+					t.Parameters = append(t.Parameters, p)
+				}
 
+			}
+		}
 	}
 
 	t.Docker = TaskDocker{}
-	err = json.Unmarshal(*objMap["docker"], &t.Docker)
-	if err != nil {
-		log.Println("could not unmarshal task.docker")
-		return err
-	}
+	json.Unmarshal(*objMap["docker"], &t.Docker)
 
 	// Deserialize Steps by type
-	var rawSteps []*json.RawMessage
-	err = json.Unmarshal(*objMap["steps"], &rawSteps)
-	if err != nil {
-		log.Println("could not find steps")
-		return err
-	}
-	t.Steps = []Step{}
-	var m map[string]interface{}
-	for _, rawMessage := range rawSteps {
-		err = json.Unmarshal(*rawMessage, &m)
-		if err != nil {
-			log.Println("could not unmarshal step")
-			return err
-		}
+	if val, _ := objMap["steps"]; val != nil {
+		var rawSteps []*json.RawMessage
+		err = json.Unmarshal(*val, &rawSteps)
+		if err == nil {
+			t.Steps = []Step{}
+			var m map[string]interface{}
+			for _, rawMessage := range rawSteps {
+				err = json.Unmarshal(*rawMessage, &m)
+				if err != nil {
+					log.Println("could not unmarshal step")
+					return err
+				}
 
-		s, err := DetermineStepFromInterface(m)
-		if err != nil {
-			log.Println(err)
-		} else {
-			err := json.Unmarshal(*rawMessage, s)
-			if err != nil {
-				log.Println(err)
-			} else {
-				t.Steps = append(t.Steps, s)
+				s, err := DetermineStepFromInterface(m)
+				if err != nil {
+					log.Println(err)
+				} else {
+					err := json.Unmarshal(*rawMessage, s)
+					if err != nil {
+						log.Println(err)
+					} else {
+						t.Steps = append(t.Steps, s)
+					}
+				}
 			}
 		}
-
 	}
 
 	return nil

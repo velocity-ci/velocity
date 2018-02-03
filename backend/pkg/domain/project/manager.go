@@ -4,6 +4,7 @@ import (
 	"io"
 
 	ut "github.com/go-playground/universal-translator"
+	"github.com/gosimple/slug"
 	"github.com/jinzhu/gorm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
@@ -44,12 +45,13 @@ func (m *Manager) New(name string, config velocity.GitRepository) (*Project, *do
 	}
 
 	p.UUID = uuid.NewV1().String()
+	p.Slug = slug.Make(p.Name)
 
 	return p, nil
 }
 
 func (m *Manager) Exists(name string) bool {
-	if _, err := m.GetByName(name); err != nil {
+	if _, err := m.GetBySlug(slug.Make(name)); err != nil {
 		return false
 	}
 	return true
@@ -69,4 +71,8 @@ func (m *Manager) GetAll(q *domain.PagingQuery) ([]*Project, int) {
 
 func (m *Manager) GetByName(name string) (*Project, error) {
 	return m.db.getByName(name)
+}
+
+func (m *Manager) GetBySlug(slug string) (*Project, error) {
+	return m.db.getBySlug(slug)
 }

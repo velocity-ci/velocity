@@ -12,6 +12,7 @@ import (
 
 type GormProject struct {
 	UUID   string `gorm:"primary_key"`
+	Slug   string `gorm:"not null"`
 	Name   string `gorm:"not null"`
 	Config []byte
 }
@@ -29,6 +30,7 @@ func (gP *GormProject) ToProject() *Project {
 	return &Project{
 		UUID:   gP.UUID,
 		Name:   gP.Name,
+		Slug:   gP.Slug,
 		Config: config,
 	}
 }
@@ -42,6 +44,7 @@ func (p *Project) ToGormProject() *GormProject {
 	return &GormProject{
 		UUID:   p.UUID,
 		Name:   p.Name,
+		Slug:   p.Slug,
 		Config: jsonConfig,
 	}
 }
@@ -104,6 +107,15 @@ func (db *db) getByName(name string) (*Project, error) {
 	gP := GormProject{}
 	if db.db.Where("name = ?", name).First(&gP).RecordNotFound() {
 		return nil, fmt.Errorf("could not find project %s", name)
+	}
+
+	return gP.ToProject(), nil
+}
+
+func (db *db) getBySlug(slug string) (*Project, error) {
+	gP := GormProject{}
+	if db.db.Where("slug = ?", slug).First(&gP).RecordNotFound() {
+		return nil, fmt.Errorf("could not find project %s", slug)
 	}
 
 	return gP.ToProject(), nil

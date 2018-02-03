@@ -82,7 +82,7 @@ func (db *db) save(k *KnownHost) error {
 	gK := k.toGormKnownHost()
 
 	tx.
-		Where(gormKnownHost{Entry: k.Entry}).
+		Where(gormKnownHost{UUID: k.UUID}).
 		Assign(&gK).
 		FirstOrCreate(&gK)
 

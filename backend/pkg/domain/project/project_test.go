@@ -27,13 +27,13 @@ func TestValidNew(t *testing.T) {
 	}
 	m := project.NewManager(setup(syncMock))
 
-	p, errs := m.New("testProject", velocity.GitRepository{
+	p, errs := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	assert.Nil(t, errs)
 
 	assert.NotEmpty(t, p.UUID)
-	assert.Equal(t, "testProject", p.Name)
+	assert.Equal(t, "Test Project", p.Name)
 	assert.Equal(t, "testGit", p.Config.Address)
 }
 
@@ -43,7 +43,7 @@ func TestSSHInvalidNew(t *testing.T) {
 	}
 	m := project.NewManager(setup(syncMock))
 
-	p, errs := m.New("testProject", velocity.GitRepository{
+	p, errs := m.New("Test Project", velocity.GitRepository{
 		Address:    "testGit",
 		PrivateKey: "malformedKey",
 	})
@@ -60,11 +60,11 @@ func TestDuplicateNew(t *testing.T) {
 	}
 	m := project.NewManager(setup(syncMock))
 
-	p, _ := m.New("testProject", velocity.GitRepository{
+	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	m.Save(p)
-	p, errs := m.New("testProject", velocity.GitRepository{
+	p, errs := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 
@@ -80,7 +80,7 @@ func TestSave(t *testing.T) {
 	}
 	m := project.NewManager(setup(syncMock))
 
-	p, _ := m.New("testProject", velocity.GitRepository{
+	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	err := m.Save(p)
@@ -93,12 +93,12 @@ func TestExists(t *testing.T) {
 	}
 	m := project.NewManager(setup(syncMock))
 
-	p, _ := m.New("testProject", velocity.GitRepository{
+	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	m.Save(p)
 
-	assert.True(t, m.Exists("testProject"))
+	assert.True(t, m.Exists("Test Project"))
 }
 
 func TestDelete(t *testing.T) {
@@ -107,7 +107,7 @@ func TestDelete(t *testing.T) {
 	}
 	m := project.NewManager(setup(syncMock))
 
-	p, _ := m.New("testProject", velocity.GitRepository{
+	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	m.Save(p)
@@ -115,7 +115,7 @@ func TestDelete(t *testing.T) {
 	err := m.Delete(p)
 	assert.Nil(t, err)
 
-	assert.False(t, m.Exists("testProject"))
+	assert.False(t, m.Exists("Test Project"))
 }
 
 func TestList(t *testing.T) {
@@ -124,7 +124,7 @@ func TestList(t *testing.T) {
 	}
 	m := project.NewManager(setup(syncMock))
 
-	p, _ := m.New("testProject", velocity.GitRepository{
+	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	m.Save(p)
@@ -136,4 +136,36 @@ func TestList(t *testing.T) {
 	items, amount := m.GetAll(q)
 	assert.Len(t, items, 1)
 	assert.Equal(t, amount, 1)
+}
+
+func TestGetByName(t *testing.T) {
+	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
+		return &git.Repository{}, "/testDir", nil
+	}
+	m := project.NewManager(setup(syncMock))
+
+	p, _ := m.New("Test Project", velocity.GitRepository{
+		Address: "testGit",
+	})
+	m.Save(p)
+
+	pR, err := m.GetByName("Test Project")
+	assert.Nil(t, err)
+	assert.Equal(t, p, pR)
+}
+
+func TestGetBySlug(t *testing.T) {
+	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
+		return &git.Repository{}, "/testDir", nil
+	}
+	m := project.NewManager(setup(syncMock))
+
+	p, _ := m.New("Test Project", velocity.GitRepository{
+		Address: "testGit",
+	})
+	m.Save(p)
+
+	pR, err := m.GetBySlug(p.Slug)
+	assert.Nil(t, err)
+	assert.Equal(t, p, pR)
 }

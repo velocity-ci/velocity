@@ -3,6 +3,9 @@ package rest
 import (
 	"os"
 
+	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
+
 	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/go-playground/universal-translator"
@@ -34,6 +37,12 @@ func AddRoutes(
 	knownHostHandler := newKnownHostHandler(knownHostManager)
 	projectManager := project.NewManager(db, validator, trans, velocity.GitClone)
 	projectHandler := newProjectHandler(projectManager)
+	commitManager := githistory.NewCommitManager(db)
+	commitHandler := newCommitHandler(projectManager, commitManager)
+	branchManager := githistory.NewBranchManager(db)
+	branchHandler := newBranchHandler(projectManager, branchManager)
+	taskManager := task.NewManager(db)
+	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
 
 	jwtConfig := middleware.JWTConfig{
 		Claims:     &jwt.StandardClaims{},
@@ -47,4 +56,12 @@ func AddRoutes(
 	r = e.Group("/v1/projects")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
 	r.POST("", projectHandler.create)
+	r.GET("", projectHandler.getAll)
+	r.GET("/:slug", projectHandler.get)
+
+	r.GET("/:slug/branches", branchHandler.getAll)
+	r.GET("/:slug/commits", commitHandler.getAllForProject)
+	r.GET("/:slug/commits/:hash", commitHandler.getByProjectAndHash)
+	r.GET("/:slug/commits/:hash/tasks", taskHandler.getAllForCommit)
+
 }

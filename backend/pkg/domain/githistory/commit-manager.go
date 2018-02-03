@@ -5,6 +5,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	uuid "github.com/satori/go.uuid"
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
@@ -41,24 +42,13 @@ func (m *CommitManager) New(
 	}
 }
 
-// func (m *CommitManager) Exists(p *project.Project, hash string) bool {
-// 	if _, err := m.GetByHash(hash); err != nil {
-// 		return false
-// 	}
-// 	return true
-// }
-
 func (m *CommitManager) Save(c *Commit) error {
 	return m.db.save(c)
 }
 
-func (m *CommitManager) Delete(c *Commit) error {
-	return m.db.delete(c)
+func (m *CommitManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Commit, int) {
+	return m.db.getAllForProject(p, q)
 }
-
-// func (m *CommitManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Commit, int) {
-// 	return m.db.getAll(q)
-// }
 
 func (m *CommitManager) GetByProjectAndHash(p *project.Project, hash string) (*Commit, error) {
 	return m.db.getByProjectAndHash(p, hash)

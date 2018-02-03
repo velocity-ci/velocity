@@ -1,4 +1,4 @@
-package githistory_test
+package task_test
 
 import (
 	"io"
@@ -9,110 +9,121 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/velocity"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
-func TestNewCommit(t *testing.T) {
+func TestNew(t *testing.T) {
 	db := domain.NewGORMDB(":memory:")
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := githistory.NewCommitManager(db)
+	cM := githistory.NewCommitManager(db)
 
 	pM := project.NewManager(db, validator, translator, syncMock)
 	p, _ := pM.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	ts := time.Now().UTC()
+	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
 
-	c := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts, []*githistory.Branch{})
+	m := task.NewManager(db)
+	tsk := m.New(c, &velocity.Task{
+		Name: "testTask",
+	})
 
-	assert.NotNil(t, c)
+	assert.NotNil(t, tsk)
 
-	assert.Equal(t, p, c.Project)
-	assert.Equal(t, "abcdef", c.Hash)
-	assert.Equal(t, "test commit", c.Message)
-	assert.Equal(t, "me@velocityci.io", c.Author)
-	assert.Equal(t, ts, c.CreatedAt)
-	assert.Empty(t, c.Branches)
+	assert.Equal(t, c, tsk.Commit)
+	assert.Equal(t, "testTask", tsk.Name)
 }
 
-func TestSaveCommit(t *testing.T) {
+func TestSave(t *testing.T) {
 	db := domain.NewGORMDB(":memory:")
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := githistory.NewCommitManager(db)
+	cM := githistory.NewCommitManager(db)
 
 	pM := project.NewManager(db, validator, translator, syncMock)
 	p, _ := pM.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	ts := time.Now()
+	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
 
-	nC := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts, []*githistory.Branch{})
+	m := task.NewManager(db)
+	tsk := m.New(c, &velocity.Task{
+		Name: "testTask",
+	})
 
-	err := m.Save(nC)
-
+	err := m.Save(tsk)
 	assert.Nil(t, err)
 }
 
-func TestGetByProjectAndHash(t *testing.T) {
+func TestGetByCommitAndName(t *testing.T) {
 	db := domain.NewGORMDB(":memory:")
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := githistory.NewCommitManager(db)
+	cM := githistory.NewCommitManager(db)
 
 	pM := project.NewManager(db, validator, translator, syncMock)
 	p, _ := pM.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	ts := time.Now()
+	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
 
-	nC := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts, []*githistory.Branch{})
+	m := task.NewManager(db)
+	tsk := m.New(c, &velocity.Task{
+		Name: "testTask",
+	})
 
-	m.Save(nC)
+	m.Save(tsk)
 
-	c, err := m.GetByProjectAndHash(p, nC.Hash)
+	rTsk, err := m.GetByCommitAndName(c, "testTask")
+	assert.NotNil(t, rTsk)
 	assert.Nil(t, err)
-	assert.NotNil(t, c)
 
-	assert.EqualValues(t, nC, c)
+	assert.Equal(t, tsk, rTsk)
 }
 
-func TestGetAllCommitsForProject(t *testing.T) {
+func TestGetAllForCommit(t *testing.T) {
 	db := domain.NewGORMDB(":memory:")
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := githistory.NewCommitManager(db)
+	cM := githistory.NewCommitManager(db)
 
 	pM := project.NewManager(db, validator, translator, syncMock)
 	p, _ := pM.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	ts := time.Now()
+	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
 
-	c1 := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts, []*githistory.Branch{})
-	c2 := m.New(p, "123456", "2est commit", "me@velocityci.io", ts, []*githistory.Branch{})
+	m := task.NewManager(db)
+	tsk1 := m.New(c, &velocity.Task{
+		Name: "testTask",
+	})
+	tsk2 := m.New(c, &velocity.Task{
+		Name: "2estTask",
+	})
 
-	m.Save(c1)
-	m.Save(c2)
+	m.Save(tsk1)
+	m.Save(tsk2)
 
-	cs, total := m.GetAllForProject(p, &domain.PagingQuery{Limit: 5, Page: 1})
+	rTsks, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
 
 	assert.Equal(t, 2, total)
-	assert.Len(t, cs, 2)
-	assert.Equal(t, cs[0], c1)
-	assert.Equal(t, cs[1], c2)
+	assert.Len(t, rTsks, 2)
+
+	assert.Equal(t, rTsks[0], tsk1)
+	assert.Equal(t, rTsks[1], tsk2)
 }

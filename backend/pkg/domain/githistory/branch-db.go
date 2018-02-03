@@ -3,6 +3,8 @@ package githistory
 import (
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
+
 	"github.com/jinzhu/gorm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
@@ -10,7 +12,7 @@ import (
 type GormBranch struct {
 	UUID        string `gorm:"primary_key"`
 	Name        string
-	Project     *project.GormProject
+	Project     *project.GormProject `gorm:"ForeignKey:ProjectID"`
 	ProjectID   string
 	LastUpdated time.Time
 	Active      bool
@@ -50,19 +52,6 @@ func newBranchDB(gorm *gorm.DB) *branchDB {
 	}
 }
 
-func (db *branchDB) delete(b *Branch) error {
-	tx := db.db.Begin()
-
-	g := b.ToGormBranch()
-
-	if err := tx.Delete(g).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
-}
-
 func (db *branchDB) save(b *Branch) error {
 	tx := db.db.Begin()
 
@@ -74,4 +63,28 @@ func (db *branchDB) save(b *Branch) error {
 		FirstOrCreate(&g)
 
 	return tx.Commit().Error
+}
+
+func (db *branchDB) getAllForProject(p *project.Project, q *domain.PagingQuery) (r []*Branch, t int) {
+	t = 0
+
+	gS := []GormBranch{}
+	d := db.db
+
+	d = d.
+		Preload("Project").
+		Where("project_id = ?", p.UUID)
+
+	d.Find(&gS).Count(&t)
+
+	d.
+		Limit(q.Limit).
+		Offset((q.Page - 1) * q.Limit).
+		Find(&gS)
+
+	for _, g := range gS {
+		r = append(r, g.ToBranch())
+	}
+
+	return r, t
 }
