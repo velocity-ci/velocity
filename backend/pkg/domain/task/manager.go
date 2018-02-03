@@ -25,7 +25,9 @@ func NewManager(
 func (m *Manager) New(
 	c *githistory.Commit,
 	vTask *velocity.Task,
+	setupStep velocity.Step,
 ) *Task {
+	vTask.Steps = append([]velocity.Step{setupStep}, vTask.Steps...)
 	return &Task{
 		UUID:   uuid.NewV3(uuid.NewV1(), c.UUID).String(),
 		Commit: c,

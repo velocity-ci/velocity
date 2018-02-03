@@ -30,14 +30,16 @@ func TestNew(t *testing.T) {
 	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
 
 	m := task.NewManager(db)
+	setupStep := velocity.NewSetup()
 	tsk := m.New(c, &velocity.Task{
 		Name: "testTask",
-	})
+	}, setupStep)
 
 	assert.NotNil(t, tsk)
 
 	assert.Equal(t, c, tsk.Commit)
 	assert.Equal(t, "testTask", tsk.Name)
+	assert.Equal(t, []velocity.Step{setupStep}, tsk.Steps)
 }
 
 func TestSave(t *testing.T) {
@@ -58,7 +60,7 @@ func TestSave(t *testing.T) {
 	m := task.NewManager(db)
 	tsk := m.New(c, &velocity.Task{
 		Name: "testTask",
-	})
+	}, velocity.NewSetup())
 
 	err := m.Save(tsk)
 	assert.Nil(t, err)
@@ -82,7 +84,7 @@ func TestGetByCommitAndName(t *testing.T) {
 	m := task.NewManager(db)
 	tsk := m.New(c, &velocity.Task{
 		Name: "testTask",
-	})
+	}, velocity.NewSetup())
 
 	m.Save(tsk)
 
@@ -111,10 +113,10 @@ func TestGetAllForCommit(t *testing.T) {
 	m := task.NewManager(db)
 	tsk1 := m.New(c, &velocity.Task{
 		Name: "testTask",
-	})
+	}, velocity.NewSetup())
 	tsk2 := m.New(c, &velocity.Task{
 		Name: "2estTask",
-	})
+	}, velocity.NewSetup())
 
 	m.Save(tsk1)
 	m.Save(tsk2)
