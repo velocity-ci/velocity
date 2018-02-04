@@ -3,7 +3,7 @@ package build
 import (
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
@@ -13,19 +13,18 @@ import (
 )
 
 type BuildManager struct {
-	db            *buildDB
+	db            *buildStormDB
 	stepManager   *StepManager
 	StreamManager *StreamManager
 }
 
 func NewBuildManager(
-	db *gorm.DB,
+	db *storm.DB,
 	stepManager *StepManager,
 	streamManager *StreamManager,
 ) *BuildManager {
-	db.AutoMigrate(&GormBuild{}, &GormStep{}, &GormStream{})
 	m := &BuildManager{
-		db:            newBuildDB(db),
+		db:            newBuildStormDB(db),
 		stepManager:   stepManager,
 		StreamManager: streamManager,
 	}
@@ -54,6 +53,7 @@ func (m *BuildManager) New(
 		for _, streamName := range tS.GetOutputStreams() {
 			stream := m.StreamManager.new(step, streamName)
 			step.Streams = append(step.Streams, stream)
+			m.StreamManager.save(stream)
 		}
 		steps = append(steps, step)
 	}
@@ -67,7 +67,7 @@ func (m *BuildManager) Save(b *Build) error {
 }
 
 func (m *BuildManager) GetBuildByUUID(uuid string) (*Build, error) {
-	return m.db.getBuildByUUID(uuid)
+	return GetBuildByUUID(m.db.DB, uuid)
 }
 
 func (m *BuildManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Build, int) {
@@ -78,9 +78,9 @@ func (m *BuildManager) GetAllForCommit(c *githistory.Commit, q *domain.PagingQue
 	return m.db.getAllForCommit(c, q)
 }
 
-func (m *BuildManager) GetAllForBranch(b *githistory.Branch, q *domain.PagingQuery) ([]*Build, int) {
-	return m.db.getAllForBranch(b, q)
-}
+// func (m *BuildManager) GetAllForBranch(b *githistory.Branch, q *domain.PagingQuery) ([]*Build, int) {
+// 	return m.db.getAllForBranch(b, q)
+// }
 
 func (m *BuildManager) GetAllForTask(t *task.Task, q *domain.PagingQuery) ([]*Build, int) {
 	return m.db.getAllForTask(t, q)

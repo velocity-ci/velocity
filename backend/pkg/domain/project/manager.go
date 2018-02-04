@@ -3,9 +3,9 @@ package project
 import (
 	"io"
 
+	"github.com/asdine/storm"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/gosimple/slug"
-	"github.com/jinzhu/gorm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/velocity"
@@ -15,19 +15,18 @@ import (
 
 type Manager struct {
 	validator *validator
-	db        *db
+	db        *stormDB
 	Sync      func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error)
 }
 
 func NewManager(
-	db *gorm.DB,
+	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
 	syncFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error),
 ) *Manager {
-	db.AutoMigrate(&GormProject{})
 	m := &Manager{
-		db:   newDB(db),
+		db:   newStormDB(db),
 		Sync: syncFunc,
 	}
 	m.validator = newValidator(validator, translator, m)

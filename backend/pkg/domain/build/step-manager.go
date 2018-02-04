@@ -3,21 +3,20 @@ package build
 import (
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
 type StepManager struct {
-	db *stepDB
+	db *stepStormDB
 }
 
 func NewStepManager(
-	db *gorm.DB,
+	db *storm.DB,
 ) *StepManager {
-	db.AutoMigrate(&GormBuild{}, &GormStep{}, &GormStream{})
 	m := &StepManager{
-		db: newStepDB(db),
+		db: newStepStormDB(db),
 	}
 	return m
 }

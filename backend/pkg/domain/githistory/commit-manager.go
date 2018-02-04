@@ -3,22 +3,21 @@ package githistory
 import (
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
 type CommitManager struct {
-	db *commitDB
+	db *commitStormDB
 }
 
 func NewCommitManager(
-	db *gorm.DB,
+	db *storm.DB,
 ) *CommitManager {
-	db.AutoMigrate(&GormCommit{}, &GormBranch{})
 	m := &CommitManager{
-		db: newCommitDB(db),
+		db: newCommitStormDB(db),
 	}
 	return m
 }
@@ -29,7 +28,6 @@ func (m *CommitManager) New(
 	message string,
 	author string,
 	date time.Time,
-	branches []*Branch,
 ) *Commit {
 	return &Commit{
 		UUID:      uuid.NewV3(uuid.NewV1(), p.UUID).String(),
@@ -38,16 +36,15 @@ func (m *CommitManager) New(
 		Message:   message,
 		Author:    author,
 		CreatedAt: date.UTC(),
-		Branches:  branches,
 	}
-}
-
-func (m *CommitManager) Save(c *Commit) error {
-	return m.db.save(c)
 }
 
 func (m *CommitManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Commit, int) {
 	return m.db.getAllForProject(p, q)
+}
+
+func (m *CommitManager) GetAllForBranch(b *Branch, q *domain.PagingQuery) ([]*Commit, int) {
+	return m.db.getAllForBranch(b, q)
 }
 
 func (m *CommitManager) GetByProjectAndHash(p *project.Project, hash string) (*Commit, error) {

@@ -2,63 +2,90 @@ package project_test
 
 import (
 	"io"
+	"io/ioutil"
+	"os"
 	"testing"
 
-	ut "github.com/go-playground/universal-translator"
-	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
+	"github.com/asdine/storm"
+	"github.com/stretchr/testify/suite"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/velocity"
-	govalidator "gopkg.in/go-playground/validator.v9"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
-func setup(f func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error)) (*gorm.DB, *govalidator.Validate, ut.Translator, func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error)) {
-	db := domain.NewGORMDB(":memory:")
-	validator, translator := domain.NewValidator()
-
-	return db, validator, translator, f
+type ProjectSuite struct {
+	suite.Suite
+	storm  *storm.DB
+	dbPath string
 }
 
-func TestValidNew(t *testing.T) {
+func TestProjectSuite(t *testing.T) {
+	suite.Run(t, new(ProjectSuite))
+}
+
+func (s *ProjectSuite) SetupTest() {
+	// Retrieve a temporary path.
+	f, err := ioutil.TempFile("", "")
+	if err != nil {
+		panic(err)
+	}
+	s.dbPath = f.Name()
+	f.Close()
+	os.Remove(s.dbPath)
+	// Open the database.
+	s.storm, err = storm.Open(s.dbPath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (s *ProjectSuite) TearDownTest() {
+	defer os.Remove(s.dbPath)
+	s.storm.Close()
+}
+
+func (s *ProjectSuite) TestValidNew() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, errs := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	assert.Nil(t, errs)
+	s.Nil(errs)
 
-	assert.NotEmpty(t, p.UUID)
-	assert.Equal(t, "Test Project", p.Name)
-	assert.Equal(t, "testGit", p.Config.Address)
+	s.NotEmpty(p.UUID)
+	s.Equal("Test Project", p.Name)
+	s.Equal("testGit", p.Config.Address)
 }
 
-func TestSSHInvalidNew(t *testing.T) {
+func (s *ProjectSuite) TestSSHInvalidNew() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return nil, "", velocity.SSHKeyError("")
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, errs := m.New("Test Project", velocity.GitRepository{
 		Address:    "testGit",
 		PrivateKey: "malformedKey",
 	})
-	assert.Nil(t, p)
-	assert.NotNil(t, errs)
+	s.Nil(p)
+	s.NotNil(errs)
 
-	// assert.Equal(t, "", errs.ErrorMap["key"])
-	// assert.Equal(t, "", errs.ErrorMap["repository"])
+	// s.Equal("", errs.ErrorMap["key"])
+	// s.Equal("", errs.ErrorMap["repository"])
 }
 
-func TestDuplicateNew(t *testing.T) {
+func (s *ProjectSuite) TestDuplicateNew() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
@@ -68,44 +95,47 @@ func TestDuplicateNew(t *testing.T) {
 		Address: "testGit",
 	})
 
-	assert.Nil(t, p)
-	assert.NotNil(t, errs)
+	s.Nil(p)
+	s.NotNil(errs)
 
-	assert.Equal(t, []string{"name already exists!"}, errs.ErrorMap["name"])
+	s.Equal([]string{"name already exists!"}, errs.ErrorMap["name"])
 }
 
-func TestSave(t *testing.T) {
+func (s *ProjectSuite) TestSave() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	err := m.Save(p)
-	assert.Nil(t, err)
+	s.Nil(err)
 }
 
-func TestExists(t *testing.T) {
+func (s *ProjectSuite) TestExists() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	m.Save(p)
 
-	assert.True(t, m.Exists("Test Project"))
+	s.True(m.Exists("Test Project"))
 }
 
-func TestDelete(t *testing.T) {
+func (s *ProjectSuite) TestDelete() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
@@ -113,16 +143,17 @@ func TestDelete(t *testing.T) {
 	m.Save(p)
 
 	err := m.Delete(p)
-	assert.Nil(t, err)
+	s.Nil(err)
 
-	assert.False(t, m.Exists("Test Project"))
+	s.False(m.Exists("Test Project"))
 }
 
-func TestList(t *testing.T) {
+func (s *ProjectSuite) TestList() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
@@ -134,15 +165,16 @@ func TestList(t *testing.T) {
 		Page:  1,
 	}
 	items, amount := m.GetAll(q)
-	assert.Len(t, items, 1)
-	assert.Equal(t, amount, 1)
+	s.Len(items, 1)
+	s.Equal(amount, 1)
 }
 
-func TestGetByName(t *testing.T) {
+func (s *ProjectSuite) TestGetByName() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
@@ -150,15 +182,16 @@ func TestGetByName(t *testing.T) {
 	m.Save(p)
 
 	pR, err := m.GetByName("Test Project")
-	assert.Nil(t, err)
-	assert.Equal(t, p, pR)
+	s.Nil(err)
+	s.Equal(p, pR)
 }
 
-func TestGetBySlug(t *testing.T) {
+func (s *ProjectSuite) TestGetBySlug() {
+	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	m := project.NewManager(setup(syncMock))
+	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.New("Test Project", velocity.GitRepository{
 		Address: "testGit",
@@ -166,6 +199,6 @@ func TestGetBySlug(t *testing.T) {
 	m.Save(p)
 
 	pR, err := m.GetBySlug(p.Slug)
-	assert.Nil(t, err)
-	assert.Equal(t, p, pR)
+	s.Nil(err)
+	s.Equal(p, pR)
 }

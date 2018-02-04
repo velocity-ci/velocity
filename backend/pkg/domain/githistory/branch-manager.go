@@ -3,21 +3,20 @@ package githistory
 import (
 	"time"
 
+	"github.com/asdine/storm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 
-	"github.com/jinzhu/gorm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
 type BranchManager struct {
-	db *branchDB
+	db *branchStormDB
 }
 
-func NewBranchManager(db *gorm.DB) *BranchManager {
-	db.AutoMigrate(&GormCommit{}, &GormBranch{})
+func NewBranchManager(db *storm.DB) *BranchManager {
 	return &BranchManager{
-		db: newBranchDB(db),
+		db: newBranchStormDB(db),
 	}
 }
 
@@ -38,6 +37,18 @@ func (m *BranchManager) Save(b *Branch) error {
 	return m.db.save(b)
 }
 
+func (m *BranchManager) SaveCommitToBranch(c *Commit, b *Branch) error {
+	return m.db.saveCommitToBranch(c, b)
+}
+
+func (m *BranchManager) GetByProjectAndName(p *project.Project, name string) (*Branch, error) {
+	return m.db.getByProjectAndName(p, name)
+}
+
 func (m *BranchManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Branch, int) {
 	return m.db.getAllForProject(p, q)
+}
+
+func (m *BranchManager) GetAllForCommit(c *Commit, q *domain.PagingQuery) ([]*Branch, int) {
+	return m.db.getAllForCommit(c, q)
 }

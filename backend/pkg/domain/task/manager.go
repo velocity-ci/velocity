@@ -1,7 +1,7 @@
 package task
 
 import (
-	"github.com/jinzhu/gorm"
+	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
@@ -9,15 +9,14 @@ import (
 )
 
 type Manager struct {
-	db *db
+	db *stormDB
 }
 
 func NewManager(
-	db *gorm.DB,
+	db *storm.DB,
 ) *Manager {
-	db.AutoMigrate(&GormTask{})
 	m := &Manager{
-		db: newDB(db),
+		db: newStormDB(db),
 	}
 	return m
 }

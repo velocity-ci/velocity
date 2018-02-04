@@ -1,8 +1,8 @@
 package knownhost
 
 import (
+	"github.com/asdine/storm"
 	"github.com/go-playground/universal-translator"
-	"github.com/jinzhu/gorm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"golang.org/x/crypto/ssh"
@@ -11,17 +11,16 @@ import (
 
 type Manager struct {
 	validator *validator
-	db        *db
+	db        *stormDB
 }
 
 func NewManager(
-	db *gorm.DB,
+	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
 ) *Manager {
-	db.AutoMigrate(&gormKnownHost{})
 	m := &Manager{
-		db: newDB(db),
+		db: newStormDB(db),
 	}
 	m.validator = newValidator(validator, translator, m)
 	return m

@@ -25,9 +25,9 @@ type commitList struct {
 	Data  []*commitResponse `json:"data"`
 }
 
-func newCommitResponse(c *githistory.Commit) *commitResponse {
+func newCommitResponse(c *githistory.Commit, bs []*githistory.Branch) *commitResponse {
 	branches := []string{}
-	for _, b := range c.Branches {
+	for _, b := range bs {
 		branches = append(branches, b.Name)
 	}
 	return &commitResponse{
@@ -43,15 +43,18 @@ func newCommitResponse(c *githistory.Commit) *commitResponse {
 type commitHandler struct {
 	projectManager *project.Manager
 	commitManager  *githistory.CommitManager
+	branchManager  *githistory.BranchManager
 }
 
 func newCommitHandler(
 	projectManager *project.Manager,
 	commitManager *githistory.CommitManager,
+	branchManager *githistory.BranchManager,
 ) *commitHandler {
 	return &commitHandler{
 		projectManager: projectManager,
 		commitManager:  commitManager,
+		branchManager:  branchManager,
 	}
 }
 
@@ -71,7 +74,8 @@ func (h *commitHandler) getAllForProject(c echo.Context) error {
 	cs, total := h.commitManager.GetAllForProject(p, pQ)
 	rCommits := []*commitResponse{}
 	for _, c := range cs {
-		rCommits = append(rCommits, newCommitResponse(c))
+		bs, _ := h.branchManager.GetAllForCommit(c, &domain.PagingQuery{Limit: 100, Page: 1})
+		rCommits = append(rCommits, newCommitResponse(c, bs))
 	}
 
 	c.JSON(http.StatusOK, commitList{
@@ -85,7 +89,8 @@ func (h *commitHandler) getAllForProject(c echo.Context) error {
 func (h *commitHandler) getByProjectAndHash(c echo.Context) error {
 
 	if commit := getCommitByProjectAndHash(c, h.projectManager, h.commitManager); commit != nil {
-		c.JSON(http.StatusOK, newCommitResponse(commit))
+		bs, _ := h.branchManager.GetAllForCommit(commit, &domain.PagingQuery{Limit: 100, Page: 1})
+		c.JSON(http.StatusOK, newCommitResponse(commit, bs))
 	}
 
 	return nil

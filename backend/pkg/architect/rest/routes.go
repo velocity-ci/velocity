@@ -3,13 +3,13 @@ package rest
 import (
 	"os"
 
+	"github.com/asdine/storm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 
 	"github.com/velocity-ci/velocity/backend/velocity"
 
 	"github.com/go-playground/universal-translator"
-	"github.com/jinzhu/gorm"
 	validator "gopkg.in/go-playground/validator.v9"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
@@ -23,7 +23,7 @@ import (
 
 func AddRoutes(
 	e *echo.Echo,
-	db *gorm.DB,
+	db *storm.DB,
 	validator *validator.Validate,
 	trans ut.Translator,
 ) {
@@ -38,9 +38,9 @@ func AddRoutes(
 	projectManager := project.NewManager(db, validator, trans, velocity.GitClone)
 	projectHandler := newProjectHandler(projectManager)
 	commitManager := githistory.NewCommitManager(db)
-	commitHandler := newCommitHandler(projectManager, commitManager)
 	branchManager := githistory.NewBranchManager(db)
-	branchHandler := newBranchHandler(projectManager, branchManager)
+	commitHandler := newCommitHandler(projectManager, commitManager, branchManager)
+	branchHandler := newBranchHandler(projectManager, branchManager, commitManager)
 	taskManager := task.NewManager(db)
 	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
 
@@ -59,7 +59,9 @@ func AddRoutes(
 	r.GET("", projectHandler.getAll)
 	r.GET("/:slug", projectHandler.get)
 
-	r.GET("/:slug/branches", branchHandler.getAll)
+	r.GET("/:slug/branches", branchHandler.getAllForProject)
+	r.GET("/:slug/branches/:name", branchHandler.getByProjectAndName)
+	r.GET("/:slug/branches/:name/commits", branchHandler.getCommitsForBranch)
 	r.GET("/:slug/commits", commitHandler.getAllForProject)
 	r.GET("/:slug/commits/:hash", commitHandler.getByProjectAndHash)
 	r.GET("/:slug/commits/:hash/tasks", taskHandler.getAllForCommit)

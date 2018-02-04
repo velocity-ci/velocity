@@ -1,72 +1,98 @@
 package user_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
-	ut "github.com/go-playground/universal-translator"
-	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
+	"github.com/asdine/storm"
+	"github.com/stretchr/testify/suite"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
-	govalidator "gopkg.in/go-playground/validator.v9"
 )
 
-func setup() (*gorm.DB, *govalidator.Validate, ut.Translator) {
-	db := domain.NewGORMDB(":memory:")
+type UserSuite struct {
+	suite.Suite
+	uM     *user.Manager
+	storm  *storm.DB
+	dbPath string
+}
+
+func TestUserSuite(t *testing.T) {
+	suite.Run(t, new(UserSuite))
+}
+
+func (s *UserSuite) SetupTest() {
+	// Retrieve a temporary path.
+	f, err := ioutil.TempFile("", "")
+	if err != nil {
+		panic(err)
+	}
+	s.dbPath = f.Name()
+	f.Close()
+	os.Remove(s.dbPath)
+	// Open the database.
+	s.storm, err = storm.Open(s.dbPath)
+	if err != nil {
+		panic(err)
+	}
 	validator, translator := domain.NewValidator()
-
-	return db, validator, translator
+	s.uM = user.NewManager(s.storm, validator, translator)
 }
 
-func TestValidNew(t *testing.T) {
-	m := user.NewManager(setup())
+func (s *UserSuite) TearDownTest() {
+	defer os.Remove(s.dbPath)
+	s.storm.Close()
+}
 
+func (s *UserSuite) TestValidNew() {
+	m := s.uM
 	u, errs := m.New("admin", "password")
-	assert.Nil(t, errs)
+	s.Nil(errs)
 
-	assert.NotEmpty(t, u.UUID)
-	assert.Equal(t, "admin", u.Username)
-	assert.Empty(t, u.Password)
-	assert.NotEmpty(t, u.HashedPassword)
-	assert.True(t, u.ValidatePassword("password"))
+	s.NotEmpty(u.UUID)
+	s.Equal("admin", u.Username)
+	s.Empty(u.Password)
+	s.NotEmpty(u.HashedPassword)
+	s.True(u.ValidatePassword("password"))
 }
 
-func TestInvalidNew(t *testing.T) {
-	m := user.NewManager(setup())
+func (s *UserSuite) TestInvalidNew() {
+	m := s.uM
 
 	u, errs := m.New("ad", "password")
-	assert.Nil(t, u)
-	assert.NotNil(t, errs)
+	s.Nil(u)
+	s.NotNil(errs)
 
-	assert.Equal(t, []string{"username must be at least 3 characters in length"}, errs.ErrorMap["username"])
+	s.Equal([]string{"username must be at least 3 characters in length"}, errs.ErrorMap["username"])
 
 	u, errs = m.New("admin", "pa")
-	assert.Nil(t, u)
-	assert.NotNil(t, errs)
+	s.Nil(u)
+	s.NotNil(errs)
 
-	assert.Equal(t, []string{"password must be at least 3 characters in length"}, errs.ErrorMap["password"])
+	s.Equal([]string{"password must be at least 3 characters in length"}, errs.ErrorMap["password"])
 }
 
-func TestSave(t *testing.T) {
-	m := user.NewManager(setup())
+func (s *UserSuite) TestSave() {
+	m := s.uM
 
 	u, _ := m.New("admin", "password")
 
 	err := m.Save(u)
 
-	assert.Nil(t, err)
+	s.Nil(err)
 
-	assert.True(t, m.Exists("admin"))
+	s.True(m.Exists("admin"))
 }
 
-func TestDelete(t *testing.T) {
-	m := user.NewManager(setup())
+func (s *UserSuite) TestDelete() {
+	m := s.uM
 
 	u, _ := m.New("admin", "password")
 	m.Save(u)
 
 	err := m.Delete(u)
-	assert.Nil(t, err)
+	s.Nil(err)
 
-	assert.False(t, m.Exists("admin"))
+	s.False(m.Exists("admin"))
 }

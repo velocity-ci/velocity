@@ -1,20 +1,19 @@
 package build
 
 import (
-	"github.com/jinzhu/gorm"
+	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
 )
 
 type StreamManager struct {
-	db *streamDB
+	db *streamStormDB
 }
 
 func NewStreamManager(
-	db *gorm.DB,
+	db *storm.DB,
 ) *StreamManager {
-	db.AutoMigrate(&GormBuild{}, &GormStream{}, &GormStream{})
 	m := &StreamManager{
-		db: newStreamDB(db),
+		db: newStreamStormDB(db),
 	}
 	return m
 }

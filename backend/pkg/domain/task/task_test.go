@@ -2,10 +2,13 @@ package task_test
 
 import (
 	"io"
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/asdine/storm"
+	"github.com/stretchr/testify/suite"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
@@ -14,74 +17,96 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 )
 
-func TestNew(t *testing.T) {
-	db := domain.NewGORMDB(":memory:")
+type CommitSuite struct {
+	suite.Suite
+	storm          *storm.DB
+	dbPath         string
+	projectManager *project.Manager
+	branchManager  *githistory.BranchManager
+	commitManager  *githistory.CommitManager
+}
+
+func TestCommitSuite(t *testing.T) {
+	suite.Run(t, new(CommitSuite))
+}
+
+func (s *CommitSuite) SetupTest() {
+	// Retrieve a temporary path.
+	f, err := ioutil.TempFile("", "")
+	if err != nil {
+		panic(err)
+	}
+	s.dbPath = f.Name()
+	f.Close()
+	os.Remove(s.dbPath)
+	// Open the database.
+	s.storm, err = storm.Open(s.dbPath)
+	if err != nil {
+		panic(err)
+	}
+
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
-	cM := githistory.NewCommitManager(db)
+	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
+	s.commitManager = githistory.NewCommitManager(s.storm)
+	s.branchManager = githistory.NewBranchManager(s.storm)
+}
 
-	pM := project.NewManager(db, validator, translator, syncMock)
-	p, _ := pM.New("testProject", velocity.GitRepository{
+func (s *CommitSuite) TearDownTest() {
+	defer os.Remove(s.dbPath)
+	s.storm.Close()
+}
+
+func (s *CommitSuite) TestNew() {
+	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
+	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	m := task.NewManager(db)
+	m := task.NewManager(s.storm)
 	setupStep := velocity.NewSetup()
 	tsk := m.New(c, &velocity.Task{
 		Name: "testTask",
 	}, setupStep)
 
-	assert.NotNil(t, tsk)
+	s.NotNil(tsk)
 
-	assert.Equal(t, c, tsk.Commit)
-	assert.Equal(t, "testTask", tsk.Name)
-	assert.Equal(t, []velocity.Step{setupStep}, tsk.Steps)
+	s.Equal(c, tsk.Commit)
+	s.Equal("testTask", tsk.Name)
+	s.Equal([]velocity.Step{setupStep}, tsk.Steps)
 }
 
-func TestSave(t *testing.T) {
-	db := domain.NewGORMDB(":memory:")
-	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
-		return &git.Repository{}, "/testDir", nil
-	}
-	cM := githistory.NewCommitManager(db)
-
-	pM := project.NewManager(db, validator, translator, syncMock)
-	p, _ := pM.New("testProject", velocity.GitRepository{
+func (s *CommitSuite) TestSave() {
+	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
+	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	m := task.NewManager(db)
+	m := task.NewManager(s.storm)
 	tsk := m.New(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
 
 	err := m.Save(tsk)
-	assert.Nil(t, err)
+	s.Nil(err)
 }
 
-func TestGetByCommitAndName(t *testing.T) {
-	db := domain.NewGORMDB(":memory:")
-	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
-		return &git.Repository{}, "/testDir", nil
-	}
-	cM := githistory.NewCommitManager(db)
-
-	pM := project.NewManager(db, validator, translator, syncMock)
-	p, _ := pM.New("testProject", velocity.GitRepository{
+func (s *CommitSuite) TestGetByCommitAndName() {
+	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
+	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	b := s.branchManager.New(p, "testBranch")
+	s.branchManager.Save(b)
 
-	m := task.NewManager(db)
+	s.branchManager.SaveCommitToBranch(c, b)
+
+	m := task.NewManager(s.storm)
 	tsk := m.New(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
@@ -89,28 +114,24 @@ func TestGetByCommitAndName(t *testing.T) {
 	m.Save(tsk)
 
 	rTsk, err := m.GetByCommitAndName(c, "testTask")
-	assert.NotNil(t, rTsk)
-	assert.Nil(t, err)
+	s.NotNil(rTsk)
+	s.Nil(err)
 
-	assert.Equal(t, tsk, rTsk)
+	s.Equal(tsk, rTsk)
 }
 
-func TestGetAllForCommit(t *testing.T) {
-	db := domain.NewGORMDB(":memory:")
-	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
-		return &git.Repository{}, "/testDir", nil
-	}
-	cM := githistory.NewCommitManager(db)
-
-	pM := project.NewManager(db, validator, translator, syncMock)
-	p, _ := pM.New("testProject", velocity.GitRepository{
+func (s *CommitSuite) TestGetAllForCommit() {
+	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
 
-	c := cM.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), []*githistory.Branch{})
+	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	b := s.branchManager.New(p, "testBranch")
+	s.branchManager.Save(b)
 
-	m := task.NewManager(db)
+	s.branchManager.SaveCommitToBranch(c, b)
+
+	m := task.NewManager(s.storm)
 	tsk1 := m.New(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
@@ -123,9 +144,9 @@ func TestGetAllForCommit(t *testing.T) {
 
 	rTsks, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
 
-	assert.Equal(t, 2, total)
-	assert.Len(t, rTsks, 2)
+	s.Equal(2, total)
+	s.Len(rTsks, 2)
 
-	assert.Equal(t, rTsks[0], tsk1)
-	assert.Equal(t, rTsks[1], tsk2)
+	s.Contains(rTsks, tsk1)
+	s.Contains(rTsks, tsk2)
 }

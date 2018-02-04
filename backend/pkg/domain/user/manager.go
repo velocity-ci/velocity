@@ -1,8 +1,8 @@
 package user
 
 import (
+	"github.com/asdine/storm"
 	ut "github.com/go-playground/universal-translator"
-	"github.com/jinzhu/gorm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	govalidator "gopkg.in/go-playground/validator.v9"
@@ -10,17 +10,16 @@ import (
 
 type Manager struct {
 	validator *validator
-	db        *db
+	db        *stormDB
 }
 
 func NewManager(
-	db *gorm.DB,
+	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
 ) *Manager {
-	db.AutoMigrate(&gormUser{})
 	m := &Manager{
-		db: newDB(db),
+		db: newStormDB(db),
 	}
 	m.validator = newValidator(validator, translator, m)
 

@@ -1,110 +1,112 @@
 package task
 
-import (
-	"fmt"
+// import (
+// 	"fmt"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/docker/go/canonical/json"
-	"github.com/jinzhu/gorm"
-	"github.com/velocity-ci/velocity/backend/pkg/domain"
-	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
-	"github.com/velocity-ci/velocity/backend/velocity"
-)
+// 	"github.com/Sirupsen/logrus"
+// 	"github.com/docker/go/canonical/json"
+// 	"github.com/jinzhu/gorm"
+// 	"github.com/velocity-ci/velocity/backend/pkg/domain"
+// 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
+// 	"github.com/velocity-ci/velocity/backend/velocity"
+// )
 
-type GormTask struct {
-	UUID     string                 `gorm:"primary_key"`
-	Commit   *githistory.GormCommit `gorm:"ForeignKey:CommitID"`
-	CommitID string
-	Name     string `gorm:"not null"`
-	VTask    []byte
-}
+// type GormTask struct {
+// 	UUID string `gorm:"primary_key"`
+// 	// Commit   *githistory.GormCommit `gorm:"ForeignKey:CommitID"`
+// 	CommitID string
+// 	Name     string `gorm:"not null"`
+// 	VTask    []byte
+// }
 
-func (GormTask) TableName() string {
-	return "tasks"
-}
+// func (GormTask) TableName() string {
+// 	return "tasks"
+// }
 
-func (g *GormTask) ToTask() *Task {
-	vTask := velocity.Task{}
-	err := json.Unmarshal(g.VTask, &vTask)
-	if err != nil {
-		logrus.Error(err)
-	}
-	return &Task{
-		UUID:   g.UUID,
-		Commit: g.Commit.ToCommit(),
-		Task:   &vTask,
-	}
-}
+// func (g *GormTask) ToTask() *Task {
+// 	vTask := velocity.Task{}
+// 	err := json.Unmarshal(g.VTask, &vTask)
+// 	if err != nil {
+// 		logrus.Error(err)
+// 	}
+// 	return &Task{
+// 		UUID: g.UUID,
+// 		// Commit: g.Commit.ToCommit(),
+// 		Task: &vTask,
+// 	}
+// }
 
-func (t *Task) ToGormTask() *GormTask {
-	jsonTask, err := json.Marshal(t.Task)
-	if err != nil {
-		logrus.Error(err)
-	}
+// func (t *Task) ToGormTask() *GormTask {
+// 	jsonTask, err := json.Marshal(t.Task)
+// 	if err != nil {
+// 		logrus.Error(err)
+// 	}
 
-	return &GormTask{
-		UUID:   t.UUID,
-		Commit: t.Commit.ToGormCommit(),
-		Name:   t.Name,
-		VTask:  jsonTask,
-	}
-}
+// 	return &GormTask{
+// 		UUID: t.UUID,
+// 		// Commit: t.Commit.ToGormCommit(),
+// 		Name:  t.Name,
+// 		VTask: jsonTask,
+// 	}
+// }
 
-type db struct {
-	db *gorm.DB
-}
+// type db struct {
+// 	db *gorm.DB
+// }
 
-func newDB(gorm *gorm.DB) *db {
-	return &db{
-		db: gorm,
-	}
-}
+// func newDB(gorm *gorm.DB) *db {
+// 	gorm.AutoMigrate(&GormTask{})
 
-func (db *db) save(t *Task) error {
-	tx := db.db.Begin()
+// 	return &db{
+// 		db: gorm,
+// 	}
+// }
 
-	g := t.ToGormTask()
+// func (db *db) save(t *Task) error {
+// 	tx := db.db.Begin()
 
-	tx.
-		Where(GormTask{UUID: t.UUID}).
-		Assign(&g).
-		FirstOrCreate(&g)
+// 	g := t.ToGormTask()
 
-	return tx.Commit().Error
-}
+// 	tx.
+// 		Where(GormTask{UUID: t.UUID}).
+// 		Assign(&g).
+// 		FirstOrCreate(&g)
 
-func (db *db) getByCommitAndName(commit *githistory.Commit, name string) (*Task, error) {
-	g := GormTask{}
-	if db.db.
-		Preload("Commit").
-		Preload("Commit.Project").
-		Where("commit_id = ? AND name = ?", commit.UUID, name).
-		First(&g).RecordNotFound() {
-		return nil, fmt.Errorf("could not find commit:task %s:%s", commit.UUID, name)
-	}
-	return g.ToTask(), nil
-}
+// 	return tx.Commit().Error
+// }
 
-func (db *db) getAllForCommit(commit *githistory.Commit, q *domain.PagingQuery) (r []*Task, t int) {
-	t = 0
-	gS := []GormTask{}
-	d := db.db
+// func (db *db) getByCommitAndName(commit *githistory.Commit, name string) (*Task, error) {
+// 	g := GormTask{}
+// 	if db.db.
+// 		Preload("Commit").
+// 		Preload("Commit.Project").
+// 		Where("commit_id = ? AND name = ?", commit.UUID, name).
+// 		First(&g).RecordNotFound() {
+// 		return nil, fmt.Errorf("could not find commit:task %s:%s", commit.UUID, name)
+// 	}
+// 	return g.ToTask(), nil
+// }
 
-	d = d.
-		Preload("Commit").
-		Preload("Commit.Project").
-		Where("commit_id = ?", commit.UUID).
-		Find(&gS).
-		Count(&t)
+// func (db *db) getAllForCommit(commit *githistory.Commit, q *domain.PagingQuery) (r []*Task, t int) {
+// 	t = 0
+// 	gS := []GormTask{}
+// 	d := db.db
 
-	d.
-		Limit(q.Limit).
-		Offset((q.Page - 1) * q.Limit).
-		Find(&gS)
+// 	d = d.
+// 		Preload("Commit").
+// 		Preload("Commit.Project").
+// 		Where("commit_id = ?", commit.UUID).
+// 		Find(&gS).
+// 		Count(&t)
 
-	for _, g := range gS {
-		r = append(r, g.ToTask())
-	}
+// 	d.
+// 		Limit(q.Limit).
+// 		Offset((q.Page - 1) * q.Limit).
+// 		Find(&gS)
 
-	return r, t
-}
+// 	for _, g := range gS {
+// 		r = append(r, g.ToTask())
+// 	}
+
+// 	return r, t
+// }

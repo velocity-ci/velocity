@@ -39,7 +39,7 @@ func New() App {
 	a.server.Use(middleware.Recover())
 
 	validator, trans := domain.NewValidator()
-	db := domain.NewGORMDB("architect.db")
+	db := domain.NewStormDB("architect.db")
 
 	rest.AddRoutes(
 		a.server,
