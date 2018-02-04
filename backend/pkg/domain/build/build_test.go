@@ -275,7 +275,7 @@ func (s *BuildSuite) TestGetWaitingBuilds() {
 	// s.Equal(b, rbs[0])
 }
 
-func (s *BuildSuite) TestGetBuildByUUID() {
+func (s *BuildSuite) TestGetBuildByID() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
@@ -298,7 +298,7 @@ func (s *BuildSuite) TestGetBuildByUUID() {
 	s.Nil(errs)
 	m.Save(b)
 
-	rB, err := m.GetBuildByUUID(b.UUID)
+	rB, err := m.GetBuildByID(b.ID)
 	s.Nil(err)
 	s.Equal(b, rB)
 }

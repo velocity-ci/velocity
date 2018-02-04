@@ -22,7 +22,7 @@ type requestParameter struct {
 }
 
 type buildResponse struct {
-	UUID string        `json:"id"`
+	ID   string        `json:"id"`
 	Task *taskResponse `json:"task"`
 
 	Steps []*stepResponse `json:"buildSteps"`
@@ -40,7 +40,7 @@ func newBuildResponse(b *build.Build) *buildResponse {
 		steps = append(steps, newStepResponse(s))
 	}
 	return &buildResponse{
-		UUID:        b.UUID,
+		ID:          b.ID,
 		Task:        newTaskResponse(b.Task),
 		Steps:       steps,
 		Status:      b.Status,
@@ -180,9 +180,9 @@ func (h *buildHandler) getAllForTask(c echo.Context) error {
 	return nil
 }
 
-func (h *buildHandler) getByUUID(c echo.Context) error {
-	uuid := c.Param("uuid")
-	b, err := h.buildManager.GetBuildByUUID(uuid)
+func (h *buildHandler) getByID(c echo.Context) error {
+	id := c.Param("id")
+	b, err := h.buildManager.GetBuildByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, "not found")
 		return nil

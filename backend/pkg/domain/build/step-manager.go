@@ -27,7 +27,7 @@ func (m *StepManager) new(
 	vStep *velocity.Step,
 ) *Step {
 	return &Step{
-		UUID: uuid.NewV3(uuid.NewV1(), b.UUID).String(),
+		ID: uuid.NewV3(uuid.NewV1(), b.ID).String(),
 		// Build:     b,
 		Number:    number,
 		VStep:     vStep,

@@ -58,7 +58,7 @@ func (m *Manager) New(username, password string) (*User, *domain.ValidationError
 		return nil, err
 	}
 
-	u.UUID = uuid.NewV1().String()
+	u.ID = uuid.NewV1().String()
 	u.hashPassword(password)
 
 	return u, nil

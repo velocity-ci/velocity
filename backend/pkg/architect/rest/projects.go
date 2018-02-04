@@ -16,7 +16,7 @@ type projectRequest struct {
 }
 
 type projectResponse struct {
-	UUID       string    `json:"id"`
+	ID         string    `json:"id"`
 	Slug       string    `json:"slug"`
 	Name       string    `json:"name"`
 	Repository string    `json:"repository"`
@@ -33,7 +33,7 @@ type projectList struct {
 
 func newProjectResponse(p *project.Project) *projectResponse {
 	return &projectResponse{
-		UUID:          p.UUID,
+		ID:            p.ID,
 		Slug:          p.Slug,
 		Name:          p.Name,
 		Repository:    p.Config.Address,

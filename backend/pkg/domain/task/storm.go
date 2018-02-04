@@ -23,12 +23,12 @@ func (g *StormTask) ToTask(db *storm.DB) *Task {
 	if err := json.Unmarshal(g.VTask, &vTask); err != nil {
 		logrus.Error(err)
 	}
-	c, err := githistory.GetCommitByUUID(db, g.CommitID)
+	c, err := githistory.GetCommitByID(db, g.CommitID)
 	if err != nil {
 		logrus.Error(err)
 	}
 	return &Task{
-		UUID:   g.ID,
+		ID:     g.ID,
 		Slug:   g.Slug,
 		Task:   &vTask,
 		Commit: c,
@@ -42,10 +42,10 @@ func (t *Task) ToStormTask() *StormTask {
 	}
 
 	return &StormTask{
-		ID:       t.UUID,
+		ID:       t.ID,
 		Slug:     t.Slug,
 		Name:     t.Name,
-		CommitID: t.Commit.UUID,
+		CommitID: t.Commit.ID,
 		VTask:    jsonTask,
 	}
 }
@@ -74,7 +74,7 @@ func (db *stormDB) save(t *Task) error {
 }
 
 func (db *stormDB) getByCommitAndSlug(commit *githistory.Commit, name string) (*Task, error) {
-	query := db.Select(q.And(q.Eq("CommitID", commit.UUID), q.Eq("Slug", name)))
+	query := db.Select(q.And(q.Eq("CommitID", commit.ID), q.Eq("Slug", name)))
 	var t StormTask
 	if err := query.First(&t); err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (db *stormDB) getByCommitAndSlug(commit *githistory.Commit, name string) (*
 
 func (db *stormDB) getAllForCommit(commit *githistory.Commit, pQ *domain.PagingQuery) (r []*Task, t int) {
 	t = 0
-	query := db.Select(q.Eq("CommitID", commit.UUID))
+	query := db.Select(q.Eq("CommitID", commit.ID))
 	t, err := query.Count(&StormTask{})
 	if err != nil {
 		logrus.Error(err)
@@ -102,9 +102,9 @@ func (db *stormDB) getAllForCommit(commit *githistory.Commit, pQ *domain.PagingQ
 	return r, t
 }
 
-func GetByUUID(db *storm.DB, uuid string) (*Task, error) {
+func GetByID(db *storm.DB, id string) (*Task, error) {
 	var sT StormTask
-	if err := db.One("ID", uuid, &sT); err != nil {
+	if err := db.One("ID", id, &sT); err != nil {
 		return nil, err
 	}
 	return sT.ToTask(db), nil

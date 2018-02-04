@@ -26,7 +26,7 @@ type knownhostList struct {
 
 func newKnownHostResponse(k *knownhost.KnownHost) *knownHostResponse {
 	return &knownHostResponse{
-		ID:                k.UUID,
+		ID:                k.ID,
 		Hosts:             k.Hosts,
 		Comment:           k.Comment,
 		SHA256Fingerprint: k.SHA256Fingerprint,

@@ -7,7 +7,7 @@ import (
 )
 
 type Project struct {
-	UUID          string                 `json:"id"`
+	ID            string                 `json:"id"`
 	Slug          string                 `json:"slug"`
 	Name          string                 `json:"name" validate:"required,projectUnique"`
 	Config        velocity.GitRepository `json:"repoConfig"`

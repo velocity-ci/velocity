@@ -18,7 +18,7 @@ type stormKnownHost struct {
 
 func (s *stormKnownHost) ToKnownHost() *KnownHost {
 	return &KnownHost{
-		UUID:              s.ID,
+		ID:                s.ID,
 		Entry:             s.Entry,
 		Hosts:             s.Hosts,
 		Comment:           s.Comment,
@@ -29,7 +29,7 @@ func (s *stormKnownHost) ToKnownHost() *KnownHost {
 
 func (k *KnownHost) toStormKnownHost() *stormKnownHost {
 	return &stormKnownHost{
-		ID:                k.UUID,
+		ID:                k.ID,
 		Entry:             k.Entry,
 		Hosts:             k.Hosts,
 		Comment:           k.Comment,
@@ -102,9 +102,9 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*KnownHost, t int) {
 	return r, t
 }
 
-func GetByUUID(db *storm.DB, uuid string) (*KnownHost, error) {
+func GetByID(db *storm.DB, id string) (*KnownHost, error) {
 	var kH stormKnownHost
-	if err := db.One("ID", uuid, &kH); err != nil {
+	if err := db.One("ID", id, &kH); err != nil {
 		return nil, err
 	}
 	return kH.ToKnownHost(), nil

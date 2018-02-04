@@ -37,7 +37,7 @@ func (s *stormBuild) toBuild(db *storm.DB) *Build {
 	if err != nil {
 		logrus.Error(err)
 	}
-	t, err := task.GetByUUID(db, s.TaskID)
+	t, err := task.GetByID(db, s.TaskID)
 	if err != nil {
 		logrus.Error(err)
 	}
@@ -47,7 +47,7 @@ func (s *stormBuild) toBuild(db *storm.DB) *Build {
 		steps = append(steps, s.toStep())
 	}
 	return &Build{
-		UUID:        s.ID,
+		ID:          s.ID,
 		Task:        t,
 		Parameters:  params,
 		Status:      s.Status,
@@ -69,10 +69,10 @@ func (b *Build) toStormBuild() *stormBuild {
 		steps = append(steps, s.toStormStep())
 	}
 	return &stormBuild{
-		ID:          b.UUID,
-		TaskID:      b.Task.UUID,
-		CommitID:    b.Task.Commit.UUID,
-		ProjectID:   b.Task.Commit.Project.UUID,
+		ID:          b.ID,
+		TaskID:      b.Task.ID,
+		CommitID:    b.Task.Commit.ID,
+		ProjectID:   b.Task.Commit.Project.ID,
 		Parameters:  paramsJson,
 		Steps:       steps,
 		Status:      b.Status,
@@ -108,7 +108,7 @@ func (db *buildStormDB) save(b *Build) error {
 
 func (db *buildStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQuery) (r []*Build, t int) {
 	t = 0
-	query := db.Select(q.Eq("ProjectID", p.UUID)).OrderBy("CreatedAt").Reverse()
+	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&stormBuild{})
 	if err != nil {
 		logrus.Error(err)
@@ -128,7 +128,7 @@ func (db *buildStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQu
 
 func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *domain.PagingQuery) (r []*Build, t int) {
 	t = 0
-	query := db.Select(q.Eq("CommitID", c.UUID)).OrderBy("CreatedAt").Reverse()
+	query := db.Select(q.Eq("CommitID", c.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&stormBuild{})
 	if err != nil {
 		logrus.Error(err)
@@ -148,7 +148,7 @@ func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *domain.PagingQ
 
 func (db *buildStormDB) getAllForTask(tsk *task.Task, pQ *domain.PagingQuery) (r []*Build, t int) {
 	t = 0
-	query := db.Select(q.Eq("TaskID", tsk.UUID)).OrderBy("CreatedAt").Reverse()
+	query := db.Select(q.Eq("TaskID", tsk.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&stormBuild{})
 	if err != nil {
 		logrus.Error(err)
@@ -204,9 +204,9 @@ func (db *buildStormDB) getWaitingBuilds() (r []*Build, t int) {
 	return r, t
 }
 
-func GetBuildByUUID(db *storm.DB, uuid string) (*Build, error) {
+func GetBuildByID(db *storm.DB, id string) (*Build, error) {
 	var sB stormBuild
-	if err := db.One("ID", uuid, &sB); err != nil {
+	if err := db.One("ID", id, &sB); err != nil {
 		logrus.Error(err)
 		return nil, err
 	}

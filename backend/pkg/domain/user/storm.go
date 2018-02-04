@@ -13,7 +13,7 @@ type stormUser struct {
 
 func (s *stormUser) ToUser() *User {
 	return &User{
-		UUID:           s.ID,
+		ID:             s.ID,
 		Username:       s.Username,
 		HashedPassword: s.HashedPassword,
 	}
@@ -21,7 +21,7 @@ func (s *stormUser) ToUser() *User {
 
 func (u *User) toStormUser() *stormUser {
 	return &stormUser{
-		ID:             u.UUID,
+		ID:             u.ID,
 		Username:       u.Username,
 		HashedPassword: u.HashedPassword,
 	}
@@ -71,9 +71,9 @@ func (db *stormDB) getByUsername(username string) (*User, error) {
 	return u.ToUser(), nil
 }
 
-func GetByUUID(db *storm.DB, uuid string) (*User, error) {
+func GetByID(db *storm.DB, id string) (*User, error) {
 	var u stormUser
-	if err := db.One("ID", uuid, &u); err != nil {
+	if err := db.One("ID", id, &u); err != nil {
 		return nil, err
 	}
 	return u.ToUser(), nil

@@ -5,7 +5,7 @@ import (
 )
 
 type User struct {
-	UUID           string `json:"uuid" validate:"-" storm:"id"`
+	ID             string `json:"id" validate:"-" storm:"id"`
 	Username       string `json:"username" validate:"required,min=3"`
 	Password       string `json:"password" validate:"required,min=3"`
 	HashedPassword string `json:"hashedPassword" validate:"-"`

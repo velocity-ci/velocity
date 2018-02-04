@@ -23,7 +23,7 @@ func (m *StreamManager) new(
 	name string,
 ) *Stream {
 	return &Stream{
-		UUID: uuid.NewV3(uuid.NewV1(), s.UUID).String(),
+		ID: uuid.NewV3(uuid.NewV1(), s.ID).String(),
 		// Step: s,
 		Name: name,
 	}

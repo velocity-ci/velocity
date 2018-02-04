@@ -50,7 +50,7 @@ func (s *UserSuite) TestValidNew() {
 	u, errs := m.New("admin", "password")
 	s.Nil(errs)
 
-	s.NotEmpty(u.UUID)
+	s.NotEmpty(u.ID)
 	s.Equal("admin", u.Username)
 	s.Empty(u.Password)
 	s.NotEmpty(u.HashedPassword)

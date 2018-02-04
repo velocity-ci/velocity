@@ -7,7 +7,7 @@ import (
 )
 
 type Commit struct {
-	UUID      string           `json:"id"`
+	ID        string           `json:"id"`
 	Project   *project.Project `json:"project"`
 	Hash      string           `json:"hash"`
 	Author    string           `json:"author"`
@@ -16,7 +16,7 @@ type Commit struct {
 }
 
 type Branch struct {
-	UUID        string           `json:"id"`
+	ID          string           `json:"id"`
 	Project     *project.Project `json:"project"`
 	Name        string           `json:"name"`
 	LastUpdated time.Time        `json:"lastUpdated"`

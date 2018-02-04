@@ -37,7 +37,7 @@ func (m *Manager) New(entry string) (*KnownHost, *domain.ValidationErrors) {
 
 	_, hosts, pubKey, comment, _, _ := ssh.ParseKnownHosts([]byte(entry))
 
-	k.UUID = uuid.NewV1().String()
+	k.ID = uuid.NewV1().String()
 	k.Hosts = hosts
 	k.Comment = comment
 

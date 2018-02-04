@@ -9,7 +9,7 @@ import (
 )
 
 type Step struct {
-	UUID string `json:"id"`
+	ID string `json:"id"`
 	// Build  *Build `json:"build"`
 	Number int `json:"number"`
 
@@ -30,7 +30,7 @@ func (s *Step) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	json.Unmarshal(*objMap["id"], &s.UUID)
+	json.Unmarshal(*objMap["id"], &s.ID)
 	// json.Unmarshal(*objMap["build"], &s.Build)
 	json.Unmarshal(*objMap["number"], &s.Number)
 	json.Unmarshal(*objMap["status"], &s.Status)

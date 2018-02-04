@@ -41,7 +41,7 @@ func (s *stormStep) toStep() *Step {
 	}
 
 	return &Step{
-		UUID:        s.ID,
+		ID:          s.ID,
 		Number:      s.Number,
 		Status:      s.Status,
 		UpdatedAt:   s.UpdatedAt,
@@ -62,7 +62,7 @@ func (s *Step) toStormStep() stormStep {
 		streams = append(streams, s.toStormStream())
 	}
 	return stormStep{
-		ID:          s.UUID,
+		ID:          s.ID,
 		Number:      s.Number,
 		VStep:       stepJSON,
 		Streams:     streams,

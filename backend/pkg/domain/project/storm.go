@@ -22,7 +22,7 @@ type stormProject struct {
 
 func (s *stormProject) ToProject() *Project {
 	return &Project{
-		UUID:          s.ID,
+		ID:            s.ID,
 		Slug:          s.Slug,
 		Name:          s.Name,
 		Config:        s.Config,
@@ -34,7 +34,7 @@ func (s *stormProject) ToProject() *Project {
 
 func (p *Project) toStormProject() *stormProject {
 	return &stormProject{
-		ID:            p.UUID,
+		ID:            p.ID,
 		Slug:          p.Slug,
 		Name:          p.Name,
 		Config:        p.Config,
@@ -118,9 +118,9 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*Project, t int) {
 	return r, t
 }
 
-func GetByUUID(db *storm.DB, uuid string) (*Project, error) {
+func GetByID(db *storm.DB, id string) (*Project, error) {
 	var p stormProject
-	if err := db.One("ID", uuid, &p); err != nil {
+	if err := db.One("ID", id, &p); err != nil {
 		return nil, err
 	}
 	return p.ToProject(), nil

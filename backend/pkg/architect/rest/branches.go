@@ -12,7 +12,7 @@ import (
 )
 
 type branchResponse struct {
-	UUID        string    `json:"id"`
+	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	LastUpdated time.Time `json:"lastUpdated"`
 	Active      bool      `json:"active"`
@@ -25,7 +25,7 @@ type branchList struct {
 
 func newBranchResponse(b *githistory.Branch) *branchResponse {
 	return &branchResponse{
-		UUID:        b.UUID,
+		ID:          b.ID,
 		Name:        b.Name,
 		LastUpdated: b.LastUpdated,
 		Active:      b.Active,

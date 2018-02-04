@@ -41,7 +41,7 @@ func (m *Manager) New(
 ) *Task {
 	vTask.Steps = append([]velocity.Step{setupStep}, vTask.Steps...)
 	return &Task{
-		UUID:   uuid.NewV3(uuid.NewV1(), c.UUID).String(),
+		ID:     uuid.NewV3(uuid.NewV1(), c.ID).String(),
 		Commit: c,
 		Task:   vTask,
 		Slug:   slug.Make(vTask.Name),

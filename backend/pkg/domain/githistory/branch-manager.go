@@ -26,7 +26,7 @@ func (m *BranchManager) New(
 	name string,
 ) *Branch {
 	return &Branch{
-		UUID:        uuid.NewV3(uuid.NewV1(), p.UUID).String(),
+		ID:          uuid.NewV3(uuid.NewV1(), p.ID).String(),
 		Project:     p,
 		Name:        name,
 		LastUpdated: time.Now().UTC(),

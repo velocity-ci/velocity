@@ -7,7 +7,7 @@ import (
 )
 
 type Build struct {
-	UUID       string            `json:"id"`
+	ID         string            `json:"id"`
 	Task       *task.Task        `json:"task"`
 	Parameters map[string]string `json:"parameters"`
 

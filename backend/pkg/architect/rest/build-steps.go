@@ -8,7 +8,7 @@ import (
 )
 
 type stepResponse struct {
-	UUID        string            `json:"id"`
+	ID          string            `json:"id"`
 	Number      int               `json:"number"`
 	VStep       *velocity.Step    `json:"step"`
 	Streams     []*streamResponse `json:"streams"`
@@ -24,7 +24,7 @@ func newStepResponse(s *build.Step) *stepResponse {
 		streams = append(streams, newStreamResponse(s))
 	}
 	return &stepResponse{
-		UUID:        s.UUID,
+		ID:          s.ID,
 		Number:      s.Number,
 		VStep:       s.VStep,
 		Status:      s.Status,

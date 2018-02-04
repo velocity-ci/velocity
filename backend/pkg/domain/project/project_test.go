@@ -58,7 +58,7 @@ func (s *ProjectSuite) TestValidNew() {
 	})
 	s.Nil(errs)
 
-	s.NotEmpty(p.UUID)
+	s.NotEmpty(p.ID)
 	s.Equal("Test Project", p.Name)
 	s.Equal("testGit", p.Config.Address)
 	s.WithinDuration(time.Now().UTC(), p.CreatedAt, 1*time.Second)

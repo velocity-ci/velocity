@@ -20,12 +20,12 @@ type stormCommit struct {
 }
 
 func (s *stormCommit) ToCommit(db *storm.DB) *Commit {
-	p, err := project.GetByUUID(db, s.ProjectID)
+	p, err := project.GetByID(db, s.ProjectID)
 	if err != nil {
 		logrus.Error(err)
 	}
 	return &Commit{
-		UUID:      s.ID,
+		ID:        s.ID,
 		Project:   p,
 		Hash:      s.Hash,
 		Author:    s.Author,
@@ -36,8 +36,8 @@ func (s *stormCommit) ToCommit(db *storm.DB) *Commit {
 
 func (c *Commit) ToStormCommit() *stormCommit {
 	return &stormCommit{
-		ID:        c.UUID,
-		ProjectID: c.Project.UUID,
+		ID:        c.ID,
+		ProjectID: c.Project.ID,
 		Hash:      c.Hash,
 		Author:    c.Author,
 		CreatedAt: c.CreatedAt,
@@ -56,7 +56,7 @@ func newCommitStormDB(db *storm.DB) *commitStormDB {
 }
 
 func (db *commitStormDB) getByProjectAndHash(p *project.Project, hash string) (*Commit, error) {
-	query := db.Select(q.And(q.Eq("ProjectID", p.UUID), q.Eq("Hash", hash)))
+	query := db.Select(q.And(q.Eq("ProjectID", p.ID), q.Eq("Hash", hash)))
 	var c stormCommit
 	if err := query.First(&c); err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (db *commitStormDB) getByProjectAndHash(p *project.Project, hash string) (*
 
 func (db *commitStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQuery) (r []*Commit, t int) {
 	t = 0
-	query := db.Select(q.Eq("ProjectID", p.UUID))
+	query := db.Select(q.Eq("ProjectID", p.ID))
 	t, err := query.Count(&stormCommit{})
 	if err != nil {
 		logrus.Error(err)
@@ -86,7 +86,7 @@ func (db *commitStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQ
 func (db *commitStormDB) getAllForBranch(b *Branch, pQ *domain.PagingQuery) (r []*Commit, t int) {
 	t = 0
 
-	query := db.Select(q.Eq("BranchID", b.UUID))
+	query := db.Select(q.Eq("BranchID", b.ID))
 	t, err := query.Count(&branchCommitStorm{})
 	if err != nil {
 		logrus.Error(err)
@@ -110,9 +110,9 @@ func (db *commitStormDB) getAllForBranch(b *Branch, pQ *domain.PagingQuery) (r [
 	return r, t
 }
 
-func GetCommitByUUID(db *storm.DB, uuid string) (*Commit, error) {
+func GetCommitByID(db *storm.DB, id string) (*Commit, error) {
 	var c stormCommit
-	if err := db.One("ID", uuid, &c); err != nil {
+	if err := db.One("ID", id, &c); err != nil {
 		return nil, err
 	}
 	return c.ToCommit(db), nil

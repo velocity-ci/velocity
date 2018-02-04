@@ -79,15 +79,15 @@ func AddRoutes(
 
 	r = e.Group("/v1/builds")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
-	r.GET("/:uuid", buildHandler.getByUUID)
-	// r.GET("/:uuid/steps")
+	r.GET("/:id", buildHandler.getByID)
+	// r.GET("/:id/steps")
 
 	r = e.Group("/v1/steps")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
-	// r.GET("/:uuid")
-	// r.GET("/:uuid/streams")
+	// r.GET("/:id")
+	// r.GET("/:id/streams")
 
 	r = e.Group("/v1/streams")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
-	// r.GET("/:uuid")
+	// r.GET("/:id")
 }

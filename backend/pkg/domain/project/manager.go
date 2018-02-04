@@ -46,7 +46,7 @@ func (m *Manager) New(name string, config velocity.GitRepository) (*Project, *do
 		return nil, err
 	}
 
-	p.UUID = uuid.NewV1().String()
+	p.ID = uuid.NewV1().String()
 	p.Slug = slug.Make(p.Name)
 
 	return p, nil

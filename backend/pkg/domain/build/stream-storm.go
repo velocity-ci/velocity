@@ -9,14 +9,14 @@ type stormStream struct {
 
 func (s *stormStream) toStream() *Stream {
 	return &Stream{
-		UUID: s.ID,
+		ID:   s.ID,
 		Name: s.Name,
 	}
 }
 
 func (s *Stream) toStormStream() stormStream {
 	return stormStream{
-		ID:   s.UUID,
+		ID:   s.ID,
 		Name: s.Name,
 	}
 }

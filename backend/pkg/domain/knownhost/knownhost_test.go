@@ -55,7 +55,7 @@ func (s *KnownHostSuite) TestValidNew() {
 	kH, errs := m.New(entry)
 	s.Nil(errs)
 
-	s.NotEmpty(kH.UUID)
+	s.NotEmpty(kH.ID)
 	s.Equal(entry, kH.Entry)
 	s.Equal([]string{"github.com"}, kH.Hosts)
 	s.Equal("", kH.Comment)

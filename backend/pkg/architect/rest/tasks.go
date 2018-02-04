@@ -13,7 +13,7 @@ import (
 )
 
 type taskResponse struct {
-	UUID string `json:"id"`
+	ID   string `json:"id"`
 	Slug string `json:"slug"`
 	*velocity.Task
 }
@@ -25,7 +25,7 @@ type taskList struct {
 
 func newTaskResponse(t *task.Task) *taskResponse {
 	return &taskResponse{
-		UUID: t.UUID,
+		ID:   t.ID,
 		Slug: t.Slug,
 		Task: t.Task,
 	}

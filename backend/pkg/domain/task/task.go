@@ -6,7 +6,7 @@ import (
 )
 
 type Task struct {
-	UUID   string             `json:"id"`
+	ID     string             `json:"id"`
 	Commit *githistory.Commit `json:"commit"`
 	Slug   string             `json:"slug"`
 	*velocity.Task

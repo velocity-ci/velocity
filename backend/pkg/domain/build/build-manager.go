@@ -36,7 +36,7 @@ func (m *BuildManager) New(
 	// TODO: implement validation
 	timestamp := time.Now().UTC()
 	b := &Build{
-		UUID:       uuid.NewV3(uuid.NewV1(), t.UUID).String(),
+		ID:         uuid.NewV3(uuid.NewV1(), t.ID).String(),
 		Task:       t,
 		Parameters: params,
 		CreatedAt:  timestamp,
@@ -65,8 +65,8 @@ func (m *BuildManager) Save(b *Build) error {
 	return m.db.save(b)
 }
 
-func (m *BuildManager) GetBuildByUUID(uuid string) (*Build, error) {
-	return GetBuildByUUID(m.db.DB, uuid)
+func (m *BuildManager) GetBuildByID(id string) (*Build, error) {
+	return GetBuildByID(m.db.DB, id)
 }
 
 func (m *BuildManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Build, int) {

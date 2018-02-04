@@ -1,7 +1,7 @@
 package knownhost
 
 type KnownHost struct {
-	UUID              string   `json:"id"`
+	ID                string   `json:"id"`
 	Entry             string   `json:"entry" validate:"required,knownHostValid"`
 	Hosts             []string `json:"hosts"`
 	Comment           string   `json:"comment"`

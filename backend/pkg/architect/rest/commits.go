@@ -12,7 +12,7 @@ import (
 )
 
 type commitResponse struct {
-	UUID      string    `json:"id"`
+	ID        string    `json:"id"`
 	Hash      string    `json:"hash"`
 	Author    string    `json:"author"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -31,7 +31,7 @@ func newCommitResponse(c *githistory.Commit, bs []*githistory.Branch) *commitRes
 		branches = append(branches, b.Name)
 	}
 	return &commitResponse{
-		UUID:      c.UUID,
+		ID:        c.ID,
 		Hash:      c.Hash,
 		Author:    c.Author,
 		CreatedAt: c.CreatedAt,

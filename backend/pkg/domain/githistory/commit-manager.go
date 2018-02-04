@@ -30,7 +30,7 @@ func (m *CommitManager) New(
 	date time.Time,
 ) *Commit {
 	return &Commit{
-		UUID:      uuid.NewV3(uuid.NewV1(), p.UUID).String(),
+		ID:        uuid.NewV3(uuid.NewV1(), p.ID).String(),
 		Project:   p,
 		Hash:      hash,
 		Message:   message,
