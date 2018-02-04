@@ -2,6 +2,7 @@ package project
 
 import (
 	"io"
+	"time"
 
 	"github.com/asdine/storm"
 	ut "github.com/go-playground/universal-translator"
@@ -16,18 +17,18 @@ import (
 type Manager struct {
 	validator *validator
 	db        *stormDB
-	Sync      func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error)
+	clone     func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error)
 }
 
 func NewManager(
 	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
-	syncFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error),
+	cloneFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error),
 ) *Manager {
 	m := &Manager{
-		db:   newStormDB(db),
-		Sync: syncFunc,
+		db:    newStormDB(db),
+		clone: cloneFunc,
 	}
 	m.validator = newValidator(validator, translator, m)
 	return m
@@ -35,8 +36,10 @@ func NewManager(
 
 func (m *Manager) New(name string, config velocity.GitRepository) (*Project, *domain.ValidationErrors) {
 	p := &Project{
-		Name:   name,
-		Config: config,
+		Name:      name,
+		Config:    config,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 	}
 
 	if err := m.validator.Validate(p); err != nil {

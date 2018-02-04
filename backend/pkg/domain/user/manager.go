@@ -1,6 +1,10 @@
 package user
 
 import (
+	"log"
+	"os"
+
+	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	ut "github.com/go-playground/universal-translator"
 	uuid "github.com/satori/go.uuid"
@@ -24,6 +28,24 @@ func NewManager(
 	m.validator = newValidator(validator, translator, m)
 
 	return m
+}
+
+func (m *Manager) EnsureAdminUser() {
+
+	if !m.Exists("admin") {
+		var password string
+		if os.Getenv("ADMIN_PASSWORD") != "" {
+			password = os.Getenv("ADMIN_PASSWORD")
+		} else {
+			password = GenerateRandomString(16)
+		}
+		u, err := m.New("admin", password)
+		if err != nil {
+			logrus.Error(err)
+		}
+		m.Save(u)
+		log.Printf("\n\n\nCreated Administrator:\n\tusername: admin \n\tpassword: %s\n\n\n", password)
+	}
 }
 
 func (m *Manager) New(username, password string) (*User, *domain.ValidationErrors) {

@@ -57,9 +57,8 @@ func (h *branchHandler) getAllForProject(c echo.Context) error {
 		return nil
 	}
 
-	pQ := new(domain.PagingQuery)
-	if err := c.Bind(pQ); err != nil {
-		c.JSON(http.StatusBadRequest, "invalid parameters")
+	pQ := getPagingQueryParams(c)
+	if pQ == nil {
 		return nil
 	}
 
@@ -105,9 +104,8 @@ func (h *branchHandler) getCommitsForBranch(c echo.Context) error {
 
 	b := getBranchByProjectAndName(c, h.projectManager, h.branchManager)
 
-	pQ := new(domain.PagingQuery)
-	if err := c.Bind(pQ); err != nil {
-		c.JSON(http.StatusBadRequest, "invalid parameters")
+	pQ := getPagingQueryParams(c)
+	if pQ == nil {
 		return nil
 	}
 

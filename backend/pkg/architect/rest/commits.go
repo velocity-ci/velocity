@@ -65,9 +65,8 @@ func (h *commitHandler) getAllForProject(c echo.Context) error {
 		return nil
 	}
 
-	pQ := new(domain.PagingQuery)
-	if err := c.Bind(pQ); err != nil {
-		c.JSON(http.StatusBadRequest, "invalid parameters")
+	pQ := getPagingQueryParams(c)
+	if pQ == nil {
 		return nil
 	}
 

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/asdine/storm"
 	"github.com/stretchr/testify/suite"
@@ -60,6 +61,8 @@ func (s *ProjectSuite) TestValidNew() {
 	s.NotEmpty(p.UUID)
 	s.Equal("Test Project", p.Name)
 	s.Equal("testGit", p.Config.Address)
+	s.WithinDuration(time.Now().UTC(), p.CreatedAt, 1*time.Second)
+	s.WithinDuration(time.Now().UTC(), p.UpdatedAt, 1*time.Second)
 }
 
 func (s *ProjectSuite) TestSSHInvalidNew() {
@@ -167,6 +170,7 @@ func (s *ProjectSuite) TestList() {
 	items, amount := m.GetAll(q)
 	s.Len(items, 1)
 	s.Equal(amount, 1)
+	s.Contains(items, p)
 }
 
 func (s *ProjectSuite) TestGetByName() {

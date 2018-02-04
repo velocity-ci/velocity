@@ -63,6 +63,7 @@ func (s *CommitSuite) TestNew() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	ts := time.Now().UTC()
 
@@ -83,6 +84,7 @@ func (s *CommitSuite) TestGetByProjectAndHash() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	b := s.branchManager.New(p, "testBranch")
 	s.branchManager.Save(b)
@@ -105,6 +107,7 @@ func (s *CommitSuite) TestGetAllForProject() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	b := s.branchManager.New(p, "testBranch")
 	s.branchManager.Save(b)
@@ -131,6 +134,7 @@ func (s *CommitSuite) TestGetAllForBranch() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	b := s.branchManager.New(p, "testBranch")
 	s.branchManager.Save(b)

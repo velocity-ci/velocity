@@ -60,6 +60,7 @@ func (s *BranchSuite) TestNew() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 
@@ -74,6 +75,7 @@ func (s *BranchSuite) TestSave() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 
@@ -88,6 +90,7 @@ func (s *BranchSuite) TestGetAllForProject() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 
@@ -109,6 +112,7 @@ func (s *BranchSuite) TestGetAllForCommit() {
 	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
+	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 

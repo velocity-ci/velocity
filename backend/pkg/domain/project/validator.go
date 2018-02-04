@@ -71,7 +71,7 @@ func translationFuncUnique(ut ut.Translator, fe govalidator.FieldError) string {
 func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 	p := sl.Current().Interface().(Project)
 
-	_, dir, err := v.projectManager.Sync(&p.Config, true, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
+	_, dir, err := v.projectManager.clone(&p.Config, true, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
 
 	if err != nil {
 		if _, ok := err.(velocity.SSHKeyError); ok {

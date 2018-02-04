@@ -20,13 +20,11 @@ type BuildManager struct {
 
 func NewBuildManager(
 	db *storm.DB,
-	stepManager *StepManager,
-	streamManager *StreamManager,
 ) *BuildManager {
 	m := &BuildManager{
 		db:            newBuildStormDB(db),
-		stepManager:   stepManager,
-		StreamManager: streamManager,
+		stepManager:   NewStepManager(db),
+		StreamManager: NewStreamManager(db),
 	}
 	return m
 }
@@ -34,7 +32,8 @@ func NewBuildManager(
 func (m *BuildManager) New(
 	t *task.Task,
 	params map[string]string,
-) *Build {
+) (*Build, *domain.ValidationErrors) {
+	// TODO: implement validation
 	timestamp := time.Now().UTC()
 	b := &Build{
 		UUID:       uuid.NewV3(uuid.NewV1(), t.UUID).String(),
@@ -59,7 +58,7 @@ func (m *BuildManager) New(
 	}
 	b.Steps = steps
 
-	return b
+	return b, nil
 }
 
 func (m *BuildManager) Save(b *Build) error {

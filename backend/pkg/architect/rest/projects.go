@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain"
-
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/velocity"
@@ -19,6 +17,7 @@ type projectRequest struct {
 
 type projectResponse struct {
 	UUID       string    `json:"id"`
+	Slug       string    `json:"slug"`
 	Name       string    `json:"name"`
 	Repository string    `json:"repository"`
 	CreatedAt  time.Time `json:"createdAt"`
@@ -34,9 +33,13 @@ type projectList struct {
 
 func newProjectResponse(p *project.Project) *projectResponse {
 	return &projectResponse{
-		UUID:       p.UUID,
-		Name:       p.Name,
-		Repository: p.Config.Address,
+		UUID:          p.UUID,
+		Slug:          p.Slug,
+		Name:          p.Name,
+		Repository:    p.Config.Address,
+		CreatedAt:     p.CreatedAt,
+		UpdatedAt:     p.UpdatedAt,
+		Synchronising: p.Synchronising,
 	}
 }
 
@@ -75,9 +78,8 @@ func (h *projectHandler) create(c echo.Context) error {
 }
 
 func (h *projectHandler) getAll(c echo.Context) error {
-	pQ := new(domain.PagingQuery)
-	if err := c.Bind(pQ); err != nil {
-		c.JSON(http.StatusBadRequest, "invalid parameters")
+	pQ := getPagingQueryParams(c)
+	if pQ == nil {
 		return nil
 	}
 

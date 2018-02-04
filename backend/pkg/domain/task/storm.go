@@ -11,9 +11,10 @@ import (
 )
 
 type StormTask struct {
-	UUID     string `storm:"id"`
+	ID       string `storm:"id"`
 	CommitID string `storm:"index"`
-	Name     string `storm:"index"`
+	Slug     string `storm:"index"`
+	Name     string
 	VTask    []byte
 }
 
@@ -27,7 +28,8 @@ func (g *StormTask) ToTask(db *storm.DB) *Task {
 		logrus.Error(err)
 	}
 	return &Task{
-		UUID:   g.UUID,
+		UUID:   g.ID,
+		Slug:   g.Slug,
 		Task:   &vTask,
 		Commit: c,
 	}
@@ -40,7 +42,8 @@ func (t *Task) ToStormTask() *StormTask {
 	}
 
 	return &StormTask{
-		UUID:     t.UUID,
+		ID:       t.UUID,
+		Slug:     t.Slug,
 		Name:     t.Name,
 		CommitID: t.Commit.UUID,
 		VTask:    jsonTask,
@@ -70,8 +73,8 @@ func (db *stormDB) save(t *Task) error {
 	return tx.Commit()
 }
 
-func (db *stormDB) getByCommitAndName(commit *githistory.Commit, name string) (*Task, error) {
-	query := db.Select(q.And(q.Eq("CommitID", commit.UUID), q.Eq("Name", name)))
+func (db *stormDB) getByCommitAndSlug(commit *githistory.Commit, name string) (*Task, error) {
+	query := db.Select(q.And(q.Eq("CommitID", commit.UUID), q.Eq("Slug", name)))
 	var t StormTask
 	if err := query.First(&t); err != nil {
 		return nil, err
@@ -101,7 +104,7 @@ func (db *stormDB) getAllForCommit(commit *githistory.Commit, pQ *domain.PagingQ
 
 func GetByUUID(db *storm.DB, uuid string) (*Task, error) {
 	var sT StormTask
-	if err := db.One("UUID", uuid, &sT); err != nil {
+	if err := db.One("ID", uuid, &sT); err != nil {
 		return nil, err
 	}
 	return sT.ToTask(db), nil

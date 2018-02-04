@@ -9,12 +9,12 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 
 	"github.com/labstack/echo"
-	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 )
 
 type taskResponse struct {
 	UUID string `json:"id"`
+	Slug string `json:"slug"`
 	*velocity.Task
 }
 
@@ -26,6 +26,7 @@ type taskList struct {
 func newTaskResponse(t *task.Task) *taskResponse {
 	return &taskResponse{
 		UUID: t.UUID,
+		Slug: t.Slug,
 		Task: t.Task,
 	}
 }
@@ -55,9 +56,8 @@ func (h *taskHandler) getAllForCommit(c echo.Context) error {
 		return nil
 	}
 
-	pQ := new(domain.PagingQuery)
-	if err := c.Bind(pQ); err != nil {
-		c.JSON(http.StatusBadRequest, "invalid parameters")
+	pQ := getPagingQueryParams(c)
+	if pQ == nil {
 		return nil
 	}
 
@@ -75,16 +75,16 @@ func (h *taskHandler) getAllForCommit(c echo.Context) error {
 	return nil
 }
 
-func (h *taskHandler) getByProjectCommitAndName(c echo.Context) error {
+func (h *taskHandler) getByProjectCommitAndSlug(c echo.Context) error {
 
-	if task := getTaskByCommitAndName(c, h.projectManager, h.commitManager, h.taskManager); task != nil {
+	if task := getTaskByCommitAndSlug(c, h.projectManager, h.commitManager, h.taskManager); task != nil {
 		c.JSON(http.StatusOK, newTaskResponse(task))
 	}
 
 	return nil
 }
 
-func getTaskByCommitAndName(
+func getTaskByCommitAndSlug(
 	c echo.Context,
 	pM *project.Manager,
 	cM *githistory.CommitManager,
@@ -95,12 +95,24 @@ func getTaskByCommitAndName(
 		return nil
 	}
 
-	name := c.Param("name")
-	t, err := tM.GetByCommitAndName(commit, name)
+	slug := c.Param("taskSlug")
+	t, err := tM.GetByCommitAndSlug(commit, slug)
 	if err != nil {
 		c.JSON(http.StatusNotFound, "not found")
 		return nil
 	}
 
 	return t
+}
+
+func (h *taskHandler) sync(c echo.Context) error {
+	p := getProjectBySlug(c, h.projectManager)
+	if p == nil {
+		return nil
+	}
+
+	p, _ = h.taskManager.Sync(p)
+
+	c.JSON(http.StatusOK, newProjectResponse(p))
+	return nil
 }

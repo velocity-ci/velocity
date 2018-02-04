@@ -54,7 +54,7 @@ func (s *BuildSuite) SetupTest() {
 	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
 	s.commitManager = githistory.NewCommitManager(s.storm)
 	s.branchManager = githistory.NewBranchManager(s.storm)
-	s.taskManager = task.NewManager(s.storm)
+	s.taskManager = task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
 }
 
 func (s *BuildSuite) TearDownTest() {
@@ -79,9 +79,10 @@ func (s *BuildSuite) TestNewBuild() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 
 	s.Equal(tsk, b.Task)
 	s.Equal(params, b.Parameters)
@@ -109,9 +110,10 @@ func (s *BuildSuite) TestSaveBuild() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 
 	err := m.Save(b)
 	s.Nil(err)
@@ -134,9 +136,10 @@ func (s *BuildSuite) TestGetBuildsForProject() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 	m.Save(b)
 
 	rbs, total := m.GetAllForProject(p, &domain.PagingQuery{Limit: 5, Page: 1})
@@ -164,9 +167,10 @@ func (s *BuildSuite) TestGetBuildsForCommit() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 	m.Save(b)
 
 	rbs, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
@@ -194,9 +198,10 @@ func (s *BuildSuite) TestGetBuildsForTask() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 	m.Save(b)
 
 	rbs, total := m.GetAllForTask(tsk, &domain.PagingQuery{Limit: 5, Page: 1})
@@ -224,9 +229,10 @@ func (s *BuildSuite) TestGetRunningBuilds() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 	b.Status = velocity.StateRunning
 	m.Save(b)
 
@@ -255,9 +261,10 @@ func (s *BuildSuite) TestGetWaitingBuilds() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 	m.Save(b)
 
 	rbs, total := m.GetWaitingBuilds()
@@ -285,9 +292,10 @@ func (s *BuildSuite) TestGetBuildByUUID() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm, build.NewStepManager(s.storm), build.NewStreamManager(s.storm))
+	m := build.NewBuildManager(s.storm)
 	params := map[string]string{}
-	b := m.New(tsk, params)
+	b, errs := m.New(tsk, params)
+	s.Nil(errs)
 	m.Save(b)
 
 	rB, err := m.GetBuildByUUID(b.UUID)
