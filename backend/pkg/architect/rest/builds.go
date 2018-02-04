@@ -181,12 +181,19 @@ func (h *buildHandler) getAllForTask(c echo.Context) error {
 }
 
 func (h *buildHandler) getByID(c echo.Context) error {
-	id := c.Param("id")
-	b, err := h.buildManager.GetBuildByID(id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, "not found")
+	b := getBuildByID(c, h.buildManager)
+	if b == nil {
 		return nil
 	}
 	c.JSON(http.StatusOK, newBuildResponse(b))
 	return nil
+}
+
+func getBuildByID(c echo.Context, buildManager *build.BuildManager) *build.Build {
+	id := c.Param("id")
+	b, err := buildManager.GetBuildByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, "not found")
+		return nil
+	}
 }
