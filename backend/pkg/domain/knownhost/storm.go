@@ -7,6 +7,37 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
+type stormKnownHost struct {
+	ID                string `storm:"id"`
+	Entry             string
+	Hosts             []string
+	Comment           string
+	SHA256Fingerprint string
+	MD5Fingerprint    string
+}
+
+func (s *stormKnownHost) ToKnownHost() *KnownHost {
+	return &KnownHost{
+		UUID:              s.ID,
+		Entry:             s.Entry,
+		Hosts:             s.Hosts,
+		Comment:           s.Comment,
+		SHA256Fingerprint: s.SHA256Fingerprint,
+		MD5Fingerprint:    s.MD5Fingerprint,
+	}
+}
+
+func (k *KnownHost) toStormKnownHost() *stormKnownHost {
+	return &stormKnownHost{
+		ID:                k.UUID,
+		Entry:             k.Entry,
+		Hosts:             k.Hosts,
+		Comment:           k.Comment,
+		SHA256Fingerprint: k.SHA256Fingerprint,
+		MD5Fingerprint:    k.MD5Fingerprint,
+	}
+}
+
 type stormDB struct {
 	*storm.DB
 }
@@ -22,7 +53,7 @@ func (db *stormDB) save(kH *KnownHost) error {
 		return err
 	}
 
-	if err := tx.Save(kH); err != nil {
+	if err := tx.Save(kH.toStormKnownHost()); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -36,14 +67,14 @@ func (db *stormDB) delete(kH *KnownHost) error {
 		return err
 	}
 
-	tx.DeleteStruct(kH)
+	tx.DeleteStruct(kH.toStormKnownHost())
 
 	return tx.Commit()
 }
 
 func (db *stormDB) exists(entry string) bool {
 	query := db.Select(q.Eq("Entry", entry))
-	var kH KnownHost
+	var kH stormKnownHost
 	if err := query.First(&kH); err != nil {
 		return false
 	}
@@ -53,7 +84,7 @@ func (db *stormDB) exists(entry string) bool {
 
 func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*KnownHost, t int) {
 	t = 0
-	t, err := db.Count(&KnownHost{})
+	t, err := db.Count(&stormKnownHost{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
@@ -61,15 +92,20 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*KnownHost, t int) {
 
 	query := db.Select()
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	query.Find(&r)
+	var stormKnownHosts []*stormKnownHost
+	query.Find(&stormKnownHosts)
+
+	for _, k := range stormKnownHosts {
+		r = append(r, k.ToKnownHost())
+	}
 
 	return r, t
 }
 
 func GetByUUID(db *storm.DB, uuid string) (*KnownHost, error) {
-	var kH KnownHost
-	if err := db.One("UUID", uuid, &kH); err != nil {
+	var kH stormKnownHost
+	if err := db.One("ID", uuid, &kH); err != nil {
 		return nil, err
 	}
-	return &kH, nil
+	return kH.ToKnownHost(), nil
 }

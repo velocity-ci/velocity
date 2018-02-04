@@ -5,6 +5,28 @@ import (
 	"github.com/asdine/storm/q"
 )
 
+type stormUser struct {
+	ID             string `storm:"id"`
+	Username       string `storm:"index"`
+	HashedPassword string
+}
+
+func (s *stormUser) ToUser() *User {
+	return &User{
+		UUID:           s.ID,
+		Username:       s.Username,
+		HashedPassword: s.HashedPassword,
+	}
+}
+
+func (u *User) toStormUser() *stormUser {
+	return &stormUser{
+		ID:             u.UUID,
+		Username:       u.Username,
+		HashedPassword: u.HashedPassword,
+	}
+}
+
 type stormDB struct {
 	*storm.DB
 }
@@ -20,7 +42,7 @@ func (db *stormDB) save(u *User) error {
 		return err
 	}
 
-	if err := tx.Save(u); err != nil {
+	if err := tx.Save(u.toStormUser()); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -34,25 +56,25 @@ func (db *stormDB) delete(u *User) error {
 		return err
 	}
 
-	tx.DeleteStruct(u)
+	tx.DeleteStruct(u.toStormUser())
 
 	return tx.Commit()
 }
 
 func (db *stormDB) getByUsername(username string) (*User, error) {
 	query := db.Select(q.Eq("Username", username))
-	var u User
+	var u stormUser
 	if err := query.First(&u); err != nil {
 		return nil, err
 	}
 
-	return &u, nil
+	return u.ToUser(), nil
 }
 
 func GetByUUID(db *storm.DB, uuid string) (*User, error) {
-	var u User
-	if err := db.One("UUID", uuid, &u); err != nil {
+	var u stormUser
+	if err := db.One("ID", uuid, &u); err != nil {
 		return nil, err
 	}
-	return &u, nil
+	return u.ToUser(), nil
 }
