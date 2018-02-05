@@ -2,6 +2,7 @@ package architect
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo"
@@ -11,7 +12,8 @@ import (
 )
 
 type architect struct {
-	server *echo.Echo
+	server   *echo.Echo
+	workerWg sync.WaitGroup
 }
 
 func (a *architect) Start() {
@@ -46,6 +48,7 @@ func New() App {
 		db,
 		validator,
 		trans,
+		a.workerWg,
 	)
 
 	return a

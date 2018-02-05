@@ -2,6 +2,7 @@ package rest
 
 import (
 	"os"
+	"sync"
 
 	"github.com/asdine/storm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
@@ -27,6 +28,7 @@ func AddRoutes(
 	db *storm.DB,
 	validator *validator.Validate,
 	trans ut.Translator,
+	workerWg sync.WaitGroup,
 ) {
 	// Unauthenticated routes
 	userManager := user.NewManager(db, validator, trans)
@@ -46,7 +48,8 @@ func AddRoutes(
 	taskManager := task.NewManager(db, projectManager, branchManager, commitManager)
 	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
 	buildStepManager := build.NewStepManager(db)
-	buildStreamManager := build.NewStreamManager(db)
+	buildStreamFileManager := build.NewStreamFileManager(&workerWg, "/var/velocity-ci/logs")
+	buildStreamManager := build.NewStreamManager(db, buildStreamFileManager)
 	buildManager := build.NewBuildManager(db, buildStepManager, buildStreamManager)
 	buildHandler := newBuildHandler(buildManager, projectManager, commitManager, taskManager)
 	buildStepHandler := newBuildStepHandler(buildManager, buildStepManager)
@@ -94,4 +97,5 @@ func AddRoutes(
 	r = e.Group("/v1/streams")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
 	r.GET("/:id", buildStreamHandler.getByID)
+	r.GET("/:id/log", buildStreamHandler.getLogByID)
 }

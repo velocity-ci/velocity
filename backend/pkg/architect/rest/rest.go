@@ -3,7 +3,6 @@ package rest
 import (
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
@@ -15,6 +14,5 @@ func getPagingQueryParams(c echo.Context) *domain.PagingQuery {
 		return nil
 	}
 
-	logrus.Infof("%+v", pQ)
 	return pQ
 }

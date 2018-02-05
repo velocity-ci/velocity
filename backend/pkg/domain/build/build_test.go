@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,14 +21,16 @@ import (
 
 type BuildSuite struct {
 	suite.Suite
-	storm          *storm.DB
-	dbPath         string
-	projectManager *project.Manager
-	commitManager  *githistory.CommitManager
-	branchManager  *githistory.BranchManager
-	taskManager    *task.Manager
-	stepManager    *build.StepManager
-	streamManager  *build.StreamManager
+	storm             *storm.DB
+	dbPath            string
+	projectManager    *project.Manager
+	commitManager     *githistory.CommitManager
+	branchManager     *githistory.BranchManager
+	taskManager       *task.Manager
+	stepManager       *build.StepManager
+	streamManager     *build.StreamManager
+	streamFileManager *build.StreamFileManager
+	wg                sync.WaitGroup
 }
 
 func TestBuildSuite(t *testing.T) {
@@ -58,10 +61,17 @@ func (s *BuildSuite) SetupTest() {
 	s.branchManager = githistory.NewBranchManager(s.storm)
 	s.taskManager = task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
 	s.stepManager = build.NewStepManager(s.storm)
-	s.streamManager = build.NewStreamManager(s.storm)
+	tmpDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	s.streamFileManager = build.NewStreamFileManager(&s.wg, tmpDir)
+	s.streamManager = build.NewStreamManager(s.storm, s.streamFileManager)
 }
 
 func (s *BuildSuite) TearDownTest() {
+	s.streamFileManager.StopWorker()
+	s.wg.Wait()
 	defer os.Remove(s.dbPath)
 	s.storm.Close()
 }

@@ -1,20 +1,26 @@
 package build
 
 import (
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
 type StreamManager struct {
-	db *streamStormDB
+	db          *streamStormDB
+	fileManager *StreamFileManager
 }
 
 func NewStreamManager(
 	db *storm.DB,
+	fileManager *StreamFileManager,
 ) *StreamManager {
 	m := &StreamManager{
-		db: newStreamStormDB(db),
+		db:          newStreamStormDB(db),
+		fileManager: fileManager,
 	}
 	return m
 }
@@ -36,6 +42,26 @@ func (m *StreamManager) save(s *Stream) error {
 
 func (m *StreamManager) GetByID(id string) (*Stream, error) {
 	return GetStreamByID(m.db.DB, id)
+}
+
+func (m *StreamManager) CreateStreamLine(
+	stream *Stream,
+	lineNumber int,
+	timestamp time.Time,
+	output string,
+) *StreamLine {
+	sL := &StreamLine{
+		StreamID:   stream.ID,
+		LineNumber: lineNumber,
+		Timestamp:  timestamp,
+		Output:     output,
+	}
+	m.fileManager.saveStreamLine(sL)
+	return sL
+}
+
+func (m *StreamManager) GetStreamLines(s *Stream, q *domain.PagingQuery) ([]*StreamLine, int) {
+	return m.fileManager.getLinesByStream(s, q)
 }
 
 func GetStreamByID(db *storm.DB, id string) (*Stream, error) {

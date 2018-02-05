@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
@@ -12,11 +13,35 @@ type streamResponse struct {
 	Name string `json:"name"`
 }
 
+type streamList struct {
+	Total int               `json:"total"`
+	Data  []*streamResponse `json:"data"`
+}
+
 func newStreamResponse(s *build.Stream) *streamResponse {
 	return &streamResponse{
 		ID:   s.ID,
 		Name: s.Name,
 	}
+}
+
+type streamLineResponse struct {
+	LineNumber int       `json:"lineNumber"`
+	Timestamp  time.Time `json:"timestamp"`
+	Output     string    `json:"output"`
+}
+
+func newStreamLineResponse(s *build.StreamLine) *streamLineResponse {
+	return &streamLineResponse{
+		LineNumber: s.LineNumber,
+		Timestamp:  s.Timestamp,
+		Output:     s.Output,
+	}
+}
+
+type streamLineList struct {
+	Total int                   `json:"total"`
+	Data  []*streamLineResponse `json:"data"`
 }
 
 type buildStreamHandler struct {
@@ -44,6 +69,11 @@ func (h *buildStreamHandler) getByStepID(c echo.Context) error {
 	for _, s := range step.Streams {
 		r = append(r, newStreamResponse(s))
 	}
+
+	c.JSON(http.StatusOK, &streamList{
+		Total: len(r),
+		Data:  r,
+	})
 	return nil
 }
 
@@ -53,6 +83,31 @@ func (h *buildStreamHandler) getByID(c echo.Context) error {
 		return nil
 	}
 
+	c.JSON(http.StatusOK, newStreamResponse(stream))
+	return nil
+}
+
+func (h *buildStreamHandler) getLogByID(c echo.Context) error {
+	stream := getStreamByID(c, h.buildStreamManager)
+	if stream == nil {
+		return nil
+	}
+
+	pQ := getPagingQueryParams(c)
+	if pQ == nil {
+		return nil
+	}
+	streamLines, total := h.buildStreamManager.GetStreamLines(stream, pQ)
+
+	rSL := []*streamLineResponse{}
+	for _, sL := range streamLines {
+		rSL = append(rSL, newStreamLineResponse(sL))
+	}
+
+	c.JSON(http.StatusOK, &streamLineList{
+		Total: total,
+		Data:  rSL,
+	})
 	return nil
 }
 
@@ -64,7 +119,5 @@ func getStreamByID(c echo.Context, buildStreamManager *build.StreamManager) *bui
 		return nil
 	}
 
-	// TODO: replace with stream lines (using file manager)
-	c.JSON(http.StatusOK, newStreamResponse(s))
-	return nil
+	return s
 }
