@@ -3,7 +3,6 @@ package githistory
 import (
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 
@@ -39,7 +38,6 @@ func (m *BranchManager) Save(b *Branch) error {
 }
 
 func (m *BranchManager) SaveCommitToBranch(c *Commit, b *Branch) error {
-	logrus.Infof("saving commit to branch %s:%s", c.Hash, b.Name)
 	return m.db.saveCommitToBranch(c, b)
 }
 
@@ -48,7 +46,6 @@ func (m *BranchManager) GetByProjectAndName(p *project.Project, name string) (*B
 }
 
 func (m *BranchManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Branch, int) {
-	logrus.Printf("%+v", p)
 	return m.db.getAllForProject(p, q)
 }
 

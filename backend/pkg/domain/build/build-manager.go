@@ -15,16 +15,18 @@ import (
 type BuildManager struct {
 	db            *buildStormDB
 	stepManager   *StepManager
-	StreamManager *StreamManager
+	streamManager *StreamManager
 }
 
 func NewBuildManager(
 	db *storm.DB,
+	stepManager *StepManager,
+	streamManager *StreamManager,
 ) *BuildManager {
 	m := &BuildManager{
 		db:            newBuildStormDB(db),
-		stepManager:   NewStepManager(db),
-		StreamManager: NewStreamManager(db),
+		stepManager:   stepManager,
+		streamManager: streamManager,
 	}
 	return m
 }
@@ -50,9 +52,9 @@ func (m *BuildManager) New(
 		m.stepManager.Save(step)
 
 		for _, streamName := range tS.GetOutputStreams() {
-			stream := m.StreamManager.new(step, streamName)
+			stream := m.streamManager.new(step, streamName)
 			step.Streams = append(step.Streams, stream)
-			m.StreamManager.save(stream)
+			m.streamManager.save(stream)
 		}
 		steps = append(steps, step)
 	}

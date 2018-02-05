@@ -56,7 +56,7 @@ func newBuildStepHandler(
 	}
 }
 
-func (h *buildStepHandler) getStepsForBuildUUID(c echo.Context) error {
+func (h *buildStepHandler) getStepsForBuildID(c echo.Context) error {
 
 	b := getBuildByID(c, h.buildManager)
 	if b == nil {
@@ -74,4 +74,23 @@ func (h *buildStepHandler) getStepsForBuildUUID(c echo.Context) error {
 	})
 
 	return nil
+}
+
+func (h *buildStepHandler) getByID(c echo.Context) error {
+	s := getStepByID(c, h.buildStepManager)
+	if s == nil {
+		return nil
+	}
+	c.JSON(http.StatusOK, newStepResponse(s))
+	return nil
+}
+
+func getStepByID(c echo.Context, buildStepManager *build.StepManager) *build.Step {
+	id := c.Param("id")
+	s, err := buildStepManager.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, "not found")
+		return nil
+	}
+	return s
 }

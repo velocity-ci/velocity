@@ -40,3 +40,7 @@ func (m *StepManager) new(
 func (m *StepManager) Save(s *Step) error {
 	return m.db.save(s)
 }
+
+func (m *StepManager) GetByID(id string) (*Step, error) {
+	return GetStepByID(m.db.DB, id)
+}

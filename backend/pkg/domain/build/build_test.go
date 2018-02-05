@@ -26,6 +26,8 @@ type BuildSuite struct {
 	commitManager  *githistory.CommitManager
 	branchManager  *githistory.BranchManager
 	taskManager    *task.Manager
+	stepManager    *build.StepManager
+	streamManager  *build.StreamManager
 }
 
 func TestBuildSuite(t *testing.T) {
@@ -55,6 +57,8 @@ func (s *BuildSuite) SetupTest() {
 	s.commitManager = githistory.NewCommitManager(s.storm)
 	s.branchManager = githistory.NewBranchManager(s.storm)
 	s.taskManager = task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
+	s.stepManager = build.NewStepManager(s.storm)
+	s.streamManager = build.NewStreamManager(s.storm)
 }
 
 func (s *BuildSuite) TearDownTest() {
@@ -79,7 +83,7 @@ func (s *BuildSuite) TestNewBuild() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)
@@ -110,7 +114,7 @@ func (s *BuildSuite) TestSaveBuild() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)
@@ -136,7 +140,7 @@ func (s *BuildSuite) TestGetBuildsForProject() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)
@@ -167,7 +171,7 @@ func (s *BuildSuite) TestGetBuildsForCommit() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)
@@ -198,7 +202,7 @@ func (s *BuildSuite) TestGetBuildsForTask() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)
@@ -229,7 +233,7 @@ func (s *BuildSuite) TestGetRunningBuilds() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)
@@ -261,7 +265,7 @@ func (s *BuildSuite) TestGetWaitingBuilds() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)
@@ -292,7 +296,7 @@ func (s *BuildSuite) TestGetBuildByID() {
 	}, velocity.NewSetup())
 	s.taskManager.Save(tsk)
 
-	m := build.NewBuildManager(s.storm)
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
 	b, errs := m.New(tsk, params)
 	s.Nil(errs)

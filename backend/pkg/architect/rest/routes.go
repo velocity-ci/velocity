@@ -45,8 +45,12 @@ func AddRoutes(
 	branchHandler := newBranchHandler(projectManager, branchManager, commitManager)
 	taskManager := task.NewManager(db, projectManager, branchManager, commitManager)
 	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
-	buildManager := build.NewBuildManager(db)
+	buildStepManager := build.NewStepManager(db)
+	buildStreamManager := build.NewStreamManager(db)
+	buildManager := build.NewBuildManager(db, buildStepManager, buildStreamManager)
 	buildHandler := newBuildHandler(buildManager, projectManager, commitManager, taskManager)
+	buildStepHandler := newBuildStepHandler(buildManager, buildStepManager)
+	buildStreamHandler := newBuildStreamHandler(buildStepManager, buildStreamManager)
 
 	jwtConfig := middleware.JWTConfig{
 		Claims:     &jwt.StandardClaims{},
@@ -80,14 +84,14 @@ func AddRoutes(
 	r = e.Group("/v1/builds")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
 	r.GET("/:id", buildHandler.getByID)
-	// r.GET("/:id/steps")
+	r.GET("/:id/steps", buildStepHandler.getStepsForBuildID)
 
 	r = e.Group("/v1/steps")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
-	// r.GET("/:id")
-	// r.GET("/:id/streams")
+	r.GET("/:id", buildStepHandler.getByID)
+	r.GET("/:id/streams", buildStreamHandler.getByStepID)
 
 	r = e.Group("/v1/streams")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
-	// r.GET("/:id")
+	r.GET("/:id", buildStreamHandler.getByID)
 }

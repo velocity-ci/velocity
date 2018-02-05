@@ -95,3 +95,12 @@ func (db *stepStormDB) save(s *Step) error {
 
 	return tx.Commit()
 }
+
+func GetStepByID(db *storm.DB, id string) (*Step, error) {
+	var sS stormStep
+	if err := db.One("ID", id, &sS); err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return sS.toStep(), nil
+}

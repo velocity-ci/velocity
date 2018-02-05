@@ -196,4 +196,6 @@ func getBuildByID(c echo.Context, buildManager *build.BuildManager) *build.Build
 		c.JSON(http.StatusNotFound, "not found")
 		return nil
 	}
+
+	return b
 }
