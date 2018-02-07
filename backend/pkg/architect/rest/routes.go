@@ -28,7 +28,7 @@ func AddRoutes(
 	db *storm.DB,
 	validator *validator.Validate,
 	trans ut.Translator,
-	workerWg sync.WaitGroup,
+	workerWg *sync.WaitGroup,
 ) {
 	// Unauthenticated routes
 	userManager := user.NewManager(db, validator, trans)
@@ -48,7 +48,7 @@ func AddRoutes(
 	taskManager := task.NewManager(db, projectManager, branchManager, commitManager)
 	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
 	buildStepManager := build.NewStepManager(db)
-	buildStreamFileManager := build.NewStreamFileManager(&workerWg, "/var/velocity-ci/logs")
+	buildStreamFileManager := build.NewStreamFileManager(workerWg, "/var/velocity-ci/logs")
 	buildStreamManager := build.NewStreamManager(db, buildStreamFileManager)
 	buildManager := build.NewBuildManager(db, buildStepManager, buildStreamManager)
 	buildHandler := newBuildHandler(buildManager, projectManager, commitManager, taskManager)
