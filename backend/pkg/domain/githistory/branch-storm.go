@@ -125,40 +125,29 @@ func (db *branchStormDB) getAllForCommit(c *Commit, pQ *domain.PagingQuery) (r [
 	return r, t
 }
 
+func (db *branchStormDB) hasCommit(b *Branch, c *Commit) bool {
+	query := db.Select(q.And(q.Eq("CommitID", c.ID), q.Eq("BranchID", b.ID)))
+	if err := query.First(&branchCommitStorm{}); err != nil {
+		return false
+	}
+
+	return true
+}
+
 func GetBranchByID(db *storm.DB, id string) (*Branch, error) {
-	var b Branch
+	var b stormBranch
 	if err := db.One("ID", id, &b); err != nil {
 		return nil, err
 	}
-	return &b, nil
-}
-
-func (db *branchStormDB) saveCommitToBranch(c *Commit, b *Branch) error {
-	tx, err := db.Begin(true)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Save(c.ToStormCommit()); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	bC := newBranchCommitStorm(b, c)
-	if err := tx.Save(bC); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit()
+	return b.ToBranch(db), nil
 }
 
 func (db *branchStormDB) getByProjectAndName(p *project.Project, name string) (*Branch, error) {
 	query := db.Select(q.And(q.Eq("ProjectID", p.ID), q.Eq("Name", name)))
-	var b Branch
+	var b stormBranch
 	if err := query.First(&b); err != nil {
 		return nil, err
 	}
 
-	return &b, nil
+	return b.ToBranch(db.DB), nil
 }

@@ -21,7 +21,7 @@ import (
 func finishProjectSync(p *project.Project, projectManager *project.Manager) {
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
-	projectManager.Save(p)
+	projectManager.Update(p)
 }
 
 func sync(
@@ -74,23 +74,23 @@ func sync(
 			remoteBranchNames = append(remoteBranchNames, branchName)
 			b, err := taskManager.branchManager.GetByProjectAndName(p, branchName)
 			if err != nil {
-				b = taskManager.branchManager.New(p, branchName)
-				taskManager.branchManager.Save(b)
+				b = taskManager.branchManager.Create(p, branchName)
 			}
 
 			c, err := taskManager.commitManager.GetByProjectAndHash(p, gitCommit.Hash.String())
 
 			if err != nil {
-				c = taskManager.commitManager.New(
+				c = taskManager.commitManager.Create(
+					b,
 					p,
 					gitCommit.Hash.String(),
 					strings.TrimSpace(message),
 					gitCommit.Author.Email,
 					gitCommit.Committer.When,
 				)
+			}
 
-				taskManager.branchManager.SaveCommitToBranch(c, b)
-
+			if !taskManager.branchManager.HasCommit(b, c) {
 				err = w.Checkout(&git.CheckoutOptions{
 					Hash: gitCommit.Hash,
 				})
@@ -111,8 +111,7 @@ func sync(
 							if err != nil {
 								logrus.Error(err)
 							} else {
-								aTask := taskManager.New(c, &t, velocity.NewSetup())
-								taskManager.Save(aTask)
+								taskManager.Create(c, &t, velocity.NewSetup())
 							}
 						}
 						return nil
@@ -129,7 +128,7 @@ func sync(
 	localOnlyBranches := removeRemoteBranches(allKnownBranches, remoteBranchNames)
 	for _, b := range localOnlyBranches {
 		b.Active = false
-		taskManager.branchManager.Save(b)
+		taskManager.branchManager.Update(b)
 	}
 
 }

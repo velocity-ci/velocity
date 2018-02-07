@@ -34,7 +34,7 @@ func NewManager(
 	return m
 }
 
-func (m *Manager) New(name string, config velocity.GitRepository) (*Project, *domain.ValidationErrors) {
+func (m *Manager) Create(name string, config velocity.GitRepository) (*Project, *domain.ValidationErrors) {
 	p := &Project{
 		Name:      name,
 		Config:    config,
@@ -49,7 +49,17 @@ func (m *Manager) New(name string, config velocity.GitRepository) (*Project, *do
 	p.ID = uuid.NewV1().String()
 	p.Slug = slug.Make(p.Name)
 
+	m.db.save(p)
+
 	return p, nil
+}
+
+func (m *Manager) Update(p *Project) error {
+	return m.db.save(p)
+}
+
+func (m *Manager) Delete(p *Project) error {
+	return m.db.delete(p)
 }
 
 func (m *Manager) Exists(name string) bool {
@@ -57,14 +67,6 @@ func (m *Manager) Exists(name string) bool {
 		return false
 	}
 	return true
-}
-
-func (m *Manager) Save(p *Project) error {
-	return m.db.save(p)
-}
-
-func (m *Manager) Delete(p *Project) error {
-	return m.db.delete(p)
 }
 
 func (m *Manager) GetAll(q *domain.PagingQuery) ([]*Project, int) {

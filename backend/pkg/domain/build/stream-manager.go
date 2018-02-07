@@ -25,18 +25,21 @@ func NewStreamManager(
 	return m
 }
 
-func (m *StreamManager) new(
+func (m *StreamManager) create(
 	s *Step,
 	name string,
 ) *Stream {
-	return &Stream{
+	stream := &Stream{
 		ID: uuid.NewV3(uuid.NewV1(), s.ID).String(),
 		// Step: s,
 		Name: name,
 	}
+
+	m.db.save(stream)
+	return stream
 }
 
-func (m *StreamManager) save(s *Stream) error {
+func (m *StreamManager) update(s *Stream) error {
 	return m.db.save(s)
 }
 

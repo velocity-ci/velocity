@@ -77,25 +77,20 @@ func (s *BuildSuite) TearDownTest() {
 }
 
 func (s *BuildSuite) TestNewBuild() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
 
 	s.Equal(tsk, b.Task)
@@ -107,54 +102,43 @@ func (s *BuildSuite) TestNewBuild() {
 	s.Len(b.Steps, len(tsk.Steps))
 }
 
-func (s *BuildSuite) TestSaveBuild() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+func (s *BuildSuite) TestUpdateBuild() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
 
-	err := m.Save(b)
+	err := m.Update(b)
 	s.Nil(err)
 }
 
 func (s *BuildSuite) TestGetBuildsForProject() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
-	m.Save(b)
 
 	rbs, total := m.GetAllForProject(p, &domain.PagingQuery{Limit: 5, Page: 1})
 
@@ -165,27 +149,21 @@ func (s *BuildSuite) TestGetBuildsForProject() {
 }
 
 func (s *BuildSuite) TestGetBuildsForCommit() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
-	m.Save(b)
 
 	rbs, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
 
@@ -196,27 +174,21 @@ func (s *BuildSuite) TestGetBuildsForCommit() {
 }
 
 func (s *BuildSuite) TestGetBuildsForTask() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
-	m.Save(b)
 
 	rbs, total := m.GetAllForTask(tsk, &domain.PagingQuery{Limit: 5, Page: 1})
 
@@ -227,28 +199,23 @@ func (s *BuildSuite) TestGetBuildsForTask() {
 }
 
 func (s *BuildSuite) TestGetRunningBuilds() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
 	b.Status = velocity.StateRunning
-	m.Save(b)
+	m.Update(b)
 
 	rbs, total := m.GetRunningBuilds()
 
@@ -259,27 +226,21 @@ func (s *BuildSuite) TestGetRunningBuilds() {
 }
 
 func (s *BuildSuite) TestGetWaitingBuilds() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	_, errs := m.Create(tsk, params)
 	s.Nil(errs)
-	m.Save(b)
 
 	rbs, total := m.GetWaitingBuilds()
 
@@ -290,27 +251,21 @@ func (s *BuildSuite) TestGetWaitingBuilds() {
 }
 
 func (s *BuildSuite) TestGetBuildByID() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 	params := map[string]string{}
-	b, errs := m.New(tsk, params)
+	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
-	m.Save(b)
 
 	rB, err := m.GetBuildByID(b.ID)
 	s.Nil(err)

@@ -51,14 +51,9 @@ func (h *knownHostHandler) create(c echo.Context) error {
 		c.Logger().Warn(err)
 		return nil
 	}
-	k, err := h.knownHostManager.New(rKH.Entry)
+	k, err := h.knownHostManager.Create(rKH.Entry)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.ErrorMap)
-		return nil
-	}
-
-	if err := h.knownHostManager.Save(k); err != nil {
-		c.JSON(http.StatusInternalServerError, err)
 		return nil
 	}
 

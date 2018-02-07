@@ -56,7 +56,7 @@ func (h *authHandler) create(c echo.Context) error {
 		c.Logger().Warn(err)
 		return nil
 	}
-	if _, err := h.userManager.New(rU.Username, rU.Password); err != nil {
+	if _, err := h.userManager.Create(rU.Username, rU.Password); err != nil {
 		c.JSON(http.StatusBadRequest, err.ErrorMap)
 		return nil
 	}

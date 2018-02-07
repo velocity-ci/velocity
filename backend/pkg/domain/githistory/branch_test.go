@@ -56,49 +56,62 @@ func (s *BranchSuite) TearDownTest() {
 	s.storm.Close()
 }
 
-func (s *BranchSuite) TestNew() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+func (s *BranchSuite) TestCreate() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 
-	b := m.New(p, "testBranch")
+	b := m.Create(p, "testBranch")
 	s.NotNil(b)
 
 	s.Equal(p, b.Project)
 	s.Equal("testBranch", b.Name)
 }
 
-func (s *BranchSuite) TestSave() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+func (s *BranchSuite) TestUpdate() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 
-	b := m.New(p, "testBranch")
+	b := m.Create(p, "testBranch")
 
-	err := m.Save(b)
-
+	b.Active = false
+	err := m.Update(b)
 	s.Nil(err)
+
+	aB, err := m.GetByProjectAndName(p, "testBranch")
+	s.Nil(err)
+	s.NotNil(aB)
+	s.Equal(b, aB)
+}
+
+func (s *BranchSuite) TestGetByProjectAndName() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
+		Address: "testGit",
+	})
+
+	m := githistory.NewBranchManager(s.storm)
+
+	m.Create(p, "testBranch")
+
+	aB, err := m.GetByProjectAndName(p, "testBranch")
+	s.Nil(err)
+	s.NotNil(aB)
 }
 
 func (s *BranchSuite) TestGetAllForProject() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 
-	b1 := m.New(p, "testBranch")
-	b2 := m.New(p, "2estBranch")
-
-	m.Save(b1)
-	m.Save(b2)
+	b1 := m.Create(p, "testBranch")
+	b2 := m.Create(p, "2estBranch")
 
 	bs, total := m.GetAllForProject(p, &domain.PagingQuery{Limit: 5, Page: 1})
 
@@ -109,22 +122,17 @@ func (s *BranchSuite) TestGetAllForProject() {
 }
 
 func (s *BranchSuite) TestGetAllForCommit() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
 	m := githistory.NewBranchManager(s.storm)
 
-	b1 := m.New(p, "testBranch")
-	b2 := m.New(p, "2estBranch")
+	b1 := m.Create(p, "testBranch")
+	b2 := m.Create(p, "2estBranch")
 
-	m.Save(b1)
-	m.Save(b2)
-
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now())
-	m.SaveCommitToBranch(c, b1)
-	m.SaveCommitToBranch(c, b2)
+	c := s.commitManager.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now())
+	s.commitManager.AddCommitToBranch(c, b2)
 
 	bs, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
 

@@ -22,14 +22,15 @@ func NewCommitManager(
 	return m
 }
 
-func (m *CommitManager) New(
+func (m *CommitManager) Create(
+	b *Branch,
 	p *project.Project,
 	hash string,
 	message string,
 	author string,
 	date time.Time,
 ) *Commit {
-	return &Commit{
+	c := &Commit{
 		ID:        uuid.NewV3(uuid.NewV1(), p.ID).String(),
 		Project:   p,
 		Hash:      hash,
@@ -37,6 +38,13 @@ func (m *CommitManager) New(
 		Author:    author,
 		CreatedAt: date.UTC(),
 	}
+
+	m.db.saveCommitToBranch(c, b)
+	return c
+}
+
+func (m *CommitManager) AddCommitToBranch(c *Commit, b *Branch) error {
+	return m.db.saveCommitToBranch(c, b)
 }
 
 func (m *CommitManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Commit, int) {

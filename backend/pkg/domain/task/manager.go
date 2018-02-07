@@ -34,21 +34,25 @@ func NewManager(
 	return m
 }
 
-func (m *Manager) New(
+func (m *Manager) Create(
 	c *githistory.Commit,
 	vTask *velocity.Task,
 	setupStep velocity.Step,
 ) *Task {
 	vTask.Steps = append([]velocity.Step{setupStep}, vTask.Steps...)
-	return &Task{
+	t := &Task{
 		ID:     uuid.NewV3(uuid.NewV1(), c.ID).String(),
 		Commit: c,
 		Task:   vTask,
 		Slug:   slug.Make(vTask.Name),
 	}
+
+	m.db.save(t)
+
+	return t
 }
 
-func (m *Manager) Save(t *Task) error {
+func (m *Manager) Update(t *Task) error {
 	return m.db.save(t)
 }
 
@@ -66,7 +70,7 @@ func (m *Manager) Sync(p *project.Project) (*project.Project, error) {
 	}
 
 	p.Synchronising = true
-	if err := m.projectManager.Save(p); err != nil {
+	if err := m.projectManager.Update(p); err != nil {
 		return nil, err
 	}
 

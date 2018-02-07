@@ -59,17 +59,18 @@ func (s *CommitSuite) TearDownTest() {
 	s.storm.Close()
 }
 
-func (s *CommitSuite) TestNew() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+func (s *CommitSuite) TestCreate() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	br := s.branchManager.Create(p, "testProject")
+
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
 	m := task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
 	setupStep := velocity.NewSetup()
-	tsk := m.New(c, &velocity.Task{
+	tsk := m.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, setupStep)
 
@@ -81,41 +82,18 @@ func (s *CommitSuite) TestNew() {
 	s.Equal([]velocity.Step{setupStep}, tsk.Steps)
 }
 
-func (s *CommitSuite) TestSave() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
-		Address: "testGit",
-	})
-	s.projectManager.Save(p)
-
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-
-	m := task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
-	tsk := m.New(c, &velocity.Task{
-		Name: "testTask",
-	}, velocity.NewSetup())
-
-	err := m.Save(tsk)
-	s.Nil(err)
-}
-
 func (s *CommitSuite) TestGetByCommitAndSlug() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	b := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(b)
-
-	s.branchManager.SaveCommitToBranch(c, b)
+	b := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
 	m := task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
-	tsk := m.New(c, &velocity.Task{
+	tsk := m.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-
-	m.Save(tsk)
 
 	rTsk, err := m.GetByCommitAndSlug(c, "testtask")
 	s.NotNil(rTsk)
@@ -125,27 +103,20 @@ func (s *CommitSuite) TestGetByCommitAndSlug() {
 }
 
 func (s *CommitSuite) TestGetAllForCommit() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	b := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(b)
-
-	s.branchManager.SaveCommitToBranch(c, b)
+	b := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
 	m := task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
-	tsk1 := m.New(c, &velocity.Task{
+	tsk1 := m.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	tsk2 := m.New(c, &velocity.Task{
+	tsk2 := m.Create(c, &velocity.Task{
 		Name: "2estTask",
 	}, velocity.NewSetup())
-
-	m.Save(tsk1)
-	m.Save(tsk2)
 
 	rTsks, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
 

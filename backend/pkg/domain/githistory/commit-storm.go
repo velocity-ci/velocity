@@ -55,6 +55,26 @@ func newCommitStormDB(db *storm.DB) *commitStormDB {
 	return &commitStormDB{db}
 }
 
+func (db *commitStormDB) saveCommitToBranch(c *Commit, b *Branch) error {
+	tx, err := db.Begin(true)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Save(c.ToStormCommit()); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	bC := newBranchCommitStorm(b, c)
+	if err := tx.Save(bC); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (db *commitStormDB) getByProjectAndHash(p *project.Project, hash string) (*Commit, error) {
 	query := db.Select(q.And(q.Eq("ProjectID", p.ID), q.Eq("Hash", hash)))
 	var c stormCommit

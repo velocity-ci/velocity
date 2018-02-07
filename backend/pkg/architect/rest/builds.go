@@ -96,14 +96,9 @@ func (h *buildHandler) create(c echo.Context) error {
 		return nil
 	}
 
-	b, err := h.buildManager.New(t, map[string]string{})
+	b, err := h.buildManager.Create(t, map[string]string{})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.ErrorMap)
-		return nil
-	}
-
-	if err := h.buildManager.Save(b); err != nil {
-		c.JSON(http.StatusInternalServerError, err)
 		return nil
 	}
 

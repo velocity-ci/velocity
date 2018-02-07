@@ -53,7 +53,7 @@ func (s *ProjectSuite) TestValidNew() {
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, errs := m.New("Test Project", velocity.GitRepository{
+	p, errs := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 	s.Nil(errs)
@@ -65,14 +65,14 @@ func (s *ProjectSuite) TestValidNew() {
 	s.WithinDuration(time.Now().UTC(), p.UpdatedAt, 1*time.Second)
 }
 
-func (s *ProjectSuite) TestSSHInvalidNew() {
+func (s *ProjectSuite) TestSSHInvalidCreate() {
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return nil, "", velocity.SSHKeyError("")
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, errs := m.New("Test Project", velocity.GitRepository{
+	p, errs := m.Create("Test Project", velocity.GitRepository{
 		Address:    "testGit",
 		PrivateKey: "malformedKey",
 	})
@@ -83,18 +83,17 @@ func (s *ProjectSuite) TestSSHInvalidNew() {
 	// s.Equal("", errs.ErrorMap["repository"])
 }
 
-func (s *ProjectSuite) TestDuplicateNew() {
+func (s *ProjectSuite) TestDuplicateCreate() {
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, _ := m.New("Test Project", velocity.GitRepository{
+	p, _ := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	m.Save(p)
-	p, errs := m.New("Test Project", velocity.GitRepository{
+	p, errs := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
 
@@ -104,18 +103,23 @@ func (s *ProjectSuite) TestDuplicateNew() {
 	s.Equal([]string{"name already exists!"}, errs.ErrorMap["name"])
 }
 
-func (s *ProjectSuite) TestSave() {
+func (s *ProjectSuite) TestUpdate() {
 	validator, translator := domain.NewValidator()
 	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
 		return &git.Repository{}, "/testDir", nil
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, _ := m.New("Test Project", velocity.GitRepository{
+	eP, _ := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	err := m.Save(p)
+
+	eP.Synchronising = true
+	err := m.Update(eP)
 	s.Nil(err)
+
+	p, _ := m.GetByName("Test Project")
+	s.Equal(eP, p)
 }
 
 func (s *ProjectSuite) TestExists() {
@@ -125,10 +129,9 @@ func (s *ProjectSuite) TestExists() {
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, _ := m.New("Test Project", velocity.GitRepository{
+	m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	m.Save(p)
 
 	s.True(m.Exists("Test Project"))
 }
@@ -140,10 +143,9 @@ func (s *ProjectSuite) TestDelete() {
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, _ := m.New("Test Project", velocity.GitRepository{
+	p, _ := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	m.Save(p)
 
 	err := m.Delete(p)
 	s.Nil(err)
@@ -158,10 +160,9 @@ func (s *ProjectSuite) TestList() {
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, _ := m.New("Test Project", velocity.GitRepository{
+	p, _ := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	m.Save(p)
 
 	q := &domain.PagingQuery{
 		Limit: 3,
@@ -180,10 +181,9 @@ func (s *ProjectSuite) TestGetByName() {
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, _ := m.New("Test Project", velocity.GitRepository{
+	p, _ := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	m.Save(p)
 
 	pR, err := m.GetByName("Test Project")
 	s.Nil(err)
@@ -197,10 +197,9 @@ func (s *ProjectSuite) TestGetBySlug() {
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
-	p, _ := m.New("Test Project", velocity.GitRepository{
+	p, _ := m.Create("Test Project", velocity.GitRepository{
 		Address: "testGit",
 	})
-	m.Save(p)
 
 	pR, err := m.GetBySlug(p.Slug)
 	s.Nil(err)

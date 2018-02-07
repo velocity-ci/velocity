@@ -26,7 +26,7 @@ func NewManager(
 	return m
 }
 
-func (m *Manager) New(entry string) (*KnownHost, *domain.ValidationErrors) {
+func (m *Manager) Create(entry string) (*KnownHost, *domain.ValidationErrors) {
 	k := &KnownHost{
 		Entry: entry,
 	}
@@ -46,19 +46,13 @@ func (m *Manager) New(entry string) (*KnownHost, *domain.ValidationErrors) {
 		k.MD5Fingerprint = ssh.FingerprintLegacyMD5(pubKey)
 	}
 
+	m.db.save(k)
+
 	return k, nil
 }
 
-func (m *Manager) Exists(entry string) bool {
-	return m.db.exists(entry)
-}
-
-func (m *Manager) Save(k *KnownHost) error {
-	if err := m.db.save(k); err != nil {
-		return err
-	}
-	// update file
-	return nil
+func (m *Manager) Update(k *KnownHost) error {
+	return m.db.save(k)
 }
 
 func (m *Manager) Delete(k *KnownHost) error {
@@ -66,6 +60,10 @@ func (m *Manager) Delete(k *KnownHost) error {
 		return err
 	}
 	return nil
+}
+
+func (m *Manager) Exists(entry string) bool {
+	return m.db.exists(entry)
 }
 
 func (m *Manager) GetAll(q *domain.PagingQuery) ([]*KnownHost, int) {

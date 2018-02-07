@@ -60,14 +60,14 @@ func (s *CommitSuite) TestNew() {
 
 	m := githistory.NewCommitManager(s.storm)
 
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
+
+	b := s.branchManager.Create(p, "testBranch")
 
 	ts := time.Now().UTC()
-
-	c := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts)
+	c := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
 
 	s.NotNil(c)
 
@@ -81,18 +81,14 @@ func (s *CommitSuite) TestNew() {
 func (s *CommitSuite) TestGetByProjectAndHash() {
 	m := githistory.NewCommitManager(s.storm)
 
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	b := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(b)
+	b := s.branchManager.Create(p, "testBranch")
 
 	ts := time.Now()
-	nC := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts)
-
-	s.branchManager.SaveCommitToBranch(nC, b)
+	nC := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
 
 	c, err := m.GetByProjectAndHash(p, nC.Hash)
 	s.Nil(err)
@@ -104,21 +100,16 @@ func (s *CommitSuite) TestGetByProjectAndHash() {
 func (s *CommitSuite) TestGetAllForProject() {
 	m := githistory.NewCommitManager(s.storm)
 
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	b := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(b)
+	b := s.branchManager.Create(p, "testBranch")
 
 	ts := time.Now()
 
-	c1 := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts)
-	c2 := m.New(p, "123456", "2est commit", "me@velocityci.io", ts)
-
-	s.branchManager.SaveCommitToBranch(c1, b)
-	s.branchManager.SaveCommitToBranch(c2, b)
+	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
+	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", ts)
 
 	cs, total := m.GetAllForProject(p, &domain.PagingQuery{Limit: 5, Page: 1})
 
@@ -131,21 +122,16 @@ func (s *CommitSuite) TestGetAllForProject() {
 func (s *CommitSuite) TestGetAllForBranch() {
 	m := githistory.NewCommitManager(s.storm)
 
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	b := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(b)
+	b := s.branchManager.Create(p, "testBranch")
 
 	ts := time.Now()
 
-	c1 := m.New(p, "abcdef", "test commit", "me@velocityci.io", ts)
-	c2 := m.New(p, "123456", "2est commit", "me@velocityci.io", ts)
-
-	s.branchManager.SaveCommitToBranch(c1, b)
-	s.branchManager.SaveCommitToBranch(c2, b)
+	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
+	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", ts)
 
 	cs, total := m.GetAllForBranch(b, &domain.PagingQuery{Limit: 5, Page: 1})
 

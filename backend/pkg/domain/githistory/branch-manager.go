@@ -20,25 +20,24 @@ func NewBranchManager(db *storm.DB) *BranchManager {
 	}
 }
 
-func (m *BranchManager) New(
+func (m *BranchManager) Create(
 	p *project.Project,
 	name string,
 ) *Branch {
-	return &Branch{
+	b := &Branch{
 		ID:          uuid.NewV3(uuid.NewV1(), p.ID).String(),
 		Project:     p,
 		Name:        name,
 		LastUpdated: time.Now().UTC(),
 		Active:      true,
 	}
+	m.db.save(b)
+
+	return b
 }
 
-func (m *BranchManager) Save(b *Branch) error {
+func (m *BranchManager) Update(b *Branch) error {
 	return m.db.save(b)
-}
-
-func (m *BranchManager) SaveCommitToBranch(c *Commit, b *Branch) error {
-	return m.db.saveCommitToBranch(c, b)
 }
 
 func (m *BranchManager) GetByProjectAndName(p *project.Project, name string) (*Branch, error) {
@@ -51,4 +50,8 @@ func (m *BranchManager) GetAllForProject(p *project.Project, q *domain.PagingQue
 
 func (m *BranchManager) GetAllForCommit(c *Commit, q *domain.PagingQuery) ([]*Branch, int) {
 	return m.db.getAllForCommit(c, q)
+}
+
+func (m *BranchManager) HasCommit(b *Branch, c *Commit) bool {
+	return m.db.hasCommit(b, c)
 }

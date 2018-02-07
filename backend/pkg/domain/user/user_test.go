@@ -45,9 +45,9 @@ func (s *UserSuite) TearDownTest() {
 	s.storm.Close()
 }
 
-func (s *UserSuite) TestValidNew() {
+func (s *UserSuite) TestValidCreate() {
 	m := s.uM
-	u, errs := m.New("admin", "password")
+	u, errs := m.Create("admin", "password")
 	s.Nil(errs)
 
 	s.NotEmpty(u.ID)
@@ -60,13 +60,13 @@ func (s *UserSuite) TestValidNew() {
 func (s *UserSuite) TestInvalidNew() {
 	m := s.uM
 
-	u, errs := m.New("ad", "password")
+	u, errs := m.Create("ad", "password")
 	s.Nil(u)
 	s.NotNil(errs)
 
 	s.Equal([]string{"username must be at least 3 characters in length"}, errs.ErrorMap["username"])
 
-	u, errs = m.New("admin", "pa")
+	u, errs = m.Create("admin", "pa")
 	s.Nil(u)
 	s.NotNil(errs)
 
@@ -76,11 +76,9 @@ func (s *UserSuite) TestInvalidNew() {
 func (s *UserSuite) TestSave() {
 	m := s.uM
 
-	u, _ := m.New("admin", "password")
-
-	err := m.Save(u)
-
+	u, err := m.Create("admin", "password")
 	s.Nil(err)
+	s.NotNil(u)
 
 	s.True(m.Exists("admin"))
 }
@@ -88,11 +86,28 @@ func (s *UserSuite) TestSave() {
 func (s *UserSuite) TestDelete() {
 	m := s.uM
 
-	u, _ := m.New("admin", "password")
-	m.Save(u)
+	u, _ := m.Create("admin", "password")
 
 	err := m.Delete(u)
 	s.Nil(err)
 
 	s.False(m.Exists("admin"))
+}
+
+func (s *UserSuite) TestEnsureAdminIfNoAdmin() {
+	s.uM.EnsureAdminUser()
+
+	u, err := s.uM.GetByUsername("admin")
+	s.Nil(err)
+	s.NotNil(u)
+}
+
+func (s *UserSuite) TestEnsureAdminIfAlreadyAdmin() {
+	eU, _ := s.uM.Create("admin", "password1234")
+
+	s.uM.EnsureAdminUser()
+
+	u, _ := s.uM.GetByUsername("admin")
+
+	s.Equal(eU, u)
 }

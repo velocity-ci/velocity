@@ -59,17 +59,12 @@ func (h *projectHandler) create(c echo.Context) error {
 		c.JSON(http.StatusBadRequest, "invalid payload")
 		return nil
 	}
-	p, err := h.projectManager.New(rP.Name, velocity.GitRepository{
+	p, err := h.projectManager.Create(rP.Name, velocity.GitRepository{
 		Address:    rP.Address,
 		PrivateKey: rP.PrivateKey,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.ErrorMap)
-		return nil
-	}
-
-	if err := h.projectManager.Save(p); err != nil {
-		c.JSON(http.StatusInternalServerError, err)
 		return nil
 	}
 

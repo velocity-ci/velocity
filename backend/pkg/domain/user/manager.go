@@ -39,16 +39,15 @@ func (m *Manager) EnsureAdminUser() {
 		} else {
 			password = GenerateRandomString(16)
 		}
-		u, err := m.New("admin", password)
+		_, err := m.Create("admin", password)
 		if err != nil {
 			logrus.Error(err)
 		}
-		m.Save(u)
 		log.Printf("\n\n\nCreated Administrator:\n\tusername: admin \n\tpassword: %s\n\n\n", password)
 	}
 }
 
-func (m *Manager) New(username, password string) (*User, *domain.ValidationErrors) {
+func (m *Manager) Create(username, password string) (*User, *domain.ValidationErrors) {
 	u := &User{
 		Username: username,
 		Password: password,
@@ -61,10 +60,15 @@ func (m *Manager) New(username, password string) (*User, *domain.ValidationError
 	u.ID = uuid.NewV1().String()
 	u.hashPassword(password)
 
+	if err := m.db.save(u); err != nil {
+		logrus.Error(err)
+		return nil, nil
+	}
+
 	return u, nil
 }
 
-func (m *Manager) Save(u *User) error {
+func (m *Manager) Update(u *User) error {
 	return m.db.save(u)
 }
 

@@ -31,7 +31,7 @@ func NewBuildManager(
 	return m
 }
 
-func (m *BuildManager) New(
+func (m *BuildManager) Create(
 	t *task.Task,
 	params map[string]string,
 ) (*Build, *domain.ValidationErrors) {
@@ -48,22 +48,22 @@ func (m *BuildManager) New(
 
 	steps := []*Step{}
 	for i, tS := range t.Steps {
-		step := m.stepManager.new(b, i, &tS)
-		m.stepManager.Save(step)
+		step := m.stepManager.create(b, i, &tS)
 
 		for _, streamName := range tS.GetOutputStreams() {
-			stream := m.streamManager.new(step, streamName)
+			stream := m.streamManager.create(step, streamName)
 			step.Streams = append(step.Streams, stream)
-			m.streamManager.save(stream)
 		}
 		steps = append(steps, step)
 	}
 	b.Steps = steps
 
+	m.db.save(b)
+
 	return b, nil
 }
 
-func (m *BuildManager) Save(b *Build) error {
+func (m *BuildManager) Update(b *Build) error {
 	return m.db.save(b)
 }
 

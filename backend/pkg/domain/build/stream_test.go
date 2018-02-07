@@ -79,25 +79,19 @@ func (s *StreamSuite) TearDownTest() {
 }
 
 func (s *StreamSuite) TestFileStreamLine() {
-	p, _ := s.projectManager.New("testProject", velocity.GitRepository{
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
-	s.projectManager.Save(p)
 
-	c := s.commitManager.New(p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
-	br := s.branchManager.New(p, "testBranch")
-	s.branchManager.Save(br)
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
 
-	s.branchManager.SaveCommitToBranch(c, br)
-
-	tsk := s.taskManager.New(c, &velocity.Task{
+	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
 	}, velocity.NewSetup())
-	s.taskManager.Save(tsk)
 
 	params := map[string]string{}
-	b, _ := s.buildManager.New(tsk, params)
-	s.buildManager.Save(b)
+	b, _ := s.buildManager.Create(tsk, params)
 
 	stream := b.Steps[0].Streams[0]
 

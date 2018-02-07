@@ -21,12 +21,12 @@ func NewStepManager(
 	return m
 }
 
-func (m *StepManager) new(
+func (m *StepManager) create(
 	b *Build,
 	number int,
 	vStep *velocity.Step,
 ) *Step {
-	return &Step{
+	s := &Step{
 		ID: uuid.NewV3(uuid.NewV1(), b.ID).String(),
 		// Build:     b,
 		Number:    number,
@@ -35,9 +35,11 @@ func (m *StepManager) new(
 		UpdatedAt: time.Now().UTC(),
 		Streams:   []*Stream{},
 	}
+	m.db.save(s)
+	return s
 }
 
-func (m *StepManager) Save(s *Step) error {
+func (m *StepManager) Update(s *Step) error {
 	return m.db.save(s)
 }
 
