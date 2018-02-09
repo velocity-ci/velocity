@@ -12,11 +12,17 @@ import (
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
+// Event constants
+const (
+	EventCreate = "task:new"
+)
+
 type Manager struct {
 	db             *stormDB
 	projectManager *project.Manager
 	branchManager  *githistory.BranchManager
 	commitManager  *githistory.CommitManager
+	brokers        []domain.Broker
 }
 
 func NewManager(
@@ -30,8 +36,13 @@ func NewManager(
 		projectManager: projectManager,
 		branchManager:  branchManager,
 		commitManager:  commitManager,
+		brokers:        []domain.Broker{},
 	}
 	return m
+}
+
+func (m *Manager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *Manager) Create(
@@ -49,11 +60,15 @@ func (m *Manager) Create(
 
 	m.db.save(t)
 
-	return t
-}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Event:   EventCreate,
+			Payload: t,
+		})
 
-func (m *Manager) Update(t *Task) error {
-	return m.db.save(t)
+	}
+
+	return t
 }
 
 func (m *Manager) GetByCommitAndSlug(c *githistory.Commit, slug string) (*Task, error) {

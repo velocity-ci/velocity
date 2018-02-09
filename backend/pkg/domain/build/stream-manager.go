@@ -1,6 +1,7 @@
 package build
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -9,9 +10,15 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
+const (
+	EventStreamLineCreate = "streamLine:new"
+)
+
 type StreamManager struct {
 	db          *streamStormDB
 	fileManager *StreamFileManager
+
+	brokers []domain.Broker
 }
 
 func NewStreamManager(
@@ -21,8 +28,13 @@ func NewStreamManager(
 	m := &StreamManager{
 		db:          newStreamStormDB(db),
 		fileManager: fileManager,
+		brokers:     []domain.Broker{},
 	}
 	return m
+}
+
+func (m *StreamManager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *StreamManager) create(
@@ -60,6 +72,13 @@ func (m *StreamManager) CreateStreamLine(
 		Output:     output,
 	}
 	m.fileManager.saveStreamLine(sL)
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   fmt.Sprintf("stream:%s", stream.ID),
+			Event:   EventStreamLineCreate,
+			Payload: sL,
+		})
+	}
 	return sL
 }
 

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -14,10 +15,18 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 )
 
+// Event constants
+const (
+	EventCreate = "project:new"
+	EventUpdate = "project:update"
+	EventDelete = "project:delete"
+)
+
 type Manager struct {
 	validator *validator
 	db        *stormDB
 	clone     func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error)
+	brokers   []domain.Broker
 }
 
 func NewManager(
@@ -27,11 +36,16 @@ func NewManager(
 	cloneFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error),
 ) *Manager {
 	m := &Manager{
-		db:    newStormDB(db),
-		clone: cloneFunc,
+		db:      newStormDB(db),
+		clone:   cloneFunc,
+		brokers: []domain.Broker{},
 	}
 	m.validator = newValidator(validator, translator, m)
 	return m
+}
+
+func (m *Manager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *Manager) Create(name string, config velocity.GitRepository) (*Project, *domain.ValidationErrors) {
@@ -51,15 +65,43 @@ func (m *Manager) Create(name string, config velocity.GitRepository) (*Project, 
 
 	m.db.save(p)
 
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   "projects",
+			Event:   EventCreate,
+			Payload: p,
+		})
+	}
+
 	return p, nil
 }
 
 func (m *Manager) Update(p *Project) error {
-	return m.db.save(p)
+	if err := m.db.save(p); err != nil {
+		return err
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   fmt.Sprintf("project:%s", p.ID),
+			Event:   EventUpdate,
+			Payload: p,
+		})
+	}
+	return nil
 }
 
 func (m *Manager) Delete(p *Project) error {
-	return m.db.delete(p)
+	if err := m.db.delete(p); err != nil {
+		return err
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   fmt.Sprintf("project:%s", p.ID),
+			Event:   EventDelete,
+			Payload: p,
+		})
+	}
+	return nil
 }
 
 func (m *Manager) Exists(name string) bool {

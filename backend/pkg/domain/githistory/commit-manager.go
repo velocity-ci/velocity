@@ -9,17 +9,29 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
+// Event constants
+const (
+	EventCommitCreate = "commit:new"
+	EventCommitUpdate = "commit:update"
+)
+
 type CommitManager struct {
-	db *commitStormDB
+	db      *commitStormDB
+	brokers []domain.Broker
 }
 
 func NewCommitManager(
 	db *storm.DB,
 ) *CommitManager {
 	m := &CommitManager{
-		db: newCommitStormDB(db),
+		db:      newCommitStormDB(db),
+		brokers: []domain.Broker{},
 	}
 	return m
+}
+
+func (m *CommitManager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *CommitManager) Create(
@@ -38,13 +50,34 @@ func (m *CommitManager) Create(
 		Author:    author,
 		CreatedAt: date.UTC(),
 	}
-
 	m.db.saveCommitToBranch(c, b)
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   "commits",
+			Event:   EventCommitCreate,
+			Payload: c,
+		})
+	}
 	return c
 }
 
 func (m *CommitManager) AddCommitToBranch(c *Commit, b *Branch) error {
-	return m.db.saveCommitToBranch(c, b)
+	if err := m.db.saveCommitToBranch(c, b); err != nil {
+		return err
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Event:   EventCommitUpdate,
+			Payload: c,
+		})
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Event:   EventBranchUpdate,
+			Payload: b,
+		})
+	}
+	return nil
 }
 
 func (m *CommitManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Commit, int) {

@@ -5,20 +5,32 @@ import (
 
 	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
+// Event constants
+const (
+	EventStepUpdate = "step:update"
+)
+
 type StepManager struct {
-	db *stepStormDB
+	db      *stepStormDB
+	brokers []domain.Broker
 }
 
 func NewStepManager(
 	db *storm.DB,
 ) *StepManager {
 	m := &StepManager{
-		db: newStepStormDB(db),
+		db:      newStepStormDB(db),
+		brokers: []domain.Broker{},
 	}
 	return m
+}
+
+func (m *StepManager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *StepManager) create(
@@ -40,7 +52,17 @@ func (m *StepManager) create(
 }
 
 func (m *StepManager) Update(s *Step) error {
-	return m.db.save(s)
+	if err := m.db.save(s); err != nil {
+		return err
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Event:   EventStepUpdate,
+			Payload: s,
+		})
+	}
+
+	return nil
 }
 
 func (m *StepManager) GetByID(id string) (*Step, error) {

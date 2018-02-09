@@ -12,10 +12,18 @@ import (
 	"github.com/velocity-ci/velocity/backend/velocity"
 )
 
+// Event constants
+const (
+	EventBuildCreate = "build:new"
+	EventBuildUpdate = "build:update"
+	EventBuildDelete = "build:delete"
+)
+
 type BuildManager struct {
 	db            *buildStormDB
 	stepManager   *StepManager
 	streamManager *StreamManager
+	brokers       []domain.Broker
 }
 
 func NewBuildManager(
@@ -27,8 +35,13 @@ func NewBuildManager(
 		db:            newBuildStormDB(db),
 		stepManager:   stepManager,
 		streamManager: streamManager,
+		brokers:       []domain.Broker{},
 	}
 	return m
+}
+
+func (m *BuildManager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *BuildManager) Create(
@@ -60,11 +73,28 @@ func (m *BuildManager) Create(
 
 	m.db.save(b)
 
+	for _, br := range m.brokers {
+		br.EmitAll(&domain.Emit{
+			Event:   EventBuildCreate,
+			Payload: b,
+		})
+	}
+
 	return b, nil
 }
 
 func (m *BuildManager) Update(b *Build) error {
-	return m.db.save(b)
+	if err := m.db.save(b); err != nil {
+		return err
+	}
+	for _, br := range m.brokers {
+		br.EmitAll(&domain.Emit{
+			Event:   EventBuildUpdate,
+			Payload: b,
+		})
+	}
+
+	return nil
 }
 
 func (m *BuildManager) GetBuildByID(id string) (*Build, error) {

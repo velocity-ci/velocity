@@ -71,6 +71,11 @@ func translationFuncUnique(ut ut.Translator, fe govalidator.FieldError) string {
 func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 	p := sl.Current().Interface().(Project)
 
+	if len(p.Config.Address) < 4 {
+		sl.ReportError(p.Config.Address, "repository", "repository", "repository", "")
+		return
+	}
+
 	_, dir, err := v.projectManager.clone(&p.Config, true, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
 
 	if err != nil {

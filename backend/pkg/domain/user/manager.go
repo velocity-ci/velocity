@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -12,9 +13,17 @@ import (
 	govalidator "gopkg.in/go-playground/validator.v9"
 )
 
+// Event constants
+const (
+	EventCreate = "user:new"
+	EventUpdate = "user:update"
+	EventDelete = "user:delete"
+)
+
 type Manager struct {
 	validator *validator
 	db        *stormDB
+	brokers   []domain.Broker
 }
 
 func NewManager(
@@ -23,11 +32,16 @@ func NewManager(
 	translator ut.Translator,
 ) *Manager {
 	m := &Manager{
-		db: newStormDB(db),
+		db:      newStormDB(db),
+		brokers: []domain.Broker{},
 	}
 	m.validator = newValidator(validator, translator, m)
 
 	return m
+}
+
+func (m *Manager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *Manager) EnsureAdminUser() {
@@ -65,15 +79,43 @@ func (m *Manager) Create(username, password string) (*User, *domain.ValidationEr
 		return nil, nil
 	}
 
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   "users",
+			Event:   EventCreate,
+			Payload: u,
+		})
+	}
+
 	return u, nil
 }
 
 func (m *Manager) Update(u *User) error {
-	return m.db.save(u)
+	if err := m.db.save(u); err != nil {
+		return err
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   fmt.Sprintf("user:%s", u.ID),
+			Event:   EventUpdate,
+			Payload: u,
+		})
+	}
+	return nil
 }
 
 func (m *Manager) Delete(u *User) error {
-	return m.db.delete(u)
+	if err := m.db.delete(u); err != nil {
+		return err
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   fmt.Sprintf("user:%s", u.ID),
+			Event:   EventDelete,
+			Payload: u,
+		})
+	}
+	return nil
 }
 
 func (m *Manager) Exists(username string) bool {

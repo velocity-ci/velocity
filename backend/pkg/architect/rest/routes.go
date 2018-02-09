@@ -2,20 +2,13 @@ package rest
 
 import (
 	"os"
-	"sync"
 
-	"github.com/asdine/storm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
-	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
-
-	"github.com/velocity-ci/velocity/backend/velocity"
-
-	"github.com/go-playground/universal-translator"
-	validator "gopkg.in/go-playground/validator.v9"
-
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -25,35 +18,45 @@ import (
 
 func AddRoutes(
 	e *echo.Echo,
-	db *storm.DB,
-	validator *validator.Validate,
-	trans ut.Translator,
-	workerWg *sync.WaitGroup,
+	userManager *user.Manager,
+	knownHostManager *knownhost.Manager,
+	projectManager *project.Manager,
+	commitManager *githistory.CommitManager,
+	branchManager *githistory.BranchManager,
+	taskManager *task.Manager,
+	buildStepManager *build.StepManager,
+	buildStreamManager *build.StreamManager,
+	buildManager *build.BuildManager,
+	builderManager *builder.Manager,
 ) {
 	// Unauthenticated routes
-	userManager := user.NewManager(db, validator, trans)
 	userManager.EnsureAdminUser()
 	authHandler := newAuthHandler(userManager)
 	e.POST("/v1/auth", authHandler.create)
 
 	// Authenticated routes
-	knownHostManager := knownhost.NewManager(db, validator, trans)
 	knownHostHandler := newKnownHostHandler(knownHostManager)
-	projectManager := project.NewManager(db, validator, trans, velocity.GitClone)
 	projectHandler := newProjectHandler(projectManager)
-	commitManager := githistory.NewCommitManager(db)
-	branchManager := githistory.NewBranchManager(db)
 	commitHandler := newCommitHandler(projectManager, commitManager, branchManager)
 	branchHandler := newBranchHandler(projectManager, branchManager, commitManager)
-	taskManager := task.NewManager(db, projectManager, branchManager, commitManager)
 	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
-	buildStepManager := build.NewStepManager(db)
-	buildStreamFileManager := build.NewStreamFileManager(workerWg, "/var/velocity-ci/logs")
-	buildStreamManager := build.NewStreamManager(db, buildStreamFileManager)
-	buildManager := build.NewBuildManager(db, buildStepManager, buildStreamManager)
 	buildHandler := newBuildHandler(buildManager, projectManager, commitManager, taskManager)
 	buildStepHandler := newBuildStepHandler(buildManager, buildStepManager)
 	buildStreamHandler := newBuildStreamHandler(buildStepManager, buildStreamManager)
+
+	builderHandler := newBuilderHandler(builderManager)
+
+	wsBroker := NewBroker(branchManager)
+	websocketHandler := newWebsocketHandler(wsBroker)
+	userManager.AddBroker(wsBroker)
+	knownHostManager.AddBroker(wsBroker)
+	projectManager.AddBroker(wsBroker)
+	commitManager.AddBroker(wsBroker)
+	branchManager.AddBroker(wsBroker)
+	taskManager.AddBroker(wsBroker)
+	buildStepManager.AddBroker(wsBroker)
+	buildStepManager.AddBroker(wsBroker)
+	buildManager.AddBroker(wsBroker)
 
 	jwtConfig := middleware.JWTConfig{
 		Claims:     &jwt.StandardClaims{},
@@ -98,4 +101,16 @@ func AddRoutes(
 	r.Use(middleware.JWTWithConfig(jwtConfig))
 	r.GET("/:id", buildStreamHandler.getByID)
 	r.GET("/:id/log", buildStreamHandler.getLogByID)
+
+	r = e.Group("/v1/builders")
+	r.Use(middleware.JWTWithConfig(jwtConfig))
+	r.GET("/", builderHandler.getAll)
+	r.GET("/:id", builderHandler.getByID)
+
+	// Used by Builders
+	r.GET("/ws", builderHandler.connect)
+
+	r = e.Group("/v1/ws")
+	r.GET("/", websocketHandler.phxClient)
+
 }

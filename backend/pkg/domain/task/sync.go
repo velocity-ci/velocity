@@ -22,13 +22,14 @@ func finishProjectSync(p *project.Project, projectManager *project.Manager) {
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
 	projectManager.Update(p)
+	logrus.Infof("finished synchronising project %s", p.Slug)
 }
 
 func sync(
 	p *project.Project,
 	taskManager *Manager,
-	// websocketManager *websocket.Manager,
 ) {
+	logrus.Infof("synchronising project %s", p.Slug)
 	defer finishProjectSync(p, taskManager.projectManager)
 	repo, dir, err := velocity.GitClone(&p.Config, false, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
 	if err != nil {
@@ -55,7 +56,7 @@ func sync(
 			break
 		}
 
-		fmt.Println(r)
+		logrus.Infof("checking ref: %s", r)
 		gitCommit, err := repo.CommitObject(r.Hash())
 
 		if err != nil {
@@ -88,9 +89,7 @@ func sync(
 					gitCommit.Author.Email,
 					gitCommit.Committer.When,
 				)
-			}
-
-			if !taskManager.branchManager.HasCommit(b, c) {
+				logrus.Infof("\tcreated commit %s on %s", c.Hash, b.Name)
 				err = w.Checkout(&git.CheckoutOptions{
 					Hash: gitCommit.Hash,
 				})
@@ -112,6 +111,7 @@ func sync(
 								logrus.Error(err)
 							} else {
 								taskManager.Create(c, &t, velocity.NewSetup())
+								logrus.Infof("\tcreated task %s for %s", t.Name, c.Hash)
 							}
 						}
 						return nil

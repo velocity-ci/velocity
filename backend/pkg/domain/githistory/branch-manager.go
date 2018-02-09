@@ -1,6 +1,7 @@
 package githistory
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/asdine/storm"
@@ -10,14 +11,26 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
+// Event constants
+const (
+	EventBranchCreate = "branch:new"
+	EventBranchUpdate = "branch:update"
+)
+
 type BranchManager struct {
-	db *branchStormDB
+	db      *branchStormDB
+	brokers []domain.Broker
 }
 
 func NewBranchManager(db *storm.DB) *BranchManager {
 	return &BranchManager{
-		db: newBranchStormDB(db),
+		db:      newBranchStormDB(db),
+		brokers: []domain.Broker{},
 	}
+}
+
+func (m *BranchManager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *BranchManager) Create(
@@ -33,11 +46,29 @@ func (m *BranchManager) Create(
 	}
 	m.db.save(b)
 
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   "branches",
+			Event:   EventBranchCreate,
+			Payload: b,
+		})
+	}
+
 	return b
 }
 
 func (m *BranchManager) Update(b *Branch) error {
-	return m.db.save(b)
+	if err := m.db.save(b); err != nil {
+		return err
+	}
+	for _, br := range m.brokers {
+		br.EmitAll(&domain.Emit{
+			Topic:   fmt.Sprintf("branch:%s", b.ID),
+			Event:   EventBranchUpdate,
+			Payload: b,
+		})
+	}
+	return nil
 }
 
 func (m *BranchManager) GetByProjectAndName(p *project.Project, name string) (*Branch, error) {

@@ -1,6 +1,8 @@
 package knownhost
 
 import (
+	"fmt"
+
 	"github.com/asdine/storm"
 	"github.com/go-playground/universal-translator"
 	uuid "github.com/satori/go.uuid"
@@ -9,9 +11,16 @@ import (
 	govalidator "gopkg.in/go-playground/validator.v9"
 )
 
+// Event constants
+const (
+	EventCreate = "knownhost:new"
+	EventDelete = "knownhost:delete"
+)
+
 type Manager struct {
 	validator *validator
 	db        *stormDB
+	brokers   []domain.Broker
 }
 
 func NewManager(
@@ -20,10 +29,15 @@ func NewManager(
 	translator ut.Translator,
 ) *Manager {
 	m := &Manager{
-		db: newStormDB(db),
+		db:      newStormDB(db),
+		brokers: []domain.Broker{},
 	}
 	m.validator = newValidator(validator, translator, m)
 	return m
+}
+
+func (m *Manager) AddBroker(b domain.Broker) {
+	m.brokers = append(m.brokers, b)
 }
 
 func (m *Manager) Create(entry string) (*KnownHost, *domain.ValidationErrors) {
@@ -48,16 +62,27 @@ func (m *Manager) Create(entry string) (*KnownHost, *domain.ValidationErrors) {
 
 	m.db.save(k)
 
-	return k, nil
-}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   "knownhosts",
+			Event:   EventCreate,
+			Payload: k,
+		})
+	}
 
-func (m *Manager) Update(k *KnownHost) error {
-	return m.db.save(k)
+	return k, nil
 }
 
 func (m *Manager) Delete(k *KnownHost) error {
 	if err := m.db.delete(k); err != nil {
 		return err
+	}
+	for _, b := range m.brokers {
+		b.EmitAll(&domain.Emit{
+			Topic:   fmt.Sprintf("knownhosts:%s", k.ID),
+			Event:   EventDelete,
+			Payload: k,
+		})
 	}
 	return nil
 }
