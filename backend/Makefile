@@ -5,13 +5,8 @@ AWS_DEFAULT_REGION ?= eu-west-1
 
 dep-install:
 	@docker run --rm -it \
-<<<<<<< HEAD
-	--volume ${CURDIR}:/go/src/github.com/velocity/velocity-ci/backend \
-	--workdir /go/src/github.com/velocity/velocity-ci/backend \
-=======
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
->>>>>>> [backend] Added integration testing. Need to add more features
 	golang:1.9 \
 	scripts/install-deps.sh
 
@@ -25,13 +20,8 @@ build-builder:
 
 build-cli:
 	@docker run --rm -it \
-<<<<<<< HEAD
-	--volume ${CURDIR}:/go/src/github.com/velocity/velocity-ci/backend \
-	--workdir /go/src/github.com/velocity/velocity-ci/backend \
-=======
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
->>>>>>> [backend] Added integration testing. Need to add more features
 	golang:1.9 \
 	scripts/build-cli.sh
 
