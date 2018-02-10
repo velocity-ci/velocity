@@ -2,6 +2,10 @@ GIT_VERSION = $(shell git describe --always)
 AWS_DEFAULT_REGION ?= eu-west-1
 
 dep-install:
+	@docker run --rm -it \
+	--volume ${CURDIR}:/go/src/github.com/velocity/velocity-ci/backend \
+	--workdir /go/src/github.com/velocity/velocity-ci/backend \
+	golang:1.9 \
 	scripts/install-deps.sh
 
 build-architect:
@@ -13,6 +17,10 @@ build-builder:
 	docker tag civelocity/builder:${GIT_VERSION} civelocity/builder:latest
 
 build-cli:
+	@docker run --rm -it \
+	--volume ${CURDIR}:/go/src/github.com/velocity/velocity-ci/backend \
+	--workdir /go/src/github.com/velocity/velocity-ci/backend \
+	golang:1.9 \
 	scripts/build-cli.sh
 
 build-all: build-architect build-builder build-cli

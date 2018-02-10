@@ -265,6 +265,26 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/velocity-ci/velocity"
+  packages = [
+    "backend/pkg/architect",
+    "backend/pkg/architect/rest",
+    "backend/pkg/builder",
+    "backend/pkg/cli",
+    "backend/pkg/domain",
+    "backend/pkg/domain/build",
+    "backend/pkg/domain/builder",
+    "backend/pkg/domain/githistory",
+    "backend/pkg/domain/knownhost",
+    "backend/pkg/domain/project",
+    "backend/pkg/domain/task",
+    "backend/pkg/domain/user",
+    "backend/pkg/velocity"
+  ]
+  revision = "692fc182d39768d4c024a0f3195cab63d200e0f5"
+
+[[projects]]
+  branch = "master"
   name = "github.com/xanzy/ssh-agent"
   packages = ["."]
   revision = "ba9c9e33906f58169366275e3450db66139a31a9"
@@ -411,6 +431,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a31c98622ad5e490de0615cbbd52866087d134884feb76750d13759221fe6baf"
+  inputs-digest = "c2507687adeb8ecd1c0548e63f6340262409cae08c554422b1feda24fb56f730"
   solver-name = "gps-cdcl"
   solver-version = 1
