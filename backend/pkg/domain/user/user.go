@@ -12,10 +12,10 @@ type User struct {
 }
 
 func (u *User) ValidatePassword(password string) bool {
-	if bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password)) == nil {
-		return true
+	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password)); err != nil {
+		return false
 	}
-	return false
+	return true
 }
 
 func (u *User) hashPassword(password string) {

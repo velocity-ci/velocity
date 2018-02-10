@@ -18,7 +18,7 @@ services:
 
   test:
     image: golang:1.9
-    command: go test ./... -cover
+    command: scripts/test-integration.sh
     working_dir: /go/src/github.com/velocity-ci/velocity/backend
     volumes:
-      - ".:/go/src/github.com/velocity-ci/velocity/backend"
+      - "../:/go/src/github.com/velocity-ci/velocity/backend"

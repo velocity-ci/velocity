@@ -60,3 +60,19 @@ func (h *knownHostHandler) create(c echo.Context) error {
 	c.JSON(http.StatusCreated, newKnownHostResponse(k))
 	return nil
 }
+
+func (h *knownHostHandler) list(c echo.Context) error {
+	ks, total := h.knownHostManager.GetAll(getPagingQueryParams(c))
+
+	r := []*knownHostResponse{}
+	for _, k := range ks {
+		r = append(r, newKnownHostResponse(k))
+	}
+
+	c.JSON(http.StatusOK, &knownhostList{
+		Total: total,
+		Data:  r,
+	})
+
+	return nil
+}

@@ -10,7 +10,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
-type stormProject struct {
+type StormProject struct {
 	ID            string `storm:"id"`
 	Slug          string `storm:"index"`
 	Name          string
@@ -20,7 +20,7 @@ type stormProject struct {
 	Synchronising bool
 }
 
-func (s *stormProject) ToProject() *Project {
+func (s *StormProject) ToProject() *Project {
 	return &Project{
 		ID:            s.ID,
 		Slug:          s.Slug,
@@ -32,8 +32,8 @@ func (s *stormProject) ToProject() *Project {
 	}
 }
 
-func (p *Project) toStormProject() *stormProject {
-	return &stormProject{
+func (p *Project) toStormProject() *StormProject {
+	return &StormProject{
 		ID:            p.ID,
 		Slug:          p.Slug,
 		Name:          p.Name,
@@ -80,7 +80,7 @@ func (db *stormDB) delete(p *Project) error {
 
 func (db *stormDB) getBySlug(slug string) (*Project, error) {
 	query := db.Select(q.Eq("Slug", slug))
-	var p stormProject
+	var p StormProject
 	if err := query.First(&p); err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (db *stormDB) getBySlug(slug string) (*Project, error) {
 
 func (db *stormDB) getByName(name string) (*Project, error) {
 	query := db.Select(q.Eq("Name", name))
-	var p stormProject
+	var p StormProject
 	if err := query.First(&p); err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (db *stormDB) getByName(name string) (*Project, error) {
 
 func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*Project, t int) {
 	t = 0
-	t, err := db.Count(&stormProject{})
+	t, err := db.Count(&StormProject{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
@@ -108,10 +108,10 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*Project, t int) {
 
 	query := db.Select()
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var stormProjects []*stormProject
-	query.Find(&stormProjects)
+	var StormProjects []*StormProject
+	query.Find(&StormProjects)
 
-	for _, p := range stormProjects {
+	for _, p := range StormProjects {
 		r = append(r, p.ToProject())
 	}
 
@@ -119,7 +119,7 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*Project, t int) {
 }
 
 func GetByID(db *storm.DB, id string) (*Project, error) {
-	var p stormProject
+	var p StormProject
 	if err := db.One("ID", id, &p); err != nil {
 		return nil, err
 	}

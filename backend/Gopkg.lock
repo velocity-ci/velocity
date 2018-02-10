@@ -2,6 +2,16 @@
 
 
 [[projects]]
+  name = "github.com/DATA-DOG/godog"
+  packages = [
+    ".",
+    "colors",
+    "gherkin"
+  ]
+  revision = "4dc98b0e2b130c3c9d06868a050320e5b310d3e7"
+  version = "v0.7.4"
+
+[[projects]]
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
   revision = "7da180ee92d8bd8bb8c37fc560e673e6557c392f"
@@ -431,6 +441,10 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
+<<<<<<< HEAD
   inputs-digest = "c2507687adeb8ecd1c0548e63f6340262409cae08c554422b1feda24fb56f730"
+=======
+  inputs-digest = "11d2416a988a812568bc376b6c873043382cb76498475af24095c49f76b7ce57"
+>>>>>>> [backend] Added integration testing. Need to add more features
   solver-name = "gps-cdcl"
   solver-version = 1

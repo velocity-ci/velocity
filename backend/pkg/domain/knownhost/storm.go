@@ -7,7 +7,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
-type stormKnownHost struct {
+type StormKnownHost struct {
 	ID                string `storm:"id"`
 	Entry             string
 	Hosts             []string
@@ -16,7 +16,7 @@ type stormKnownHost struct {
 	MD5Fingerprint    string
 }
 
-func (s *stormKnownHost) ToKnownHost() *KnownHost {
+func (s *StormKnownHost) ToKnownHost() *KnownHost {
 	return &KnownHost{
 		ID:                s.ID,
 		Entry:             s.Entry,
@@ -27,8 +27,8 @@ func (s *stormKnownHost) ToKnownHost() *KnownHost {
 	}
 }
 
-func (k *KnownHost) toStormKnownHost() *stormKnownHost {
-	return &stormKnownHost{
+func (k *KnownHost) toStormKnownHost() *StormKnownHost {
+	return &StormKnownHost{
 		ID:                k.ID,
 		Entry:             k.Entry,
 		Hosts:             k.Hosts,
@@ -74,7 +74,7 @@ func (db *stormDB) delete(kH *KnownHost) error {
 
 func (db *stormDB) exists(entry string) bool {
 	query := db.Select(q.Eq("Entry", entry))
-	var kH stormKnownHost
+	var kH StormKnownHost
 	if err := query.First(&kH); err != nil {
 		return false
 	}
@@ -84,7 +84,7 @@ func (db *stormDB) exists(entry string) bool {
 
 func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*KnownHost, t int) {
 	t = 0
-	t, err := db.Count(&stormKnownHost{})
+	t, err := db.Count(&StormKnownHost{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
@@ -92,10 +92,10 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*KnownHost, t int) {
 
 	query := db.Select()
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var stormKnownHosts []*stormKnownHost
-	query.Find(&stormKnownHosts)
+	var StormKnownHosts []*StormKnownHost
+	query.Find(&StormKnownHosts)
 
-	for _, k := range stormKnownHosts {
+	for _, k := range StormKnownHosts {
 		r = append(r, k.ToKnownHost())
 	}
 
@@ -103,7 +103,7 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*KnownHost, t int) {
 }
 
 func GetByID(db *storm.DB, id string) (*KnownHost, error) {
-	var kH stormKnownHost
+	var kH StormKnownHost
 	if err := db.One("ID", id, &kH); err != nil {
 		return nil, err
 	}

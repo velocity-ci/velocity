@@ -91,7 +91,7 @@ func (m *StreamManager) GetStreamLines(s *Stream, q *domain.PagingQuery) ([]*Str
 }
 
 func GetStreamByID(db *storm.DB, id string) (*Stream, error) {
-	var sS stormStream
+	var sS StormStream
 	if err := db.One("ID", id, &sS); err != nil {
 		logrus.Error(err)
 		return nil, err

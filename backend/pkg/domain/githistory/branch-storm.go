@@ -11,7 +11,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
-type stormBranch struct {
+type StormBranch struct {
 	ID          string `storm:"id"`
 	ProjectID   string `storm:"index"`
 	Name        string
@@ -19,7 +19,7 @@ type stormBranch struct {
 	Active      bool
 }
 
-func (s *stormBranch) ToBranch(db *storm.DB) *Branch {
+func (s *StormBranch) ToBranch(db *storm.DB) *Branch {
 	p, err := project.GetByID(db, s.ProjectID)
 	if err != nil {
 		logrus.Error(err)
@@ -33,8 +33,8 @@ func (s *stormBranch) ToBranch(db *storm.DB) *Branch {
 	}
 }
 
-func (b *Branch) ToStormBranch() *stormBranch {
-	return &stormBranch{
+func (b *Branch) ToStormBranch() *StormBranch {
+	return &StormBranch{
 		ID:          b.ID,
 		ProjectID:   b.Project.ID,
 		Name:        b.Name,
@@ -84,15 +84,15 @@ func (db *branchStormDB) save(b *Branch) error {
 func (db *branchStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQuery) (r []*Branch, t int) {
 	t = 0
 	query := db.Select(q.Eq("ProjectID", p.ID))
-	t, err := query.Count(&stormBranch{})
+	t, err := query.Count(&StormBranch{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var stormBranches []*stormBranch
-	query.Find(&stormBranches)
-	for _, b := range stormBranches {
+	var StormBranches []*StormBranch
+	query.Find(&StormBranches)
+	for _, b := range StormBranches {
 		r = append(r, b.ToBranch(db.DB))
 	}
 
@@ -116,9 +116,9 @@ func (db *branchStormDB) getAllForCommit(c *Commit, pQ *domain.PagingQuery) (r [
 
 	query = db.Select(q.In("ID", branchIDs))
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var stormBranches []*stormBranch
-	query.Find(&stormBranches)
-	for _, b := range stormBranches {
+	var StormBranches []*StormBranch
+	query.Find(&StormBranches)
+	for _, b := range StormBranches {
 		r = append(r, b.ToBranch(db.DB))
 	}
 
@@ -135,7 +135,7 @@ func (db *branchStormDB) hasCommit(b *Branch, c *Commit) bool {
 }
 
 func GetBranchByID(db *storm.DB, id string) (*Branch, error) {
-	var b stormBranch
+	var b StormBranch
 	if err := db.One("ID", id, &b); err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func GetBranchByID(db *storm.DB, id string) (*Branch, error) {
 
 func (db *branchStormDB) getByProjectAndName(p *project.Project, name string) (*Branch, error) {
 	query := db.Select(q.And(q.Eq("ProjectID", p.ID), q.Eq("Name", name)))
-	var b stormBranch
+	var b StormBranch
 	if err := query.First(&b); err != nil {
 		return nil, err
 	}

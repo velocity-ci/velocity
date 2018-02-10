@@ -10,7 +10,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
-type stormStep struct {
+type StormStep struct {
 	ID      string `storm:"id"`
 	BuildID string `storm:"index"`
 	Number  int
@@ -22,7 +22,7 @@ type stormStep struct {
 	CompletedAt time.Time
 }
 
-func (s *stormStep) toStep(db *storm.DB) *Step {
+func (s *StormStep) toStep(db *storm.DB) *Step {
 	var gStep map[string]interface{}
 	err := json.Unmarshal(s.VStep, &gStep)
 	if err != nil {
@@ -51,12 +51,12 @@ func (s *stormStep) toStep(db *storm.DB) *Step {
 	}
 }
 
-func (s *Step) toStormStep() *stormStep {
+func (s *Step) toStormStep() *StormStep {
 	stepJSON, err := json.Marshal(s.VStep)
 	if err != nil {
 		logrus.Error(err)
 	}
-	return &stormStep{
+	return &StormStep{
 		ID:          s.ID,
 		BuildID:     s.Build.ID,
 		Number:      s.Number,
@@ -73,7 +73,7 @@ type stepStormDB struct {
 }
 
 func newStepStormDB(db *storm.DB) *stepStormDB {
-	db.Init(&stormStep{})
+	db.Init(&StormStep{})
 	return &stepStormDB{db}
 }
 
@@ -92,7 +92,7 @@ func (db *stepStormDB) save(s *Step) error {
 }
 
 func GetStepByID(db *storm.DB, id string) (*Step, error) {
-	var sS stormStep
+	var sS StormStep
 	if err := db.One("ID", id, &sS); err != nil {
 		logrus.Error(err)
 		return nil, err
@@ -102,10 +102,10 @@ func GetStepByID(db *storm.DB, id string) (*Step, error) {
 
 func getStepsByBuildID(db *storm.DB, buildID string) (r []*Step) {
 	query := db.Select(q.Eq("BuildID", buildID)).OrderBy("Number")
-	var stormSteps []*stormStep
-	query.Find(&stormSteps)
+	var StormSteps []*StormStep
+	query.Find(&StormSteps)
 
-	for _, s := range stormSteps {
+	for _, s := range StormSteps {
 		r = append(r, s.toStep(db))
 	}
 

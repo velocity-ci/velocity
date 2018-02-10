@@ -6,13 +6,13 @@ import (
 	"github.com/asdine/storm/q"
 )
 
-type stormStream struct {
+type StormStream struct {
 	ID     string `storm:"id"`
 	StepID string `storm:"index"`
 	Name   string `json:"name"`
 }
 
-func (s *stormStream) toStream(db *storm.DB) *Stream {
+func (s *StormStream) toStream(db *storm.DB) *Stream {
 	step, err := GetStepByID(db, s.StepID)
 	if err != nil {
 		logrus.Error(err)
@@ -24,8 +24,8 @@ func (s *stormStream) toStream(db *storm.DB) *Stream {
 	}
 }
 
-func (s *Stream) toStormStream() *stormStream {
-	return &stormStream{
+func (s *Stream) toStormStream() *StormStream {
+	return &StormStream{
 		ID:     s.ID,
 		StepID: s.Step.ID,
 		Name:   s.Name,
@@ -37,7 +37,7 @@ type streamStormDB struct {
 }
 
 func newStreamStormDB(db *storm.DB) *streamStormDB {
-	db.Init(&stormStep{})
+	db.Init(&StormStep{})
 	return &streamStormDB{db}
 }
 
@@ -56,10 +56,10 @@ func (db *streamStormDB) save(s *Stream) error {
 
 func getStreamsByStepID(db *storm.DB, stepID string) (r []*Stream) {
 	query := db.Select(q.Eq("StepID", stepID))
-	var stormStreams []*stormStream
-	query.Find(&stormStreams)
+	var StormStreams []*StormStream
+	query.Find(&StormStreams)
 
-	for _, s := range stormStreams {
+	for _, s := range StormStreams {
 		r = append(r, s.toStream(db))
 	}
 

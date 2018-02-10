@@ -1,10 +1,17 @@
 GIT_VERSION = $(shell git describe --always)
 AWS_DEFAULT_REGION ?= eu-west-1
 
+.PHONY: test dep-install build-architect build-builder build-cli build-all
+
 dep-install:
 	@docker run --rm -it \
+<<<<<<< HEAD
 	--volume ${CURDIR}:/go/src/github.com/velocity/velocity-ci/backend \
 	--workdir /go/src/github.com/velocity/velocity-ci/backend \
+=======
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+>>>>>>> [backend] Added integration testing. Need to add more features
 	golang:1.9 \
 	scripts/install-deps.sh
 
@@ -18,16 +25,24 @@ build-builder:
 
 build-cli:
 	@docker run --rm -it \
+<<<<<<< HEAD
 	--volume ${CURDIR}:/go/src/github.com/velocity/velocity-ci/backend \
 	--workdir /go/src/github.com/velocity/velocity-ci/backend \
+=======
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+>>>>>>> [backend] Added integration testing. Need to add more features
 	golang:1.9 \
 	scripts/build-cli.sh
 
 build-all: build-architect build-builder build-cli
 
 test:
-	docker-compose -f docker-compose.test.yml down
-	docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+	@docker run --rm -it \
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+	golang:1.9 \
+	scripts/test-unit.sh
 
 download-test-repo:
 	curl -L https://s3-eu-west-1.amazonaws.com/velocityci.data/test/velocity-gogs-test-data.tar.gz > velocity-gogs-test-data.tar.gz

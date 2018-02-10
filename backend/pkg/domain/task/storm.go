@@ -90,11 +90,11 @@ func (db *stormDB) getAllForCommit(commit *githistory.Commit, pQ *domain.PagingQ
 		logrus.Error(err)
 		return r, t
 	}
-	var stormTasks []StormTask
+	var StormTasks []StormTask
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	query.Find(&stormTasks)
+	query.Find(&StormTasks)
 
-	for _, st := range stormTasks {
+	for _, st := range StormTasks {
 		r = append(r, st.ToTask(db.DB))
 	}
 

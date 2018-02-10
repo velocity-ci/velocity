@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/asdine/storm"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/velocity-ci/velocity/backend/pkg/architect/rest"
@@ -21,25 +22,34 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
-type architect struct {
-	server   *echo.Echo
+type Architect struct {
+	Server   *echo.Echo
 	workerWg sync.WaitGroup
-	workers  []domain.Worker
+	Workers  []domain.Worker
+	DB       *storm.DB
+	LogsPath string
 }
 
-func (a *architect) Start() {
-	a.server.Start(fmt.Sprintf(":%s", os.Getenv("PORT")))
+func (a *Architect) Start() {
+	a.Init()
+	a.Server.Use(middleware.Logger())
+	a.Server.Use(middleware.Recover())
+	for _, w := range a.Workers {
+		go w.StartWorker()
+	}
+
+	a.Server.Start(fmt.Sprintf(":%s", os.Getenv("PORT")))
 }
 
-func (a *architect) Stop() error {
+func (a *Architect) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	for _, w := range a.workers {
+	for _, w := range a.Workers {
 		w.StopWorker()
 	}
 
-	return a.server.Shutdown(ctx)
+	return a.Server.Shutdown(ctx)
 }
 
 type App interface {
@@ -47,32 +57,36 @@ type App interface {
 	Stop() error
 }
 
-func New() App {
+func New() *Architect {
 	velocity.SetLogLevel()
-	a := &architect{
-		server: echo.New(),
+	a := &Architect{
+		Server:   echo.New(),
+		LogsPath: "/var/velocityci/logs",
 	}
 
-	a.server.Use(middleware.Logger())
-	a.server.Use(middleware.Recover())
+	return a
+}
 
+func (a *Architect) Init() {
+	if a.DB == nil {
+		a.DB = domain.NewStormDB("/var/velocityci/architect.db")
+	}
 	validator, trans := domain.NewValidator()
-	db := domain.NewStormDB("/var/velocityci/architect.db")
-
-	userManager := user.NewManager(db, validator, trans)
-	knownHostManager := knownhost.NewManager(db, validator, trans)
-	projectManager := project.NewManager(db, validator, trans, velocity.GitClone)
-	commitManager := githistory.NewCommitManager(db)
-	branchManager := githistory.NewBranchManager(db)
-	taskManager := task.NewManager(db, projectManager, branchManager, commitManager)
-	buildStepManager := build.NewStepManager(db)
-	buildStreamFileManager := build.NewStreamFileManager(&a.workerWg, "/var/velocityci/logs")
-	buildStreamManager := build.NewStreamManager(db, buildStreamFileManager)
-	buildManager := build.NewBuildManager(db, buildStepManager, buildStreamManager)
+	userManager := user.NewManager(a.DB, validator, trans)
+	userManager.EnsureAdminUser()
+	knownHostManager := knownhost.NewManager(a.DB, validator, trans)
+	projectManager := project.NewManager(a.DB, validator, trans, velocity.GitClone)
+	commitManager := githistory.NewCommitManager(a.DB)
+	branchManager := githistory.NewBranchManager(a.DB)
+	taskManager := task.NewManager(a.DB, projectManager, branchManager, commitManager)
+	buildStepManager := build.NewStepManager(a.DB)
+	buildStreamFileManager := build.NewStreamFileManager(&a.workerWg, a.LogsPath)
+	buildStreamManager := build.NewStreamManager(a.DB, buildStreamFileManager)
+	buildManager := build.NewBuildManager(a.DB, buildStepManager, buildStreamManager)
 	builderManager := builder.NewManager(buildManager, knownHostManager, buildStepManager, buildStreamManager)
 
 	rest.AddRoutes(
-		a.server,
+		a.Server,
 		userManager,
 		knownHostManager,
 		projectManager,
@@ -85,14 +99,8 @@ func New() App {
 		builderManager,
 	)
 
-	a.workers = []domain.Worker{
+	a.Workers = []domain.Worker{
 		builder.NewScheduler(builderManager, buildManager, &a.workerWg),
 		buildStreamFileManager,
 	}
-
-	for _, w := range a.workers {
-		go w.StartWorker()
-	}
-
-	return a
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 )
 
-type stormBuild struct {
+type StormBuild struct {
 	ID          string `storm:"id"`
 	TaskID      string `storm:"index"`
 	CommitID    string `storm:"index"`
@@ -30,7 +30,7 @@ type stormBuild struct {
 	CompletedAt time.Time
 }
 
-func (s *stormBuild) toBuild(db *storm.DB) *Build {
+func (s *StormBuild) toBuild(db *storm.DB) *Build {
 	params := map[string]string{}
 	err := json.Unmarshal(s.Parameters, &params)
 	if err != nil {
@@ -53,12 +53,12 @@ func (s *stormBuild) toBuild(db *storm.DB) *Build {
 	}
 }
 
-func (b *Build) toStormBuild() *stormBuild {
+func (b *Build) toStormBuild() *StormBuild {
 	paramsJson, err := json.Marshal(b.Parameters)
 	if err != nil {
 		logrus.Error(err)
 	}
-	return &stormBuild{
+	return &StormBuild{
 		ID:          b.ID,
 		TaskID:      b.Task.ID,
 		CommitID:    b.Task.Commit.ID,
@@ -77,7 +77,7 @@ type buildStormDB struct {
 }
 
 func newBuildStormDB(db *storm.DB) *buildStormDB {
-	db.Init(&stormBuild{})
+	db.Init(&StormBuild{})
 	return &buildStormDB{db}
 }
 
@@ -98,17 +98,17 @@ func (db *buildStormDB) save(b *Build) error {
 func (db *buildStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQuery) (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
-	t, err := query.Count(&stormBuild{})
+	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 
-	var stormBuilds []stormBuild
+	var StormBuilds []StormBuild
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	query.Find(&stormBuilds)
+	query.Find(&StormBuilds)
 
-	for _, sB := range stormBuilds {
+	for _, sB := range StormBuilds {
 		r = append(r, sB.toBuild(db.DB))
 	}
 
@@ -118,17 +118,17 @@ func (db *buildStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQu
 func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *domain.PagingQuery) (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("CommitID", c.ID)).OrderBy("CreatedAt").Reverse()
-	t, err := query.Count(&stormBuild{})
+	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 
-	var stormBuilds []stormBuild
+	var StormBuilds []StormBuild
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	query.Find(&stormBuilds)
+	query.Find(&StormBuilds)
 
-	for _, sB := range stormBuilds {
+	for _, sB := range StormBuilds {
 		r = append(r, sB.toBuild(db.DB))
 	}
 
@@ -138,17 +138,17 @@ func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *domain.PagingQ
 func (db *buildStormDB) getAllForTask(tsk *task.Task, pQ *domain.PagingQuery) (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("TaskID", tsk.ID)).OrderBy("CreatedAt").Reverse()
-	t, err := query.Count(&stormBuild{})
+	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 
-	var stormBuilds []stormBuild
+	var StormBuilds []StormBuild
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	query.Find(&stormBuilds)
+	query.Find(&StormBuilds)
 
-	for _, sB := range stormBuilds {
+	for _, sB := range StormBuilds {
 		r = append(r, sB.toBuild(db.DB))
 	}
 
@@ -158,16 +158,16 @@ func (db *buildStormDB) getAllForTask(tsk *task.Task, pQ *domain.PagingQuery) (r
 func (db *buildStormDB) getRunningBuilds() (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("Status", velocity.StateRunning)).OrderBy("CreatedAt").Reverse()
-	t, err := query.Count(&stormBuild{})
+	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 
-	var stormBuilds []stormBuild
-	query.Find(&stormBuilds)
+	var StormBuilds []StormBuild
+	query.Find(&StormBuilds)
 
-	for _, sB := range stormBuilds {
+	for _, sB := range StormBuilds {
 		r = append(r, sB.toBuild(db.DB))
 	}
 
@@ -177,16 +177,16 @@ func (db *buildStormDB) getRunningBuilds() (r []*Build, t int) {
 func (db *buildStormDB) getWaitingBuilds() (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("Status", velocity.StateWaiting)).OrderBy("CreatedAt").Reverse()
-	t, err := query.Count(&stormBuild{})
+	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 
-	var stormBuilds []stormBuild
-	query.Find(&stormBuilds)
+	var StormBuilds []StormBuild
+	query.Find(&StormBuilds)
 
-	for _, sB := range stormBuilds {
+	for _, sB := range StormBuilds {
 		r = append(r, sB.toBuild(db.DB))
 	}
 
@@ -194,7 +194,7 @@ func (db *buildStormDB) getWaitingBuilds() (r []*Build, t int) {
 }
 
 func GetBuildByID(db *storm.DB, id string) (*Build, error) {
-	var sB stormBuild
+	var sB StormBuild
 	if err := db.One("ID", id, &sB); err != nil {
 		logrus.Error(err)
 		return nil, err

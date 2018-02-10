@@ -5,7 +5,7 @@ services:
 env:
   matrix:
     - COMPONENT=backend
+    - COMPONENT=backend/test
 
 script:
-  - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make dep-install
   - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make test

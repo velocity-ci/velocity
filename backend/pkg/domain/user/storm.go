@@ -5,13 +5,13 @@ import (
 	"github.com/asdine/storm/q"
 )
 
-type stormUser struct {
+type StormUser struct {
 	ID             string `storm:"id"`
 	Username       string `storm:"index"`
 	HashedPassword string
 }
 
-func (s *stormUser) ToUser() *User {
+func (s *StormUser) ToUser() *User {
 	return &User{
 		ID:             s.ID,
 		Username:       s.Username,
@@ -19,8 +19,8 @@ func (s *stormUser) ToUser() *User {
 	}
 }
 
-func (u *User) toStormUser() *stormUser {
-	return &stormUser{
+func (u *User) toStormUser() *StormUser {
+	return &StormUser{
 		ID:             u.ID,
 		Username:       u.Username,
 		HashedPassword: u.HashedPassword,
@@ -63,7 +63,7 @@ func (db *stormDB) delete(u *User) error {
 
 func (db *stormDB) getByUsername(username string) (*User, error) {
 	query := db.Select(q.Eq("Username", username))
-	var u stormUser
+	var u StormUser
 	if err := query.First(&u); err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (db *stormDB) getByUsername(username string) (*User, error) {
 }
 
 func GetByID(db *storm.DB, id string) (*User, error) {
-	var u stormUser
+	var u StormUser
 	if err := db.One("ID", id, &u); err != nil {
 		return nil, err
 	}

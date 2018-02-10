@@ -30,7 +30,6 @@ func AddRoutes(
 	builderManager *builder.Manager,
 ) {
 	// Unauthenticated routes
-	userManager.EnsureAdminUser()
 	authHandler := newAuthHandler(userManager)
 	e.POST("/v1/auth", authHandler.create)
 
@@ -69,6 +68,7 @@ func AddRoutes(
 	r := e.Group("/v1/ssh")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
 	r.POST("/known-hosts", knownHostHandler.create)
+	r.GET("/known-hosts", knownHostHandler.list)
 
 	r = e.Group("/v1/projects")
 	r.Use(middleware.JWTWithConfig(jwtConfig))

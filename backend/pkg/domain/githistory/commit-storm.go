@@ -10,7 +10,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
-type stormCommit struct {
+type StormCommit struct {
 	ID        string `storm:"id"`
 	ProjectID string `storm:"index"`
 	Hash      string `storm:"index"`
@@ -19,7 +19,7 @@ type stormCommit struct {
 	Message   string
 }
 
-func (s *stormCommit) ToCommit(db *storm.DB) *Commit {
+func (s *StormCommit) ToCommit(db *storm.DB) *Commit {
 	p, err := project.GetByID(db, s.ProjectID)
 	if err != nil {
 		logrus.Error(err)
@@ -34,8 +34,8 @@ func (s *stormCommit) ToCommit(db *storm.DB) *Commit {
 	}
 }
 
-func (c *Commit) ToStormCommit() *stormCommit {
-	return &stormCommit{
+func (c *Commit) ToStormCommit() *StormCommit {
+	return &StormCommit{
 		ID:        c.ID,
 		ProjectID: c.Project.ID,
 		Hash:      c.Hash,
@@ -77,7 +77,7 @@ func (db *commitStormDB) saveCommitToBranch(c *Commit, b *Branch) error {
 
 func (db *commitStormDB) getByProjectAndHash(p *project.Project, hash string) (*Commit, error) {
 	query := db.Select(q.And(q.Eq("ProjectID", p.ID), q.Eq("Hash", hash)))
-	var c stormCommit
+	var c StormCommit
 	if err := query.First(&c); err != nil {
 		return nil, err
 	}
@@ -88,15 +88,15 @@ func (db *commitStormDB) getByProjectAndHash(p *project.Project, hash string) (*
 func (db *commitStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQuery) (r []*Commit, t int) {
 	t = 0
 	query := db.Select(q.Eq("ProjectID", p.ID))
-	t, err := query.Count(&stormCommit{})
+	t, err := query.Count(&StormCommit{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var stormCommits []*stormCommit
-	query.Find(&stormCommits)
-	for _, c := range stormCommits {
+	var StormCommits []*StormCommit
+	query.Find(&StormCommits)
+	for _, c := range StormCommits {
 		r = append(r, c.ToCommit(db.DB))
 	}
 
@@ -121,9 +121,9 @@ func (db *commitStormDB) getAllForBranch(b *Branch, pQ *domain.PagingQuery) (r [
 
 	query = db.Select(q.In("ID", commitIDs))
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var stormCommits []*stormCommit
-	query.Find(&stormCommits)
-	for _, c := range stormCommits {
+	var StormCommits []*StormCommit
+	query.Find(&StormCommits)
+	for _, c := range StormCommits {
 		r = append(r, c.ToCommit(db.DB))
 	}
 
@@ -131,7 +131,7 @@ func (db *commitStormDB) getAllForBranch(b *Branch, pQ *domain.PagingQuery) (r [
 }
 
 func GetCommitByID(db *storm.DB, id string) (*Commit, error) {
-	var c stormCommit
+	var c StormCommit
 	if err := db.One("ID", id, &c); err != nil {
 		return nil, err
 	}
