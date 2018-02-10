@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"flag"
@@ -8,28 +8,52 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"gopkg.in/yaml.v2"
+	"sync"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	yaml "gopkg.in/yaml.v2"
 )
 
-func main() {
+type CLI struct {
+	wg     sync.WaitGroup
+	runner *runner
+}
+
+func New() *CLI {
+	c := &CLI{
+		wg: sync.WaitGroup{},
+	}
+	c.runner = newRunner(&c.wg)
+	return c
+}
+
+func (c *CLI) Start() {
+	c.routeFlags()
+}
+
+func (c *CLI) Stop() error {
+	c.runner.Stop()
+	c.wg.Wait()
+	return nil
+}
+
+func (c *CLI) routeFlags() {
 	version := flag.Bool("v", false, "Show version")
 	list := flag.Bool("l", false, "List tasks")
 
 	flag.Parse()
 
 	if *version {
-		fmt.Println("Version")
+		fmt.Printf("Version: %s\n", "alpha")
 		os.Exit(0)
-	} else if *list {
-		// look for task ymls and parse them into memory.
+	}
+
+	if *list {
 		tasks := getTasksFromDirectory("./tasks/")
 		// iterate through tasks in memory and list them.
 		for _, task := range tasks {
 			fmt.Printf("%s: %s (", task.Name, task.Description)
-			for paramName := range task.Parameters {
+			for _, paramName := range task.Parameters {
 				fmt.Printf(" %s ", paramName)
 			}
 			fmt.Println(")")
@@ -43,12 +67,16 @@ func main() {
 
 	switch os.Args[1] {
 	case "run":
-		run(os.Args[2])
+		c.wg.Add(1)
+		c.runner.Run(os.Args[2])
 		break
 	default:
-		run(os.Args[1])
+		c.wg.Add(1)
+		c.runner.Run(os.Args[1])
 		break
 	}
+
+	c.Stop()
 }
 
 func getTasksFromDirectory(dir string) []velocity.Task {
@@ -69,39 +97,4 @@ func getTasksFromDirectory(dir string) []velocity.Task {
 	})
 
 	return tasks
-}
-
-func run(taskName string) {
-	tasks := getTasksFromDirectory("./tasks/")
-
-	var t *velocity.Task
-	// find Task requested
-	for _, tsk := range tasks {
-		if tsk.Name == taskName {
-			t = &tsk
-			break
-		}
-	}
-
-	if t == nil {
-		panic(fmt.Sprintf("Task %s not found\n%v", taskName, tasks))
-	}
-
-	fmt.Printf("Running task: %s (from: %s)\n", t.Name, taskName)
-
-	emitter := NewEmitter()
-
-	t.Steps = append([]velocity.Step{velocity.NewSetup()}, t.Steps...)
-
-	// Run each step unless they fail (optional)
-	for i, step := range t.Steps {
-		if step.GetType() == "setup" {
-			step.(*velocity.Setup).Init(&ParameterResolver{}, nil, "")
-		}
-		emitter.SetStepNumber(uint64(i))
-		err := step.Execute(emitter, t)
-		if err != nil {
-			break
-		}
-	}
 }

@@ -1,13 +1,10 @@
 FROM golang:1.9
 ENV CGO_ENABLED=0
-ENV DEP_VERSION 0.4.1
-
-RUN curl -fsSL -o /usr/local/bin/dep https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 && chmod +x /usr/local/bin/dep
 
 WORKDIR /go/src/github.com/velocity-ci/velocity/backend
 COPY . .
-RUN dep ensure -v
-RUN GOOS=linux go build -a -installsuffix cgo -o dist/vci-architect ./cmd/vci-architect
+RUN scripts/install-deps.sh
+RUN scripts/build-architect.sh
 
 FROM alpine
 
