@@ -7,7 +7,7 @@ import (
 	"github.com/docker/go/canonical/json"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type StormTask struct {
@@ -30,13 +30,13 @@ func (g *StormTask) ToTask(db *storm.DB) *Task {
 	return &Task{
 		ID:     g.ID,
 		Slug:   g.Slug,
-		Task:   &vTask,
+		VTask:  &vTask,
 		Commit: c,
 	}
 }
 
 func (t *Task) ToStormTask() *StormTask {
-	jsonTask, err := json.Marshal(t.Task)
+	jsonTask, err := json.Marshal(t.VTask)
 	if err != nil {
 		logrus.Error(err)
 	}
@@ -44,7 +44,6 @@ func (t *Task) ToStormTask() *StormTask {
 	return &StormTask{
 		ID:       t.ID,
 		Slug:     t.Slug,
-		Name:     t.Name,
 		CommitID: t.Commit.ID,
 		VTask:    jsonTask,
 	}

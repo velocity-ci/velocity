@@ -14,14 +14,18 @@ type BuilderCtrlMessage struct {
 }
 
 type BuildCtrl struct {
-	Build *build.Build `json:"build"`
+	Build   *build.Build    `json:"build"`
+	Steps   []*build.Step   `json:"steps"`
+	Streams []*build.Stream `json:"streams"`
 }
 
-func newBuildCommand(b *build.Build) *BuilderCtrlMessage {
+func newBuildCommand(b *build.Build, steps []*build.Step, streams []*build.Stream) *BuilderCtrlMessage {
 	return &BuilderCtrlMessage{
 		Command: "build",
 		Payload: &BuildCtrl{
-			Build: b,
+			Build:   b,
+			Steps:   steps,
+			Streams: streams,
 		},
 	}
 }

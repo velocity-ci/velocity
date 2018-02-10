@@ -2,6 +2,8 @@ package architect
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -16,7 +18,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type architect struct {
@@ -26,7 +28,7 @@ type architect struct {
 }
 
 func (a *architect) Start() {
-	a.server.Start(":8080")
+	a.server.Start(fmt.Sprintf(":%s", os.Getenv("PORT")))
 }
 
 func (a *architect) Stop() error {
@@ -46,6 +48,7 @@ type App interface {
 }
 
 func New() App {
+	velocity.SetLogLevel()
 	a := &architect{
 		server: echo.New(),
 	}
@@ -54,7 +57,7 @@ func New() App {
 	a.server.Use(middleware.Recover())
 
 	validator, trans := domain.NewValidator()
-	db := domain.NewStormDB("architect.db")
+	db := domain.NewStormDB("/var/velocityci/architect.db")
 
 	userManager := user.NewManager(db, validator, trans)
 	knownHostManager := knownhost.NewManager(db, validator, trans)
@@ -63,10 +66,10 @@ func New() App {
 	branchManager := githistory.NewBranchManager(db)
 	taskManager := task.NewManager(db, projectManager, branchManager, commitManager)
 	buildStepManager := build.NewStepManager(db)
-	buildStreamFileManager := build.NewStreamFileManager(&a.workerWg, "/tmp/velocity-ci/logs")
+	buildStreamFileManager := build.NewStreamFileManager(&a.workerWg, "/var/velocityci/logs")
 	buildStreamManager := build.NewStreamManager(db, buildStreamFileManager)
 	buildManager := build.NewBuildManager(db, buildStepManager, buildStreamManager)
-	builderManager := builder.NewManager(buildManager, knownHostManager)
+	builderManager := builder.NewManager(buildManager, knownHostManager, buildStepManager, buildStreamManager)
 
 	rest.AddRoutes(
 		a.server,

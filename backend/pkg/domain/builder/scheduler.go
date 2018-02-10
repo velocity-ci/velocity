@@ -44,7 +44,7 @@ func (bS *buildScheduler) StartWorker() {
 			activeBuilders, count := bS.builderManager.GetReady(domain.NewPagingQuery())
 			logrus.Debugf("Got %d ready slaves", count)
 			for _, builder := range activeBuilders {
-				go bS.builderManager.StartBuild(builder, waitingBuild)
+				bS.builderManager.StartBuild(builder, waitingBuild)
 				logrus.Infof("Starting build %s on %s", waitingBuild.ID, builder.ID)
 				break
 			}

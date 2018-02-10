@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 
@@ -13,7 +15,7 @@ import (
 )
 
 type buildRequest struct {
-	Parameters []requestParameter `json:"params"`
+	Parameters []requestParameter `json:"parameters"`
 }
 
 type requestParameter struct {
@@ -34,11 +36,7 @@ type buildResponse struct {
 	CompletedAt time.Time `json:"completedAt"`
 }
 
-func newBuildResponse(b *build.Build) *buildResponse {
-	steps := []*stepResponse{}
-	for _, s := range b.Steps {
-		steps = append(steps, newStepResponse(s))
-	}
+func newBuildResponse(b *build.Build, steps []*stepResponse) *buildResponse {
 	return &buildResponse{
 		ID:          b.ID,
 		Task:        newTaskResponse(b.Task),
@@ -56,15 +54,19 @@ type buildList struct {
 	Data  []*buildResponse `json:"data"`
 }
 
-func buildsToBuildResponse(bs []*build.Build) (r []*buildResponse) {
+func buildsToBuildResponse(bs []*build.Build, stepManager *build.StepManager, streamManager *build.StreamManager) (r []*buildResponse) {
 	for _, b := range bs {
-		r = append(r, newBuildResponse(b))
+		steps := stepManager.GetStepsForBuild(b)
+		rSteps := stepsToStepResponse(steps, streamManager)
+		r = append(r, newBuildResponse(b, rSteps))
 	}
 	return r
 }
 
 type buildHandler struct {
 	buildManager   *build.BuildManager
+	stepManager    *build.StepManager
+	streamManager  *build.StreamManager
 	projectManager *project.Manager
 	commitManager  *githistory.CommitManager
 	taskManager    *task.Manager
@@ -72,12 +74,16 @@ type buildHandler struct {
 
 func newBuildHandler(
 	buildManager *build.BuildManager,
+	stepManager *build.StepManager,
+	streamManager *build.StreamManager,
 	projectManager *project.Manager,
 	commitManager *githistory.CommitManager,
 	taskManager *task.Manager,
 ) *buildHandler {
 	return &buildHandler{
 		buildManager:   buildManager,
+		stepManager:    stepManager,
+		streamManager:  streamManager,
 		projectManager: projectManager,
 		commitManager:  commitManager,
 		taskManager:    taskManager,
@@ -96,13 +102,21 @@ func (h *buildHandler) create(c echo.Context) error {
 		return nil
 	}
 
-	b, err := h.buildManager.Create(t, map[string]string{})
+	params := map[string]string{}
+	for _, p := range rB.Parameters {
+		params[p.Name] = p.Value
+	}
+
+	logrus.Debugf("Parameters from request: %v", params)
+
+	b, err := h.buildManager.Create(t, params)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.ErrorMap)
 		return nil
 	}
 
-	c.JSON(http.StatusCreated, newBuildResponse(b))
+	steps := h.stepManager.GetStepsForBuild(b)
+	c.JSON(http.StatusCreated, newBuildResponse(b, stepsToStepResponse(steps, h.streamManager)))
 	return nil
 }
 
@@ -119,7 +133,7 @@ func (h *buildHandler) getAllForProject(c echo.Context) error {
 	}
 
 	bs, total := h.buildManager.GetAllForProject(p, pQ)
-	rBuilds := buildsToBuildResponse(bs)
+	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager)
 
 	c.JSON(http.StatusOK, buildList{
 		Total: total,
@@ -142,7 +156,7 @@ func (h *buildHandler) getAllForCommit(c echo.Context) error {
 	}
 
 	bs, total := h.buildManager.GetAllForCommit(commit, pQ)
-	rBuilds := buildsToBuildResponse(bs)
+	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager)
 
 	c.JSON(http.StatusOK, buildList{
 		Total: total,
@@ -165,7 +179,7 @@ func (h *buildHandler) getAllForTask(c echo.Context) error {
 	}
 
 	bs, total := h.buildManager.GetAllForTask(t, pQ)
-	rBuilds := buildsToBuildResponse(bs)
+	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager)
 
 	c.JSON(http.StatusOK, buildList{
 		Total: total,
@@ -180,7 +194,8 @@ func (h *buildHandler) getByID(c echo.Context) error {
 	if b == nil {
 		return nil
 	}
-	c.JSON(http.StatusOK, newBuildResponse(b))
+	steps := h.stepManager.GetStepsForBuild(b)
+	c.JSON(http.StatusOK, newBuildResponse(b, stepsToStepResponse(steps, h.streamManager)))
 	return nil
 }
 

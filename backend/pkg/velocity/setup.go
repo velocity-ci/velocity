@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -77,7 +78,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err
 		}
-		log.Printf("Checking out %s", s.commitHash)
+		logrus.Infof("Checking out %s", s.commitHash)
 		err = w.Checkout(&git.CheckoutOptions{
 			Hash: plumbing.NewHash(s.commitHash),
 		})

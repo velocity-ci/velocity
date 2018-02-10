@@ -20,6 +20,7 @@ func NewDockerBuild() *DockerBuild {
 		BaseStep: BaseStep{
 			Type:          "build",
 			OutputStreams: []string{"build"},
+			Params:        map[string]Parameter{},
 		},
 	}
 }

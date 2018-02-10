@@ -6,7 +6,7 @@ import (
 	"github.com/asdine/storm"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 // Event constants
@@ -39,16 +39,20 @@ func (m *StepManager) create(
 	vStep *velocity.Step,
 ) *Step {
 	s := &Step{
-		ID: uuid.NewV3(uuid.NewV1(), b.ID).String(),
-		// Build:     b,
+		ID:        uuid.NewV3(uuid.NewV1(), b.ID).String(),
+		Build:     b,
 		Number:    number,
 		VStep:     vStep,
 		Status:    velocity.StateWaiting,
 		UpdatedAt: time.Now().UTC(),
-		Streams:   []*Stream{},
+		// Streams:   []*Stream{},
 	}
 	m.db.save(s)
 	return s
+}
+
+func (m *StepManager) GetStepsForBuild(b *Build) []*Step {
+	return getStepsByBuildID(m.db.DB, b.ID)
 }
 
 func (m *StepManager) Update(s *Step) error {

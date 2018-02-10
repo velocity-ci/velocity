@@ -12,7 +12,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	git "gopkg.in/src-d/go-git.v4"
 )
 

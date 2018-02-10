@@ -89,11 +89,12 @@ var upgrader = websocket.Upgrader{
 
 func (h *builderHandler) connect(c echo.Context) error {
 	auth := c.Request().Header.Get("Authorization")
+	logrus.Debugf("builder authorization attempt with: %s", auth)
 	if auth == "" {
 		c.JSON(http.StatusUnauthorized, "")
 		return nil
 	}
-	if auth != os.Getenv("BUILDER_TOKEN") {
+	if auth != os.Getenv("BUILDER_SECRET") {
 		c.JSON(http.StatusUnauthorized, "")
 		return nil
 	}

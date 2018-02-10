@@ -7,7 +7,7 @@ import (
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type stormProject struct {

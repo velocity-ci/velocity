@@ -6,7 +6,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type projectRequest struct {

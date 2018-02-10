@@ -9,7 +9,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 // Event constants
@@ -58,20 +58,19 @@ func (m *BuildManager) Create(
 		UpdatedAt:  timestamp,
 		Status:     velocity.StateWaiting,
 	}
+	m.db.save(b)
 
-	steps := []*Step{}
-	for i, tS := range t.Steps {
+	// steps := []*Step{}
+	for i, tS := range t.VTask.Steps {
 		step := m.stepManager.create(b, i, &tS)
 
 		for _, streamName := range tS.GetOutputStreams() {
-			stream := m.streamManager.create(step, streamName)
-			step.Streams = append(step.Streams, stream)
+			m.streamManager.create(step, streamName)
+			// step.Streams = append(step.Streams, stream)
 		}
-		steps = append(steps, step)
+		// steps = append(steps, step)
 	}
-	b.Steps = steps
-
-	m.db.save(b)
+	// b.Steps = steps
 
 	for _, br := range m.brokers {
 		br.EmitAll(&domain.Emit{

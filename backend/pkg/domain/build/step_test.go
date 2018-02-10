@@ -20,7 +20,7 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 )
 
-type StreamSuite struct {
+type StepSuite struct {
 	suite.Suite
 	storm             *storm.DB
 	dbPath            string
@@ -35,12 +35,12 @@ type StreamSuite struct {
 	wg                sync.WaitGroup
 }
 
-func TestStreamSuite(t *testing.T) {
+func TestStepSuite(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
-	suite.Run(t, new(StreamSuite))
+	suite.Run(t, new(StepSuite))
 }
 
-func (s *StreamSuite) SetupTest() {
+func (s *StepSuite) SetupTest() {
 	// Retrieve a temporary path.
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
@@ -73,14 +73,14 @@ func (s *StreamSuite) SetupTest() {
 	s.buildManager = build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
 }
 
-func (s *StreamSuite) TearDownTest() {
+func (s *StepSuite) TearDownTest() {
 	defer os.Remove(s.dbPath)
 	s.streamFileManager.StopWorker()
 	s.wg.Wait()
 	s.storm.Close()
 }
 
-func (s *StreamSuite) TestFileStreamLine() {
+func (s *StepSuite) TestUpdate() {
 	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
 		Address: "testGit",
 	})
@@ -96,21 +96,11 @@ func (s *StreamSuite) TestFileStreamLine() {
 	b, _ := s.buildManager.Create(tsk, params)
 
 	steps := s.stepManager.GetStepsForBuild(b)
+	step := steps[0]
+	step.Status = velocity.StateRunning
+	s.stepManager.Update(step)
 
-	streams := s.streamManager.GetStreamsForStep(steps[0])
+	aStep, _ := s.stepManager.GetByID(step.ID)
 
-	stream := streams[0]
-
-	timestamp := time.Now().UTC()
-	streamLine := s.streamManager.CreateStreamLine(stream, 1, timestamp, "test output")
-	s.Equal(stream.ID, streamLine.StreamID)
-	s.Equal(1, streamLine.LineNumber)
-	s.Equal(timestamp, streamLine.Timestamp)
-	s.Equal("test output", streamLine.Output)
-
-	streamLines, total := s.streamManager.GetStreamLines(stream, domain.NewPagingQuery())
-
-	s.Equal(1, total)
-	s.Len(streamLines, 1)
-	s.Contains(streamLines, streamLine)
+	s.Equal(step, aStep)
 }

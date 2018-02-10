@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	"github.com/asdine/storm"
 	"github.com/stretchr/testify/suite"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
@@ -15,7 +17,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
@@ -34,6 +36,7 @@ type BuildSuite struct {
 }
 
 func TestBuildSuite(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
 	suite.Run(t, new(BuildSuite))
 }
 
@@ -99,7 +102,8 @@ func (s *BuildSuite) TestNewBuild() {
 	s.WithinDuration(time.Now().UTC(), b.CreatedAt, 1*time.Second)
 	s.WithinDuration(time.Now().UTC(), b.UpdatedAt, 1*time.Second)
 
-	s.Len(b.Steps, len(tsk.Steps))
+	steps := s.stepManager.GetStepsForBuild(b)
+	s.Len(steps, len(tsk.VTask.Steps))
 }
 
 func (s *BuildSuite) TestUpdateBuild() {

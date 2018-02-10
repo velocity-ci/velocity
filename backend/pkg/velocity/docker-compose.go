@@ -29,7 +29,8 @@ type DockerCompose struct {
 func NewDockerCompose() *DockerCompose {
 	return &DockerCompose{
 		BaseStep: BaseStep{
-			Type: "compose",
+			Type:   "compose",
+			Params: map[string]Parameter{},
 		},
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 
@@ -34,11 +34,16 @@ type Manager struct {
 func NewManager(
 	buildManager *build.BuildManager,
 	knownhostManager *knownhost.Manager,
+	stepManager *build.StepManager,
+	streamManager *build.StreamManager,
 ) *Manager {
 	return &Manager{
 		buildManager:     buildManager,
 		knownHostManager: knownhostManager,
 		brokers:          []domain.Broker{},
+		stepManager:      stepManager,
+		streamManager:    streamManager,
+		builders:         map[string]*Builder{},
 	}
 }
 
@@ -55,6 +60,7 @@ func (m *Manager) CreateBuilder(t Transport) *Builder {
 
 		ws: t,
 	}
+	m.Save(b)
 
 	go m.monitor(b)
 
@@ -161,7 +167,7 @@ func (m *Manager) GetByID(id string) (*Builder, error) {
 
 func (m *Manager) Delete(b *Builder) {
 	if b.Command.Command == "build" {
-		build := b.Command.Payload.(*build.Build)
+		build := b.Command.Payload.(*BuildCtrl).Build
 		build.Status = velocity.StateFailed
 		m.buildManager.Update(build)
 	}
@@ -180,6 +186,13 @@ func (m *Manager) StartBuild(builder *Builder, b *build.Build) {
 	// Start build
 	b.Status = velocity.StateRunning
 	m.buildManager.Update(b)
-	builder.Command = newBuildCommand(b)
+
+	steps := m.stepManager.GetStepsForBuild(b)
+	streams := []*build.Stream{}
+	for _, s := range steps {
+		streams = append(streams, m.streamManager.GetStreamsForStep(s)...)
+	}
+
+	builder.Command = newBuildCommand(b, steps, streams)
 	builder.ws.WriteJSON(builder.Command)
 }

@@ -5,22 +5,25 @@ import (
 	"log"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type Step struct {
-	ID string `json:"id"`
-	// Build  *Build `json:"build"`
-	Number int `json:"number"`
+	ID     string `json:"id"`
+	Build  *Build `json:"build"`
+	Number int    `json:"number"`
 
 	VStep *velocity.Step `json:"step"`
-
-	Streams []*Stream `json:"streams"`
 
 	Status      string    `json:"status"` // waiting, running, success, failed
 	UpdatedAt   time.Time `json:"updatedAt"`
 	StartedAt   time.Time `json:"startedAt"`
 	CompletedAt time.Time `json:"completedAt"`
+}
+
+func (s Step) String() string {
+	j, _ := json.Marshal(s)
+	return string(j)
 }
 
 func (s *Step) UnmarshalJSON(b []byte) error {
@@ -61,8 +64,8 @@ func (s *Step) UnmarshalJSON(b []byte) error {
 		}
 	}
 
-	s.Streams = []*Stream{}
-	err = json.Unmarshal(*objMap["streams"], &s.Streams)
+	// s.Streams = []*Stream{}
+	// err = json.Unmarshal(*objMap["streams"], &s.Streams)
 	if err != nil {
 		return err
 	}

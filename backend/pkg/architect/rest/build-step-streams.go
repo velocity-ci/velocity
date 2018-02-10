@@ -25,6 +25,13 @@ func newStreamResponse(s *build.Stream) *streamResponse {
 	}
 }
 
+func streamsToStreamResponse(s []*build.Stream) (r []*streamResponse) {
+	for _, s := range s {
+		r = append(r, newStreamResponse(s))
+	}
+	return r
+}
+
 type streamLineResponse struct {
 	LineNumber int       `json:"lineNumber"`
 	Timestamp  time.Time `json:"timestamp"`
@@ -65,14 +72,11 @@ func (h *buildStreamHandler) getByStepID(c echo.Context) error {
 		return nil
 	}
 
-	r := []*streamResponse{}
-	for _, s := range step.Streams {
-		r = append(r, newStreamResponse(s))
-	}
+	streams := h.buildStreamManager.GetStreamsForStep(step)
 
 	c.JSON(http.StatusOK, &streamList{
-		Total: len(r),
-		Data:  r,
+		Total: len(streams),
+		Data:  streamsToStreamResponse(streams),
 	})
 	return nil
 }

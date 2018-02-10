@@ -6,7 +6,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type stepResponse struct {
@@ -25,11 +25,7 @@ type stepList struct {
 	Data  []*stepResponse `json:"data"`
 }
 
-func newStepResponse(s *build.Step) *stepResponse {
-	streams := []*streamResponse{}
-	for _, s := range s.Streams {
-		streams = append(streams, newStreamResponse(s))
-	}
+func newStepResponse(s *build.Step, streams []*streamResponse) *stepResponse {
 	return &stepResponse{
 		ID:          s.ID,
 		Number:      s.Number,
@@ -38,21 +34,34 @@ func newStepResponse(s *build.Step) *stepResponse {
 		UpdatedAt:   s.UpdatedAt,
 		StartedAt:   s.StartedAt,
 		CompletedAt: s.CompletedAt,
+		Streams:     streams,
 	}
 }
 
+func stepsToStepResponse(steps []*build.Step, streamManager *build.StreamManager) (r []*stepResponse) {
+	for _, s := range steps {
+		streams := streamManager.GetStreamsForStep(s)
+		rStreams := streamsToStreamResponse(streams)
+		r = append(r, newStepResponse(s, rStreams))
+	}
+	return r
+}
+
 type buildStepHandler struct {
-	buildManager     *build.BuildManager
-	buildStepManager *build.StepManager
+	buildManager       *build.BuildManager
+	buildStepManager   *build.StepManager
+	buildStreamManager *build.StreamManager
 }
 
 func newBuildStepHandler(
 	buildManager *build.BuildManager,
 	buildStepManager *build.StepManager,
+	buildStreamManager *build.StreamManager,
 ) *buildStepHandler {
 	return &buildStepHandler{
-		buildManager:     buildManager,
-		buildStepManager: buildStepManager,
+		buildManager:       buildManager,
+		buildStepManager:   buildStepManager,
+		buildStreamManager: buildStreamManager,
 	}
 }
 
@@ -63,10 +72,9 @@ func (h *buildStepHandler) getStepsForBuildID(c echo.Context) error {
 		return nil
 	}
 
-	r := []*stepResponse{}
-	for _, s := range b.Steps {
-		r = append(r, newStepResponse(s))
-	}
+	steps := h.buildStepManager.GetStepsForBuild(b)
+
+	r := stepsToStepResponse(steps, h.buildStreamManager)
 
 	c.JSON(http.StatusOK, stepList{
 		Total: len(r),
@@ -81,7 +89,9 @@ func (h *buildStepHandler) getByID(c echo.Context) error {
 	if s == nil {
 		return nil
 	}
-	c.JSON(http.StatusOK, newStepResponse(s))
+	streams := h.buildStreamManager.GetStreamsForStep(s)
+
+	c.JSON(http.StatusOK, newStepResponse(s, streamsToStreamResponse(streams)))
 	return nil
 }
 

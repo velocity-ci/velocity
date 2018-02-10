@@ -1,23 +1,34 @@
 package build
 
-import "github.com/asdine/storm"
+import (
+	"github.com/Sirupsen/logrus"
+	"github.com/asdine/storm"
+	"github.com/asdine/storm/q"
+)
 
 type stormStream struct {
-	ID   string `storm:"id"`
-	Name string `json:"name"`
+	ID     string `storm:"id"`
+	StepID string `storm:"index"`
+	Name   string `json:"name"`
 }
 
-func (s *stormStream) toStream() *Stream {
+func (s *stormStream) toStream(db *storm.DB) *Stream {
+	step, err := GetStepByID(db, s.StepID)
+	if err != nil {
+		logrus.Error(err)
+	}
 	return &Stream{
 		ID:   s.ID,
+		Step: step,
 		Name: s.Name,
 	}
 }
 
-func (s *Stream) toStormStream() stormStream {
-	return stormStream{
-		ID:   s.ID,
-		Name: s.Name,
+func (s *Stream) toStormStream() *stormStream {
+	return &stormStream{
+		ID:     s.ID,
+		StepID: s.Step.ID,
+		Name:   s.Name,
 	}
 }
 
@@ -40,6 +51,17 @@ func (db *streamStormDB) save(s *Stream) error {
 		tx.Rollback()
 		return err
 	}
-
 	return tx.Commit()
+}
+
+func getStreamsByStepID(db *storm.DB, stepID string) (r []*Stream) {
+	query := db.Select(q.Eq("StepID", stepID))
+	var stormStreams []*stormStream
+	query.Find(&stormStreams)
+
+	for _, s := range stormStreams {
+		r = append(r, s.toStream(db))
+	}
+
+	return r
 }

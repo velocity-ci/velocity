@@ -9,7 +9,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 // Event constants
@@ -54,19 +54,19 @@ func (m *Manager) Create(
 	t := &Task{
 		ID:     uuid.NewV3(uuid.NewV1(), c.ID).String(),
 		Commit: c,
-		Task:   vTask,
+		VTask:  vTask,
 		Slug:   slug.Make(vTask.Name),
 	}
 
 	m.db.save(t)
 
-	for _, b := range m.brokers {
-		b.EmitAll(&domain.Emit{
-			Event:   EventCreate,
-			Payload: t,
-		})
+	// for _, b := range m.brokers {
+	// 	b.EmitAll(&domain.Emit{
+	// 		Event:   EventCreate,
+	// 		Payload: t,
+	// 	})
 
-	}
+	// }
 
 	return t
 }

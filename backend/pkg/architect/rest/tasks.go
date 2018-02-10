@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 
@@ -27,7 +27,7 @@ func newTaskResponse(t *task.Task) *taskResponse {
 	return &taskResponse{
 		ID:   t.ID,
 		Slug: t.Slug,
-		Task: t.Task,
+		Task: t.VTask,
 	}
 }
 

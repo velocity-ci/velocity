@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 
 	"github.com/asdine/storm/q"
 
@@ -24,7 +24,6 @@ type stormBuild struct {
 	ProjectID   string `storm:"index"`
 	Parameters  []byte
 	Status      string
-	Steps       []stormStep
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	StartedAt   time.Time
@@ -42,16 +41,11 @@ func (s *stormBuild) toBuild(db *storm.DB) *Build {
 		logrus.Error(err)
 	}
 
-	steps := []*Step{}
-	for _, s := range s.Steps {
-		steps = append(steps, s.toStep())
-	}
 	return &Build{
 		ID:          s.ID,
 		Task:        t,
 		Parameters:  params,
 		Status:      s.Status,
-		Steps:       steps,
 		CreatedAt:   s.CreatedAt,
 		UpdatedAt:   s.UpdatedAt,
 		StartedAt:   s.StartedAt,
@@ -64,17 +58,12 @@ func (b *Build) toStormBuild() *stormBuild {
 	if err != nil {
 		logrus.Error(err)
 	}
-	steps := []stormStep{}
-	for _, s := range b.Steps {
-		steps = append(steps, s.toStormStep())
-	}
 	return &stormBuild{
 		ID:          b.ID,
 		TaskID:      b.Task.ID,
 		CommitID:    b.Task.Commit.ID,
 		ProjectID:   b.Task.Commit.Project.ID,
 		Parameters:  paramsJson,
-		Steps:       steps,
 		Status:      b.Status,
 		CreatedAt:   b.CreatedAt,
 		UpdatedAt:   b.UpdatedAt,

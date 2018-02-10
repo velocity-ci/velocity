@@ -142,21 +142,6 @@
   revision = "d14ea06fba99483203c19d92cfcd13ebe73135f4"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/jinzhu/gorm"
-  packages = [
-    ".",
-    "dialects/sqlite"
-  ]
-  revision = "87fc1b24737a885147240041293603eceb844356"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/jinzhu/inflection"
-  packages = ["."]
-  revision = "1c35d901db3da928c72a72d8458480cc9ade058f"
-
-[[projects]]
   name = "github.com/kevinburke/ssh_config"
   packages = ["."]
   revision = "0ff8514904a8ebfcfb3c32ad73e1f8498a7f81b4"
@@ -193,12 +178,6 @@
   packages = ["."]
   revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
   version = "v0.0.3"
-
-[[projects]]
-  name = "github.com/mattn/go-sqlite3"
-  packages = ["."]
-  revision = "6c771bb9887719704b210e87e934f08be014bdb1"
-  version = "v1.6.0"
 
 [[projects]]
   branch = "master"
@@ -270,7 +249,7 @@
     "require",
     "suite"
   ]
-  revision = "a726187e3128d0a0ec37f73ca7c4d3e508e6c2e5"
+  revision = "be8372ae8ec5c6daaed3cc28ebf73c54b737c240"
 
 [[projects]]
   branch = "master"
@@ -315,7 +294,7 @@
     "ssh/knownhosts",
     "ssh/terminal"
   ]
-  revision = "1875d0a70c90e57f11972aefd42276df65e895b9"
+  revision = "5119cf507ed5294cc409c092980c7497ee5d6fd2"
 
 [[projects]]
   branch = "master"
@@ -325,7 +304,7 @@
     "context/ctxhttp",
     "proxy"
   ]
-  revision = "2fb46b16b8dda405028c50f7c7f0f9dd1fa6bfb1"
+  revision = "f5dfe339be1d06f81b22525fe34671ee7d2c8904"
 
 [[projects]]
   branch = "master"
@@ -347,7 +326,7 @@
     "unicode/cldr",
     "unicode/norm"
   ]
-  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
+  revision = "4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1"
 
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
@@ -432,6 +411,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c194f052c7bc2b0621a853b4b61771044767c0028030ea6d804488850eb95d55"
+  inputs-digest = "a31c98622ad5e490de0615cbbd52866087d134884feb76750d13759221fe6baf"
   solver-name = "gps-cdcl"
   solver-version = 1

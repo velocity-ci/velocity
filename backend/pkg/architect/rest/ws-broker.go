@@ -16,12 +16,20 @@ type broker struct {
 	clients map[string]*Client
 
 	branchManager *githistory.BranchManager
+	stepManager   *build.StepManager
+	streamManager *build.StreamManager
 }
 
-func NewBroker(branchManager *githistory.BranchManager) *broker {
+func NewBroker(
+	branchManager *githistory.BranchManager,
+	stepManager *build.StepManager,
+	streamManager *build.StreamManager,
+) *broker {
 	return &broker{
 		clients:       map[string]*Client{},
 		branchManager: branchManager,
+		stepManager:   stepManager,
+		streamManager: streamManager,
 	}
 }
 
@@ -77,8 +85,12 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 		payload = newTaskResponse(v)
 		break
 	case *build.Build:
-		payload = newBuildResponse(v)
+		steps := m.stepManager.GetStepsForBuild(v)
+		payload = newBuildResponse(v, stepsToStepResponse(steps, m.streamManager))
 		break
+	case *build.Step:
+		steps := m.stepManager.GetStepsForBuild(v.Build)
+		payload = newBuildResponse(v.Build, stepsToStepResponse(steps, m.streamManager))
 	case *build.StreamLine:
 		payload = newStreamLineResponse(v)
 		break

@@ -10,7 +10,7 @@ import (
 	"github.com/gosimple/slug"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	govalidator "gopkg.in/go-playground/validator.v9"
 	git "gopkg.in/src-d/go-git.v4"
 )

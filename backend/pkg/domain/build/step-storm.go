@@ -6,14 +6,15 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/asdine/storm/q"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type stormStep struct {
 	ID      string `storm:"id"`
+	BuildID string `storm:"index"`
 	Number  int
 	VStep   []byte
-	Streams []stormStream
 
 	Status      string
 	UpdatedAt   time.Time
@@ -21,7 +22,7 @@ type stormStep struct {
 	CompletedAt time.Time
 }
 
-func (s *stormStep) toStep() *Step {
+func (s *stormStep) toStep(db *storm.DB) *Step {
 	var gStep map[string]interface{}
 	err := json.Unmarshal(s.VStep, &gStep)
 	if err != nil {
@@ -34,38 +35,32 @@ func (s *stormStep) toStep() *Step {
 	} else {
 		json.Unmarshal(s.VStep, vStep)
 	}
-
-	streams := []*Stream{}
-	for _, s := range s.Streams {
-		streams = append(streams, s.toStream())
+	b, err := GetBuildByID(db, s.BuildID)
+	if err != nil {
+		logrus.Error(err)
 	}
-
 	return &Step{
 		ID:          s.ID,
+		Build:       b,
 		Number:      s.Number,
 		Status:      s.Status,
 		UpdatedAt:   s.UpdatedAt,
 		StartedAt:   s.StartedAt,
 		CompletedAt: s.CompletedAt,
 		VStep:       &vStep,
-		Streams:     streams,
 	}
 }
 
-func (s *Step) toStormStep() stormStep {
+func (s *Step) toStormStep() *stormStep {
 	stepJSON, err := json.Marshal(s.VStep)
 	if err != nil {
 		logrus.Error(err)
 	}
-	streams := []stormStream{}
-	for _, s := range s.Streams {
-		streams = append(streams, s.toStormStream())
-	}
-	return stormStep{
+	return &stormStep{
 		ID:          s.ID,
+		BuildID:     s.Build.ID,
 		Number:      s.Number,
 		VStep:       stepJSON,
-		Streams:     streams,
 		Status:      s.Status,
 		UpdatedAt:   s.UpdatedAt,
 		StartedAt:   s.StartedAt,
@@ -102,5 +97,17 @@ func GetStepByID(db *storm.DB, id string) (*Step, error) {
 		logrus.Error(err)
 		return nil, err
 	}
-	return sS.toStep(), nil
+	return sS.toStep(db), nil
+}
+
+func getStepsByBuildID(db *storm.DB, buildID string) (r []*Step) {
+	query := db.Select(q.Eq("BuildID", buildID)).OrderBy("Number")
+	var stormSteps []*stormStep
+	query.Find(&stormSteps)
+
+	for _, s := range stormSteps {
+		r = append(r, s.toStep(db))
+	}
+
+	return r
 }

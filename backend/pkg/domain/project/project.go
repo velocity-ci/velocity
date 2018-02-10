@@ -3,7 +3,7 @@ package project
 import (
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type Project struct {

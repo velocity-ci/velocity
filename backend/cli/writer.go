@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type StreamWriter struct {

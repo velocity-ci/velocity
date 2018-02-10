@@ -13,7 +13,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	git "gopkg.in/src-d/go-git.v4"
 )
 
@@ -77,9 +77,8 @@ func (s *CommitSuite) TestCreate() {
 	s.NotNil(tsk)
 
 	s.Equal(c, tsk.Commit)
-	s.Equal("testTask", tsk.Name)
 	s.Equal("testtask", tsk.Slug)
-	s.Equal([]velocity.Step{setupStep}, tsk.Steps)
+	s.Equal([]velocity.Step{setupStep}, tsk.VTask.Steps)
 }
 
 func (s *CommitSuite) TestGetByCommitAndSlug() {

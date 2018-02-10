@@ -3,7 +3,7 @@ package builder
 import (
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -67,6 +67,7 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		logrus.Error(err)
 		return
 	}
+	steps := m.stepManager.GetStepsForBuild(b)
 
 	if b.StartedAt.IsZero() {
 		b.Status = sL.Status
@@ -74,7 +75,7 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		m.buildManager.Update(b)
 	}
 
-	if step.Number == (len(b.Steps)-1) && sL.Status == velocity.StateSuccess || sL.Status == velocity.StateFailed {
+	if step.Number == (len(steps)-1) && sL.Status == velocity.StateSuccess || sL.Status == velocity.StateFailed {
 		b.Status = sL.Status
 		b.CompletedAt = time.Now().UTC()
 		m.buildManager.Update(b)

@@ -5,7 +5,7 @@ import (
 
 	ut "github.com/go-playground/universal-translator"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
-	"github.com/velocity-ci/velocity/backend/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	govalidator "gopkg.in/go-playground/validator.v9"
 )
 

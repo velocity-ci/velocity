@@ -42,8 +42,8 @@ func (m *StreamManager) create(
 	name string,
 ) *Stream {
 	stream := &Stream{
-		ID: uuid.NewV3(uuid.NewV1(), s.ID).String(),
-		// Step: s,
+		ID:   uuid.NewV3(uuid.NewV1(), s.ID).String(),
+		Step: s,
 		Name: name,
 	}
 
@@ -82,6 +82,10 @@ func (m *StreamManager) CreateStreamLine(
 	return sL
 }
 
+func (m *StreamManager) GetStreamsForStep(s *Step) []*Stream {
+	return getStreamsByStepID(m.db.DB, s.ID)
+}
+
 func (m *StreamManager) GetStreamLines(s *Stream, q *domain.PagingQuery) ([]*StreamLine, int) {
 	return m.fileManager.getLinesByStream(s, q)
 }
@@ -92,5 +96,5 @@ func GetStreamByID(db *storm.DB, id string) (*Stream, error) {
 		logrus.Error(err)
 		return nil, err
 	}
-	return sS.toStream(), nil
+	return sS.toStream(db), nil
 }

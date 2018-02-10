@@ -40,13 +40,13 @@ func AddRoutes(
 	commitHandler := newCommitHandler(projectManager, commitManager, branchManager)
 	branchHandler := newBranchHandler(projectManager, branchManager, commitManager)
 	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
-	buildHandler := newBuildHandler(buildManager, projectManager, commitManager, taskManager)
-	buildStepHandler := newBuildStepHandler(buildManager, buildStepManager)
+	buildHandler := newBuildHandler(buildManager, buildStepManager, buildStreamManager, projectManager, commitManager, taskManager)
+	buildStepHandler := newBuildStepHandler(buildManager, buildStepManager, buildStreamManager)
 	buildStreamHandler := newBuildStreamHandler(buildStepManager, buildStreamManager)
 
 	builderHandler := newBuilderHandler(builderManager)
 
-	wsBroker := NewBroker(branchManager)
+	wsBroker := NewBroker(branchManager, buildStepManager, buildStreamManager)
 	websocketHandler := newWebsocketHandler(wsBroker)
 	userManager.AddBroker(wsBroker)
 	knownHostManager.AddBroker(wsBroker)
@@ -57,6 +57,9 @@ func AddRoutes(
 	buildStepManager.AddBroker(wsBroker)
 	buildStepManager.AddBroker(wsBroker)
 	buildManager.AddBroker(wsBroker)
+
+	// Used by Builders
+	e.GET("/builder/ws", builderHandler.connect)
 
 	jwtConfig := middleware.JWTConfig{
 		Claims:     &jwt.StandardClaims{},
@@ -82,10 +85,10 @@ func AddRoutes(
 	r.GET("/:slug/commits/:hash/tasks", taskHandler.getAllForCommit)
 	r.GET("/:slug/commits/:hash/tasks/:taskSlug", taskHandler.getByProjectCommitAndSlug)
 
-	r.POST(":/slug/commits/:hash/tasks/:taskSlug/builds", buildHandler.create)
-	r.GET(":/slug/commits/:hash/tasks/:taskSlug/builds", buildHandler.getAllForTask)
-	r.GET(":/slug/commits/:hash/builds", buildHandler.getAllForCommit)
-	r.GET(":/slug/builds", buildHandler.getAllForProject)
+	r.POST("/:slug/commits/:hash/tasks/:taskSlug/builds", buildHandler.create)
+	r.GET("/:slug/commits/:hash/tasks/:taskSlug/builds", buildHandler.getAllForTask)
+	r.GET("/:slug/commits/:hash/builds", buildHandler.getAllForCommit)
+	r.GET("/:slug/builds", buildHandler.getAllForProject)
 
 	r = e.Group("/v1/builds")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
@@ -106,9 +109,6 @@ func AddRoutes(
 	r.Use(middleware.JWTWithConfig(jwtConfig))
 	r.GET("/", builderHandler.getAll)
 	r.GET("/:id", builderHandler.getByID)
-
-	// Used by Builders
-	r.GET("/ws", builderHandler.connect)
 
 	r = e.Group("/v1/ws")
 	r.GET("/", websocketHandler.phxClient)

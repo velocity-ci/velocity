@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  architect:
+    build:
+      context: ../../
+      dockerfile: build/docker/architect.Dockerfile
+    environment:
+      LOG_LEVEL: debug
+      ADMIN_PASSWORD: admin
+      JWT_SECRET: local
+      BUILDER_SECRET: local
+      PORT: 80
+    ports:
+      - "80:80"
+    volumes:
+      - "./architect_data:/var/velocityci"
+
+  builder:
+    build:
+      context: ../../
+      dockerfile: build/docker/builder.Dockerfile
+    environment:
+      LOG_LEVEL: debug
+      BUILDER_SECRET: local
+      ARCHITECT_ADDRESS: http://architect
+    volumes:
+      - "./builder_data:/var/velocityci"
+      - "/var/run/docker.sock:/var/run/docker.sock"

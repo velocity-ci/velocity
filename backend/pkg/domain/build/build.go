@@ -1,6 +1,7 @@
 package build
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
@@ -11,7 +12,7 @@ type Build struct {
 	Task       *task.Task        `json:"task"`
 	Parameters map[string]string `json:"parameters"`
 
-	Steps []*Step `json:"buildSteps"`
+	// Steps []*Step `json:"buildSteps"`
 
 	Status string `json:"status"`
 
@@ -19,4 +20,9 @@ type Build struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 	StartedAt   time.Time `json:"startedAt"`
 	CompletedAt time.Time `json:"completedAt"`
+}
+
+func (s Build) String() string {
+	j, _ := json.Marshal(s)
+	return string(j)
 }

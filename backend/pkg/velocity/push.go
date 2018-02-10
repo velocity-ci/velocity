@@ -31,6 +31,11 @@ func (s *DockerPush) UnmarshalYamlInterface(y map[interface{}]interface{}) error
 func NewDockerPush() *DockerPush {
 	return &DockerPush{
 		Tags: []string{},
+		BaseStep: BaseStep{
+			Type:          "push",
+			OutputStreams: []string{"push"},
+			Params:        map[string]Parameter{},
+		},
 	}
 }
 
@@ -39,7 +44,7 @@ func (dP DockerPush) GetDetails() string {
 }
 
 func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
-	writer := emitter.GetStreamWriter("run")
+	writer := emitter.GetStreamWriter("push")
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dP.Description)))
 

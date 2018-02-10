@@ -85,5 +85,5 @@ func DetermineStepFromInterface(i map[string]interface{}) (Step, error) {
 		// 	s.UnmarshalYamlInterface(y)
 		// 	break
 	}
-	return nil, fmt.Errorf("could not determine step %s", i["type"])
+	return nil, fmt.Errorf("could not determine step %+v", i)
 }
