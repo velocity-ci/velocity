@@ -1,17 +1,14 @@
 GIT_VERSION = $(shell git describe --always)
 AWS_DEFAULT_REGION ?= eu-west-1
 
-build-dev:
-	docker build -t civelocity/dev -f docker/dev.Dockerfile .
-
-dep-install: build-dev
+dep-install:
 	docker run -it --rm \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
-	civelocity/dev \
-	dep ensure -v
+	golang:1.9 \
+	/bin/sh -c "curl -fsSL -o /usr/local/bin/dep https://github.com/golang/dep/releases/download/v0.4.1/dep-linux-amd64 && chmod +x /usr/local/bin/dep && dep ensure -v"
 
 dep-update: build-dev
 	docker run -it --rm \
@@ -19,17 +16,8 @@ dep-update: build-dev
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
  	--env CGO_ENABLED=0 \
  	--env GOOS=linux \
-	civelocity/dev \
-	dep ensure -v -update
-
-dep-status: build-dev
-	docker run -it --rm \
-	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend/ \
-	--workdir /go/src/github.com/velocity-ci/velocity/backend \
- 	--env CGO_ENABLED=0 \
- 	--env GOOS=linux \
-	civelocity/dev \
-	dep status
+	golang:1.9 \
+	/bin/sh -c "curl -fsSL -o /usr/local/bin/dep https://github.com/golang/dep/releases/download/v0.4.1/dep-linux-amd64 && chmod +x /usr/local/bin/dep && dep ensure -v -update"
 
 build-architect:
 	docker run --rm \
@@ -59,7 +47,7 @@ build-cli-image:
 
 build-all: build-architect build-cli
 
-test: download-test-repo
+test:
 	docker-compose -f docker-compose.test.yml down
 	docker-compose -f docker-compose.test.yml up --abort-on-container-exit
 
