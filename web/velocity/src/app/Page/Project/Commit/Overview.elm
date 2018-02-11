@@ -14,6 +14,7 @@ import Route
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Views.Helpers exposing (onClickPage)
+import Views.Build exposing (viewBuildStatusIcon, viewBuildTextClass)
 
 
 -- MODEL --
@@ -128,37 +129,11 @@ viewTaskList project commit tasks builds =
 --            ]
 
 
-taskStatus : ProjectTask.Task -> List Build -> Maybe Build.Status
-taskStatus task builds =
+maybeBuildFromTask : ProjectTask.Task -> List Build -> Maybe Build
+maybeBuildFromTask task builds =
     builds
         |> List.filter (\b -> ProjectTask.idEquals task.id b.taskId)
-        |> List.foldl
-            (\b a ->
-                if List.member a [ Just Build.Waiting, Just Build.Running ] then
-                    a
-                else
-                    Just b.status
-            )
-            Nothing
-
-
-viewTaskStatusIcon : Maybe Build.Status -> String
-viewTaskStatusIcon status =
-    case status of
-        Just (Build.Waiting) ->
-            "fa-spinner fa-spin"
-
-        Just (Build.Running) ->
-            "fa-spinner fa-spin"
-
-        Just (Build.Success) ->
-            "fa-check"
-
-        Just (Build.Failed) ->
-            "fa-times"
-
-        Nothing ->
-            ""
+        |> List.head
 
 
 viewTaskListItem : Project -> Commit -> List Build -> ProjectTask.Task -> Html Msg
@@ -169,35 +144,27 @@ viewTaskListItem project commit builds task =
                 |> ProjectRoute.Commit commit.hash
                 |> Route.Project project.id
 
-        status =
-            taskStatus task builds
+        maybeBuild =
+            maybeBuildFromTask task builds
 
-        iconClassList =
-            [ ( "fa", True )
-            , ( viewTaskStatusIcon status, True )
-            ]
+        icon =
+            maybeBuild
+                |> Maybe.map viewBuildStatusIcon
+                |> Maybe.withDefault (text "")
 
         textClass =
-            case status of
-                Just (Build.Success) ->
-                    "text-success"
-
-                Just (Build.Failed) ->
-                    "text-danger"
-
-                _ ->
-                    ""
+            maybeBuild
+                |> Maybe.map viewBuildTextClass
+                |> Maybe.withDefault ""
     in
         a
             [ class (textClass ++ " list-group-item list-group-item-action flex-column align-items-center justify-content-between")
             , Route.href route
             , onClickPage NewUrl route
             ]
-            [ div [ class "d-flex w-100 justify-content-between" ]
-                [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ]
-                , span [] [ i [ classList iconClassList ] [] ]
-                ]
+            [ div [ class "" ] [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ] ]
             , p [ class "mb-1" ] [ text task.description ]
+            , icon
             ]
 
 

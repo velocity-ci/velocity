@@ -411,12 +411,15 @@ update project session msg model =
             ( AddBuildEvent buildJson, _ ) ->
                 let
                     builds =
-                        Decode.decodeValue Build.decoder buildJson
+                        buildJson
+                            |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
                             |> Maybe.map (addBuild model.builds)
                             |> Maybe.withDefault model.builds
+                            |> sortByDatetime .createdAt
+                            |> List.reverse
                 in
-                    { model | builds = sortByDatetime .createdAt builds |> List.reverse }
+                    { model | builds = builds }
                         => Cmd.none
 
             ( DeleteBuildEvent buildJson, _ ) ->

@@ -2,6 +2,7 @@ module Data.Build exposing (..)
 
 import Data.Task as Task
 import Data.BuildStep as BuildStep exposing (BuildStep)
+import Data.Commit as Commit exposing (Hash)
 import Json.Decode as Decode exposing (Decoder, int, string)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
 import Data.Helpers exposing (stringToDateTime)
@@ -18,6 +19,7 @@ type alias Build =
     , completedAt : Maybe DateTime
     , updatedAt : Maybe DateTime
     , startedAt : Maybe DateTime
+    , commitHash : Hash
     }
 
 
@@ -36,6 +38,7 @@ decoder =
         |> required "completedAt" (Decode.maybe stringToDateTime)
         |> required "updatedAt" (Decode.maybe stringToDateTime)
         |> required "startedAt" (Decode.maybe stringToDateTime)
+        |> required "commit" Commit.decodeHash
 
 
 statusDecoder : Decoder Status
