@@ -21,7 +21,7 @@ decoder : Decoder a -> Decoder (PaginatedList a)
 decoder decoder =
     decode fromList
         |> required "total" Decode.int
-        |> required "result" (Decode.list decoder)
+        |> required "data" (Decode.list decoder)
 
 
 

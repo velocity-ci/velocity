@@ -42,7 +42,7 @@ withAuthorization maybeToken builder =
     case maybeToken of
         Just (AuthToken token) ->
             builder
-                |> withHeader "Authorization" ("bearer " ++ token)
+                |> withHeader "Authorization" ("Bearer " ++ token)
 
         Nothing ->
             builder

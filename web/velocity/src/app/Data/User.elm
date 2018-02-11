@@ -23,14 +23,14 @@ decoder : Decoder User
 decoder =
     decode User
         |> required "username" usernameDecoder
-        |> required "authToken" AuthToken.decoder
+        |> required "token" AuthToken.decoder
 
 
 encode : User -> Value
 encode user =
     Encode.object
         [ "username" => encodeUsername user.username
-        , "authToken" => AuthToken.encode user.token
+        , "token" => AuthToken.encode user.token
         ]
 
 

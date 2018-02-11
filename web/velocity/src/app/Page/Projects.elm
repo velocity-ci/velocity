@@ -199,7 +199,7 @@ viewProjectForm model =
 
         privateKeyHelpText =
             if publicRepository then
-                Just "Not required for public repositories."
+                Just "Not required for HTTP(S) repositories."
             else
                 Just "The private key required to access this repository."
     in
@@ -222,7 +222,7 @@ viewProjectForm model =
                         , Form.input
                             { name = "repository"
                             , label = "Repository address"
-                            , help = Just "If the repository is private you should use the SSH address, otherwise use the HTTPS address."
+                            , help = Just "Use a GIT+SSH address for authenticated repositories, otherwise use a HTTP(S) address."
                             , errors = errors form.repository
                             }
                             [ attribute "required" ""

@@ -23,7 +23,7 @@ viewHeader user isLoading page =
             , onClickPage NewUrl Route.Home
             , Route.href Route.Home
             ]
-            [ text "VeloCIty" ]
+            [ text "Velocity CI" ]
         , div [ class "collapse navbar-collapse", id "navbarCollapse" ]
             [ ul [ class "navbar-nav ml-auto" ] <|
                 lazy2 Util.viewIf isLoading spinner
