@@ -74,7 +74,7 @@ func (a *Architect) Init() {
 	validator, trans := domain.NewValidator()
 	userManager := user.NewManager(a.DB, validator, trans)
 	userManager.EnsureAdminUser()
-	knownHostManager := knownhost.NewManager(a.DB, validator, trans)
+	knownHostManager := knownhost.NewManager(a.DB, validator, trans, "")
 	projectManager := project.NewManager(a.DB, validator, trans, velocity.GitClone)
 	commitManager := githistory.NewCommitManager(a.DB)
 	branchManager := githistory.NewBranchManager(a.DB)

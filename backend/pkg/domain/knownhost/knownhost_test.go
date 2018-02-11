@@ -2,6 +2,7 @@ package knownhost_test
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 
@@ -38,8 +39,12 @@ func (s *KnownHostSuite) SetupTest() {
 	if err != nil {
 		panic(err)
 	}
+	dir, err := ioutil.TempDir("", "vci")
+	if err != nil {
+		log.Fatal(err)
+	}
 	validator, translator := domain.NewValidator()
-	s.kHM = knownhost.NewManager(s.storm, validator, translator)
+	s.kHM = knownhost.NewManager(s.storm, validator, translator, dir)
 }
 
 func (s *KnownHostSuite) TearDownTest() {

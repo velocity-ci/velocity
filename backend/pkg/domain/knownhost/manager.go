@@ -18,19 +18,22 @@ const (
 )
 
 type Manager struct {
-	validator *validator
-	db        *stormDB
-	brokers   []domain.Broker
+	validator   *validator
+	db          *stormDB
+	fileManager *FileManager
+	brokers     []domain.Broker
 }
 
 func NewManager(
 	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
+	homedir string,
 ) *Manager {
 	m := &Manager{
-		db:      newStormDB(db),
-		brokers: []domain.Broker{},
+		db:          newStormDB(db),
+		brokers:     []domain.Broker{},
+		fileManager: NewFileManager(homedir),
 	}
 	m.validator = newValidator(validator, translator, m)
 	return m
@@ -61,6 +64,8 @@ func (m *Manager) Create(entry string) (*KnownHost, *domain.ValidationErrors) {
 	}
 
 	m.db.save(k)
+	kH, _ := m.GetAll(&domain.PagingQuery{Limit: 100})
+	m.fileManager.WriteAll(kH)
 
 	for _, b := range m.brokers {
 		b.EmitAll(&domain.Emit{
@@ -77,6 +82,8 @@ func (m *Manager) Delete(k *KnownHost) error {
 	if err := m.db.delete(k); err != nil {
 		return err
 	}
+	kH, _ := m.GetAll(&domain.PagingQuery{Limit: 100})
+	m.fileManager.WriteAll(kH)
 	for _, b := range m.brokers {
 		b.EmitAll(&domain.Emit{
 			Topic:   fmt.Sprintf("knownhosts:%s", k.ID),
