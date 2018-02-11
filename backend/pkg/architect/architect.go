@@ -85,6 +85,7 @@ func (a *Architect) Init() {
 	buildManager := build.NewBuildManager(a.DB, buildStepManager, buildStreamManager)
 	builderManager := builder.NewManager(buildManager, knownHostManager, buildStepManager, buildStreamManager)
 
+	a.Server.Use(middleware.CORS())
 	rest.AddRoutes(
 		a.Server,
 		userManager,

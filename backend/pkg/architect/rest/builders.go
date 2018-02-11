@@ -85,6 +85,9 @@ func getBuilderByID(c echo.Context, bM *builder.Manager) *builder.Builder {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func (h *builderHandler) connect(c echo.Context) error {

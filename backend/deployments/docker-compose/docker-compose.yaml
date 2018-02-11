@@ -6,7 +6,7 @@ services:
       context: ../../
       dockerfile: build/docker/architect.Dockerfile
     environment:
-      LOG_LEVEL: debug
+      # LOG_LEVEL: debug
       ADMIN_PASSWORD: admin
       JWT_SECRET: local
       BUILDER_SECRET: local

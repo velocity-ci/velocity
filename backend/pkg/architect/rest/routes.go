@@ -107,10 +107,8 @@ func AddRoutes(
 
 	r = e.Group("/v1/builders")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
-	r.GET("/", builderHandler.getAll)
+	r.GET("", builderHandler.getAll)
 	r.GET("/:id", builderHandler.getByID)
 
-	r = e.Group("/v1/ws")
-	r.GET("/", websocketHandler.phxClient)
-
+	e.GET("/v1/ws", websocketHandler.phxClient)
 }

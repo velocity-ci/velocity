@@ -36,8 +36,8 @@ func (bS *buildScheduler) StartWorker() {
 	}
 	logrus.Info("Started Build scheduler")
 	for bS.stop == false {
-		waitingBuilds, total := bS.buildManager.GetWaitingBuilds()
-		logrus.Debugf("Got %d waiting builds", total)
+		waitingBuilds, _ := bS.buildManager.GetWaitingBuilds()
+		// logrus.Debugf("Got %d waiting builds", total)
 
 		for _, waitingBuild := range waitingBuilds {
 			// Queue on any idle worker

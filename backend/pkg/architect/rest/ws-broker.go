@@ -1,6 +1,8 @@
 package rest
 
 import (
+	"log"
+
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
@@ -42,7 +44,7 @@ func (m *broker) remove(c *Client) {
 }
 
 func (m *broker) EmitAll(message *domain.Emit) {
-	// clientCount := 0
+	clientCount := 0
 	mess := m.handleEmit(message)
 	for _, c := range m.clients {
 		if !c.alive {
@@ -52,14 +54,14 @@ func (m *broker) EmitAll(message *domain.Emit) {
 		for _, s := range c.subscriptions {
 			if s == message.Topic {
 				err := c.ws.WriteJSON(mess)
-				// 			clientCount++
+				clientCount++
 				if err != nil {
 					logrus.Println(err)
 				}
 			}
 		}
 	}
-	// log.Printf("Emitted %s to %d clients", message.Topic, clientCount)
+	log.Printf("Emitted %s to %d clients", message.Topic, clientCount)
 }
 
 func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
