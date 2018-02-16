@@ -140,7 +140,7 @@ create config token =
 
         baseProject =
             [ "name" => Encode.string config.name
-            , "repository" => Encode.string config.repository
+            , "address" => Encode.string config.repository
             ]
 
         project =
