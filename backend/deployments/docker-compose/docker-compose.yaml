@@ -4,7 +4,7 @@ services:
   architect:
     build:
       context: ../../
-      dockerfile: build/docker/architect.Dockerfile
+      dockerfile: build/docker/architect/Dockerfile
     environment:
       # LOG_LEVEL: debug
       ADMIN_PASSWORD: admin
@@ -19,7 +19,7 @@ services:
   builder:
     build:
       context: ../../
-      dockerfile: build/docker/builder.Dockerfile
+      dockerfile: build/docker/builder/Dockerfile
     environment:
       LOG_LEVEL: debug
       BUILDER_SECRET: local

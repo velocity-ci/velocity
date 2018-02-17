@@ -11,11 +11,11 @@ dep-install:
 	scripts/install-deps.sh
 
 build-architect:
-	docker build -t civelocity/architect:${GIT_VERSION} -f build/docker/architect.Dockerfile .
+	docker build -t civelocity/architect:${GIT_VERSION} -f build/docker/architect/Dockerfile .
 	docker tag civelocity/architect:${GIT_VERSION} civelocity/architect:latest
 
 build-builder:
-	docker build -t civelocity/builder:${GIT_VERSION} -f build/docker/builder.Dockerfile .
+	docker build -t civelocity/builder:${GIT_VERSION} -f build/docker/builder/Dockerfile .
 	docker tag civelocity/builder:${GIT_VERSION} civelocity/builder:latest
 
 build-cli:
