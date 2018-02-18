@@ -22,12 +22,15 @@ type Step
     | Run RunStep
     | Clone CloneStep
     | Compose ComposeStep
+    | Push PushStep
 
 
 type alias CloneStep =
-    { description : String
-    , submodule : Bool
-    }
+    { description : String }
+
+
+type alias PushStep =
+    { description : String }
 
 
 type alias BuildStep =
@@ -172,11 +175,14 @@ stepDecoder =
                     "run" ->
                         Decode.map Run runStepDecoder
 
-                    "clone" ->
+                    "setup" ->
                         Decode.map Clone cloneStepDecoder
 
                     "compose" ->
                         Decode.map Compose composeStepDecoder
+
+                    "push" ->
+                        Decode.map Push pushStepDecoder
 
                     unknown ->
                         Decode.fail <| "Unknown type: " ++ unknown
@@ -208,12 +214,17 @@ cloneStepDecoder : Decoder CloneStep
 cloneStepDecoder =
     decode CloneStep
         |> required "description" Decode.string
-        |> required "submodule" Decode.bool
 
 
 composeStepDecoder : Decoder ComposeStep
 composeStepDecoder =
     decode ComposeStep
+        |> required "description" Decode.string
+
+
+pushStepDecoder : Decoder ComposeStep
+pushStepDecoder =
+    decode PushStep
         |> required "description" Decode.string
 
 

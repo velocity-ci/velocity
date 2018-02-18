@@ -558,6 +558,9 @@ viewTabFrame model builds =
                                                 Just (Compose _) ->
                                                     "Compose"
 
+                                                Just (Push _) ->
+                                                    "Push"
+
                                                 Nothing ->
                                                     ""
 

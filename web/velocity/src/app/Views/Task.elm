@@ -3,7 +3,7 @@ module Views.Task exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
-import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, ComposeStep, Step(..), Parameter(..))
+import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, ComposeStep, PushStep, Step(..), Parameter(..))
 
 
 viewStepList : List Step -> Maybe Step -> List (Html msg)
@@ -25,6 +25,9 @@ viewStepList steps toggledStep =
 
                 composeStep =
                     viewComposeStep stepNum
+
+                pushStep =
+                    viewPushStep stepNum
             in
                 case ( step, toggledStep ) of
                     ( Run run, Just (Run toggled) ) ->
@@ -39,6 +42,9 @@ viewStepList steps toggledStep =
                     ( Compose compose, Just (Compose toggled) ) ->
                         composeStep compose (compose == toggled)
 
+                    ( Push push, Just (Push toggled) ) ->
+                        pushStep push (push == toggled)
+
                     ( Run run, _ ) ->
                         runStep run False
 
@@ -50,6 +56,9 @@ viewStepList steps toggledStep =
 
                     ( Compose compose, _ ) ->
                         composeStep compose False
+
+                    ( Push push, _ ) ->
+                        pushStep push False
     in
         List.indexedMap stepView steps
 
@@ -61,6 +70,16 @@ viewComposeStep i composeStep toggled =
             toString i ++ ". Compose" ++ composeStep.description
     in
         viewStepCollapse (Compose composeStep) title toggled <|
+            []
+
+
+viewPushStep : Int -> PushStep -> Bool -> Html msg
+viewPushStep i composeStep toggled =
+    let
+        title =
+            toString i ++ ". Push" ++ composeStep.description
+    in
+        viewStepCollapse (Push composeStep) title toggled <|
             []
 
 
