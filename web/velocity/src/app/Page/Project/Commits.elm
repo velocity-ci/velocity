@@ -42,14 +42,14 @@ type alias Model =
     }
 
 
-loadCommits : Project.Id -> Maybe AuthToken -> Maybe Branch -> Int -> Http.Request (PaginatedList Commit)
-loadCommits projectId maybeAuthToken maybeBranch page =
+loadCommits : Project.Slug -> Maybe AuthToken -> Maybe Branch -> Int -> Http.Request (PaginatedList Commit)
+loadCommits projectSlug maybeAuthToken maybeBranch page =
     maybeAuthToken
-        |> Request.Commit.list projectId (Maybe.map .name maybeBranch) perPage page
+        |> Request.Commit.list projectSlug (Maybe.map .name maybeBranch) perPage page
 
 
-init : Session msg -> List Branch -> Project.Id -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
-init session branches id maybeBranchName maybePage =
+init : Session msg -> List Branch -> Project.Slug -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
+init session branches projectSlug maybeBranchName maybePage =
     let
         defaultPage =
             Maybe.withDefault 1 maybePage
@@ -73,7 +73,7 @@ init session branches id maybeBranchName maybePage =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map initialModel (loadCommits id maybeAuthToken maybeBranch defaultPage |> Http.toTask)
+        Task.map initialModel (loadCommits projectSlug maybeAuthToken maybeBranch defaultPage |> Http.toTask)
             |> Task.mapError handleLoadError
 
 
@@ -348,7 +348,7 @@ update project session msg model =
         RefreshCommitList _ ->
             let
                 refreshTask =
-                    loadCommits project.id (Maybe.map .token session.user) model.branch model.page
+                    loadCommits project.slug (Maybe.map .token session.user) model.branch model.page
             in
                 model => Http.send RefreshCompleted refreshTask
 

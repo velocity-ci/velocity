@@ -709,8 +709,8 @@ type ExternalMsg
 update : Project -> Commit -> List Build -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update project commit builds session msg model =
     let
-        projectId =
-            project.id
+        projectSlug =
+            project.slug
 
         commitHash =
             commit.hash
@@ -802,7 +802,7 @@ update project commit builds session msg model =
 
                     cmdFromAuth authToken =
                         authToken
-                            |> Request.Commit.createBuild projectId commitHash taskName params
+                            |> Request.Commit.createBuild projectSlug commitHash taskName params
                             |> Http.send BuildCreated
 
                     cmd =

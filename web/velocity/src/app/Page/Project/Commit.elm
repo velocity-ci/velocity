@@ -69,17 +69,17 @@ init session project hash maybeRoute =
 
         loadCommit =
             maybeAuthToken
-                |> Request.Commit.get project.id hash
+                |> Request.Commit.get project.slug hash
                 |> Http.toTask
 
         loadTasks =
             maybeAuthToken
-                |> Request.Commit.tasks project.id hash
+                |> Request.Commit.tasks project.slug hash
                 |> Http.toTask
 
         loadBuilds =
             maybeAuthToken
-                |> Request.Commit.builds project.id hash
+                |> Request.Commit.builds project.slug hash
                 |> Http.toTask
 
         initialModel commit (Paginated tasks) (Paginated builds) =

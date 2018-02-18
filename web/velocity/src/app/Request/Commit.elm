@@ -24,13 +24,13 @@ baseUrl =
 
 
 list :
-    Project.Id
+    Project.Slug
     -> Maybe Branch.Name
     -> Int
     -> Int
     -> Maybe AuthToken
     -> Http.Request (PaginatedList Commit)
-list id maybeBranch amount page maybeToken =
+list projectSlug maybeBranch amount page maybeToken =
     let
         expect =
             Commit.decoder
@@ -57,7 +57,7 @@ list id maybeBranch amount page maybeToken =
                 |> amountParam
                 |> pageParam
     in
-        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/commits")
+        apiUrl (baseUrl ++ "/" ++ Project.slugToString projectSlug ++ "/commits")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> HttpBuilder.withQueryParams queryParams
@@ -69,8 +69,8 @@ list id maybeBranch amount page maybeToken =
 -- GET --
 
 
-get : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request Commit
-get id hash maybeToken =
+get : Project.Slug -> Commit.Hash -> Maybe AuthToken -> Http.Request Commit
+get projectSlug hash maybeToken =
     let
         expect =
             Commit.decoder
@@ -78,7 +78,7 @@ get id hash maybeToken =
 
         urlPieces =
             [ baseUrl
-            , Project.idToString id
+            , Project.slugToString projectSlug
             , "commits"
             , Commit.hashToString hash
             ]
@@ -94,8 +94,8 @@ get id hash maybeToken =
 -- TASKS --
 
 
-tasks : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Task)
-tasks id hash maybeToken =
+tasks : Project.Slug -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Task)
+tasks projectSlug hash maybeToken =
     let
         expect =
             Task.decoder
@@ -104,7 +104,7 @@ tasks id hash maybeToken =
 
         urlPieces =
             [ baseUrl
-            , Project.idToString id
+            , Project.slugToString projectSlug
             , "commits"
             , Commit.hashToString hash
             , "tasks"
@@ -117,8 +117,8 @@ tasks id hash maybeToken =
             |> HttpBuilder.toRequest
 
 
-task : Project.Id -> Commit.Hash -> Task.Name -> Maybe AuthToken -> Http.Request Task
-task id hash name maybeToken =
+task : Project.Slug -> Commit.Hash -> Task.Name -> Maybe AuthToken -> Http.Request Task
+task projectSlug hash name maybeToken =
     let
         expect =
             Task.decoder
@@ -126,7 +126,7 @@ task id hash name maybeToken =
 
         urlPieces =
             [ baseUrl
-            , Project.idToString id
+            , Project.slugToString projectSlug
             , "commits"
             , Commit.hashToString hash
             , "tasks"
@@ -144,8 +144,8 @@ task id hash name maybeToken =
 -- BUILDS --
 
 
-builds : Project.Id -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Build)
-builds id hash maybeToken =
+builds : Project.Slug -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Build)
+builds projectSlug hash maybeToken =
     let
         expect =
             Build.decoder
@@ -154,7 +154,7 @@ builds id hash maybeToken =
 
         urlPieces =
             [ baseUrl
-            , Project.idToString id
+            , Project.slugToString projectSlug
             , "commits"
             , Commit.hashToString hash
             , "builds"
@@ -167,8 +167,8 @@ builds id hash maybeToken =
             |> HttpBuilder.toRequest
 
 
-createBuild : Project.Id -> Commit.Hash -> Task.Name -> List ( String, String ) -> AuthToken -> Http.Request Build
-createBuild id hash taskName params token =
+createBuild : Project.Slug -> Commit.Hash -> Task.Name -> List ( String, String ) -> AuthToken -> Http.Request Build
+createBuild projectSlug hash taskName params token =
     let
         expect =
             Build.decoder
@@ -176,7 +176,7 @@ createBuild id hash taskName params token =
 
         urlPieces =
             [ baseUrl
-            , Project.idToString id
+            , Project.slugToString projectSlug
             , "commits"
             , Commit.hashToString hash
             , "tasks"
