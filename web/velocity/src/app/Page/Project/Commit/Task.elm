@@ -917,7 +917,7 @@ update project commit builds session msg model =
                         => Navigation.newUrl url
                         => NoOp
 
-            AddStreamOutput _ outputJson ->
+            AddStreamOutput buildStream outputJson ->
                 let
                     frame =
                         case model.frame of
@@ -929,7 +929,7 @@ update project commit builds session msg model =
                                         (\b ->
                                             let
                                                 streamKey =
-                                                    BuildStream.idToString b.streamId
+                                                    BuildStream.idToString buildStream.id
 
                                                 streamLines =
                                                     Dict.get streamKey streams

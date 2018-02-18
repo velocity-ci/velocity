@@ -19,7 +19,6 @@ type alias BuildStream =
 type alias BuildStreamOutput =
     { line : Int
     , timestamp : DateTime
-    , streamId : Id
     , output : String
     }
 
@@ -40,7 +39,6 @@ outputDecoder =
     decode BuildStreamOutput
         |> required "lineNumber" Decode.int
         |> required "timestamp" stringToDateTime
-        |> required "streamId" (Decode.map Id string)
         |> required "output" Decode.string
 
 

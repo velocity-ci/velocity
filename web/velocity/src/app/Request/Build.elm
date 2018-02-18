@@ -57,10 +57,10 @@ streamOutput maybeToken id =
         expect =
             BuildStream.outputDecoder
                 |> Decode.array
-                |> Decode.at [ "result" ]
+                |> Decode.at [ "data" ]
                 |> Http.expectJson
     in
-        apiUrl ("/streams/" ++ BuildStream.idToString id)
+        apiUrl ("/streams/" ++ BuildStream.idToString id ++ "/log")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
