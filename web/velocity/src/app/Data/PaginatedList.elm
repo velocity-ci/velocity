@@ -1,8 +1,7 @@
 module Data.PaginatedList exposing (PaginatedList, Paginated(..), decoder)
 
-import Data.Project as Project exposing (Project)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (decode, required)
+import Json.Decode.Pipeline as Pipeline exposing (decode, required, optional)
 
 
 type alias PaginatedList a =
@@ -21,7 +20,7 @@ decoder : Decoder a -> Decoder (PaginatedList a)
 decoder decoder =
     decode fromList
         |> required "total" Decode.int
-        |> required "data" (Decode.list decoder)
+        |> optional "data" (Decode.list decoder) []
 
 
 

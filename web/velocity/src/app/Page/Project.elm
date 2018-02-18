@@ -62,25 +62,25 @@ initialSubPage =
     Blank
 
 
-init : Session msg -> Project.Id -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
-init session id maybeRoute =
+init : Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init session slug maybeRoute =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadProject =
             maybeAuthToken
-                |> Request.Project.get id
+                |> Request.Project.get slug
                 |> Http.toTask
 
         loadBranches =
             maybeAuthToken
-                |> Request.Project.branches id
+                |> Request.Project.branches slug
                 |> Http.toTask
 
         loadBuilds =
             maybeAuthToken
-                |> Request.Project.builds id
+                |> Request.Project.builds slug
                 |> Http.toTask
 
         initialModel project (Paginated branches) (Paginated builds) =
@@ -117,13 +117,13 @@ init session id maybeRoute =
 -- CHANNELS --
 
 
-channelName : Project.Id -> String
-channelName projectId =
-    "project:" ++ (Project.idToString projectId)
+channelName : Project.Slug -> String
+channelName projectSlug =
+    "project:" ++ (Project.slugToString projectSlug)
 
 
-initialEvents : Project.Id -> ProjectRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
-initialEvents id route =
+initialEvents : Project.Slug -> ProjectRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents slug route =
     let
         mapEvents fromMsg events =
             events
@@ -132,10 +132,10 @@ initialEvents id route =
         subPageEvents =
             case route of
                 ProjectRoute.Commits _ _ ->
-                    mapEvents CommitsMsg (Commits.events id)
+                    mapEvents CommitsMsg (Commits.events slug)
 
                 ProjectRoute.Commit _ subRoute ->
-                    mapEvents CommitMsg (Commit.initialEvents id subRoute)
+                    mapEvents CommitMsg (Commit.initialEvents slug subRoute)
 
                 _ ->
                     Dict.empty
@@ -158,7 +158,7 @@ initialEvents id route =
             in
                 Dict.merge Dict.insert existsInBoth Dict.insert Dict.empty subPageEvents e
     in
-        Dict.singleton (channelName id) pageEvents
+        Dict.singleton (channelName slug) pageEvents
             |> merge
 
 
@@ -173,24 +173,24 @@ loadedEvents msg model =
             Dict.empty
 
 
-leaveChannels : Model -> Maybe Project.Id -> Maybe ProjectRoute.Route -> List String
-leaveChannels model maybeProjectId maybeProjectRoute =
+leaveChannels : Model -> Maybe Project.Slug -> Maybe ProjectRoute.Route -> List String
+leaveChannels model maybeProjectSlug maybeProjectRoute =
     let
-        currentProjectId =
-            model.project.id
+        currentProjectSlug =
+            model.project.slug
 
         projectChannel =
-            channelName currentProjectId
+            channelName currentProjectSlug
     in
-        case ( getSubPage model.subPageState, maybeProjectId, maybeProjectRoute ) of
-            ( Commit subModel, Just routeProjectId, Just (ProjectRoute.Commit _ commitRoute) ) ->
-                if routeProjectId == currentProjectId then
+        case ( getSubPage model.subPageState, maybeProjectSlug, maybeProjectRoute ) of
+            ( Commit subModel, Just routeProjectSlug, Just (ProjectRoute.Commit _ commitRoute) ) ->
+                if routeProjectSlug == currentProjectSlug then
                     Commit.leaveChannels subModel (Just commitRoute)
                 else
                     projectChannel :: Commit.leaveChannels subModel Nothing
 
-            ( Commit subModel, Just routeProjectId, _ ) ->
-                if routeProjectId == currentProjectId then
+            ( Commit subModel, Just routeProjectSlug, _ ) ->
+                if routeProjectSlug == currentProjectSlug then
                     Commit.leaveChannels subModel Nothing
                 else
                     projectChannel :: Commit.leaveChannels subModel Nothing
@@ -198,8 +198,8 @@ leaveChannels model maybeProjectId maybeProjectRoute =
             ( Commit subModel, _, _ ) ->
                 projectChannel :: Commit.leaveChannels subModel Nothing
 
-            ( _, Just routeProjectId, _ ) ->
-                if routeProjectId == currentProjectId then
+            ( _, Just routeProjectSlug, _ ) ->
+                if routeProjectSlug == currentProjectSlug then
                     []
                 else
                     [ projectChannel ]
@@ -236,13 +236,13 @@ viewSidebar project subPage =
     nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
             [ sidebarLink (subPage == OverviewPage)
-                (Route.Project project.id ProjectRoute.Overview)
+                (Route.Project project.slug ProjectRoute.Overview)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
             , sidebarLink (subPage == CommitsPage)
-                (Route.Project project.id (ProjectRoute.Commits Nothing Nothing))
+                (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
                 [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
             , sidebarLink (subPage == SettingsPage)
-                (Route.Project project.id ProjectRoute.Settings)
+                (Route.Project project.slug ProjectRoute.Settings)
                 [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [], text " Settings" ]
             ]
         ]
@@ -266,7 +266,7 @@ viewBreadcrumb project additionalElements items =
     let
         fixedItems =
             [ ( Route.Projects, "Projects" )
-            , ( Route.Project project.id ProjectRoute.Overview, project.name )
+            , ( Route.Project project.slug ProjectRoute.Overview, project.name )
             ]
 
         allItems =
@@ -608,7 +608,7 @@ updateSubPage session subPage msg model =
 
             ( RefreshBranches _, _ ) ->
                 model
-                    => Http.send RefreshBranchesComplete (Request.Project.branches model.project.id (Maybe.map .token session.user))
+                    => Http.send RefreshBranchesComplete (Request.Project.branches model.project.slug (Maybe.map .token session.user))
 
             ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
                 { model | branches = results }

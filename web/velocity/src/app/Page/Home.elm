@@ -136,7 +136,7 @@ viewProjectListItem : Project -> Html Msg
 viewProjectListItem project =
     let
         route =
-            Route.Project project.id ProjectRoute.Overview
+            Route.Project project.slug ProjectRoute.Overview
     in
         li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
             [ div [ class "d-flex w-100 justify-content-between" ]

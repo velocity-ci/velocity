@@ -122,7 +122,7 @@ viewDeleteConfirmation projectName confirmValue submitting =
 
 breadcrumb : Project -> List ( Route, String )
 breadcrumb project =
-    [ ( Route.Project project.id ProjectRoute.Settings, "Settings" ) ]
+    [ ( Route.Project project.slug ProjectRoute.Settings, "Settings" ) ]
 
 
 
@@ -142,7 +142,7 @@ update project session msg model =
             let
                 cmdFromAuth authToken =
                     authToken
-                        |> Request.Project.delete project.id
+                        |> Request.Project.delete project.slug
                         |> Http.send ProjectDeleted
 
                 cmd =

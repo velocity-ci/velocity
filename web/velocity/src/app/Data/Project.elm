@@ -1,4 +1,4 @@
-module Data.Project exposing (Project, decoder, idParser, idToString, decodeId, Id(..))
+module Data.Project exposing (Project, decoder, idParser, slugParser, idToString, slugToString, decodeId, Id(..), Slug(..))
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
@@ -9,6 +9,7 @@ import UrlParser
 
 type alias Project =
     { id : Id
+    , slug : Slug
     , name : String
     , repository : String
     , createdAt : DateTime
@@ -25,6 +26,7 @@ decoder : Decoder Project
 decoder =
     decode Project
         |> required "id" decodeId
+        |> required "slug" decodeSlug
         |> required "name" Decode.string
         |> required "repository" Decode.string
         |> required "createdAt" stringToDateTime
@@ -40,9 +42,18 @@ type Id
     = Id String
 
 
+type Slug
+    = Slug String
+
+
 decodeId : Decoder Id
 decodeId =
     Decode.map Id Decode.string
+
+
+decodeSlug : Decoder Slug
+decodeSlug =
+    Decode.map Slug Decode.string
 
 
 idParser : UrlParser.Parser (Id -> a) a
@@ -50,6 +61,16 @@ idParser =
     UrlParser.custom "ID" (Ok << Id)
 
 
+slugParser : UrlParser.Parser (Slug -> a) a
+slugParser =
+    UrlParser.custom "SLUG" (Ok << Slug)
+
+
 idToString : Id -> String
-idToString (Id slug) =
+idToString (Id id) =
+    id
+
+
+slugToString : Slug -> String
+slugToString (Slug slug) =
     slug

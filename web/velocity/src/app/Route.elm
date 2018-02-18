@@ -14,7 +14,7 @@ type Route
     | Login
     | Logout
     | Projects
-    | Project Project.Id ProjectRoute.Route
+    | Project Project.Slug ProjectRoute.Route
     | KnownHosts
 
 
@@ -26,8 +26,8 @@ route =
         , Url.map Logout (s "logout")
         , Url.map Projects (s "projects")
         , Url.map KnownHosts (s "known-hosts")
-        , Url.map (\id -> Project id ProjectRoute.default) (s "projects" </> Project.idParser)
-        , Url.map Project (s "projects" </> Project.idParser </> ProjectRoute.route)
+        , Url.map (\slug -> Project slug ProjectRoute.default) (s "projects" </> Project.slugParser)
+        , Url.map Project (s "projects" </> Project.slugParser </> ProjectRoute.route)
         ]
 
 
@@ -52,12 +52,12 @@ routeToString page =
                 Projects ->
                     [ "projects" ] => []
 
-                Project id child ->
+                Project slug child ->
                     let
                         ( subPath, subQuery ) =
                             ProjectRoute.routeToPieces child
                     in
-                        ( [ "projects", Project.idToString id ] ++ subPath, subQuery )
+                        ( [ "projects", Project.slugToString slug ] ++ subPath, subQuery )
 
                 KnownHosts ->
                     [ "known-hosts" ] => []

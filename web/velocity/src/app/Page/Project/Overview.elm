@@ -8,11 +8,7 @@ import Data.Build as Build exposing (Build)
 import Views.Build exposing (viewBuildStatusIcon, viewBuildTextClass)
 import Util exposing ((=>))
 import Data.Session as Session exposing (Session)
-import Views.Helpers exposing (onClickPage)
 import Navigation
-import Route exposing (Route)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commit.Route as CommitRoute
 
 
 -- MODEL --

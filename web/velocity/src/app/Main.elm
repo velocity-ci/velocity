@@ -269,8 +269,8 @@ leavePageChannels session page route =
 
                 Project subModel ->
                     case route of
-                        Just (Route.Project projectId subRoute) ->
-                            leaveChannels (Project.leaveChannels subModel (Just projectId) (Just subRoute)) session.socket
+                        Just (Route.Project projectSlug subRoute) ->
+                            leaveChannels (Project.leaveChannels subModel (Just projectSlug) (Just subRoute)) session.socket
 
                         _ ->
                             leaveChannels (Project.leaveChannels subModel Nothing Nothing) session.socket
@@ -375,10 +375,10 @@ setRoute maybeRoute model =
                     Nothing ->
                         model => Route.modifyUrl Route.Login
 
-            Just (Route.Project id subRoute) ->
+            Just (Route.Project slug subRoute) ->
                 let
                     ( listeningSocket, socketCmd ) =
-                        Project.initialEvents id subRoute
+                        Project.initialEvents slug subRoute
                             |> Dict.toList
                             |> List.foldl (foldChannel ProjectMsg) ( socket, Cmd.none )
 
@@ -395,7 +395,7 @@ setRoute maybeRoute model =
 
                     ( pageModel, pageCmd ) =
                         Just subRoute
-                            |> Project.init model.session id
+                            |> Project.init model.session slug
                             |> transition ProjectLoaded
                             |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
                             |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
@@ -406,7 +406,7 @@ setRoute maybeRoute model =
                                 -- If we're on the product page for the same product as the new route just load sub-page
                                 -- Otherwise load the project page fresh
                                 Project subModel ->
-                                    if id == subModel.project.id then
+                                    if slug == subModel.project.slug then
                                         transitionSubPage subModel
                                     else
                                         ( pageModel, pageCmd )

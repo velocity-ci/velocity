@@ -111,9 +111,9 @@ init session project hash maybeRoute =
 -- CHANNELS --
 
 
-channelName : Project.Id -> String
-channelName projectId =
-    "project:" ++ (Project.idToString projectId)
+channelName : Project.Slug -> String
+channelName projectSlug =
+    "project:" ++ (Project.slugToString projectSlug)
 
 
 mapEvents :
@@ -125,8 +125,8 @@ mapEvents fromMsg events =
         |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) v)
 
 
-initialEvents : Project.Id -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
-initialEvents projectId route =
+initialEvents : Project.Slug -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents projectSlug route =
     let
         subPageEvents =
             case route of
@@ -142,7 +142,7 @@ initialEvents projectId route =
             , ( "build:update", UpdateBuildEvent )
             ]
     in
-        Dict.singleton (channelName projectId) (pageEvents)
+        Dict.singleton (channelName projectSlug) (pageEvents)
 
 
 loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
@@ -190,7 +190,7 @@ view project model =
 
 
 frame :
-    { b | id : Project.Id }
+    { b | slug : Project.Slug }
     -> { c | hash : Commit.Hash }
     -> (a -> Msg)
     -> Html a
@@ -204,7 +204,7 @@ frame project commit toMsg content =
                 |> text
 
         route =
-            Route.Project project.id <| ProjectRoute.Commit commit.hash CommitRoute.Overview
+            Route.Project project.slug <| ProjectRoute.Commit commit.hash CommitRoute.Overview
 
         link =
             a [ Route.href route, onClickPage NewUrl route ] [ commitTitle ]
@@ -237,7 +237,7 @@ breadcrumb project commit subPageState =
     in
         List.concat
             [ Commits.breadcrumb project
-            , [ ( CommitRoute.Overview |> ProjectRoute.Commit commit.hash |> Route.Project project.id
+            , [ ( CommitRoute.Overview |> ProjectRoute.Commit commit.hash |> Route.Project project.slug
                 , Commit.truncateHash commit.hash
                 )
               ]

@@ -34,7 +34,6 @@ import Dict exposing (Dict)
 import Json.Encode as Encode
 import Array exposing (Array)
 import Html.Lazy as Lazy
-import Views.Spinner exposing (spinner)
 import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
 
 
@@ -425,7 +424,7 @@ viewTabs project commit task builds selectedTab =
                     Just tabQueryParam
                         |> CommitRoute.Task task.name
                         |> ProjectRoute.Commit commit.hash
-                        |> Route.Project project.id
+                        |> Route.Project project.slug
 
                 tabIcon =
                     build
@@ -678,7 +677,7 @@ viewBuildForm taskName fields errors =
 
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )
 breadcrumb project commit task =
-    [ ( CommitRoute.Task task.name Nothing |> ProjectRoute.Commit commit.hash |> Route.Project project.id
+    [ ( CommitRoute.Task task.name Nothing |> ProjectRoute.Commit commit.hash |> Route.Project project.slug
       , ProjectTask.nameToString task.name
       )
     ]
@@ -859,7 +858,7 @@ update project commit builds session msg model =
                     route =
                         CommitRoute.Task model.task.name tab
                             |> ProjectRoute.Commit commit.hash
-                            |> Route.Project project.id
+                            |> Route.Project project.slug
                 in
                     model
                         => Navigation.newUrl (Route.routeToString route)

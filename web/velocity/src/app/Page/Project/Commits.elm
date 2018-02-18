@@ -86,13 +86,13 @@ perPage =
 -- CHANNELS --
 
 
-channelName : Project.Id -> String
-channelName projectId =
-    "project:" ++ (Project.idToString projectId)
+channelName : Project.Slug -> String
+channelName projectSlug =
+    "project:" ++ (Project.slugToString projectSlug)
 
 
-events : Project.Id -> Dict String (List ( String, Encode.Value -> Msg ))
-events projectId =
+events : Project.Slug -> Dict String (List ( String, Encode.Value -> Msg ))
+events projectSlug =
     let
         pageEvents =
             [ ( "commit:new", RefreshCommitList )
@@ -100,7 +100,7 @@ events projectId =
             , ( "commit:deleted", RefreshCommitList )
             ]
     in
-        Dict.singleton (channelName projectId) (pageEvents)
+        Dict.singleton (channelName projectSlug) (pageEvents)
 
 
 
@@ -190,7 +190,7 @@ viewCommitList project ( dateTuple, commits ) =
     let
         commitListItems =
             sortByDatetime .date commits
-                |> List.map (viewCommitListItem project.id)
+                |> List.map (viewCommitListItem project.slug)
 
         formattedDate =
             Date.fromTuple dateTuple
@@ -204,14 +204,14 @@ viewCommitList project ( dateTuple, commits ) =
             ]
 
 
-viewCommitListItem : Project.Id -> Commit -> Html Msg
-viewCommitListItem id commit =
+viewCommitListItem : Project.Slug -> Commit -> Html Msg
+viewCommitListItem slug commit =
     let
         truncatedHash =
             Commit.truncateHash commit.hash
 
         route =
-            Route.Project id <| ProjectRoute.Commit commit.hash CommitRoute.Overview
+            Route.Project slug <| ProjectRoute.Commit commit.hash CommitRoute.Overview
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route, onClickPage NewUrl route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
@@ -224,7 +224,7 @@ viewCommitListItem id commit =
 
 breadcrumb : Project -> List ( Route, String )
 breadcrumb project =
-    [ ( Route.Project project.id (ProjectRoute.Commits Nothing Nothing), "Commits" ) ]
+    [ ( Route.Project project.slug (ProjectRoute.Commits Nothing Nothing), "Commits" ) ]
 
 
 viewBreadcrumbExtraItems : Project -> Model -> Html Msg
@@ -254,7 +254,7 @@ pageLink : Int -> Bool -> Project -> Maybe Branch -> Html Msg
 pageLink page isActive project maybeBranch =
     let
         route =
-            Route.Project project.id <| ProjectRoute.Commits (Maybe.map .name maybeBranch) (Just page)
+            Route.Project project.slug <| ProjectRoute.Commits (Maybe.map .name maybeBranch) (Just page)
     in
         li [ classList [ "page-item" => True, "active" => isActive ] ]
             [ a
@@ -290,7 +290,7 @@ update project session msg model =
             let
                 cmdFromAuth authToken =
                     authToken
-                        |> Request.Project.sync project.id
+                        |> Request.Project.sync project.slug
                         |> Http.toTask
                         |> Task.attempt SyncCompleted
 
@@ -323,7 +323,7 @@ update project session msg model =
                             )
 
                 newRoute =
-                    Route.Project project.id <| ProjectRoute.Commits uriEncoded (Just page)
+                    Route.Project project.slug <| ProjectRoute.Commits uriEncoded (Just page)
             in
                 model => Route.modifyUrl newRoute
 
@@ -341,7 +341,7 @@ update project session msg model =
                             )
 
                 newRoute =
-                    Route.Project project.id <| ProjectRoute.Commits uriEncoded (Just 1)
+                    Route.Project project.slug <| ProjectRoute.Commits uriEncoded (Just 1)
             in
                 model => Route.modifyUrl newRoute
 

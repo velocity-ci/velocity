@@ -142,7 +142,7 @@ viewTaskListItem project commit builds task =
         route =
             CommitRoute.Task task.name Nothing
                 |> ProjectRoute.Commit commit.hash
-                |> Route.Project project.id
+                |> Route.Project project.slug
 
         maybeBuild =
             maybeBuildFromTask task builds

@@ -49,14 +49,14 @@ list maybeToken =
 -- SYNC --
 
 
-sync : Project.Id -> AuthToken -> Http.Request Project
-sync id token =
+sync : Project.Slug -> AuthToken -> Http.Request Project
+sync slug token =
     let
         expect =
             Project.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/sync")
+        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug ++ "/sync")
             |> HttpBuilder.post
             |> withAuthorization (Just token)
             |> withExpect expect
@@ -67,15 +67,15 @@ sync id token =
 -- BRANCHES --
 
 
-branches : Project.Id -> Maybe AuthToken -> Http.Request (PaginatedList Branch)
-branches id maybeToken =
+branches : Project.Slug -> Maybe AuthToken -> Http.Request (PaginatedList Branch)
+branches slug maybeToken =
     let
         expect =
             Branch.decoder
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/branches")
+        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug ++ "/branches")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
@@ -86,15 +86,15 @@ branches id maybeToken =
 -- BUILDS --
 
 
-builds : Project.Id -> Maybe AuthToken -> Http.Request (PaginatedList Build)
-builds id maybeToken =
+builds : Project.Slug -> Maybe AuthToken -> Http.Request (PaginatedList Build)
+builds slug maybeToken =
     let
         expect =
             Build.decoder
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.idToString id ++ "/builds")
+        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug ++ "/builds")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
@@ -105,14 +105,14 @@ builds id maybeToken =
 -- GET --
 
 
-get : Project.Id -> Maybe AuthToken -> Http.Request Project
-get id maybeToken =
+get : Project.Slug -> Maybe AuthToken -> Http.Request Project
+get slug maybeToken =
     let
         expect =
             Project.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.idToString id)
+        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug)
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
@@ -165,9 +165,9 @@ create config token =
 -- DELETE --
 
 
-delete : Project.Id -> AuthToken -> Http.Request ()
-delete id token =
-    apiUrl (baseUrl ++ "/" ++ Project.idToString id)
+delete : Project.Slug -> AuthToken -> Http.Request ()
+delete slug token =
+    apiUrl (baseUrl ++ "/" ++ Project.slugToString slug)
         |> HttpBuilder.delete
         |> withAuthorization (Just token)
         |> withExpect (Http.expectStringResponse (\_ -> Ok ()))
