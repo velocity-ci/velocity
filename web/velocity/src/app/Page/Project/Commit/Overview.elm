@@ -132,7 +132,7 @@ viewTaskList project commit tasks builds =
 maybeBuildFromTask : ProjectTask.Task -> List Build -> Maybe Build
 maybeBuildFromTask task builds =
     builds
-        |> List.filter (\b -> ProjectTask.idEquals task.id b.taskId)
+        |> List.filter (\b -> ProjectTask.idEquals task.id b.task.id)
         |> List.head
 
 

@@ -1,6 +1,6 @@
 module Data.Build exposing (..)
 
-import Data.Task as Task
+import Data.Task as Task exposing (Task)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.Commit as Commit exposing (Hash)
 import Json.Decode as Decode exposing (Decoder, int, string)
@@ -13,13 +13,12 @@ import UrlParser
 type alias Build =
     { id : Id
     , status : Status
-    , taskId : Task.Id
+    , task : Task
     , steps : List BuildStep
     , createdAt : DateTime
     , completedAt : Maybe DateTime
     , updatedAt : Maybe DateTime
     , startedAt : Maybe DateTime
-    , commitHash : Hash
     }
 
 
@@ -32,13 +31,12 @@ decoder =
     decode Build
         |> required "id" (Decode.map Id string)
         |> required "status" statusDecoder
-        |> required "task" Task.decodeId
+        |> required "task" Task.decoder
         |> required "buildSteps" (Decode.list BuildStep.decoder)
         |> required "createdAt" stringToDateTime
         |> required "completedAt" (Decode.maybe stringToDateTime)
         |> required "updatedAt" (Decode.maybe stringToDateTime)
         |> required "startedAt" (Decode.maybe stringToDateTime)
-        |> required "commit" Commit.decodeHash
 
 
 statusDecoder : Decoder Status

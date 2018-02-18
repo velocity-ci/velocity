@@ -286,7 +286,7 @@ taskBuilds builds maybeTask =
             (\b ->
                 case maybeTask of
                     Just t ->
-                        t.id == b.taskId
+                        t.id == b.task.id
 
                     _ ->
                         False
