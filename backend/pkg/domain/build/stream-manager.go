@@ -69,7 +69,7 @@ func (m *StreamManager) CreateStreamLine(
 		StreamID:   stream.ID,
 		LineNumber: lineNumber,
 		Timestamp:  timestamp,
-		Output:     output,
+		Output:     fmt.Sprintf("%s\n", output),
 	}
 	m.fileManager.saveStreamLine(sL)
 	for _, b := range m.brokers {
