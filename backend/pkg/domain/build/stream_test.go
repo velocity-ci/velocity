@@ -106,7 +106,7 @@ func (s *StreamSuite) TestFileStreamLine() {
 	s.Equal(stream.ID, streamLine.StreamID)
 	s.Equal(1, streamLine.LineNumber)
 	s.Equal(timestamp, streamLine.Timestamp)
-	s.Equal("test output", streamLine.Output)
+	s.Equal("test output\n", streamLine.Output)
 
 	streamLines, total := s.streamManager.GetStreamLines(stream, domain.NewPagingQuery())
 
