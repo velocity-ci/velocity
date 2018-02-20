@@ -46,8 +46,8 @@ func (m *BranchManager) Create(
 	}
 	m.db.save(b)
 
-	for _, b := range m.brokers {
-		b.EmitAll(&domain.Emit{
+	for _, broker := range m.brokers {
+		broker.EmitAll(&domain.Emit{
 			Topic:   "branches",
 			Event:   EventBranchCreate,
 			Payload: b,

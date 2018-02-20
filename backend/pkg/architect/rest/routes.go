@@ -56,6 +56,7 @@ func AddRoutes(
 	buildStepManager.AddBroker(wsBroker)
 	buildStepManager.AddBroker(wsBroker)
 	buildManager.AddBroker(wsBroker)
+	buildStreamManager.AddBroker(wsBroker)
 
 	// Used by Builders
 	e.GET("/builder/ws", builderHandler.connect)

@@ -26,11 +26,12 @@ func (c *Client) monitor() {
 	c.alive = true
 	for {
 		message := &PhoenixMessage{}
+		c.ws.WriteMessage(websocket.TextMessage, []byte("Hello, Client!"))
 		err := c.ws.ReadJSON(message)
 		if err != nil {
 			c.alive = false
 			logrus.Error(err)
-			logrus.Info("Closing Client WebSocket: %s", c.ID)
+			logrus.Infof("Closing Client WebSocket: %s", c.ID)
 			c.ws.Close()
 			return
 		}

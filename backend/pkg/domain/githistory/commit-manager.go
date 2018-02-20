@@ -65,14 +65,14 @@ func (m *CommitManager) AddCommitToBranch(c *Commit, b *Branch) error {
 	if err := m.db.saveCommitToBranch(c, b); err != nil {
 		return err
 	}
-	for _, b := range m.brokers {
-		b.EmitAll(&domain.Emit{
+	for _, broker := range m.brokers {
+		broker.EmitAll(&domain.Emit{
 			Event:   EventCommitUpdate,
 			Payload: c,
 		})
 	}
-	for _, b := range m.brokers {
-		b.EmitAll(&domain.Emit{
+	for _, broker := range m.brokers {
+		broker.EmitAll(&domain.Emit{
 			Event:   EventBranchUpdate,
 			Payload: b,
 		})
