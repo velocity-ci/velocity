@@ -1,0 +1,13 @@
+description: "Example using basic parameters"
+name: parameter-example
+
+parameters:
+  - name: your_name
+  - name: any_secret
+    secret: true
+
+steps: 
+  - type: run
+    description: Hello!
+    image: busybox:latest
+    command: echo "Hello ${your_name}. I know your secret ${any_secret}"

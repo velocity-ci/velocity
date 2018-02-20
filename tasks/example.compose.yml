@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+
+  a:
+    image: busybox
+    command: ping -c 3 c
+    volumes:
+      - "./:/app"
+    links:
+      - "b"
+
+  b:
+    image: busybox
+    command: sleep 10s
+    networks:
+      default:
+        aliases:
+          - "c"

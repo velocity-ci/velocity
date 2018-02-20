@@ -1,0 +1,6 @@
+description: "Example using docker-compose files"
+name: compose-example
+
+steps:
+  - type: compose
+    composeFile: tasks/example.compose.yml

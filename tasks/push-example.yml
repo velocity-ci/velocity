@@ -1,5 +1,5 @@
-description: "Hello Velocity"
-name: hello-velocity
+description: "Example pushing to Docker Hub"
+name: push-example
 
 parameters:
   - name: docker_hub_username

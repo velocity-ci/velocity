@@ -1,5 +1,5 @@
-name: Deploy
-description: Deploys application to given environment
+name: do-not-run
+description: Do not run this
 
 ## Remove clone step, emit a workspace setup/prep stage 
 # that clones repository and resolves parameters
