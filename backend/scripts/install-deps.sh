@@ -1,5 +1,9 @@
 #!/bin/sh -e
 
-scripts/ensure-dep.sh
+if [ ! -d "vendor" ]; then
+    scripts/ensure-dep.sh
 
-dep ensure -v
+    dep ensure -v
+else
+    echo "skipping as already vendored"
+fi
