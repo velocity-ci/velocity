@@ -314,8 +314,6 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
 
-		// log.Println(string(allBytes))
-
 		o := ""
 		if strings.Contains(string(allBytes), "status") {
 			o = handlePullOutput(allBytes)

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
 type ParameterResolver struct {
@@ -28,5 +29,5 @@ func (pR ParameterResolver) Resolve(paramName string) (string, error) {
 		}
 	}
 
-	return text, nil
+	return strings.TrimSpace(text), nil
 }
