@@ -38,8 +38,8 @@ func AddRoutes(
 	projectHandler := newProjectHandler(projectManager)
 	commitHandler := newCommitHandler(projectManager, commitManager, branchManager)
 	branchHandler := newBranchHandler(projectManager, branchManager, commitManager)
-	taskHandler := newTaskHandler(projectManager, commitManager, taskManager)
-	buildHandler := newBuildHandler(buildManager, buildStepManager, buildStreamManager, projectManager, commitManager, taskManager)
+	taskHandler := newTaskHandler(projectManager, commitManager, branchManager, taskManager)
+	buildHandler := newBuildHandler(buildManager, buildStepManager, buildStreamManager, projectManager, commitManager, branchManager, taskManager)
 	buildStepHandler := newBuildStepHandler(buildManager, buildStepManager, buildStreamManager)
 	buildStreamHandler := newBuildStreamHandler(buildStepManager, buildStreamManager)
 

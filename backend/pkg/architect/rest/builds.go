@@ -36,10 +36,10 @@ type buildResponse struct {
 	CompletedAt time.Time `json:"completedAt"`
 }
 
-func newBuildResponse(b *build.Build, steps []*stepResponse) *buildResponse {
+func newBuildResponse(b *build.Build, steps []*stepResponse, branchManager *githistory.BranchManager) *buildResponse {
 	return &buildResponse{
 		ID:          b.ID,
-		Task:        newTaskResponse(b.Task),
+		Task:        newTaskResponse(b.Task, branchManager),
 		Steps:       steps,
 		Status:      b.Status,
 		CreatedAt:   b.CreatedAt,
@@ -54,11 +54,11 @@ type buildList struct {
 	Data  []*buildResponse `json:"data"`
 }
 
-func buildsToBuildResponse(bs []*build.Build, stepManager *build.StepManager, streamManager *build.StreamManager) (r []*buildResponse) {
+func buildsToBuildResponse(bs []*build.Build, stepManager *build.StepManager, streamManager *build.StreamManager, branchManager *githistory.BranchManager) (r []*buildResponse) {
 	for _, b := range bs {
 		steps := stepManager.GetStepsForBuild(b)
 		rSteps := stepsToStepResponse(steps, streamManager)
-		r = append(r, newBuildResponse(b, rSteps))
+		r = append(r, newBuildResponse(b, rSteps, branchManager))
 	}
 	return r
 }
@@ -69,6 +69,7 @@ type buildHandler struct {
 	streamManager  *build.StreamManager
 	projectManager *project.Manager
 	commitManager  *githistory.CommitManager
+	branchManager  *githistory.BranchManager
 	taskManager    *task.Manager
 }
 
@@ -78,6 +79,7 @@ func newBuildHandler(
 	streamManager *build.StreamManager,
 	projectManager *project.Manager,
 	commitManager *githistory.CommitManager,
+	branchManager *githistory.BranchManager,
 	taskManager *task.Manager,
 ) *buildHandler {
 	return &buildHandler{
@@ -86,6 +88,7 @@ func newBuildHandler(
 		streamManager:  streamManager,
 		projectManager: projectManager,
 		commitManager:  commitManager,
+		branchManager:  branchManager,
 		taskManager:    taskManager,
 	}
 }
@@ -116,7 +119,7 @@ func (h *buildHandler) create(c echo.Context) error {
 	}
 
 	steps := h.stepManager.GetStepsForBuild(b)
-	c.JSON(http.StatusCreated, newBuildResponse(b, stepsToStepResponse(steps, h.streamManager)))
+	c.JSON(http.StatusCreated, newBuildResponse(b, stepsToStepResponse(steps, h.streamManager), h.branchManager))
 	return nil
 }
 
@@ -133,7 +136,7 @@ func (h *buildHandler) getAllForProject(c echo.Context) error {
 	}
 
 	bs, total := h.buildManager.GetAllForProject(p, pQ)
-	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager)
+	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager, h.branchManager)
 
 	c.JSON(http.StatusOK, buildList{
 		Total: total,
@@ -156,7 +159,7 @@ func (h *buildHandler) getAllForCommit(c echo.Context) error {
 	}
 
 	bs, total := h.buildManager.GetAllForCommit(commit, pQ)
-	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager)
+	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager, h.branchManager)
 
 	c.JSON(http.StatusOK, buildList{
 		Total: total,
@@ -179,7 +182,7 @@ func (h *buildHandler) getAllForTask(c echo.Context) error {
 	}
 
 	bs, total := h.buildManager.GetAllForTask(t, pQ)
-	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager)
+	rBuilds := buildsToBuildResponse(bs, h.stepManager, h.streamManager, h.branchManager)
 
 	c.JSON(http.StatusOK, buildList{
 		Total: total,
@@ -195,7 +198,7 @@ func (h *buildHandler) getByID(c echo.Context) error {
 		return nil
 	}
 	steps := h.stepManager.GetStepsForBuild(b)
-	c.JSON(http.StatusOK, newBuildResponse(b, stepsToStepResponse(steps, h.streamManager)))
+	c.JSON(http.StatusOK, newBuildResponse(b, stepsToStepResponse(steps, h.streamManager), h.branchManager))
 	return nil
 }
 

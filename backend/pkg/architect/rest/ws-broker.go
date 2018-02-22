@@ -99,12 +99,12 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 	case *build.Build:
 		topic = fmt.Sprintf("project:%s", v.Task.Commit.Project.Slug)
 		steps := m.stepManager.GetStepsForBuild(v)
-		payload = newBuildResponse(v, stepsToStepResponse(steps, m.streamManager))
+		payload = newBuildResponse(v, stepsToStepResponse(steps, m.streamManager), m.branchManager)
 		break
 	case *build.Step:
 		topic = fmt.Sprintf("project:%s", v.Build.Task.Commit.Project.Slug)
 		steps := m.stepManager.GetStepsForBuild(v.Build)
-		payload = newBuildResponse(v.Build, stepsToStepResponse(steps, m.streamManager))
+		payload = newBuildResponse(v.Build, stepsToStepResponse(steps, m.streamManager), m.branchManager)
 	case *build.StreamLine:
 		topic = fmt.Sprintf("stream:%s", v.StreamID)
 		payload = newStreamLineResponse(v)
