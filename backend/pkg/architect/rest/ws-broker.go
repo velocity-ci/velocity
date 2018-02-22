@@ -79,7 +79,7 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 		if em.Event == project.EventUpdate {
 			topic = fmt.Sprintf("project:%s", v.Slug)
 		} else {
-			topic = "project"
+			topic = "projects"
 		}
 		payload = newProjectResponse(v)
 		break
