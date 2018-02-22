@@ -1,5 +1,5 @@
-description: "Builds CLI"
-name: build-cli
+description: "Builds and publishes Builder"
+name: publish-builder
 
 parameters:
   - name: docker_hub_username
@@ -15,15 +15,10 @@ docker:
         PASSWORD: ${docker_hub_password}
 
 steps: 
-
   - type: build
     description: Build release image
-    dockerfile: test.Dockerfile
+    dockerfile: build/docker/builder/Dockerfile
     context: ./backend
     tags:
-      - vjftw/test:${GIT_DESCRIBE}
-
-  - type: push
-    description: Pushes built image
-    tags:
-      - vjftw/test:${GIT_DESCRIBE}
+      - civelocity/builder:${GIT_DESCRIBE}
+      - civelocity/builder:latest
