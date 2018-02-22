@@ -27,8 +27,10 @@ func New() *CLI {
 	return c
 }
 
-func (c *CLI) Start() {
+func (c *CLI) Start(quit chan os.Signal) {
 	c.routeFlags()
+
+	quit <- os.Interrupt
 }
 
 func (c *CLI) Stop() error {

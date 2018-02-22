@@ -10,12 +10,11 @@ import (
 func main() {
 	a := cli.New()
 
-	go a.Start()
-
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 10 seconds.
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
+	go a.Start(quit)
 	<-quit
 	a.Stop()
 }
