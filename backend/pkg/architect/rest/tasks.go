@@ -51,6 +51,7 @@ func newTaskHandler(
 	return &taskHandler{
 		projectManager: projectManager,
 		commitManager:  commitManager,
+		branchManager:  branchManager,
 		taskManager:    taskManager,
 	}
 }
