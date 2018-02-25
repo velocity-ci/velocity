@@ -13,6 +13,7 @@ type userRequest struct {
 }
 
 type userResponse struct {
+	Username string `json:"username"`
 }
 
 type userList struct {
@@ -21,7 +22,9 @@ type userList struct {
 }
 
 func newUserResponse(u *user.User) *userResponse {
-	return &userResponse{}
+	return &userResponse{
+		Username: u.Username,
+	}
 }
 
 type userHandler struct {
