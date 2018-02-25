@@ -3,6 +3,7 @@ package rest
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
@@ -16,6 +17,7 @@ import (
 
 type broker struct {
 	clients map[string]*Client
+	lock    sync.RWMutex
 
 	branchManager *githistory.BranchManager
 	stepManager   *build.StepManager
@@ -29,6 +31,7 @@ func NewBroker(
 ) *broker {
 	return &broker{
 		clients:       map[string]*Client{},
+		lock:          sync.RWMutex{},
 		branchManager: branchManager,
 		stepManager:   stepManager,
 		streamManager: streamManager,
@@ -36,11 +39,33 @@ func NewBroker(
 }
 
 func (m *broker) save(c *Client) {
+	m.lock.Lock()
 	m.clients[c.ID] = c
+	m.lock.Unlock()
 }
 
 func (m *broker) remove(c *Client) {
+	m.lock.Lock()
 	delete(m.clients, c.ID)
+	m.lock.Unlock()
+}
+
+func (m *broker) monitor(c *Client) {
+	c.alive = true
+	for {
+		message := &PhoenixMessage{}
+		err := c.ws.ReadJSON(message)
+		if err != nil {
+			c.alive = false
+			logrus.Error(err)
+			logrus.Infof("Closing Client WebSocket: %s", c.ID)
+			c.ws.Close()
+			m.remove(c)
+			return
+		}
+		c.HandleMessage(message)
+		m.save(c)
+	}
 }
 
 func (m *broker) EmitAll(message *domain.Emit) {

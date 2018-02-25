@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 )
@@ -20,23 +19,6 @@ type Client struct {
 	alive         bool
 	ws            *websocket.Conn
 	subscriptions []string
-}
-
-func (c *Client) monitor() {
-	c.alive = true
-	for {
-		message := &PhoenixMessage{}
-		c.ws.WriteMessage(websocket.TextMessage, []byte("Hello, Client!"))
-		err := c.ws.ReadJSON(message)
-		if err != nil {
-			c.alive = false
-			logrus.Error(err)
-			logrus.Infof("Closing Client WebSocket: %s", c.ID)
-			c.ws.Close()
-			return
-		}
-		c.HandleMessage(message)
-	}
 }
 
 func (c *Client) Subscribe(s string, ref uint64) {

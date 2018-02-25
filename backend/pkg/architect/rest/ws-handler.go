@@ -35,6 +35,6 @@ func (h *websocketHandler) phxClient(c echo.Context) error {
 	client := NewClient(ws)
 	h.broker.save(client)
 
-	go client.monitor()
+	go h.broker.monitor(client)
 	return nil
 }
