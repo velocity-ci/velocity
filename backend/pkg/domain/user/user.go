@@ -6,7 +6,7 @@ import (
 
 type User struct {
 	ID             string `json:"id" validate:"-" storm:"id"`
-	Username       string `json:"username" validate:"required,min=3"`
+	Username       string `json:"username" validate:"required,min=3,alphanum"`
 	Password       string `json:"password" validate:"required,min=3"`
 	HashedPassword string `json:"hashedPassword" validate:"-"`
 }

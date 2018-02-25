@@ -1,8 +1,10 @@
 package user
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
 type StormUser struct {
@@ -77,4 +79,24 @@ func GetByID(db *storm.DB, id string) (*User, error) {
 		return nil, err
 	}
 	return u.ToUser(), nil
+}
+
+func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*User, t int) {
+	t = 0
+	t, err := db.Count(&StormUser{})
+	if err != nil {
+		logrus.Error(err)
+		return r, t
+	}
+
+	query := db.Select()
+	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
+	var stormUsers []*StormUser
+	query.Find(&stormUsers)
+
+	for _, u := range stormUsers {
+		r = append(r, u.ToUser())
+	}
+
+	return r, t
 }

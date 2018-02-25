@@ -128,3 +128,7 @@ func (m *Manager) Exists(username string) bool {
 func (m *Manager) GetByUsername(username string) (*User, error) {
 	return m.db.getByUsername(username)
 }
+
+func (m *Manager) GetAll(q *domain.PagingQuery) ([]*User, int) {
+	return m.db.getAll(q)
+}

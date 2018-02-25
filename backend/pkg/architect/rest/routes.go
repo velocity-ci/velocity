@@ -34,6 +34,7 @@ func AddRoutes(
 	e.POST("/v1/auth", authHandler.create)
 
 	// Authenticated routes
+	userHandler := newUserHandler(userManager)
 	knownHostHandler := newKnownHostHandler(knownHostManager)
 	projectHandler := newProjectHandler(projectManager)
 	commitHandler := newCommitHandler(projectManager, commitManager, branchManager)
@@ -66,7 +67,14 @@ func AddRoutes(
 		SigningKey: []byte(os.Getenv("JWT_SECRET")),
 	}
 
-	r := e.Group("/v1/ssh")
+	r := e.Group("/v1/users")
+	r.Use(middleware.JWTWithConfig(jwtConfig))
+	r.POST("/users", userHandler.create)
+	r.GET("/users", userHandler.getAll)
+	r.GET("/users/:username", userHandler.get)
+	r.DELETE("/users/:username", userHandler.delete)
+
+	r = e.Group("/v1/ssh")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
 	r.POST("/known-hosts", knownHostHandler.create)
 	r.GET("/known-hosts", knownHostHandler.list)
