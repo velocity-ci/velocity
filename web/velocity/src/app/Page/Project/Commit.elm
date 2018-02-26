@@ -380,8 +380,11 @@ update project session msg model =
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 let
+                    builds =
+                        List.filter (\b -> b.task.id == subModel.task.id) model.builds
+
                     ( ( newModel, newCmd ), externalMsg ) =
-                        CommitTask.update project model.commit model.builds session subMsg subModel
+                        CommitTask.update project model.commit builds session subMsg subModel
 
                     model_ =
                         case externalMsg of

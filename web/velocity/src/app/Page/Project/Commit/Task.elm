@@ -856,7 +856,7 @@ update project commit builds session msg model =
             BuildCreated (Ok build) ->
                 let
                     tabNum =
-                        (List.length builds) - 1
+                        List.length builds
 
                     tab =
                         tabNum
