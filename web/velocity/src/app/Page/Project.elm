@@ -348,6 +348,7 @@ viewSubPage session model =
                 let
                     content =
                         Overview.view project model.builds
+                            |> Html.map OverviewMsg
                             |> pageFrame (sidebar OverviewPage)
                 in
                     ( content, breadcrumb (text "") [] )

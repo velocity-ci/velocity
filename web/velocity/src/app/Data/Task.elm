@@ -2,6 +2,7 @@ module Data.Task exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
+import Data.Commit as Commit exposing (Commit)
 import UrlParser
 
 
@@ -14,6 +15,7 @@ type alias Task =
     , description : String
     , steps : List Step
     , parameters : List Parameter
+    , commit : Commit
     }
 
 
@@ -93,6 +95,7 @@ decoder =
         |> optional "description" Decode.string ""
         |> optional "steps" (Decode.list stepDecoder) []
         |> optional "parameters" (Decode.list parameterDecoder) []
+        |> required "commit" Commit.decoder
 
 
 stringParameterDecoder : Decoder StringParameter

@@ -410,7 +410,10 @@ viewTabs project commit task builds selectedTab =
                             i [ class "fa fa-plus-circle text-secondary" ] []
 
                         BuildTab b ->
-                            text ("Build #" ++ (toString b))
+                            if List.length builds == 1 then
+                                text "Build output "
+                            else
+                                text ("Build output #" ++ (toString b) ++ " ")
 
                 tabQueryParam =
                     case t of
@@ -852,8 +855,11 @@ update project commit builds session msg model =
 
             BuildCreated (Ok build) ->
                 let
+                    tabNum =
+                        (List.length builds) - 1
+
                     tab =
-                        List.length builds
+                        tabNum
                             |> toString
                             |> (\i -> "build-" ++ i)
                             |> Just

@@ -9,6 +9,12 @@ import Views.Build exposing (viewBuildStatusIcon, viewBuildTextClass)
 import Util exposing ((=>))
 import Data.Session as Session exposing (Session)
 import Navigation
+import Route
+import Page.Project.Route as ProjectRoute
+import Page.Project.Commit.Route as CommitRoute
+import Views.Helpers exposing (onClickPage)
+import Data.Task as Task
+import Data.Commit as Commit
 
 
 -- MODEL --
@@ -27,53 +33,78 @@ initialModel =
 -- VIEW --
 
 
-view : Project -> List Build -> Html msg
+view : Project -> List Build -> Html Msg
 view project builds =
-    div []
-        [ viewOverviewCard project
-        , viewBuildHistoryTable project builds
+    div [ class "container-fluid" ]
+        [ div [ class "row" ]
+            [ viewOverviewCard project
+            , viewBuildHistoryTable project builds
+            ]
         ]
 
 
-viewOverviewCard : Project -> Html msg
+viewOverviewCard : Project -> Html Msg
 viewOverviewCard project =
-    div [ class "card mb-3" ]
-        [ div [ class "card-body" ]
-            [ dl [ class "mb-0" ]
-                [ dt [] [ text "Repository" ]
-                , dd [] [ text project.repository ]
-                , dt [] [ text "Last update" ]
-                , dd [] [ text (formatDateTime project.updatedAt) ]
+    div [ class "col-md-6" ]
+        [ div [ class "card mb-3" ]
+            [ div [ class "card-body" ]
+                [ dl [ class "mb-0" ]
+                    [ dt [] [ text "Repository" ]
+                    , dd [] [ text project.repository ]
+                    , dt [] [ text "Last update" ]
+                    , dd [] [ text (formatDateTime project.updatedAt) ]
+                    ]
                 ]
             ]
         ]
 
 
-viewBuildHistoryTable : Project -> List Build -> Html msg
+viewBuildHistoryTable : Project -> List Build -> Html Msg
 viewBuildHistoryTable project builds =
-    div [ class "card" ]
-        [ h5 [ class "card-header border-bottom-0" ] [ text "Build history" ]
-        , table [ class "table mb-0 " ] (List.map (viewBuildHistoryTableRow project) (List.take 10 builds))
+    div [ class "col-md-6" ]
+        [ div [ class "card" ]
+            [ h5 [ class "card-header border-bottom-0" ] [ text "Build history" ]
+            , table [ class "table mb-0 " ] (List.map (viewBuildHistoryTableRow project) (List.take 10 builds))
+            ]
         ]
 
 
-viewBuildHistoryTableRow : Project -> Build -> Html msg
+viewBuildHistoryTableRow : Project -> Build -> Html Msg
 viewBuildHistoryTableRow project build =
     let
-        rowClasses =
-            [ (viewBuildTextClass build) => True ]
+        colourClassList =
+            [ viewBuildTextClass build => True ]
 
-        --
-        --        route =
-        --            CommitRoute.Task build.taskId Nothing
-        --                |> ProjectRoute.Commit build.commitHash
-        --                |> Route.Project project.id
-    in
-        tr [ classList rowClasses ]
-            [ td [ class "d-flex justify-content-between" ]
-                [ text ((formatDateTime build.createdAt) ++ " ")
-                , viewBuildStatusIcon build
+        route =
+            CommitRoute.Task build.task.name Nothing
+                |> ProjectRoute.Commit build.task.commit.hash
+                |> Route.Project project.slug
+
+        task =
+            build.task
+
+        taskName =
+            Task.nameToString task.name
+
+        createdAt =
+            formatDateTime build.createdAt
+
+        truncatedHash =
+            Commit.truncateHash task.commit.hash
+
+        buildLink content =
+            a
+                [ Route.href route
+                , onClickPage NewUrl route
+                , classList colourClassList
                 ]
+                [ text content ]
+    in
+        tr [ classList colourClassList ]
+            [ td [] [ buildLink taskName ]
+            , td [] [ buildLink truncatedHash ]
+            , td [] [ buildLink createdAt ]
+            , td [ style [ "text-align" => "right" ] ] [ viewBuildStatusIcon build ]
             ]
 
 

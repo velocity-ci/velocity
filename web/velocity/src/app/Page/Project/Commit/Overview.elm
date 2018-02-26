@@ -129,18 +129,32 @@ viewTaskList project commit tasks builds =
 --            ]
 
 
-maybeBuildFromTask : ProjectTask.Task -> List Build -> Maybe Build
-maybeBuildFromTask task builds =
+taskBuilds : ProjectTask.Task -> List Build -> List Build
+taskBuilds task builds =
     builds
         |> List.filter (\b -> ProjectTask.idEquals task.id b.task.id)
+
+
+maybeBuildFromTask : ProjectTask.Task -> List Build -> Maybe Build
+maybeBuildFromTask task builds =
+    taskBuilds task builds
         |> List.head
 
 
 viewTaskListItem : Project -> Commit -> List Build -> ProjectTask.Task -> Html Msg
 viewTaskListItem project commit builds task =
     let
+        buildNum =
+            List.length (taskBuilds task builds)
+
+        routeTabParam =
+            if buildNum > 0 then
+                Just ("build-" ++ (toString buildNum))
+            else
+                Nothing
+
         route =
-            CommitRoute.Task task.name Nothing
+            CommitRoute.Task task.name routeTabParam
                 |> ProjectRoute.Commit commit.hash
                 |> Route.Project project.slug
 

@@ -95,9 +95,9 @@ events : Project.Slug -> Dict String (List ( String, Encode.Value -> Msg ))
 events projectSlug =
     let
         pageEvents =
-            [ ( "commit:new", RefreshCommitList )
-            , ( "commit:update", RefreshCommitList )
-            , ( "commit:deleted", RefreshCommitList )
+            [ ( "commit:new", always RefreshCommitList )
+            , ( "commit:update", always RefreshCommitList )
+            , ( "commit:deleted", always RefreshCommitList )
             ]
     in
         Dict.singleton (channelName projectSlug) (pageEvents)
@@ -276,7 +276,7 @@ type Msg
     | FilterBranch (Maybe Branch)
     | SelectPage Int
     | NewUrl String
-    | RefreshCommitList Encode.Value
+    | RefreshCommitList
     | RefreshCompleted (Result Http.Error (PaginatedList Commit))
 
 
@@ -345,7 +345,7 @@ update project session msg model =
             in
                 model => Route.modifyUrl newRoute
 
-        RefreshCommitList _ ->
+        RefreshCommitList ->
             let
                 refreshTask =
                     loadCommits project.slug (Maybe.map .token session.user) model.branch model.page
