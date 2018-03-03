@@ -72,7 +72,7 @@ routeToString page =
                 |> String.join "&"
 
         routeString =
-            path
+            "/" ++ path
     in
         if String.length queryString > 0 then
             routeString ++ "?" ++ queryString
