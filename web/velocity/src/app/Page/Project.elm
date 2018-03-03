@@ -2,6 +2,7 @@ module Page.Project exposing (..)
 
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
+import Request.Errors
 import Task exposing (Task)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
@@ -62,7 +63,7 @@ initialSubPage =
     Blank
 
 
-init : Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init : Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task Request.Errors.Error ( Model, Cmd Msg )
 init session slug maybeRoute =
     let
         maybeAuthToken =
@@ -93,10 +94,11 @@ init session slug maybeRoute =
         handleLoadError e =
             case e of
                 Http.BadPayload debugError _ ->
-                    pageLoadError Page.Project debugError
+                    Request.Errors.PageLoadError <| pageLoadError Page.Project debugError
 
                 _ ->
                     pageLoadError Page.Project "Project unavailable."
+                        |> Request.Errors.handle e
     in
         Task.map3 initialModel loadProject loadBranches loadBuilds
             |> Task.andThen

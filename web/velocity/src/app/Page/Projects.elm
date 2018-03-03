@@ -5,6 +5,7 @@ import Data.Session as Session exposing (Session)
 import Task exposing (Task)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
+import Request.Errors
 import Views.Page as Page
 import Http
 import Html exposing (..)
@@ -71,7 +72,7 @@ initialForm =
     }
 
 
-init : Session msg -> Task PageLoadError Model
+init : Session msg -> Task Request.Errors.Error Model
 init session =
     let
         maybeAuthToken =
@@ -81,8 +82,9 @@ init session =
             Request.Project.list maybeAuthToken
                 |> Http.toTask
 
-        handleLoadError _ =
+        handleLoadError e =
             pageLoadError Page.Projects "Projects are currently unavailable."
+                |> Request.Errors.handle e
 
         initialModel (Paginated projectResults) =
             { formCollapsed = True

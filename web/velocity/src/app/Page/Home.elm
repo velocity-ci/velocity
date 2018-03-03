@@ -14,6 +14,7 @@ import Views.Page as Page
 import Task exposing (Task)
 import Http
 import Request.Project
+import Request.Errors
 import Page.Helpers exposing (formatDate, sortByDatetime)
 import Route
 import Page.Project.Route as ProjectRoute
@@ -31,7 +32,7 @@ type alias Model =
     { projects : List Project }
 
 
-init : Session msg -> Task PageLoadError Model
+init : Session msg -> Task Request.Errors.Error Model
 init session =
     let
         maybeAuthToken =
@@ -41,8 +42,9 @@ init session =
             Request.Project.list maybeAuthToken
                 |> Http.toTask
 
-        handleLoadError _ =
+        handleLoadError e =
             pageLoadError Page.Home "Homepage is currently unavailable."
+                |> Request.Errors.handle e
     in
         Task.map (\(Paginated { results }) -> Model results) loadProjects
             |> Task.mapError handleLoadError

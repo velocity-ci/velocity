@@ -22,6 +22,7 @@ import Socket.Socket as Socket exposing (Socket)
 import Socket.Channel as Channel exposing (Channel)
 import Json.Encode as Encode
 import Dict
+import Request.Errors
 
 
 type Page
@@ -223,6 +224,7 @@ type Msg
     | SetRoute (Maybe Route)
     | HomeMsg Home.Msg
     | HomeLoaded (Result PageLoadError Home.Model)
+    | SessionExpired
     | SetUser (Maybe User)
     | LoginMsg Login.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
@@ -285,9 +287,25 @@ leavePageChannels session page route =
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
 setRoute maybeRoute model =
     let
+        transition : (Result PageLoadError a -> Msg) -> Task.Task Request.Errors.Error a -> ( Model, Cmd Msg )
         transition toMsg task =
-            { model | pageState = TransitioningFrom (getPage model.pageState) }
-                => Task.attempt toMsg task
+            let
+                handleError : Result Request.Errors.Error a -> Msg
+                handleError response =
+                    case response of
+                        Err requestError ->
+                            case requestError of
+                                Request.Errors.UnauthorizedError ->
+                                    SessionExpired
+
+                                Request.Errors.PageLoadError pageLoadError ->
+                                    Result.Err pageLoadError |> toMsg
+
+                        Ok a ->
+                            Result.Ok a |> toMsg
+            in
+                { model | pageState = TransitioningFrom (getPage model.pageState) }
+                    => Task.attempt handleError task
 
         errored =
             pageErrored model
@@ -471,6 +489,17 @@ updatePage page msg model =
                 { model | pageState = Loaded (toModel newModel) }
                     ! [ Cmd.map toMsg newCmd ]
 
+        setRouteUpdate route model =
+            let
+                ( channelLeaveSession, channelLeaveCmd ) =
+                    leavePageChannels model.session (getPage model.pageState) route
+
+                ( routeModel, routeCmd ) =
+                    setRoute route { model | session = channelLeaveSession }
+            in
+                routeModel
+                    ! [ routeCmd, channelLeaveCmd ]
+
         errored =
             pageErrored model
     in
@@ -490,15 +519,10 @@ updatePage page msg model =
                         model => Navigation.newUrl newUrl
 
             ( SetRoute route, _ ) ->
-                let
-                    ( channelLeaveSession, channelLeaveCmd ) =
-                        leavePageChannels model.session (getPage model.pageState) route
+                setRouteUpdate route model
 
-                    ( routeModel, routeCmd ) =
-                        setRoute route { model | session = channelLeaveSession }
-                in
-                    routeModel
-                        ! [ routeCmd, channelLeaveCmd ]
+            ( SessionExpired, _ ) ->
+                setRouteUpdate (Just Route.Logout) model
 
             ( JoinChannel channel, _ ) ->
                 let
