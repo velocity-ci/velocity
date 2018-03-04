@@ -90,7 +90,7 @@ func (db *commitStormDB) getAllForProject(p *project.Project, pQ *CommitQuery) (
 		return db.getAllForProjectBranchFilter(p, pQ)
 	}
 	t = 0
-	query := db.Select(q.Eq("ProjectID", p.ID))
+	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormCommit{})
 	if err != nil {
 		logrus.Error(err)
@@ -109,7 +109,7 @@ func (db *commitStormDB) getAllForProject(p *project.Project, pQ *CommitQuery) (
 func (db *commitStormDB) getAllForProjectBranchFilter(p *project.Project, pQ *CommitQuery) (r []*Commit, t int) {
 	t = 0
 	skipCounter := 0
-	query := db.Select(q.Eq("ProjectID", p.ID))
+	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
 	var stormCommits []*StormCommit
 	query.Find(&stormCommits)
 	for _, dC := range stormCommits {
