@@ -5,6 +5,7 @@ import Data.Session as Session exposing (Session)
 import Task exposing (Task)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
+import Request.Errors
 import Views.Page as Page
 import Http
 import Html exposing (..)
@@ -71,7 +72,7 @@ initialForm =
     }
 
 
-init : Session msg -> Task PageLoadError Model
+init : Session msg -> Task (Request.Errors.Error PageLoadError) Model
 init session =
     let
         maybeAuthToken =
@@ -79,9 +80,8 @@ init session =
 
         loadProjects =
             Request.Project.list maybeAuthToken
-                |> Http.toTask
 
-        handleLoadError _ =
+        errorPage =
             pageLoadError Page.Projects "Projects are currently unavailable."
 
         initialModel (Paginated projectResults) =
@@ -94,7 +94,7 @@ init session =
             }
     in
         Task.map initialModel loadProjects
-            |> Task.mapError handleLoadError
+            |> Task.mapError (Request.Errors.withDefaultError errorPage)
 
 
 
@@ -318,8 +318,13 @@ type Msg
     | SetName String
     | SetRepository String
     | SetPrivateKey String
-    | ProjectCreated (Result Http.Error Project)
+    | ProjectCreated (Result Request.Errors.HttpError Project)
     | AddProject Encode.Value
+
+
+type ExternalMsg
+    = NoOp
+    | HandleRequestError Request.Errors.HandledError
 
 
 updateInput : Field -> String -> FormField
@@ -360,7 +365,7 @@ serverErrorToFormError ( fieldNameString, errorString ) =
         field => errorString
 
 
-update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+update : Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     let
         form =
@@ -371,7 +376,7 @@ update session msg model =
     in
         case msg of
             NewUrl url ->
-                model => Navigation.newUrl url
+                model => Navigation.newUrl url => NoOp
 
             SubmitForm ->
                 case validate form of
@@ -392,7 +397,7 @@ update session msg model =
                             cmdFromAuth authToken =
                                 authToken
                                     |> Request.Project.create submitValues
-                                    |> Http.send ProjectCreated
+                                    |> Task.attempt ProjectCreated
 
                             cmd =
                                 session
@@ -405,14 +410,13 @@ update session msg model =
                                 , errors = []
                             }
                                 => cmd
+                                => NoOp
 
                     errors ->
-                        { model | errors = errors }
-                            => Cmd.none
+                        { model | errors = errors } => Cmd.none => NoOp
 
             SetFormCollapsed state ->
-                { model | formCollapsed = state }
-                    => Cmd.none
+                { model | formCollapsed = state } => Cmd.none => NoOp
 
             SetName name ->
                 let
@@ -425,6 +429,7 @@ update session msg model =
                         , serverErrors = resetServerErrorsForField Name
                     }
                         => Cmd.none
+                        => NoOp
 
             SetRepository repository ->
                 let
@@ -437,6 +442,7 @@ update session msg model =
                         , serverErrors = resetServerErrorsForField Repository
                     }
                         => Cmd.none
+                        => NoOp
 
             SetPrivateKey privateKey ->
                 let
@@ -449,24 +455,32 @@ update session msg model =
                         , serverErrors = resetServerErrorsForField PrivateKey
                     }
                         => Cmd.none
+                        => NoOp
 
             ProjectCreated (Err err) ->
                 let
-                    errorMessages =
-                        case err of
-                            Http.BadStatus response ->
-                                response.body
-                                    |> decodeString errorsDecoder
-                                    |> Result.withDefault []
+                    newState =
+                        { model | submitting = False }
 
-                            _ ->
-                                [ ( "", "Unable to process project." ) ]
+                    stateWithErrorMessages errorMessages =
+                        { newState
+                            | serverErrors = List.map serverErrorToFormError errorMessages
+                        }
+                            => Cmd.none
+                            => NoOp
                 in
-                    { model
-                        | submitting = False
-                        , serverErrors = List.map serverErrorToFormError errorMessages
-                    }
-                        => Cmd.none
+                    case err of
+                        Request.Errors.HandledError handledError ->
+                            newState => Cmd.none => HandleRequestError handledError
+
+                        Request.Errors.UnhandledError (Http.BadStatus response) ->
+                            response.body
+                                |> decodeString errorsDecoder
+                                |> Result.withDefault []
+                                |> stateWithErrorMessages
+
+                        _ ->
+                            stateWithErrorMessages [ ( "", "Unable to process project." ) ]
 
             ProjectCreated (Ok project) ->
                 { model
@@ -475,6 +489,7 @@ update session msg model =
                     , form = initialForm
                 }
                     => Cmd.none
+                    => NoOp
 
             AddProject projectJson ->
                 let
@@ -495,7 +510,7 @@ update session msg model =
                             Err _ ->
                                 model
                 in
-                    newModel => Cmd.none
+                    newModel => Cmd.none => NoOp
 
 
 

@@ -17,6 +17,7 @@ import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses, formatDateTime)
 import Request.Commit
 import Request.Build
+import Request.Errors
 import Task exposing (Task)
 import Util exposing ((=>))
 import Validate exposing (..)
@@ -105,7 +106,7 @@ loadBuild :
     ProjectTask.Task
     -> Maybe AuthToken
     -> Build
-    -> Task Http.Error (Maybe BuildType)
+    -> Task Request.Errors.HttpError (Maybe BuildType)
 loadBuild task maybeAuthToken build =
     build.steps
         |> List.sortBy .number
@@ -124,14 +125,13 @@ loadBuild task maybeAuthToken build =
                 List.map
                     (\{ id } ->
                         Request.Build.streamOutput maybeAuthToken id
-                            |> Http.toTask
-                            |> Task.andThen (\output -> Task.succeed ( id, taskStep, buildStep, output ))
+                            |> Task.map (\output -> ( id, taskStep, buildStep, output ))
                     )
                     buildStep.streams
             )
         |> List.foldr (++) []
         |> Task.sequence
-        |> Task.andThen
+        |> Task.map
             (\streamOutputList ->
                 streamOutputList
                     |> List.foldr
@@ -145,7 +145,6 @@ loadBuild task maybeAuthToken build =
                         Dict.empty
                     |> LoadedBuild build.id
                     |> Just
-                    |> Task.succeed
             )
 
 
@@ -220,8 +219,7 @@ init session id hash task maybeSelectedTab builds =
                     case build of
                         Just b ->
                             loadBuild task maybeAuthToken b
-                                |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
-                                |> Task.map initialModel
+                                |> Task.map (Maybe.map BuildFrame >> initialModel)
                                 |> Task.mapError handleLoadError
 
                         Nothing ->
@@ -698,10 +696,10 @@ type Msg
     | OnInput InputFormField String
     | OnChange ChoiceFormField (Maybe Int)
     | SubmitForm
-    | BuildCreated (Result Http.Error Build)
+    | BuildCreated (Result Request.Errors.HttpError Build)
     | SelectTab Tab String
     | LoadBuild Build
-    | BuildLoaded (Result Http.Error (Maybe BuildType))
+    | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
     | AddStreamOutput BuildStream Encode.Value
     | BuildUpdated Encode.Value
 
@@ -809,7 +807,7 @@ update project commit builds session msg model =
                     cmdFromAuth authToken =
                         authToken
                             |> Request.Commit.createBuild projectSlug commitHash taskName params
-                            |> Http.send BuildCreated
+                            |> Task.attempt BuildCreated
 
                     cmd =
                         session

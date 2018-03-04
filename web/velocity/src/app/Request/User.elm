@@ -5,7 +5,9 @@ import Http
 import Json.Encode as Encode
 import Ports
 import Request.Helpers exposing (apiUrl)
+import Request.Errors
 import Util exposing ((=>))
+import Task exposing (Task)
 
 
 storeSession : User -> Cmd msg
@@ -16,7 +18,7 @@ storeSession user =
         |> Ports.storeSession
 
 
-login : { r | username : String, password : String } -> Http.Request User
+login : { r | username : String, password : String } -> Task Request.Errors.HttpError User
 login { username, password } =
     let
         user =
@@ -30,3 +32,5 @@ login { username, password } =
     in
         User.decoder
             |> Http.post (apiUrl "/auth") body
+            |> Http.toTask
+            |> Task.mapError Request.Errors.handleError

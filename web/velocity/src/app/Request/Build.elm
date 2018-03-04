@@ -6,16 +6,18 @@ import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Request.Helpers exposing (apiUrl)
+import Request.Errors
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Http
 import Array exposing (Array)
 import Json.Decode as Decode
+import Task exposing (Task)
 
 
 steps :
     Build.Id
     -> Maybe AuthToken
-    -> Http.Request (PaginatedList BuildStep)
+    -> Task Request.Errors.HttpError (PaginatedList BuildStep)
 steps id maybeToken =
     let
         expect =
@@ -27,13 +29,14 @@ steps id maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 streams :
     Maybe AuthToken
     -> BuildStep.Id
-    -> Http.Request (PaginatedList BuildStream)
+    -> Task Request.Errors.HttpError (PaginatedList BuildStream)
 streams maybeToken id =
     let
         expect =
@@ -45,13 +48,14 @@ streams maybeToken id =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 streamOutput :
     Maybe AuthToken
     -> BuildStream.Id
-    -> Http.Request (Array BuildStreamOutput)
+    -> Task Request.Errors.HttpError (Array BuildStreamOutput)
 streamOutput maybeToken id =
     let
         expect =
@@ -64,4 +68,5 @@ streamOutput maybeToken id =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError

@@ -13,6 +13,7 @@ import Page.Helpers exposing (formatDate, formatTime, sortByDatetime)
 import Data.AuthToken as AuthToken exposing (AuthToken)
 import Request.Project
 import Request.Commit
+import Request.Errors
 import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
@@ -42,7 +43,7 @@ type alias Model =
     }
 
 
-loadCommits : Project.Slug -> Maybe AuthToken -> Maybe Branch -> Int -> Http.Request (PaginatedList Commit)
+loadCommits : Project.Slug -> Maybe AuthToken -> Maybe Branch -> Int -> Task Request.Errors.HttpError (PaginatedList Commit)
 loadCommits projectSlug maybeAuthToken maybeBranch page =
     maybeAuthToken
         |> Request.Commit.list projectSlug (Maybe.map .name maybeBranch) perPage page
@@ -73,7 +74,7 @@ init session branches projectSlug maybeBranchName maybePage =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map initialModel (loadCommits projectSlug maybeAuthToken maybeBranch defaultPage |> Http.toTask)
+        Task.map initialModel (loadCommits projectSlug maybeAuthToken maybeBranch defaultPage)
             |> Task.mapError handleLoadError
 
 
@@ -290,12 +291,12 @@ pageLink page isActive project maybeBranch =
 
 type Msg
     = SubmitSync
-    | SyncCompleted (Result Http.Error Project)
+    | SyncCompleted (Result Request.Errors.HttpError Project)
     | FilterBranch (Maybe Branch)
     | SelectPage Int
     | NewUrl String
     | RefreshCommitList
-    | RefreshCompleted (Result Http.Error (PaginatedList Commit))
+    | RefreshCompleted (Result Request.Errors.HttpError (PaginatedList Commit))
 
 
 update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -309,7 +310,6 @@ update project session msg model =
                 cmdFromAuth authToken =
                     authToken
                         |> Request.Project.sync project.slug
-                        |> Http.toTask
                         |> Task.attempt SyncCompleted
 
                 cmd =
@@ -368,7 +368,7 @@ update project session msg model =
                 refreshTask =
                     loadCommits project.slug (Maybe.map .token session.user) model.branch model.page
             in
-                model => Http.send RefreshCompleted refreshTask
+                model => Task.attempt RefreshCompleted refreshTask
 
         RefreshCompleted (Ok (Paginated { results, total })) ->
             { model
