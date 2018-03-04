@@ -2,4 +2,4 @@
 
 eval $(ssh-agent)
 
-/bin/vci-architect
+exec /bin/vci-architect
