@@ -229,11 +229,20 @@ breadcrumb project =
 
 viewBreadcrumbExtraItems : Project -> Model -> Html Msg
 viewBreadcrumbExtraItems project model =
-    div [ class "ml-auto p-2" ]
-        [ button
-            [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled (project.synchronising || model.submitting) ]
-            [ i [ class "fa fa-refresh" ] [], text " Refresh " ]
-        ]
+    let
+        submitting =
+            project.synchronising || model.submitting
+
+        iconClassList =
+            [ ("fa fa-refresh" => True)
+            , ("fa-spin fa-fw" => submitting)
+            ]
+    in
+        div [ class "ml-auto p-2" ]
+            [ button
+                [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled submitting ]
+                [ i [ classList iconClassList ] [], text " Refresh " ]
+            ]
 
 
 pagination : Int -> Int -> Project -> Maybe Branch -> Html Msg

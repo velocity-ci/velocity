@@ -2,9 +2,8 @@ module Main exposing (main)
 
 import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
-import Html exposing (..)
-import Json.Decode as Decode exposing (Value)
 import Navigation exposing (Location)
+import Views.Page as Page exposing (ActivePage)
 import Page.Errored as Errored exposing (PageLoadError)
 import Page.Home as Home
 import Page.Login as Login
@@ -12,16 +11,17 @@ import Page.NotFound as NotFound
 import Page.Projects as Projects
 import Page.Project as Project
 import Page.KnownHosts as KnownHosts
-import Ports
 import Route exposing (Route)
-import Task
 import Util exposing ((=>))
-import Views.Page as Page exposing (ActivePage)
 import Page.Header as Header
 import Socket.Socket as Socket exposing (Socket)
 import Socket.Channel as Channel exposing (Channel)
 import Json.Encode as Encode
+import Html exposing (..)
+import Json.Decode as Decode exposing (Value)
+import Task
 import Dict
+import Ports
 
 
 type Page
@@ -47,6 +47,7 @@ type PageState
 type alias Model =
     { session : Session Msg
     , pageState : PageState
+    , headerState : Header.Model
     }
 
 
@@ -60,11 +61,21 @@ init val location =
             { user = user
             , socket = initialSocket
             }
+
+        ( headerState, headerCmd ) =
+            Header.init
+
+        ( initialModel, initialCmd ) =
+            setRoute (Route.fromLocation location)
+                { pageState = Loaded initialPage
+                , session = session
+                , headerState = headerState
+                }
     in
-        setRoute (Route.fromLocation location)
-            { pageState = Loaded initialPage
-            , session = session
-            }
+        initialModel
+            ! [ Cmd.map HeaderMsg headerCmd
+              , initialCmd
+              ]
 
 
 decodeUserFromJson : Value -> Maybe User
@@ -96,7 +107,7 @@ view model =
             viewPage model.session
 
         header =
-            viewHeader model.session
+            viewHeader model
     in
         case model.pageState of
             Loaded activePage ->
@@ -124,15 +135,18 @@ pageToActivePage page =
         Project _ ->
             Page.Project
 
+        KnownHosts _ ->
+            Page.KnownHosts
+
         _ ->
             Page.Other
 
 
-viewHeader : Session msg -> Bool -> Page -> Html Msg
-viewHeader session isLoading page =
+viewHeader : Model -> Bool -> Page -> Html Msg
+viewHeader { session, headerState } isLoading page =
     page
         |> pageToActivePage
-        |> Header.viewHeader session.user isLoading
+        |> Header.view headerState session.user isLoading
         |> Html.map HeaderMsg
 
 
@@ -193,10 +207,15 @@ subscriptions model =
         session =
             Sub.map SetUser sessionChange
 
+        header =
+            model.headerState
+                |> Header.subscriptions
+                |> Sub.map HeaderMsg
+
         socket =
             Socket.listen model.session.socket SocketMsg
     in
-        Sub.batch [ session, socket ]
+        Sub.batch [ header, session, socket ]
 
 
 sessionChange : Sub (Maybe User)
@@ -219,8 +238,7 @@ getPage pageState =
 
 
 type Msg
-    = HeaderMsg Header.ExternalMsg
-    | SetRoute (Maybe Route)
+    = SetRoute (Maybe Route)
     | HomeMsg Home.Msg
     | HomeLoaded (Result PageLoadError Home.Model)
     | SetUser (Maybe User)
@@ -233,6 +251,7 @@ type Msg
     | KnownHostsMsg KnownHosts.Msg
     | SocketMsg (Socket.Msg Msg)
     | JoinChannel (Channel Msg)
+    | HeaderMsg Header.Msg
     | NoOp
 
 
@@ -485,9 +504,12 @@ updatePage page msg model =
                     )
 
             ( HeaderMsg subMsg, _ ) ->
-                case subMsg of
-                    Header.NewUrl newUrl ->
-                        model => Navigation.newUrl newUrl
+                let
+                    ( headerState, headerCmd ) =
+                        Header.update subMsg model.headerState
+                in
+                    { model | headerState = headerState }
+                        => Cmd.map HeaderMsg headerCmd
 
             ( SetRoute route, _ ) ->
                 let
