@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 
@@ -15,7 +13,7 @@ import (
 )
 
 type buildRequest struct {
-	Parameters []requestParameter `json:"parameters"`
+	Parameters []requestParameter `json:"params"`
 }
 
 type requestParameter struct {
@@ -109,8 +107,6 @@ func (h *buildHandler) create(c echo.Context) error {
 	for _, p := range rB.Parameters {
 		params[p.Name] = p.Value
 	}
-
-	logrus.Debugf("Parameters from request: %v", params)
 
 	b, err := h.buildManager.Create(t, params)
 	if err != nil {
