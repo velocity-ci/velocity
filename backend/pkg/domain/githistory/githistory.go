@@ -18,7 +18,8 @@ type Commit struct {
 
 type CommitQuery struct {
 	*domain.PagingQuery
-	Branches []string `json:"branches"`
+	Branches []string `json:"branches" query:"branches"`
+	Branch   string   `json:"branch" query:"branch"`
 }
 
 type Branch struct {

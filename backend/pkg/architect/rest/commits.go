@@ -67,6 +67,10 @@ func getCommitQueryParams(c echo.Context) *githistory.CommitQuery {
 		return nil
 	}
 
+	if pQ.Branch != "" {
+		pQ.Branches = []string{pQ.Branch}
+	}
+
 	return pQ
 }
 
