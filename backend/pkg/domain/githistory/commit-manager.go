@@ -80,7 +80,7 @@ func (m *CommitManager) AddCommitToBranch(c *Commit, b *Branch) error {
 	return nil
 }
 
-func (m *CommitManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Commit, int) {
+func (m *CommitManager) GetAllForProject(p *project.Project, q *CommitQuery) ([]*Commit, int) {
 	return m.db.getAllForProject(p, q)
 }
 
