@@ -90,9 +90,9 @@ func (db *branchStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQ
 		return r, t
 	}
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var StormBranches []*StormBranch
-	query.Find(&StormBranches)
-	for _, b := range StormBranches {
+	var stormBranches []*StormBranch
+	query.Find(&stormBranches)
+	for _, b := range stormBranches {
 		r = append(r, b.ToBranch(db.DB))
 	}
 
@@ -116,9 +116,9 @@ func (db *branchStormDB) getAllForCommit(c *Commit, pQ *domain.PagingQuery) (r [
 
 	query = db.Select(q.In("ID", branchIDs))
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var StormBranches []*StormBranch
-	query.Find(&StormBranches)
-	for _, b := range StormBranches {
+	var stormBranches []*StormBranch
+	query.Find(&stormBranches)
+	for _, b := range stormBranches {
 		r = append(r, b.ToBranch(db.DB))
 	}
 

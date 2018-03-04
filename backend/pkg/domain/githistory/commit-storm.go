@@ -85,22 +85,70 @@ func (db *commitStormDB) getByProjectAndHash(p *project.Project, hash string) (*
 	return c.ToCommit(db.DB), nil
 }
 
-func (db *commitStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQuery) (r []*Commit, t int) {
+func (db *commitStormDB) getAllForProject(p *project.Project, pQ *CommitQuery) (r []*Commit, t int) {
+	if len(pQ.Branches) > 0 {
+		return db.getAllForProjectBranchFilter(p, pQ)
+	}
 	t = 0
-	query := db.Select(q.Eq("ProjectID", p.ID))
+	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormCommit{})
 	if err != nil {
 		logrus.Error(err)
 		return r, t
 	}
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var StormCommits []*StormCommit
-	query.Find(&StormCommits)
-	for _, c := range StormCommits {
-		r = append(r, c.ToCommit(db.DB))
+	var stormCommits []*StormCommit
+	query.Find(&stormCommits)
+	for _, dC := range stormCommits {
+		r = append(r, dC.ToCommit(db.DB))
 	}
 
 	return r, t
+}
+
+func (db *commitStormDB) getAllForProjectBranchFilter(p *project.Project, pQ *CommitQuery) (r []*Commit, t int) {
+	t = 0
+	skipCounter := 0
+	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
+	var stormCommits []*StormCommit
+	query.Find(&stormCommits)
+	for _, dC := range stormCommits {
+		// if unison of branches add
+		query := db.Select(q.Eq("CommitID", dC.ID))
+		branchCommits := []branchCommitStorm{}
+		query.Find(&branchCommits)
+		branchIDs := []string{}
+		for _, bC := range branchCommits {
+			branchIDs = append(branchIDs, bC.BranchID)
+		}
+		query = db.Select(q.In("ID", branchIDs))
+		var stormBranches []*StormBranch
+		query.Find(&stormBranches)
+		if isStormBranchInBranchNames(stormBranches, pQ.Branches) {
+			t++
+			if len(r) >= pQ.Limit {
+				break
+			} else if skipCounter < (pQ.Page-1)*pQ.Limit {
+				skipCounter++
+			} else {
+				r = append(r, dC.ToCommit(db.DB))
+			}
+		}
+	}
+
+	return r, t
+}
+
+func isStormBranchInBranchNames(sBs []*StormBranch, branches []string) bool {
+	for _, sB := range sBs {
+		for _, branch := range branches {
+			if sB.Name == branch {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (db *commitStormDB) getAllForBranch(b *Branch, pQ *domain.PagingQuery) (r []*Commit, t int) {
@@ -121,9 +169,9 @@ func (db *commitStormDB) getAllForBranch(b *Branch, pQ *domain.PagingQuery) (r [
 
 	query = db.Select(q.In("ID", commitIDs))
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
-	var StormCommits []*StormCommit
-	query.Find(&StormCommits)
-	for _, c := range StormCommits {
+	var stormCommits []*StormCommit
+	query.Find(&stormCommits)
+	for _, c := range stormCommits {
 		r = append(r, c.ToCommit(db.DB))
 	}
 

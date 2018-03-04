@@ -58,6 +58,22 @@ func newCommitHandler(
 	}
 }
 
+func getCommitQueryParams(c echo.Context) *githistory.CommitQuery {
+	pQ := &githistory.CommitQuery{
+		PagingQuery: domain.NewPagingQuery(),
+	}
+	if err := c.Bind(pQ); err != nil {
+		c.JSON(http.StatusBadRequest, "invalid parameters")
+		return nil
+	}
+
+	if pQ.Branch != "" {
+		pQ.Branches = []string{pQ.Branch}
+	}
+
+	return pQ
+}
+
 func (h *commitHandler) getAllForProject(c echo.Context) error {
 
 	p := getProjectBySlug(c, h.projectManager)
@@ -65,7 +81,7 @@ func (h *commitHandler) getAllForProject(c echo.Context) error {
 		return nil
 	}
 
-	pQ := getPagingQueryParams(c)
+	pQ := getCommitQueryParams(c)
 	if pQ == nil {
 		return nil
 	}

@@ -16,8 +16,8 @@ func NewStormDB(path string) *storm.DB {
 }
 
 type PagingQuery struct {
-	Limit int `json:"limit"`
-	Page  int `json:"page"`
+	Limit int `json:"limit" query:"limit"`
+	Page  int `json:"page" query:"page"`
 }
 
 func NewPagingQuery() *PagingQuery {

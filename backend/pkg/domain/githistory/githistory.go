@@ -3,6 +3,7 @@ package githistory
 import (
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
@@ -13,6 +14,12 @@ type Commit struct {
 	Author    string           `json:"author"`
 	CreatedAt time.Time        `json:"createdAt"`
 	Message   string           `json:"message"`
+}
+
+type CommitQuery struct {
+	*domain.PagingQuery
+	Branches []string `json:"branches" query:"branches"`
+	Branch   string   `json:"branch" query:"branch"`
 }
 
 type Branch struct {

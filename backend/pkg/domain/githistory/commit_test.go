@@ -111,11 +111,68 @@ func (s *CommitSuite) TestGetAllForProject() {
 	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
 	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", ts)
 
-	cs, total := m.GetAllForProject(p, &domain.PagingQuery{Limit: 5, Page: 1})
+	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
+		PagingQuery: &domain.PagingQuery{
+			Limit: 5,
+			Page:  1,
+		},
+	})
 
 	s.Equal(2, total)
 	s.Len(cs, 2)
 	s.Contains(cs, c1)
+	s.Contains(cs, c2)
+}
+
+func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
+	m := githistory.NewCommitManager(s.storm)
+
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
+		Address: "testGit",
+	})
+
+	b1 := s.branchManager.Create(p, "testBranch1")
+	b2 := s.branchManager.Create(p, "testBranch2")
+
+	m.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now())
+	c2 := m.Create(b2, p, "123456", "2est commit", "me@velocityci.io", time.Now().Add(1*time.Second))
+	c3 := m.Create(b2, p, "1234567", "2est commit", "me@velocityci.io", time.Now().Add(2*time.Second))
+
+	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
+		PagingQuery: &domain.PagingQuery{
+			Limit: 5,
+			Page:  1,
+		},
+		Branches: []string{"testBranch2"},
+	})
+
+	s.Equal(2, total)
+	s.Len(cs, 2)
+	s.Contains(cs, c2)
+	s.Contains(cs, c3)
+
+	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
+		PagingQuery: &domain.PagingQuery{
+			Limit: 1,
+			Page:  1,
+		},
+		Branches: []string{"testBranch2"},
+	})
+
+	s.Equal(2, total)
+	s.Len(cs, 1)
+	s.Contains(cs, c3)
+
+	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
+		PagingQuery: &domain.PagingQuery{
+			Limit: 1,
+			Page:  2,
+		},
+		Branches: []string{"testBranch2"},
+	})
+
+	s.Equal(2, total)
+	s.Len(cs, 1)
 	s.Contains(cs, c2)
 }
 
