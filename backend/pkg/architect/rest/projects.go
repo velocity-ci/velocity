@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo"
@@ -12,7 +13,7 @@ import (
 type projectRequest struct {
 	Name       string `json:"name"`
 	Address    string `json:"address"`
-	PrivateKey string `json:"privateKey"`
+	PrivateKey string `json:"key"`
 }
 
 type projectResponse struct {
@@ -60,8 +61,8 @@ func (h *projectHandler) create(c echo.Context) error {
 		return nil
 	}
 	p, err := h.projectManager.Create(rP.Name, velocity.GitRepository{
-		Address:    rP.Address,
-		PrivateKey: rP.PrivateKey,
+		Address:    strings.TrimSpace(rP.Address),
+		PrivateKey: strings.TrimSpace(rP.PrivateKey),
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.ErrorMap)

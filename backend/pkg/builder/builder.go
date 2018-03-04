@@ -112,10 +112,10 @@ func monitorCommands(ws *websocket.Conn) {
 			return
 		}
 
-		if command.Command == "build" {
+		if command.Command == builder.CommandBuild {
 			logrus.Infof("Got Build: %v", command.Payload)
 			runBuild(command.Payload.(*builder.BuildCtrl), ws)
-		} else if command.Command == "known-hosts" {
+		} else if command.Command == builder.CommandKnownHosts {
 			logrus.Infof("Got known hosts: %v", command.Payload)
 			updateKnownHosts(command.Payload.(*builder.KnownHostCtrl))
 		}

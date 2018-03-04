@@ -8,6 +8,11 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 )
 
+const (
+	CommandBuild      = "build"
+	CommandKnownHosts = "knownhosts"
+)
+
 type BuilderCtrlMessage struct {
 	Command string      `json:"command"`
 	Payload interface{} `json:"payload"`
@@ -21,7 +26,7 @@ type BuildCtrl struct {
 
 func newBuildCommand(b *build.Build, steps []*build.Step, streams []*build.Stream) *BuilderCtrlMessage {
 	return &BuilderCtrlMessage{
-		Command: "build",
+		Command: CommandBuild,
 		Payload: &BuildCtrl{
 			Build:   b,
 			Steps:   steps,
@@ -36,7 +41,7 @@ type KnownHostCtrl struct {
 
 func newKnownHostsCommand(ks []*knownhost.KnownHost) *BuilderCtrlMessage {
 	return &BuilderCtrlMessage{
-		Command: "knownhosts",
+		Command: CommandKnownHosts,
 		Payload: &KnownHostCtrl{
 			KnownHosts: ks,
 		},

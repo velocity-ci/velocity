@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	"github.com/gosimple/slug"
 	"golang.org/x/crypto/ssh"
 	git "gopkg.in/src-d/go-git.v4"
@@ -48,10 +50,11 @@ func GitClone(
 	var auth transport.AuthMethod
 
 	if isGit {
-		log.Printf("git repository: %s", r.Address)
+		logrus.Printf("git repository: %s", r.Address)
 		signer, err := ssh.ParsePrivateKey([]byte(r.PrivateKey))
 		if err != nil {
 			os.RemoveAll(dir)
+			logrus.Errorf("ssh key error: %s\n%s", err, r.PrivateKey)
 			return nil, "", SSHKeyError(err.Error())
 		}
 		auth = &gitssh.PublicKeys{User: "git", Signer: signer}

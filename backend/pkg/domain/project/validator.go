@@ -80,29 +80,30 @@ func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 
 	if err != nil {
 		if _, ok := err.(velocity.SSHKeyError); ok {
-			sl.ReportError(p.Config.PrivateKey, "key", "key", "key", "")
+			sl.ReportError(p.Config.PrivateKey, "key", "key", "sshPrivateKey", err.Error())
+		} else {
+			sl.ReportError(p.Config.Address, "repository", "repository", "gitRepository", "")
 		}
-		sl.ReportError(p.Config.Address, "repository", "repository", "repository", "")
 	}
 	os.RemoveAll(dir)
 }
 
 func registerFuncRepository(ut ut.Translator) error {
-	return ut.Add("repository", "Could not clone repository! Have you added the host to known hosts?", true)
+	return ut.Add("gitRepository", "Could not clone repository! Have you added the host to known hosts?", true)
 }
 
 func translationFuncRepository(ut ut.Translator, fe govalidator.FieldError) string {
-	t, _ := ut.T("repository", fe.Field())
+	t, _ := ut.T("gitRepository", fe.Field())
 
 	return t
 }
 
 func registerFuncKey(ut ut.Translator) error {
-	return ut.Add("key", "Invalid SSH Key", true)
+	return ut.Add("sshPrivateKey", "Invalid SSH Key: {0}", true)
 }
 
 func translationFuncKey(ut ut.Translator, fe govalidator.FieldError) string {
-	t, _ := ut.T("key", fe.Field())
+	t, _ := ut.T("sshPrivateKey", fe.Field())
 
 	return t
 }
