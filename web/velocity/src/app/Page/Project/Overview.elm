@@ -75,8 +75,13 @@ viewBuildHistoryTableRow project build =
         colourClassList =
             [ viewBuildTextClass build => True ]
 
-        route =
+        commitTaskRoute =
             CommitRoute.Task build.task.name Nothing
+                |> ProjectRoute.Commit build.task.commit.hash
+                |> Route.Project project.slug
+
+        commitRoute =
+            CommitRoute.Overview
                 |> ProjectRoute.Commit build.task.commit.hash
                 |> Route.Project project.slug
 
@@ -92,7 +97,7 @@ viewBuildHistoryTableRow project build =
         truncatedHash =
             Commit.truncateHash task.commit.hash
 
-        buildLink content =
+        buildLink content route =
             a
                 [ Route.href route
                 , onClickPage NewUrl route
@@ -101,9 +106,9 @@ viewBuildHistoryTableRow project build =
                 [ text content ]
     in
         tr [ classList colourClassList ]
-            [ td [] [ buildLink taskName ]
-            , td [] [ buildLink truncatedHash ]
-            , td [] [ buildLink createdAt ]
+            [ td [] [ buildLink taskName commitTaskRoute ]
+            , td [] [ buildLink truncatedHash commitRoute ]
+            , td [] [ buildLink createdAt commitTaskRoute ]
             , td [ style [ "text-align" => "right" ] ] [ viewBuildStatusIcon build ]
             ]
 
