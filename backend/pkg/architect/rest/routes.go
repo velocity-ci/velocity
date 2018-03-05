@@ -11,7 +11,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
@@ -63,8 +62,9 @@ func AddRoutes(
 	e.GET("/builder/ws", builderHandler.connect)
 
 	jwtConfig := middleware.JWTConfig{
-		Claims:     &jwt.StandardClaims{},
-		SigningKey: []byte(os.Getenv("JWT_SECRET")),
+		Claims:        jwtStandardClaims,
+		SigningKey:    []byte(os.Getenv("JWT_SECRET")),
+		SigningMethod: jwtSigningMethod.Name,
 	}
 
 	r := e.Group("/v1/users")
