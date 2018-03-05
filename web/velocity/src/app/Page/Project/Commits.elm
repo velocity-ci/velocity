@@ -212,13 +212,22 @@ viewCommitListItem slug commit =
 
         route =
             Route.Project slug <| ProjectRoute.Commit commit.hash CommitRoute.Overview
+
+        branchList =
+            commit.branches
+                |> List.map (\b -> span [ class "badge badge-secondary" ] [ text (Branch.nameToString (Just b)) ])
+                |> List.map (\b -> li [ class "list-inline-item" ] [ b ])
+                |> (ul [ class "mb-0 list-inline" ])
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route, onClickPage NewUrl route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
                 [ h5 [ class "mb-1 text-overflow" ] [ text commit.message ]
                 , small [] [ text truncatedHash ]
                 ]
-            , small [] [ strong [] [ text commit.author ], text (" commited at " ++ formatTime commit.date) ]
+            , div [ class "d-flex w-100 justify-content-between" ]
+                [ small [] [ strong [] [ text commit.author ], text (" commited at " ++ formatTime commit.date) ]
+                , branchList
+                ]
             ]
 
 
