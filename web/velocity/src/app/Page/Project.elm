@@ -2,6 +2,7 @@ module Page.Project exposing (..)
 
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
+import Request.Errors
 import Task exposing (Task)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
@@ -62,26 +63,20 @@ initialSubPage =
     Blank
 
 
-init : Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init : Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task (Request.Errors.Error PageLoadError) ( Model, Cmd Msg )
 init session slug maybeRoute =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadProject =
-            maybeAuthToken
-                |> Request.Project.get slug
-                |> Http.toTask
+            Request.Project.get slug maybeAuthToken
 
         loadBranches =
-            maybeAuthToken
-                |> Request.Project.branches slug
-                |> Http.toTask
+            Request.Project.branches slug maybeAuthToken
 
         loadBuilds =
-            maybeAuthToken
-                |> Request.Project.builds slug
-                |> Http.toTask
+            Request.Project.builds slug maybeAuthToken
 
         initialModel project (Paginated branches) (Paginated builds) =
             { project = project
@@ -99,18 +94,16 @@ init session slug maybeRoute =
                     pageLoadError Page.Project "Project unavailable."
     in
         Task.map3 initialModel loadProject loadBranches loadBuilds
-            |> Task.andThen
+            |> Task.map
                 (\successModel ->
                     case maybeRoute of
                         Just route ->
                             update session (SetRoute maybeRoute) successModel
-                                |> Task.succeed
 
                         Nothing ->
                             ( successModel, Cmd.none )
-                                |> Task.succeed
                 )
-            |> Task.mapError handleLoadError
+            |> Task.mapError (Request.Errors.mapUnhandledError handleLoadError)
 
 
 
@@ -425,7 +418,7 @@ type Msg
     | AddBranch Encode.Value
     | ProjectDeleted Encode.Value
     | RefreshBranches Encode.Value
-    | RefreshBranchesComplete (Result Http.Error (PaginatedList Branch))
+    | RefreshBranchesComplete (Result Request.Errors.HttpError (PaginatedList Branch))
     | AddBuildEvent Encode.Value
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
@@ -609,7 +602,7 @@ updateSubPage session subPage msg model =
 
             ( RefreshBranches _, _ ) ->
                 model
-                    => Http.send RefreshBranchesComplete (Request.Project.branches model.project.slug (Maybe.map .token session.user))
+                    => Task.attempt RefreshBranchesComplete (Request.Project.branches model.project.slug (Maybe.map .token session.user))
 
             ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
                 { model | branches = results }

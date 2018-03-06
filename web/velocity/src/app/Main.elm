@@ -11,6 +11,7 @@ import Page.NotFound as NotFound
 import Page.Projects as Projects
 import Page.Project as Project
 import Page.KnownHosts as KnownHosts
+import Request.Errors
 import Route exposing (Route)
 import Util exposing ((=>))
 import Page.Header as Header
@@ -240,14 +241,16 @@ getPage pageState =
 type Msg
     = SetRoute (Maybe Route)
     | HomeMsg Home.Msg
-    | HomeLoaded (Result PageLoadError Home.Model)
+    | HomeLoaded Home.Model
     | SetUser (Maybe User)
+    | SessionExpired
+    | LoadFailed PageLoadError
     | LoginMsg Login.Msg
-    | ProjectsLoaded (Result PageLoadError Projects.Model)
+    | ProjectsLoaded Projects.Model
     | ProjectsMsg Projects.Msg
-    | ProjectLoaded (Result PageLoadError ( Project.Model, Cmd Project.Msg ))
+    | ProjectLoaded ( Project.Model, Cmd Project.Msg )
     | ProjectMsg Project.Msg
-    | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
+    | KnownHostsLoaded KnownHosts.Model
     | KnownHostsMsg KnownHosts.Msg
     | SocketMsg (Socket.Msg Msg)
     | JoinChannel (Channel Msg)
@@ -301,12 +304,33 @@ leavePageChannels session page route =
             => leaveCmd
 
 
+handledErrorToMsg : Request.Errors.HandledError -> Msg
+handledErrorToMsg err =
+    case err of
+        Request.Errors.Unauthorized ->
+            SessionExpired
+
+
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
 setRoute maybeRoute model =
     let
-        transition toMsg task =
-            { model | pageState = TransitioningFrom (getPage model.pageState) }
-                => Task.attempt toMsg task
+        transition successMsg task =
+            let
+                model_ =
+                    { model | pageState = TransitioningFrom (getPage model.pageState) }
+
+                handleResult result =
+                    case result of
+                        Err (Request.Errors.HandledError handledError) ->
+                            handledErrorToMsg handledError
+
+                        Err (Request.Errors.UnhandledError pageLoadError) ->
+                            LoadFailed pageLoadError
+
+                        Ok payload ->
+                            successMsg payload
+            in
+                model_ => Task.attempt handleResult task
 
         errored =
             pageErrored model
@@ -490,6 +514,17 @@ updatePage page msg model =
                 { model | pageState = Loaded (toModel newModel) }
                     ! [ Cmd.map toMsg newCmd ]
 
+        setRouteUpdate route model =
+            let
+                ( channelLeaveSession, channelLeaveCmd ) =
+                    leavePageChannels model.session (getPage model.pageState) route
+
+                ( routeModel, routeCmd ) =
+                    setRoute route { model | session = channelLeaveSession }
+            in
+                routeModel
+                    ! [ routeCmd, channelLeaveCmd ]
+
         errored =
             pageErrored model
     in
@@ -512,15 +547,10 @@ updatePage page msg model =
                         => Cmd.map HeaderMsg headerCmd
 
             ( SetRoute route, _ ) ->
-                let
-                    ( channelLeaveSession, channelLeaveCmd ) =
-                        leavePageChannels model.session (getPage model.pageState) route
+                setRouteUpdate route model
 
-                    ( routeModel, routeCmd ) =
-                        setRoute route { model | session = channelLeaveSession }
-                in
-                    routeModel
-                        ! [ routeCmd, channelLeaveCmd ]
+            ( SessionExpired, _ ) ->
+                setRouteUpdate (Just Route.Logout) model
 
             ( JoinChannel channel, _ ) ->
                 let
@@ -558,6 +588,9 @@ updatePage page msg model =
                     }
                         => cmd
 
+            ( LoadFailed error, _ ) ->
+                { model | pageState = Loaded (Errored error) } => Cmd.none
+
             ( LoginMsg subMsg, Login subModel ) ->
                 let
                     ( ( pageModel, cmd ), msgFromPage ) =
@@ -583,34 +616,55 @@ updatePage page msg model =
                     { newModel | pageState = Loaded (Login pageModel) }
                         => Cmd.map LoginMsg cmd
 
-            ( HomeLoaded (Ok subModel), _ ) ->
+            ( HomeLoaded subModel, _ ) ->
                 { model | pageState = Loaded (Home subModel) } => Cmd.none
-
-            ( HomeLoaded (Err error), _ ) ->
-                { model | pageState = Loaded (Errored error) } => Cmd.none
 
             ( HomeMsg subMsg, Home subModel ) ->
                 toPage Home HomeMsg (Home.update session) subMsg subModel
 
-            ( ProjectsLoaded (Ok subModel), _ ) ->
+            ( ProjectsLoaded subModel, _ ) ->
                 { model | pageState = Loaded (Projects subModel) } => Cmd.none
 
-            ( ProjectsLoaded (Err error), _ ) ->
-                { model | pageState = Loaded (Errored error) } => Cmd.none
-
             ( ProjectsMsg subMsg, Projects subModel ) ->
-                toPage Projects ProjectsMsg (Projects.update session) subMsg subModel
+                let
+                    ( ( newSubModel, newSubCmd ), externalMsg ) =
+                        Projects.update session subMsg subModel
 
-            ( KnownHostsLoaded (Ok subModel), _ ) ->
+                    model_ =
+                        { model | pageState = Loaded (Projects newSubModel) }
+
+                    ( modelAfterExternalMsg, cmdAfterExternalMsg ) =
+                        case externalMsg of
+                            Projects.NoOp ->
+                                model_ => Cmd.none
+
+                            Projects.HandleRequestError err ->
+                                update (handledErrorToMsg err) model_
+                in
+                    modelAfterExternalMsg ! [ Cmd.map ProjectsMsg newSubCmd, cmdAfterExternalMsg ]
+
+            ( KnownHostsLoaded subModel, _ ) ->
                 { model | pageState = Loaded (KnownHosts subModel) } => Cmd.none
 
-            ( KnownHostsLoaded (Err error), _ ) ->
-                { model | pageState = Loaded (Errored error) } => Cmd.none
-
             ( KnownHostsMsg subMsg, KnownHosts subModel ) ->
-                toPage KnownHosts KnownHostsMsg (KnownHosts.update session) subMsg subModel
+                let
+                    ( ( newSubModel, newSubCmd ), externalMsg ) =
+                        KnownHosts.update session subMsg subModel
 
-            ( ProjectLoaded (Ok ( subModel, subMsg )), _ ) ->
+                    model_ =
+                        { model | pageState = Loaded (KnownHosts newSubModel) }
+
+                    ( modelAfterExternalMsg, cmdAfterExternalMsg ) =
+                        case externalMsg of
+                            KnownHosts.NoOp ->
+                                model_ => Cmd.none
+
+                            KnownHosts.HandleRequestError err ->
+                                update (handledErrorToMsg err) model_
+                in
+                    modelAfterExternalMsg ! [ Cmd.map KnownHostsMsg newSubCmd, cmdAfterExternalMsg ]
+
+            ( ProjectLoaded ( subModel, subMsg ), _ ) ->
                 let
                     pageState =
                         Loaded (Project subModel)
@@ -618,9 +672,6 @@ updatePage page msg model =
                     { model | pageState = pageState }
                         ! [ Cmd.map ProjectMsg subMsg
                           ]
-
-            ( ProjectLoaded (Err error), _ ) ->
-                { model | pageState = Loaded (Errored error) } => Cmd.none
 
             ( ProjectMsg subMsg, Project subModel ) ->
                 let

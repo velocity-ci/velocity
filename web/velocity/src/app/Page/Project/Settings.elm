@@ -9,8 +9,9 @@ import Util exposing ((=>))
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Request.Project
-import Http
+import Request.Errors
 import Route
+import Task
 
 
 -- MODEL --
@@ -131,7 +132,7 @@ breadcrumb project =
 
 type Msg
     = SubmitProjectDelete
-    | ProjectDeleted (Result Http.Error ())
+    | ProjectDeleted (Result Request.Errors.HttpError ())
     | SetDeleteState ConfirmDeleteState
 
 
@@ -143,7 +144,7 @@ update project session msg model =
                 cmdFromAuth authToken =
                     authToken
                         |> Request.Project.delete project.slug
-                        |> Http.send ProjectDeleted
+                        |> Task.attempt ProjectDeleted
 
                 cmd =
                     session

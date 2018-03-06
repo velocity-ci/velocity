@@ -16,9 +16,11 @@ import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Data.Build as Build exposing (Build)
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
+import Request.Errors
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Util exposing ((=>))
 import Http
+import Task exposing (Task)
 
 
 baseUrl : String
@@ -30,7 +32,7 @@ baseUrl =
 -- LIST --
 
 
-list : Maybe AuthToken -> Http.Request (PaginatedList Project)
+list : Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList Project)
 list maybeToken =
     let
         expect =
@@ -42,14 +44,15 @@ list maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- SYNC --
 
 
-sync : Project.Slug -> AuthToken -> Http.Request Project
+sync : Project.Slug -> AuthToken -> Task Request.Errors.HttpError Project
 sync slug token =
     let
         expect =
@@ -60,14 +63,15 @@ sync slug token =
             |> HttpBuilder.post
             |> withAuthorization (Just token)
             |> withExpect expect
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- BRANCHES --
 
 
-branches : Project.Slug -> Maybe AuthToken -> Http.Request (PaginatedList Branch)
+branches : Project.Slug -> Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList Branch)
 branches slug maybeToken =
     let
         expect =
@@ -79,14 +83,15 @@ branches slug maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- BUILDS --
 
 
-builds : Project.Slug -> Maybe AuthToken -> Http.Request (PaginatedList Build)
+builds : Project.Slug -> Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList Build)
 builds slug maybeToken =
     let
         expect =
@@ -98,14 +103,15 @@ builds slug maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- GET --
 
 
-get : Project.Slug -> Maybe AuthToken -> Http.Request Project
+get : Project.Slug -> Maybe AuthToken -> Task Request.Errors.HttpError Project
 get slug maybeToken =
     let
         expect =
@@ -116,7 +122,8 @@ get slug maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
@@ -131,7 +138,7 @@ type alias CreateConfig record =
     }
 
 
-create : CreateConfig record -> AuthToken -> Http.Request Project
+create : CreateConfig record -> AuthToken -> Task Request.Errors.HttpError Project
 create config token =
     let
         expect =
@@ -158,17 +165,19 @@ create config token =
             |> withAuthorization (Just token)
             |> withBody body
             |> withExpect expect
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- DELETE --
 
 
-delete : Project.Slug -> AuthToken -> Http.Request ()
+delete : Project.Slug -> AuthToken -> Task Request.Errors.HttpError ()
 delete slug token =
     apiUrl (baseUrl ++ "/" ++ Project.slugToString slug)
         |> HttpBuilder.delete
         |> withAuthorization (Just token)
         |> withExpect (Http.expectStringResponse (\_ -> Ok ()))
-        |> HttpBuilder.toRequest
+        |> HttpBuilder.toTask
+        |> Task.mapError Request.Errors.handleError

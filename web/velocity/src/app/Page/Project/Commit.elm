@@ -70,17 +70,14 @@ init session project hash maybeRoute =
         loadCommit =
             maybeAuthToken
                 |> Request.Commit.get project.slug hash
-                |> Http.toTask
 
         loadTasks =
             maybeAuthToken
                 |> Request.Commit.tasks project.slug hash
-                |> Http.toTask
 
         loadBuilds =
             maybeAuthToken
                 |> Request.Commit.builds project.slug hash
-                |> Http.toTask
 
         initialModel commit (Paginated tasks) (Paginated builds) =
             { commit = commit
@@ -93,16 +90,14 @@ init session project hash maybeRoute =
             pageLoadError Page.Project "Project unavailable."
     in
         Task.map3 initialModel loadCommit loadTasks loadBuilds
-            |> Task.andThen
+            |> Task.map
                 (\successModel ->
                     case maybeRoute of
                         Just route ->
                             update project session (SetRoute maybeRoute) successModel
-                                |> Task.succeed
 
                         Nothing ->
                             ( successModel, Cmd.none )
-                                |> Task.succeed
                 )
             |> Task.mapError handleLoadError
 

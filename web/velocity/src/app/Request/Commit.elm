@@ -9,9 +9,11 @@ import Data.Build as Build exposing (Build)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
+import Request.Errors
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Util exposing ((=>))
 import Http
+import Task as ElmTask
 
 
 baseUrl : String
@@ -29,7 +31,7 @@ list :
     -> Int
     -> Int
     -> Maybe AuthToken
-    -> Http.Request (PaginatedList Commit)
+    -> ElmTask.Task Request.Errors.HttpError (PaginatedList Commit)
 list projectSlug maybeBranch amount page maybeToken =
     let
         expect =
@@ -62,14 +64,15 @@ list projectSlug maybeBranch amount page maybeToken =
             |> HttpBuilder.withExpect expect
             |> HttpBuilder.withQueryParams queryParams
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> ElmTask.mapError Request.Errors.handleError
 
 
 
 -- GET --
 
 
-get : Project.Slug -> Commit.Hash -> Maybe AuthToken -> Http.Request Commit
+get : Project.Slug -> Commit.Hash -> Maybe AuthToken -> ElmTask.Task Request.Errors.HttpError Commit
 get projectSlug hash maybeToken =
     let
         expect =
@@ -87,14 +90,15 @@ get projectSlug hash maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> ElmTask.mapError Request.Errors.handleError
 
 
 
 -- TASKS --
 
 
-tasks : Project.Slug -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Task)
+tasks : Project.Slug -> Commit.Hash -> Maybe AuthToken -> ElmTask.Task Request.Errors.HttpError (PaginatedList Task)
 tasks projectSlug hash maybeToken =
     let
         expect =
@@ -114,10 +118,11 @@ tasks projectSlug hash maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> ElmTask.mapError Request.Errors.handleError
 
 
-task : Project.Slug -> Commit.Hash -> Task.Name -> Maybe AuthToken -> Http.Request Task
+task : Project.Slug -> Commit.Hash -> Task.Name -> Maybe AuthToken -> ElmTask.Task Request.Errors.HttpError Task
 task projectSlug hash name maybeToken =
     let
         expect =
@@ -137,14 +142,15 @@ task projectSlug hash name maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> ElmTask.mapError Request.Errors.handleError
 
 
 
 -- BUILDS --
 
 
-builds : Project.Slug -> Commit.Hash -> Maybe AuthToken -> Http.Request (PaginatedList Build)
+builds : Project.Slug -> Commit.Hash -> Maybe AuthToken -> ElmTask.Task Request.Errors.HttpError (PaginatedList Build)
 builds projectSlug hash maybeToken =
     let
         expect =
@@ -164,10 +170,11 @@ builds projectSlug hash maybeToken =
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> ElmTask.mapError Request.Errors.handleError
 
 
-createBuild : Project.Slug -> Commit.Hash -> Task.Name -> List ( String, String ) -> AuthToken -> Http.Request Build
+createBuild : Project.Slug -> Commit.Hash -> Task.Name -> List ( String, String ) -> AuthToken -> ElmTask.Task Request.Errors.HttpError Build
 createBuild projectSlug hash taskName params token =
     let
         expect =
@@ -214,4 +221,5 @@ createBuild projectSlug hash taskName params token =
             |> HttpBuilder.withExpect expect
             |> withAuthorization (Just token)
             |> withBody body
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> ElmTask.mapError Request.Errors.handleError

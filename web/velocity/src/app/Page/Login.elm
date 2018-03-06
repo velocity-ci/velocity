@@ -12,9 +12,11 @@ import Validate exposing (..)
 import Data.Session as Session exposing (Session)
 import Http
 import Request.User exposing (storeSession)
+import Request.Errors
 import Util exposing ((=>))
 import Data.User as User exposing (User)
 import Page.Helpers exposing (ifBelowLength, validClasses)
+import Task
 
 
 -- MODEL --
@@ -141,7 +143,7 @@ type Msg
     = SubmitForm
     | SetUsername String
     | SetPassword String
-    | LoginCompleted (Result Http.Error User)
+    | LoginCompleted (Result Request.Errors.HttpError User)
 
 
 type ExternalMsg
@@ -171,7 +173,7 @@ update msg model =
                             , submitting = True
                             , globalError = Nothing
                         }
-                            => Http.send LoginCompleted (Request.User.login submitValues)
+                            => Task.attempt LoginCompleted (Request.User.login submitValues)
                             => NoOp
 
                 errors ->
