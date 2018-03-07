@@ -1,5 +1,6 @@
 module Request.User exposing (login, storeSession)
 
+import Context exposing (Context)
 import Data.User as User exposing (User)
 import Http
 import Json.Encode as Encode
@@ -18,8 +19,8 @@ storeSession user =
         |> Ports.storeSession
 
 
-login : { r | username : String, password : String } -> Task Request.Errors.HttpError User
-login { username, password } =
+login : Context -> { r | username : String, password : String } -> Task Request.Errors.HttpError User
+login context { username, password } =
     let
         user =
             Encode.object
@@ -31,6 +32,6 @@ login { username, password } =
             user |> Http.jsonBody
     in
         User.decoder
-            |> Http.post (apiUrl "/auth") body
+            |> Http.post (apiUrl context "/auth") body
             |> Http.toTask
             |> Task.mapError Request.Errors.handleError

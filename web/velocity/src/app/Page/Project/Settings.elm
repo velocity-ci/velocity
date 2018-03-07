@@ -1,5 +1,6 @@
 module Page.Project.Settings exposing (..)
 
+import Context exposing (Context)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -136,14 +137,14 @@ type Msg
     | SetDeleteState ConfirmDeleteState
 
 
-update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
-update project session msg model =
+update : Context -> Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+update context project session msg model =
     case msg of
         SubmitProjectDelete ->
             let
                 cmdFromAuth authToken =
                     authToken
-                        |> Request.Project.delete project.slug
+                        |> Request.Project.delete context project.slug
                         |> Task.attempt ProjectDeleted
 
                 cmd =

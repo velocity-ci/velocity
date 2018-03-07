@@ -1,6 +1,7 @@
 module Page.Project.Commit.Task exposing (..)
 
 import Ansi.Log
+import Context exposing (Context)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
@@ -12,7 +13,6 @@ import Data.AuthToken as AuthToken exposing (AuthToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
-import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses, formatDateTime)
 import Request.Commit
@@ -103,11 +103,12 @@ type Frame
 
 
 loadBuild :
-    ProjectTask.Task
+    Context
+    -> ProjectTask.Task
     -> Maybe AuthToken
     -> Build
     -> Task Request.Errors.HttpError (Maybe BuildType)
-loadBuild task maybeAuthToken build =
+loadBuild context task maybeAuthToken build =
     build.steps
         |> List.sortBy .number
         |> List.map
@@ -124,7 +125,7 @@ loadBuild task maybeAuthToken build =
             (\( taskStep, buildStep ) ->
                 List.map
                     (\{ id } ->
-                        Request.Build.streamOutput maybeAuthToken id
+                        Request.Build.streamOutput context maybeAuthToken id
                             |> Task.map (\output -> ( id, taskStep, buildStep, output ))
                     )
                     buildStep.streams
@@ -174,8 +175,8 @@ stringToTab maybeSelectedTab builds =
             NewFormTab
 
 
-init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
-init session id hash task maybeSelectedTab builds =
+init : Context -> Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
+init context session id hash task maybeSelectedTab builds =
     let
         maybeAuthToken =
             Maybe.map .token session.user
@@ -218,7 +219,7 @@ init session id hash task maybeSelectedTab builds =
                 in
                     case build of
                         Just b ->
-                            loadBuild task maybeAuthToken b
+                            loadBuild context task maybeAuthToken b
                                 |> Task.map (Maybe.map BuildFrame >> initialModel)
                                 |> Task.mapError handleLoadError
 
@@ -710,8 +711,8 @@ type ExternalMsg
     | UpdateBuild Build
 
 
-update : Project -> Commit -> List Build -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
-update project commit builds session msg model =
+update : Context -> Project -> Commit -> List Build -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update context project commit builds session msg model =
     let
         projectSlug =
             project.slug
@@ -806,7 +807,7 @@ update project commit builds session msg model =
 
                     cmdFromAuth authToken =
                         authToken
-                            |> Request.Commit.createBuild projectSlug commitHash taskName params
+                            |> Request.Commit.createBuild context projectSlug commitHash taskName params
                             |> Task.attempt BuildCreated
 
                     cmd =
@@ -834,7 +835,7 @@ update project commit builds session msg model =
                 let
                     cmd =
                         build
-                            |> loadBuild model.task maybeAuthToken
+                            |> loadBuild context model.task maybeAuthToken
                             |> Task.attempt BuildLoaded
                 in
                     model

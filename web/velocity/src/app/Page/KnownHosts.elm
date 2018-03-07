@@ -1,5 +1,6 @@
 module Page.KnownHosts exposing (..)
 
+import Context exposing (Context)
 import Data.KnownHost as KnownHost exposing (KnownHost)
 import Data.Session as Session exposing (Session)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
@@ -61,14 +62,14 @@ initialForm =
     }
 
 
-init : Session msg -> Task (Request.Errors.Error PageLoadError) Model
-init session =
+init : Context -> Session msg -> Task (Request.Errors.Error PageLoadError) Model
+init context session =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadKnownHosts =
-            Request.KnownHost.list maybeAuthToken
+            Request.KnownHost.list context maybeAuthToken
 
         loadError =
             pageLoadError Page.KnownHosts "Known hosts are currently unavailable."
@@ -257,8 +258,8 @@ serverErrorToFormError ( fieldNameString, errorString ) =
         field => errorString
 
 
-update : Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
-update session msg model =
+update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update context session msg model =
     let
         form =
             model.form
@@ -277,7 +278,7 @@ update session msg model =
 
                             cmdFromAuth authToken =
                                 authToken
-                                    |> Request.KnownHost.create submitValues
+                                    |> Request.KnownHost.create context submitValues
                                     |> Task.attempt KnownHostCreated
 
                             cmd =
