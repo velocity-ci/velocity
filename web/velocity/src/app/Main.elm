@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Context exposing (Context)
 import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
 import Navigation exposing (Location)
@@ -47,6 +48,7 @@ type PageState
 
 type alias Model =
     { session : Session Msg
+    , context : Context
     , pageState : PageState
     , headerState : Header.Model
     }
@@ -58,9 +60,12 @@ init val location =
         user =
             decodeUserFromJson val
 
+        context =
+            Context.initContext location
+
         session =
             { user = user
-            , socket = initialSocket
+            , socket = initialSocket context
             }
 
         ( headerState, headerCmd ) =
@@ -69,6 +74,7 @@ init val location =
         ( initialModel, initialCmd ) =
             setRoute (Route.fromLocation location)
                 { pageState = Loaded initialPage
+                , context = context
                 , session = session
                 , headerState = headerState
                 }
@@ -92,9 +98,9 @@ initialPage =
     Blank
 
 
-initialSocket : Socket Msg
-initialSocket =
-    Socket.init "ws://localhost/v1/ws"
+initialSocket : Context -> Socket Msg
+initialSocket { wsUrl } =
+    Socket.init wsUrl
 
 
 
@@ -348,7 +354,7 @@ setRoute maybeRoute model =
             Just (Route.Home) ->
                 let
                     ( newModel, pageCmd ) =
-                        transition HomeLoaded (Home.init model.session)
+                        transition HomeLoaded (Home.init model.context model.session)
 
                     channel =
                         Channel.init Home.channelName
@@ -389,7 +395,7 @@ setRoute maybeRoute model =
                     Just user ->
                         let
                             ( newModel, pageCmd ) =
-                                transition ProjectsLoaded (Projects.init model.session)
+                                transition ProjectsLoaded (Projects.init model.context model.session)
 
                             channel =
                                 Channel.init Projects.channelName
@@ -413,7 +419,7 @@ setRoute maybeRoute model =
             Just (Route.KnownHosts) ->
                 case model.session.user of
                     Just user ->
-                        transition KnownHostsLoaded (KnownHosts.init model.session)
+                        transition KnownHostsLoaded (KnownHosts.init model.context model.session)
 
                     Nothing ->
                         model => Route.modifyUrl Route.Login
@@ -428,7 +434,7 @@ setRoute maybeRoute model =
                     transitionSubPage subModel =
                         let
                             ( newModel, newMsg ) =
-                                Project.update model.session (Project.SetRoute (Just subRoute)) subModel
+                                Project.update model.context model.session (Project.SetRoute (Just subRoute)) subModel
                         in
                             { model
                                 | pageState = Loaded (Project newModel)
@@ -438,7 +444,7 @@ setRoute maybeRoute model =
 
                     ( pageModel, pageCmd ) =
                         Just subRoute
-                            |> Project.init model.session slug
+                            |> Project.init model.context model.session slug
                             |> transition ProjectLoaded
                             |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
                             |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
@@ -594,7 +600,7 @@ updatePage page msg model =
             ( LoginMsg subMsg, Login subModel ) ->
                 let
                     ( ( pageModel, cmd ), msgFromPage ) =
-                        Login.update subMsg subModel
+                        Login.update model.context subMsg subModel
 
                     newModel =
                         case msgFromPage of
@@ -628,7 +634,7 @@ updatePage page msg model =
             ( ProjectsMsg subMsg, Projects subModel ) ->
                 let
                     ( ( newSubModel, newSubCmd ), externalMsg ) =
-                        Projects.update session subMsg subModel
+                        Projects.update model.context session subMsg subModel
 
                     model_ =
                         { model | pageState = Loaded (Projects newSubModel) }
@@ -649,7 +655,7 @@ updatePage page msg model =
             ( KnownHostsMsg subMsg, KnownHosts subModel ) ->
                 let
                     ( ( newSubModel, newSubCmd ), externalMsg ) =
-                        KnownHosts.update session subMsg subModel
+                        KnownHosts.update model.context session subMsg subModel
 
                     model_ =
                         { model | pageState = Loaded (KnownHosts newSubModel) }
@@ -682,7 +688,7 @@ updatePage page msg model =
                         session.socket
 
                     ( newSubModel, newCmd ) =
-                        Project.update session subMsg subModel
+                        Project.update model.context session subMsg subModel
 
                     ( listeningSocket, socketCmd ) =
                         Project.loadedEvents subMsg subModel

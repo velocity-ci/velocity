@@ -1,5 +1,6 @@
 module Page.Projects exposing (..)
 
+import Context exposing (Context)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
 import Task exposing (Task)
@@ -72,14 +73,14 @@ initialForm =
     }
 
 
-init : Session msg -> Task (Request.Errors.Error PageLoadError) Model
-init session =
+init : Context -> Session msg -> Task (Request.Errors.Error PageLoadError) Model
+init context session =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadProjects =
-            Request.Project.list maybeAuthToken
+            Request.Project.list context maybeAuthToken
 
         errorPage =
             pageLoadError Page.Projects "Projects are currently unavailable."
@@ -365,8 +366,8 @@ serverErrorToFormError ( fieldNameString, errorString ) =
         field => errorString
 
 
-update : Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
-update session msg model =
+update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update context session msg model =
     let
         form =
             model.form
@@ -396,7 +397,7 @@ update session msg model =
 
                             cmdFromAuth authToken =
                                 authToken
-                                    |> Request.Project.create submitValues
+                                    |> Request.Project.create context submitValues
                                     |> Task.attempt ProjectCreated
 
                             cmd =

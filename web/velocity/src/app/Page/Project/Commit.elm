@@ -1,5 +1,6 @@
 module Page.Project.Commit exposing (..)
 
+import Context exposing (Context)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Data.Commit as Commit exposing (Commit)
@@ -13,7 +14,6 @@ import Request.Commit
 import Util exposing ((=>))
 import Task exposing (Task)
 import Views.Page as Page
-import Http
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
@@ -61,23 +61,23 @@ initialSubPage =
     Blank
 
 
-init : Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
-init session project hash maybeRoute =
+init : Context -> Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init context session project hash maybeRoute =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadCommit =
             maybeAuthToken
-                |> Request.Commit.get project.slug hash
+                |> Request.Commit.get context project.slug hash
 
         loadTasks =
             maybeAuthToken
-                |> Request.Commit.tasks project.slug hash
+                |> Request.Commit.tasks context project.slug hash
 
         loadBuilds =
             maybeAuthToken
-                |> Request.Commit.builds project.slug hash
+                |> Request.Commit.builds context project.slug hash
 
         initialModel commit (Paginated tasks) (Paginated builds) =
             { commit = commit
@@ -94,7 +94,7 @@ init session project hash maybeRoute =
                 (\successModel ->
                     case maybeRoute of
                         Just route ->
-                            update project session (SetRoute maybeRoute) successModel
+                            update context project session (SetRoute maybeRoute) successModel
 
                         Nothing ->
                             ( successModel, Cmd.none )
@@ -288,8 +288,8 @@ taskBuilds builds maybeTask =
             )
 
 
-setRoute : Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
-setRoute session project maybeRoute model =
+setRoute : Context -> Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
+setRoute context session project maybeRoute model =
     let
         transition toMsg task =
             { model | subPageState = TransitioningFrom (getSubPage model.subPageState) }
@@ -320,7 +320,7 @@ setRoute session project maybeRoute model =
                             case maybeTask of
                                 Just task ->
                                     taskBuilds model.builds (Just task)
-                                        |> CommitTask.init session project.id model.commit.hash task maybeTab
+                                        |> CommitTask.init context session project.id model.commit.hash task maybeTab
                                         |> transition CommitTaskLoaded
 
                                 Nothing ->
@@ -334,8 +334,8 @@ setRoute session project maybeRoute model =
                     => Cmd.none
 
 
-update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
-update project session msg model =
+update : Context -> Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+update context project session msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
             let
@@ -360,7 +360,7 @@ update project session msg model =
                     => Navigation.newUrl url
 
             ( SetRoute route, _ ) ->
-                setRoute session project route model
+                setRoute context session project route model
 
             ( OverviewMsg subMsg, Overview subModel ) ->
                 toPage Overview OverviewMsg (Overview.update project session) subMsg subModel
@@ -379,7 +379,7 @@ update project session msg model =
                         List.filter (\b -> b.task.id == subModel.task.id) model.builds
 
                     ( ( newModel, newCmd ), externalMsg ) =
-                        CommitTask.update project model.commit builds session subMsg subModel
+                        CommitTask.update context project model.commit builds session subMsg subModel
 
                     model_ =
                         case externalMsg of

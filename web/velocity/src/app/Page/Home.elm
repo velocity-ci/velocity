@@ -3,6 +3,7 @@ module Page.Home exposing (view, update, Model, Msg, init, channelName, events)
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
+import Context exposing (Context)
 import Html exposing (..)
 import Html.Attributes exposing (class, href, id, placeholder, attribute, classList, style)
 import Data.Session as Session exposing (Session)
@@ -31,14 +32,14 @@ type alias Model =
     { projects : List Project }
 
 
-init : Session msg -> Task (Request.Errors.Error PageLoadError) Model
-init session =
+init : Context -> Session msg -> Task (Request.Errors.Error PageLoadError) Model
+init context session =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadProjects =
-            Request.Project.list maybeAuthToken
+            Request.Project.list context maybeAuthToken
 
         errorPage =
             pageLoadError Page.Home "Homepage is currently unavailable."

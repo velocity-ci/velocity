@@ -1,5 +1,6 @@
 module Page.Project.Commits exposing (..)
 
+import Context exposing (Context)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on, targetValue)
@@ -43,14 +44,14 @@ type alias Model =
     }
 
 
-loadCommits : Project.Slug -> Maybe AuthToken -> Maybe Branch -> Int -> Task Request.Errors.HttpError (PaginatedList Commit)
-loadCommits projectSlug maybeAuthToken maybeBranch page =
+loadCommits : Context -> Project.Slug -> Maybe AuthToken -> Maybe Branch -> Int -> Task Request.Errors.HttpError (PaginatedList Commit)
+loadCommits context projectSlug maybeAuthToken maybeBranch page =
     maybeAuthToken
-        |> Request.Commit.list projectSlug (Maybe.map .name maybeBranch) perPage page
+        |> Request.Commit.list context projectSlug (Maybe.map .name maybeBranch) perPage page
 
 
-init : Session msg -> List Branch -> Project.Slug -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
-init session branches projectSlug maybeBranchName maybePage =
+init : Context -> Session msg -> List Branch -> Project.Slug -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
+init context session branches projectSlug maybeBranchName maybePage =
     let
         defaultPage =
             Maybe.withDefault 1 maybePage
@@ -74,7 +75,7 @@ init session branches projectSlug maybeBranchName maybePage =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map initialModel (loadCommits projectSlug maybeAuthToken maybeBranch defaultPage)
+        Task.map initialModel (loadCommits context projectSlug maybeAuthToken maybeBranch defaultPage)
             |> Task.mapError handleLoadError
 
 
@@ -299,8 +300,8 @@ type Msg
     | RefreshCompleted (Result Request.Errors.HttpError (PaginatedList Commit))
 
 
-update : Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
-update project session msg model =
+update : Context -> Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+update context project session msg model =
     case msg of
         NewUrl newUrl ->
             model => Navigation.newUrl newUrl
@@ -309,7 +310,7 @@ update project session msg model =
             let
                 cmdFromAuth authToken =
                     authToken
-                        |> Request.Project.sync project.slug
+                        |> Request.Project.sync context project.slug
                         |> Task.attempt SyncCompleted
 
                 cmd =
@@ -366,7 +367,7 @@ update project session msg model =
         RefreshCommitList ->
             let
                 refreshTask =
-                    loadCommits project.slug (Maybe.map .token session.user) model.branch model.page
+                    loadCommits context project.slug (Maybe.map .token session.user) model.branch model.page
             in
                 model => Task.attempt RefreshCompleted refreshTask
 

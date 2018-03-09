@@ -1,5 +1,6 @@
 module Request.KnownHost exposing (list, create)
 
+import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.KnownHost as KnownHost exposing (KnownHost)
 import Json.Encode as Encode
@@ -21,15 +22,15 @@ baseUrl =
 -- LIST --
 
 
-list : Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList KnownHost)
-list maybeToken =
+list : Context -> Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList KnownHost)
+list context maybeToken =
     let
         expect =
             KnownHost.decoder
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl baseUrl
+        apiUrl context baseUrl
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
@@ -47,8 +48,8 @@ type alias CreateConfig record =
     }
 
 
-create : CreateConfig record -> AuthToken -> Task Request.Errors.HttpError KnownHost
-create config token =
+create : Context -> CreateConfig record -> AuthToken -> Task Request.Errors.HttpError KnownHost
+create context config token =
     let
         expect =
             KnownHost.decoder
@@ -62,7 +63,7 @@ create config token =
             project
                 |> Http.jsonBody
     in
-        apiUrl baseUrl
+        apiUrl context baseUrl
             |> HttpBuilder.post
             |> withAuthorization (Just token)
             |> withBody body
