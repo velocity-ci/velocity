@@ -250,7 +250,6 @@ type Msg
     | KnownHostsLoaded (Result PageLoadError KnownHosts.Model)
     | KnownHostsMsg KnownHosts.Msg
     | SocketMsg (Socket.Msg Msg)
-    | JoinChannel (Channel Msg)
     | HeaderMsg Header.Msg
     | NoOp
 
@@ -505,22 +504,6 @@ updatePage page msg model =
                 in
                     routeModel
                         ! [ routeCmd, channelLeaveCmd ]
-
-            ( JoinChannel channel, _ ) ->
-                let
-                    session =
-                        model.session
-
-                    ( newSession, socketCmd ) =
-                        let
-                            ( newSocket, socketCmd ) =
-                                Socket.join channel model.session.socket
-                        in
-                            { session | socket = newSocket }
-                                => socketCmd
-                in
-                    { model | session = newSession }
-                        => Cmd.map SocketMsg socketCmd
 
             ( SetUser user, _ ) ->
                 let
