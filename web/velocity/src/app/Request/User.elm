@@ -34,4 +34,4 @@ login context { username, password } =
         User.decoder
             |> Http.post (apiUrl context "/auth") body
             |> Http.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError

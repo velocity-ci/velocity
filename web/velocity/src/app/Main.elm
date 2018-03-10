@@ -13,16 +13,14 @@ import Page.Projects as Projects
 import Page.Project as Project
 import Page.KnownHosts as KnownHosts
 import Request.Errors
+import Request.Channel
 import Route exposing (Route)
 import Util exposing ((=>))
 import Page.Header as Header
 import Phoenix.Socket as Socket exposing (Socket)
-import Phoenix.Channel as Channel exposing (Channel)
-import Json.Encode as Encode
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
 import Task
-import Dict
 import Ports
 
 
@@ -263,23 +261,12 @@ type Msg
     | NoOp
 
 
-leaveChannels : List String -> Socket Msg -> ( Socket Msg, Cmd Msg )
-leaveChannels channels socket =
-    List.foldl
-        (\channel ( socket, cmd ) ->
-            let
-                ( leaveSocket, leaveCmd ) =
-                    Socket.leave channel socket
-            in
-                leaveSocket ! [ cmd, Cmd.map SocketMsg leaveCmd ]
-        )
-        ( socket, Cmd.none )
-        channels
-
-
 leavePageChannels : Session Msg -> Page -> Maybe Route -> ( Session Msg, Cmd Msg )
 leavePageChannels session page route =
     let
+        leaveChannels =
+            Request.Channel.leaveChannels SocketMsg
+
         ( newSocket, leaveCmd ) =
             case page of
                 Projects _ ->
@@ -345,6 +332,9 @@ setRoute maybeRoute model =
 
         socket =
             session.socket
+
+        joinChannels =
+            Request.Channel.joinChannels socket
     in
         case maybeRoute of
             Nothing ->
@@ -356,9 +346,7 @@ setRoute maybeRoute model =
                         transition HomeLoaded (Home.init model.context model.session)
 
                     ( listeningSocket, socketCmd ) =
-                        Home.initialEvents
-                            |> Dict.toList
-                            |> List.foldl (foldChannel HomeMsg) ( socket, Cmd.none )
+                        joinChannels HomeMsg Home.initialEvents
                 in
                     case model.session.user of
                         Just user ->
@@ -389,9 +377,7 @@ setRoute maybeRoute model =
                                 transition ProjectsLoaded (Projects.init model.context model.session)
 
                             ( listeningSocket, socketCmd ) =
-                                Projects.initialEvents
-                                    |> Dict.toList
-                                    |> List.foldl (foldChannel ProjectsMsg) ( socket, Cmd.none )
+                                joinChannels ProjectsMsg Projects.initialEvents
                         in
                             { newModel | session = { session | socket = listeningSocket } }
                                 ! [ pageCmd, Cmd.map SocketMsg socketCmd ]
@@ -411,8 +397,7 @@ setRoute maybeRoute model =
                 let
                     ( listeningSocket, socketCmd ) =
                         Project.initialEvents slug subRoute
-                            |> Dict.toList
-                            |> List.foldl (foldChannel ProjectMsg) ( socket, Cmd.none )
+                            |> joinChannels ProjectMsg
 
                     transitionSubPage subModel =
                         let
@@ -451,28 +436,6 @@ setRoute maybeRoute model =
 
                         ( Nothing, _ ) ->
                             model => Route.modifyUrl Route.Login
-
-
-foldChannel :
-    (msg1 -> msg2)
-    -> ( String, List ( String, Encode.Value -> msg1 ) )
-    -> ( Socket msg2, Cmd (Socket.Msg msg2) )
-    -> ( Socket msg2, Cmd (Socket.Msg msg2) )
-foldChannel toMsg ( channelName, events ) ( socket, cmd ) =
-    let
-        channel =
-            channelName
-                |> Channel.init
-                |> Channel.map toMsg
-
-        ( channelSocket, socketCmd ) =
-            Socket.join channel socket
-
-        foldEvents ( event, msg ) s =
-            Socket.on event channel.name (msg >> toMsg) s
-    in
-        List.foldl foldEvents channelSocket events
-            ! [ cmd, socketCmd ]
 
 
 pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
@@ -516,6 +479,9 @@ updatePage page msg model =
 
         errored =
             pageErrored model
+
+        joinChannels =
+            Request.Channel.joinChannels session.socket
     in
         case ( msg, page ) of
             ( SocketMsg msg, _ ) ->
@@ -659,8 +625,7 @@ updatePage page msg model =
 
                     ( listeningSocket, socketCmd ) =
                         Project.loadedEvents subMsg subModel
-                            |> Dict.toList
-                            |> List.foldl (foldChannel ProjectMsg) ( model.session.socket, Cmd.none )
+                            |> joinChannels ProjectMsg
                 in
                     { model
                         | pageState = Loaded (Project newSubModel)
