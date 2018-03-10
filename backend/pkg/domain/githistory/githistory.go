@@ -3,7 +3,6 @@ package githistory
 import (
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
 
@@ -17,9 +16,17 @@ type Commit struct {
 }
 
 type CommitQuery struct {
-	*domain.PagingQuery
+	Limit    int      `json:"amount" query:"amount"`
+	Page     int      `json:"page" query:"page"`
 	Branches []string `json:"branches" query:"branches"`
 	Branch   string   `json:"branch" query:"branch"`
+}
+
+func NewCommitQuery() *CommitQuery {
+	return &CommitQuery{
+		Limit: 10,
+		Page:  1,
+	}
 }
 
 type Branch struct {
