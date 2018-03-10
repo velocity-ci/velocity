@@ -11,11 +11,17 @@ serve:
 build:
 	@echo "Building frontend release"
 
-	docker run --rm \
+	@docker run --rm \
 	--volume ${CURDIR}/velocity:/app \
 	--workdir /app \
 	node:8 \
 	sh -c "NODE_ENV=prod ARCHITECT_ADDRESS=__ARCHITECT_ADDRESS__ node_modules/.bin/webpack"
+
+	@docker build -t civelocity/web:${GIT_VERSION} -f docker/Dockerfile .
+	@docker tag civelocity/web:${GIT_VERSION} civelocity/web:latest
+
+publish:
+	@docker push civelocity/web:${GIT_VERSION}
 
 test: install
 	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --compiler ./node_modules/.bin/elm-make'
