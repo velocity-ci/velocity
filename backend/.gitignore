@@ -10,3 +10,4 @@ slave/slave
 cli/cli
 gogs-data
 *.tar.gz
+*_data
