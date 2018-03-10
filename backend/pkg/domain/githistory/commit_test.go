@@ -106,22 +106,36 @@ func (s *CommitSuite) TestGetAllForProject() {
 
 	b := s.branchManager.Create(p, "testBranch")
 
-	ts := time.Now()
-
-	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
-	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", ts)
+	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now())
+	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", time.Now().Add(1*time.Second))
 
 	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 5,
-			Page:  1,
-		},
+		Limit: 5,
+		Page:  1,
 	})
 
 	s.Equal(2, total)
 	s.Len(cs, 2)
 	s.Contains(cs, c1)
 	s.Contains(cs, c2)
+
+	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
+		Limit: 1,
+		Page:  1,
+	})
+
+	s.Equal(2, total)
+	s.Len(cs, 1)
+	s.Contains(cs, c2)
+
+	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
+		Limit: 1,
+		Page:  2,
+	})
+
+	s.Equal(2, total)
+	s.Len(cs, 1)
+	s.Contains(cs, c1)
 }
 
 func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
@@ -139,10 +153,8 @@ func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
 	c3 := m.Create(b2, p, "1234567", "2est commit", "me@velocityci.io", time.Now().Add(2*time.Second))
 
 	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 5,
-			Page:  1,
-		},
+		Limit:    5,
+		Page:     1,
 		Branches: []string{"testBranch2"},
 	})
 
@@ -152,10 +164,8 @@ func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
 	s.Contains(cs, c3)
 
 	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 1,
-			Page:  1,
-		},
+		Limit:    1,
+		Page:     1,
 		Branches: []string{"testBranch2"},
 	})
 
@@ -164,10 +174,8 @@ func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
 	s.Contains(cs, c3)
 
 	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 1,
-			Page:  2,
-		},
+		Limit:    1,
+		Page:     2,
 		Branches: []string{"testBranch2"},
 	})
 

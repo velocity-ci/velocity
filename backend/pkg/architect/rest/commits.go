@@ -59,9 +59,7 @@ func newCommitHandler(
 }
 
 func getCommitQueryParams(c echo.Context) *githistory.CommitQuery {
-	pQ := &githistory.CommitQuery{
-		PagingQuery: domain.NewPagingQuery(),
-	}
+	pQ := githistory.NewCommitQuery()
 	if err := c.Bind(pQ); err != nil {
 		c.JSON(http.StatusBadRequest, "invalid parameters")
 		return nil
