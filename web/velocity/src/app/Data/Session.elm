@@ -2,7 +2,7 @@ module Data.Session exposing (Session, attempt)
 
 import Data.User as User exposing (User)
 import Data.AuthToken exposing (AuthToken)
-import Socket.Socket as Socket exposing (Socket)
+import Phoenix.Socket as Socket exposing (Socket)
 import Util exposing ((=>))
 
 

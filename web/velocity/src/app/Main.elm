@@ -14,8 +14,8 @@ import Page.KnownHosts as KnownHosts
 import Route exposing (Route)
 import Util exposing ((=>))
 import Page.Header as Header
-import Socket.Socket as Socket exposing (Socket)
-import Socket.Channel as Channel exposing (Channel)
+import Phoenix.Socket as Socket exposing (Socket)
+import Phoenix.Channel as Channel exposing (Channel)
 import Json.Encode as Encode
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
