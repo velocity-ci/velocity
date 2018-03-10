@@ -326,18 +326,10 @@ setRoute maybeRoute model =
                     ( newModel, pageCmd ) =
                         transition HomeLoaded (Home.init model.session)
 
-                    channel =
-                        Channel.init Home.channelName
-                            |> Channel.map HomeMsg
-
-                    ( newSocket, socketCmd ) =
-                        Socket.join channel socket
-
-                    listeningSocket =
-                        List.foldl
-                            (\( event, msg ) s -> Socket.on event channel.name (msg >> HomeMsg) s)
-                            newSocket
-                            Home.events
+                    ( listeningSocket, socketCmd ) =
+                        Home.initialEvents
+                            |> Dict.toList
+                            |> List.foldl (foldChannel HomeMsg) ( socket, Cmd.none )
                 in
                     case model.session.user of
                         Just user ->
@@ -367,18 +359,10 @@ setRoute maybeRoute model =
                             ( newModel, pageCmd ) =
                                 transition ProjectsLoaded (Projects.init model.session)
 
-                            channel =
-                                Channel.init Projects.channelName
-                                    |> Channel.map ProjectsMsg
-
-                            ( newSocket, socketCmd ) =
-                                Socket.join channel socket
-
-                            listeningSocket =
-                                List.foldl
-                                    (\( event, msg ) s -> Socket.on event channel.name (msg >> ProjectsMsg) s)
-                                    newSocket
-                                    Projects.events
+                            ( listeningSocket, socketCmd ) =
+                                Projects.initialEvents
+                                    |> Dict.toList
+                                    |> List.foldl (foldChannel ProjectsMsg) ( socket, Cmd.none )
                         in
                             { newModel | session = { session | socket = listeningSocket } }
                                 ! [ pageCmd, Cmd.map SocketMsg socketCmd ]

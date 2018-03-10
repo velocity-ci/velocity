@@ -22,6 +22,7 @@ import Page.Project.Route as ProjectRoute
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Dict exposing (Dict)
 
 
 -- MODEL --
@@ -106,9 +107,13 @@ channelName =
     "projects"
 
 
-events : List ( String, Encode.Value -> Msg )
-events =
-    [ ( "project:new", AddProject ) ]
+initialEvents : Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents =
+    let
+        pageEvents =
+            [ ( "project:new", AddProject ) ]
+    in
+        Dict.singleton channelName pageEvents
 
 
 

@@ -1,4 +1,4 @@
-module Page.Home exposing (view, update, Model, Msg, init, channelName, events)
+module Page.Home exposing (view, update, Model, Msg, init, channelName, initialEvents)
 
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
@@ -22,6 +22,7 @@ import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Json.Encode as Encode
 import Json.Decode as Decode
+import Dict exposing (Dict)
 
 
 -- MODEL --
@@ -57,9 +58,13 @@ channelName =
     "projects"
 
 
-events : List ( String, Encode.Value -> Msg )
-events =
-    [ ( "project:new", AddProject ) ]
+initialEvents : Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents =
+    let
+        pageEvents =
+            [ ( "project:new", AddProject ) ]
+    in
+        Dict.singleton channelName pageEvents
 
 
 
