@@ -110,10 +110,8 @@ func (s *CommitSuite) TestGetAllForProject() {
 	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", time.Now().Add(1*time.Second))
 
 	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 5,
-			Page:  1,
-		},
+		Limit: 5,
+		Page:  1,
 	})
 
 	s.Equal(2, total)
@@ -122,10 +120,8 @@ func (s *CommitSuite) TestGetAllForProject() {
 	s.Contains(cs, c2)
 
 	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 1,
-			Page:  1,
-		},
+		Limit: 1,
+		Page:  1,
 	})
 
 	s.Equal(2, total)
@@ -133,10 +129,8 @@ func (s *CommitSuite) TestGetAllForProject() {
 	s.Contains(cs, c2)
 
 	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 1,
-			Page:  2,
-		},
+		Limit: 1,
+		Page:  2,
 	})
 
 	s.Equal(2, total)
@@ -159,10 +153,8 @@ func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
 	c3 := m.Create(b2, p, "1234567", "2est commit", "me@velocityci.io", time.Now().Add(2*time.Second))
 
 	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 5,
-			Page:  1,
-		},
+		Limit:    5,
+		Page:     1,
 		Branches: []string{"testBranch2"},
 	})
 
@@ -172,10 +164,8 @@ func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
 	s.Contains(cs, c3)
 
 	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 1,
-			Page:  1,
-		},
+		Limit:    1,
+		Page:     1,
 		Branches: []string{"testBranch2"},
 	})
 
@@ -184,10 +174,8 @@ func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
 	s.Contains(cs, c3)
 
 	cs, total = m.GetAllForProject(p, &githistory.CommitQuery{
-		PagingQuery: &domain.PagingQuery{
-			Limit: 1,
-			Page:  2,
-		},
+		Limit:    1,
+		Page:     2,
 		Branches: []string{"testBranch2"},
 	})
 
