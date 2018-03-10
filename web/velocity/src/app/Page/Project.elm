@@ -1,7 +1,9 @@
 module Page.Project exposing (..)
 
+import Context exposing (Context)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
+import Request.Errors
 import Task exposing (Task)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
@@ -62,26 +64,20 @@ initialSubPage =
     Blank
 
 
-init : Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
-init session slug maybeRoute =
+init : Context -> Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task (Request.Errors.Error PageLoadError) ( Model, Cmd Msg )
+init context session slug maybeRoute =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadProject =
-            maybeAuthToken
-                |> Request.Project.get slug
-                |> Http.toTask
+            Request.Project.get context slug maybeAuthToken
 
         loadBranches =
-            maybeAuthToken
-                |> Request.Project.branches slug
-                |> Http.toTask
+            Request.Project.branches context slug maybeAuthToken
 
         loadBuilds =
-            maybeAuthToken
-                |> Request.Project.builds slug
-                |> Http.toTask
+            Request.Project.builds context slug maybeAuthToken
 
         initialModel project (Paginated branches) (Paginated builds) =
             { project = project
@@ -99,18 +95,16 @@ init session slug maybeRoute =
                     pageLoadError Page.Project "Project unavailable."
     in
         Task.map3 initialModel loadProject loadBranches loadBuilds
-            |> Task.andThen
+            |> Task.map
                 (\successModel ->
                     case maybeRoute of
                         Just route ->
-                            update session (SetRoute maybeRoute) successModel
-                                |> Task.succeed
+                            update context session (SetRoute maybeRoute) successModel
 
                         Nothing ->
                             ( successModel, Cmd.none )
-                                |> Task.succeed
                 )
-            |> Task.mapError handleLoadError
+            |> Task.mapError (Request.Errors.mapUnhandledError handleLoadError)
 
 
 
@@ -425,7 +419,7 @@ type Msg
     | AddBranch Encode.Value
     | ProjectDeleted Encode.Value
     | RefreshBranches Encode.Value
-    | RefreshBranchesComplete (Result Http.Error (PaginatedList Branch))
+    | RefreshBranchesComplete (Result Request.Errors.HttpError (PaginatedList Branch))
     | AddBuildEvent Encode.Value
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
@@ -441,8 +435,8 @@ getSubPage subPageState =
             subPage
 
 
-setRoute : Session msg -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
-setRoute session maybeRoute model =
+setRoute : Context -> Session msg -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
+setRoute context session maybeRoute model =
     let
         transition toMsg task =
             { model | subPageState = TransitioningFrom (getSubPage model.subPageState) }
@@ -466,7 +460,7 @@ setRoute session maybeRoute model =
             Just (ProjectRoute.Commits maybeBranch maybePage) ->
                 case session.user of
                     Just user ->
-                        Commits.init session model.branches model.project.slug maybeBranch maybePage
+                        Commits.init context session model.branches model.project.slug maybeBranch maybePage
                             |> transition CommitsLoaded
 
                     Nothing ->
@@ -476,14 +470,14 @@ setRoute session maybeRoute model =
                 let
                     loadFreshPage =
                         Just maybeRoute
-                            |> Commit.init session model.project hash
+                            |> Commit.init context session model.project hash
                             |> transition CommitLoaded
 
                     transitionSubPage subModel =
                         let
                             ( newModel, newMsg ) =
                                 subModel
-                                    |> Commit.update model.project session (Commit.SetRoute (Just maybeRoute))
+                                    |> Commit.update context model.project session (Commit.SetRoute (Just maybeRoute))
                         in
                             { model | subPageState = Loaded (Commit newModel) }
                                 => Cmd.map CommitMsg newMsg
@@ -526,13 +520,13 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg model =
-    updateSubPage session (getSubPage model.subPageState) msg model
+update : Context -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+update context session msg model =
+    updateSubPage context session (getSubPage model.subPageState) msg model
 
 
-updateSubPage : Session msg -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
-updateSubPage session subPage msg model =
+updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
+updateSubPage context session subPage msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
             let
@@ -550,10 +544,10 @@ updateSubPage session subPage msg model =
                     => newUrl url
 
             ( SetRoute route, _ ) ->
-                setRoute session route model
+                setRoute context session route model
 
             ( SettingsMsg subMsg, Settings subModel ) ->
-                toPage Settings SettingsMsg (Settings.update model.project session) subMsg subModel
+                toPage Settings SettingsMsg (Settings.update context model.project session) subMsg subModel
 
             ( CommitsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Commits subModel) }
@@ -564,7 +558,7 @@ updateSubPage session subPage msg model =
                     => Cmd.none
 
             ( CommitsMsg subMsg, Commits subModel ) ->
-                toPage Commits CommitsMsg (Commits.update model.project session) subMsg subModel
+                toPage Commits CommitsMsg (Commits.update context model.project session) subMsg subModel
 
             ( OverviewMsg subMsg, Overview subModel ) ->
                 toPage Overview OverviewMsg (Overview.update model.project session) subMsg subModel
@@ -580,7 +574,7 @@ updateSubPage session subPage msg model =
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
                     ( newSubModel, newCmd ) =
-                        Commit.update model.project session subMsg subModel
+                        Commit.update context model.project session subMsg subModel
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
@@ -609,7 +603,7 @@ updateSubPage session subPage msg model =
 
             ( RefreshBranches _, _ ) ->
                 model
-                    => Http.send RefreshBranchesComplete (Request.Project.branches model.project.slug (Maybe.map .token session.user))
+                    => Task.attempt RefreshBranchesComplete (Request.Project.branches context model.project.slug (Maybe.map .token session.user))
 
             ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
                 { model | branches = results }

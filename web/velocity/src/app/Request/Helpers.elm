@@ -1,9 +1,6 @@
 module Request.Helpers exposing (apiUrl)
 
-import HttpBuilder
-import Http
 
-
-apiUrl : String -> String
-apiUrl str =
-    "http://localhost/v1" ++ str
+apiUrl : { r | apiUrlBase : String } -> String -> String
+apiUrl { apiUrlBase } str =
+    apiUrlBase ++ str

@@ -3,6 +3,7 @@ module Page.Home exposing (view, update, Model, Msg, init, channelName, initialE
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
+import Context exposing (Context)
 import Html exposing (..)
 import Html.Attributes exposing (class, href, id, placeholder, attribute, classList, style)
 import Data.Session as Session exposing (Session)
@@ -12,8 +13,8 @@ import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Util exposing ((=>), onClickStopPropagation)
 import Views.Page as Page
 import Task exposing (Task)
-import Http
 import Request.Project
+import Request.Errors
 import Page.Helpers exposing (formatDate, sortByDatetime)
 import Route
 import Page.Project.Route as ProjectRoute
@@ -32,21 +33,20 @@ type alias Model =
     { projects : List Project }
 
 
-init : Session msg -> Task PageLoadError Model
-init session =
+init : Context -> Session msg -> Task (Request.Errors.Error PageLoadError) Model
+init context session =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadProjects =
-            Request.Project.list maybeAuthToken
-                |> Http.toTask
+            Request.Project.list context maybeAuthToken
 
-        handleLoadError _ =
+        errorPage =
             pageLoadError Page.Home "Homepage is currently unavailable."
     in
         Task.map (\(Paginated { results }) -> Model results) loadProjects
-            |> Task.mapError handleLoadError
+            |> Task.mapError (Request.Errors.withDefaultError errorPage)
 
 
 

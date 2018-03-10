@@ -3,6 +3,7 @@ module Page.Login exposing (view, update, Model, Msg, initialModel, ExternalMsg(
 {-| The login page.
 -}
 
+import Context exposing (Context)
 import Route exposing (Route)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -10,11 +11,12 @@ import Html.Events exposing (..)
 import Views.Form as Form
 import Validate exposing (..)
 import Data.Session as Session exposing (Session)
-import Http
 import Request.User exposing (storeSession)
+import Request.Errors
 import Util exposing ((=>))
 import Data.User as User exposing (User)
 import Page.Helpers exposing (ifBelowLength, validClasses)
+import Task
 
 
 -- MODEL --
@@ -141,7 +143,7 @@ type Msg
     = SubmitForm
     | SetUsername String
     | SetPassword String
-    | LoginCompleted (Result Http.Error User)
+    | LoginCompleted (Result Request.Errors.HttpError User)
 
 
 type ExternalMsg
@@ -154,8 +156,8 @@ updateInput field value =
     FormField value True field
 
 
-update : Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
-update msg model =
+update : Context -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update context msg model =
     case msg of
         SubmitForm ->
             case validate model of
@@ -171,7 +173,7 @@ update msg model =
                             , submitting = True
                             , globalError = Nothing
                         }
-                            => Http.send LoginCompleted (Request.User.login submitValues)
+                            => Task.attempt LoginCompleted (Request.User.login context submitValues)
                             => NoOp
 
                 errors ->

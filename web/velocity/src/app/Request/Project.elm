@@ -9,6 +9,7 @@ module Request.Project
         , builds
         )
 
+import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
@@ -16,9 +17,11 @@ import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Data.Build as Build exposing (Build)
 import Json.Encode as Encode
 import Request.Helpers exposing (apiUrl)
+import Request.Errors
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Util exposing ((=>))
 import Http
+import Task exposing (Task)
 
 
 baseUrl : String
@@ -30,93 +33,98 @@ baseUrl =
 -- LIST --
 
 
-list : Maybe AuthToken -> Http.Request (PaginatedList Project)
-list maybeToken =
+list : Context -> Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList Project)
+list context maybeToken =
     let
         expect =
             Project.decoder
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl baseUrl
+        apiUrl context baseUrl
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- SYNC --
 
 
-sync : Project.Slug -> AuthToken -> Http.Request Project
-sync slug token =
+sync : Context -> Project.Slug -> AuthToken -> Task Request.Errors.HttpError Project
+sync context slug token =
     let
         expect =
             Project.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug ++ "/sync")
+        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/sync")
             |> HttpBuilder.post
             |> withAuthorization (Just token)
             |> withExpect expect
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- BRANCHES --
 
 
-branches : Project.Slug -> Maybe AuthToken -> Http.Request (PaginatedList Branch)
-branches slug maybeToken =
+branches : Context -> Project.Slug -> Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList Branch)
+branches context slug maybeToken =
     let
         expect =
             Branch.decoder
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug ++ "/branches")
+        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/branches")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- BUILDS --
 
 
-builds : Project.Slug -> Maybe AuthToken -> Http.Request (PaginatedList Build)
-builds slug maybeToken =
+builds : Context -> Project.Slug -> Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList Build)
+builds context slug maybeToken =
     let
         expect =
             Build.decoder
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug ++ "/builds")
+        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/builds")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- GET --
 
 
-get : Project.Slug -> Maybe AuthToken -> Http.Request Project
-get slug maybeToken =
+get : Context -> Project.Slug -> Maybe AuthToken -> Task Request.Errors.HttpError Project
+get context slug maybeToken =
     let
         expect =
             Project.decoder
                 |> Http.expectJson
     in
-        apiUrl (baseUrl ++ "/" ++ Project.slugToString slug)
+        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug)
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
@@ -131,8 +139,8 @@ type alias CreateConfig record =
     }
 
 
-create : CreateConfig record -> AuthToken -> Http.Request Project
-create config token =
+create : Context -> CreateConfig record -> AuthToken -> Task Request.Errors.HttpError Project
+create context config token =
     let
         expect =
             Project.decoder
@@ -153,22 +161,24 @@ create config token =
                 |> Encode.object
                 |> Http.jsonBody
     in
-        apiUrl baseUrl
+        apiUrl context baseUrl
             |> HttpBuilder.post
             |> withAuthorization (Just token)
             |> withBody body
             |> withExpect expect
-            |> HttpBuilder.toRequest
+            |> HttpBuilder.toTask
+            |> Task.mapError Request.Errors.handleError
 
 
 
 -- DELETE --
 
 
-delete : Project.Slug -> AuthToken -> Http.Request ()
-delete slug token =
-    apiUrl (baseUrl ++ "/" ++ Project.slugToString slug)
+delete : Context -> Project.Slug -> AuthToken -> Task Request.Errors.HttpError ()
+delete context slug token =
+    apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug)
         |> HttpBuilder.delete
         |> withAuthorization (Just token)
         |> withExpect (Http.expectStringResponse (\_ -> Ok ()))
-        |> HttpBuilder.toRequest
+        |> HttpBuilder.toTask
+        |> Task.mapError Request.Errors.handleError

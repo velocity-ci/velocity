@@ -1,11 +1,13 @@
 module Page.KnownHosts exposing (..)
 
+import Context exposing (Context)
 import Data.KnownHost as KnownHost exposing (KnownHost)
 import Data.Session as Session exposing (Session)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
 import Task exposing (Task)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.KnownHost
+import Request.Errors
 import Views.Page as Page
 import Http
 import Html exposing (..)
@@ -60,17 +62,16 @@ initialForm =
     }
 
 
-init : Session msg -> Task PageLoadError Model
-init session =
+init : Context -> Session msg -> Task (Request.Errors.Error PageLoadError) Model
+init context session =
     let
         maybeAuthToken =
             Maybe.map .token session.user
 
         loadKnownHosts =
-            Request.KnownHost.list maybeAuthToken
-                |> Http.toTask
+            Request.KnownHost.list context maybeAuthToken
 
-        handleLoadError _ =
+        loadError =
             pageLoadError Page.KnownHosts "Known hosts are currently unavailable."
 
         initialModel (Paginated { total, results }) =
@@ -83,7 +84,7 @@ init session =
             }
     in
         Task.map initialModel loadKnownHosts
-            |> Task.mapError handleLoadError
+            |> Task.mapError (Request.Errors.withDefaultError loadError)
 
 
 
@@ -217,7 +218,12 @@ type Msg
     = SubmitForm
     | SetFormCollapsed Bool
     | SetScannedKey String
-    | KnownHostCreated (Result Http.Error KnownHost)
+    | KnownHostCreated (Result Request.Errors.HttpError KnownHost)
+
+
+type ExternalMsg
+    = NoOp
+    | HandleRequestError Request.Errors.HandledError
 
 
 updateInput : Field -> String -> FormField
@@ -252,8 +258,8 @@ serverErrorToFormError ( fieldNameString, errorString ) =
         field => errorString
 
 
-update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg model =
+update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update context session msg model =
     let
         form =
             model.form
@@ -272,8 +278,8 @@ update session msg model =
 
                             cmdFromAuth authToken =
                                 authToken
-                                    |> Request.KnownHost.create submitValues
-                                    |> Http.send KnownHostCreated
+                                    |> Request.KnownHost.create context submitValues
+                                    |> Task.attempt KnownHostCreated
 
                             cmd =
                                 session
@@ -286,14 +292,17 @@ update session msg model =
                                 , errors = []
                             }
                                 => cmd
+                                => NoOp
 
                     errors ->
                         { model | errors = errors }
                             => Cmd.none
+                            => NoOp
 
             SetFormCollapsed state ->
                 { model | formCollapsed = state }
                     => Cmd.none
+                    => NoOp
 
             SetScannedKey scannedKey ->
                 let
@@ -306,24 +315,32 @@ update session msg model =
                         , serverErrors = resetServerErrorsForField ScannedKey
                     }
                         => Cmd.none
+                        => NoOp
 
             KnownHostCreated (Err err) ->
                 let
-                    errorMessages =
-                        case err of
-                            Http.BadStatus response ->
-                                response.body
-                                    |> decodeString errorsDecoder
-                                    |> Result.withDefault []
+                    newState =
+                        { model | submitting = False }
 
-                            _ ->
-                                [ ( "", "Unable to process knownHost." ) ]
+                    stateWithErrorMessages errorMessages =
+                        { newState
+                            | serverErrors = List.map serverErrorToFormError errorMessages
+                        }
+                            => Cmd.none
+                            => NoOp
                 in
-                    { model
-                        | submitting = False
-                        , serverErrors = List.map serverErrorToFormError errorMessages
-                    }
-                        => Cmd.none
+                    case err of
+                        Request.Errors.HandledError handledError ->
+                            newState => Cmd.none => HandleRequestError handledError
+
+                        Request.Errors.UnhandledError (Http.BadStatus response) ->
+                            response.body
+                                |> decodeString errorsDecoder
+                                |> Result.withDefault []
+                                |> stateWithErrorMessages
+
+                        _ ->
+                            stateWithErrorMessages [ ( "", "Unable to process knownHost." ) ]
 
             KnownHostCreated (Ok knownHost) ->
                 { model
@@ -333,6 +350,7 @@ update session msg model =
                     , form = initialForm
                 }
                     => Cmd.none
+                    => NoOp
 
 
 

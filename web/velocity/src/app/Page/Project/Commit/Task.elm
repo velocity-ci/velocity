@@ -1,6 +1,7 @@
 module Page.Project.Commit.Task exposing (..)
 
 import Ansi.Log
+import Context exposing (Context)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
@@ -12,11 +13,11 @@ import Data.AuthToken as AuthToken exposing (AuthToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
-import Http
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses, formatDateTime)
 import Request.Commit
 import Request.Build
+import Request.Errors
 import Task exposing (Task)
 import Util exposing ((=>))
 import Validate exposing (..)
@@ -102,11 +103,12 @@ type Frame
 
 
 loadBuild :
-    ProjectTask.Task
+    Context
+    -> ProjectTask.Task
     -> Maybe AuthToken
     -> Build
-    -> Task Http.Error (Maybe BuildType)
-loadBuild task maybeAuthToken build =
+    -> Task Request.Errors.HttpError (Maybe BuildType)
+loadBuild context task maybeAuthToken build =
     build.steps
         |> List.sortBy .number
         |> List.map
@@ -123,15 +125,14 @@ loadBuild task maybeAuthToken build =
             (\( taskStep, buildStep ) ->
                 List.map
                     (\{ id } ->
-                        Request.Build.streamOutput maybeAuthToken id
-                            |> Http.toTask
-                            |> Task.andThen (\output -> Task.succeed ( id, taskStep, buildStep, output ))
+                        Request.Build.streamOutput context maybeAuthToken id
+                            |> Task.map (\output -> ( id, taskStep, buildStep, output ))
                     )
                     buildStep.streams
             )
         |> List.foldr (++) []
         |> Task.sequence
-        |> Task.andThen
+        |> Task.map
             (\streamOutputList ->
                 streamOutputList
                     |> List.foldr
@@ -145,7 +146,6 @@ loadBuild task maybeAuthToken build =
                         Dict.empty
                     |> LoadedBuild build.id
                     |> Just
-                    |> Task.succeed
             )
 
 
@@ -175,8 +175,8 @@ stringToTab maybeSelectedTab builds =
             NewFormTab
 
 
-init : Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
-init session id hash task maybeSelectedTab builds =
+init : Context -> Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
+init context session id hash task maybeSelectedTab builds =
     let
         maybeAuthToken =
             Maybe.map .token session.user
@@ -219,9 +219,8 @@ init session id hash task maybeSelectedTab builds =
                 in
                     case build of
                         Just b ->
-                            loadBuild task maybeAuthToken b
-                                |> Task.andThen (Maybe.map BuildFrame >> Task.succeed)
-                                |> Task.map initialModel
+                            loadBuild context task maybeAuthToken b
+                                |> Task.map (Maybe.map BuildFrame >> initialModel)
                                 |> Task.mapError handleLoadError
 
                         Nothing ->
@@ -698,10 +697,10 @@ type Msg
     | OnInput InputFormField String
     | OnChange ChoiceFormField (Maybe Int)
     | SubmitForm
-    | BuildCreated (Result Http.Error Build)
+    | BuildCreated (Result Request.Errors.HttpError Build)
     | SelectTab Tab String
     | LoadBuild Build
-    | BuildLoaded (Result Http.Error (Maybe BuildType))
+    | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
     | AddStreamOutput BuildStream Encode.Value
     | BuildUpdated Encode.Value
 
@@ -712,8 +711,8 @@ type ExternalMsg
     | UpdateBuild Build
 
 
-update : Project -> Commit -> List Build -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
-update project commit builds session msg model =
+update : Context -> Project -> Commit -> List Build -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update context project commit builds session msg model =
     let
         projectSlug =
             project.slug
@@ -808,8 +807,8 @@ update project commit builds session msg model =
 
                     cmdFromAuth authToken =
                         authToken
-                            |> Request.Commit.createBuild projectSlug commitHash taskName params
-                            |> Http.send BuildCreated
+                            |> Request.Commit.createBuild context projectSlug commitHash taskName params
+                            |> Task.attempt BuildCreated
 
                     cmd =
                         session
@@ -836,7 +835,7 @@ update project commit builds session msg model =
                 let
                     cmd =
                         build
-                            |> loadBuild model.task maybeAuthToken
+                            |> loadBuild context model.task maybeAuthToken
                             |> Task.attempt BuildLoaded
                 in
                     model
