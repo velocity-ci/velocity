@@ -54,14 +54,20 @@ type alias Model =
     }
 
 
-init : Value -> Location -> ( Model, Cmd Msg )
-init val location =
+type alias ProgramFlags =
+    { apiUrlBase : String
+    , session : Value
+    }
+
+
+init : ProgramFlags -> Location -> ( Model, Cmd Msg )
+init flags location =
     let
         user =
-            decodeUserFromJson val
+            decodeUserFromJson flags.session
 
         context =
-            Context.initContext location
+            Context.initContext flags.apiUrlBase
 
         session =
             { user = user
@@ -717,7 +723,7 @@ updatePage page msg model =
 -- MAIN --
 
 
-main : Program Value Model Msg
+main : Program ProgramFlags Model Msg
 main =
     Navigation.programWithFlags (Route.fromLocation >> SetRoute)
         { init = init

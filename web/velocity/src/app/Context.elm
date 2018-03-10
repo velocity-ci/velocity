@@ -1,7 +1,5 @@
 module Context exposing (Context, initContext)
 
-import Navigation exposing (Location)
-
 
 type alias Context =
     { apiUrlBase : String
@@ -9,26 +7,16 @@ type alias Context =
     }
 
 
-initContext : Location -> Context
-initContext { protocol, hostname } =
-    -- Reminder: location.host includes port if there is one;
-    -- location.hostname does not.
+initContext : String -> Context
+initContext apiUrlBase =
     let
-        isSecureProtocol =
-            protocol == "https:"
-
-        -- API host is currently web hostname + default port
-        apiHost =
-            hostname
-
-        wsProtocol =
-            if isSecureProtocol then
-                "wss:"
+        wsUrlBase =
+            if String.startsWith "http" apiUrlBase then
+                "ws" ++ String.dropLeft 4 apiUrlBase
             else
-                "ws:"
+                -- Not an http API URL - this will fail pretty quickly
+                apiUrlBase
     in
-        { apiUrlBase =
-            protocol ++ "//" ++ apiHost ++ "/v1"
-        , wsUrl =
-            wsProtocol ++ "//" ++ apiHost ++ "/v1/ws"
+        { apiUrlBase = apiUrlBase
+        , wsUrl = wsUrlBase ++ "/ws"
         }

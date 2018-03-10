@@ -15,9 +15,9 @@ build:
 	--volume ${CURDIR}/velocity:/app \
 	--workdir /app \
 	node:8 \
-	sh -c "NODE_ENV=prod node_modules/.bin/webpack"
+	sh -c "NODE_ENV=prod ARCHITECT_ADDRESS=__ARCHITECT_ADDRESS__ node_modules/.bin/webpack"
 
-test:
+test: install
 	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --compiler ./node_modules/.bin/elm-make'
 
 test_watch:
