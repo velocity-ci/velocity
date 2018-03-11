@@ -46,12 +46,13 @@ func (dP DockerPush) GetDetails() string {
 func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 	writer := emitter.GetStreamWriter("push")
 	writer.SetStatus(StateRunning)
-	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dP.Description)))
+	writer.Write([]byte(fmt.Sprintf("\n%s\n## %s\n\x1b[0m", infoANSI, dP.Description)))
 
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
 
 	for _, t := range dP.Tags {
+		imageIDProgress = map[string]string{}
 		// Determine correct authToken
 		authToken := getAuthToken(t, tsk.Docker.Registries)
 		reader, err := cli.ImagePush(ctx, t, types.ImagePushOptions{
@@ -61,15 +62,15 @@ func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 		if err != nil {
 			log.Println(err)
 			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("Push failed: %s", err)))
+			writer.Write([]byte(fmt.Sprintf("\nPush failed: %s", err)))
 			return err
 		}
 		handleOutput(reader, tsk.ResolvedParameters, writer)
-		writer.Write([]byte(fmt.Sprintf("Pushed: %s", t)))
+		writer.Write([]byte(fmt.Sprintf("\nPushed: %s", t)))
 	}
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS\x1b[0m", successANSI)))
+	writer.Write([]byte(fmt.Sprintf("\n%s\n### SUCCESS\x1b[0m", successANSI)))
 	return nil
 
 }

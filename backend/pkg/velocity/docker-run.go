@@ -106,7 +106,7 @@ func (dR DockerRun) GetDetails() string {
 func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("run")
 	writer.SetStatus(StateRunning)
-	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dR.Description)))
+	writer.Write([]byte(fmt.Sprintf("%s## %s\x1b[0m", infoANSI, dR.Description)))
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"
@@ -183,12 +183,12 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
 		writer.SetStatus(StateFailed)
-		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
+		writer.Write([]byte(fmt.Sprintf("%s### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
+	writer.Write([]byte(fmt.Sprintf("%s### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
 	return nil
 
 }

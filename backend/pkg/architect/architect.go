@@ -34,6 +34,7 @@ func (a *Architect) Start() {
 	a.Init()
 	a.Server.Use(middleware.Logger())
 	a.Server.Use(middleware.Recover())
+	a.Server.Use(middleware.CORSWithConfig(middleware.DefaultCORSConfig))
 	for _, w := range a.Workers {
 		go w.StartWorker()
 	}

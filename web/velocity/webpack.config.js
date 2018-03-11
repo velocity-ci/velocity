@@ -18,6 +18,9 @@ const commonConfig = {
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
     new webpack.NamedModulesPlugin(),
+    new webpack.EnvironmentPlugin({
+      ARCHITECT_ADDRESS: 'http://localhost/v1'
+    }),
     new HtmlWebpackPlugin({
       template: 'src/index.html',
       inject: 'body',

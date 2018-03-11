@@ -6,6 +6,7 @@ env:
   matrix:
     - COMPONENT=backend
     - COMPONENT=backend/test
+    - COMPONENT=web
 
 script:
   - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make test

@@ -113,7 +113,7 @@ func getAuthToken(image string, dockerRegistries []DockerRegistry) string {
 	if strings.Contains(registry, ".") {
 		// private
 		for _, r := range dockerRegistries {
-			if r.Address == image {
+			if r.Address == registry {
 				return r.AuthorizationToken
 			}
 		}
@@ -129,6 +129,7 @@ func getAuthToken(image string, dockerRegistries []DockerRegistry) string {
 }
 
 func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
+	imageIDProgress = map[string]string{}
 	if sR.build != nil && (sR.build.Dockerfile != "" || sR.build.Context != "") {
 		authConfigs := getAuthConfigsMap(dockerRegistries)
 		err := buildContainer(
@@ -343,6 +344,8 @@ func handleLogOutput(b []byte) string {
 	return string(b[8:])
 }
 
+var imageIDProgress = map[string]string{}
+
 func handlePullOutput(b []byte) string {
 	type pullOutput struct {
 		Status   string `json:"status"`
@@ -352,19 +355,31 @@ func handlePullOutput(b []byte) string {
 	var o pullOutput
 	json.Unmarshal(b, &o)
 
-	if strings.Contains(o.Status, "Pulling") ||
-		strings.Contains(o.Status, "Download complete") ||
-		strings.Contains(o.Status, "Digest") ||
-		strings.Contains(o.Status, "Pushing") ||
-		strings.Contains(o.Status, "Pushed") ||
-		strings.Contains(o.Status, "Layer") {
-		return fmt.Sprintf("%s: %s",
-			o.ID,
-			strings.TrimSpace(o.Status),
-		)
-	}
+	// fmt.Printf("%+v\n", o)
 
-	return "*"
+	s := ""
+	if len(o.ID) > 0 {
+		s += fmt.Sprintf("%s: ", o.ID)
+	}
+	if len(o.Progress) > 0 {
+		s += o.Progress
+	} else {
+		s += o.Status
+	}
+	// add padding to 80
+	for len(s) < 80 {
+		s += " "
+	}
+	if strings.Contains(o.Status, "Downloaded newer image") ||
+		strings.Contains(o.Status, "Pulling from") ||
+		strings.Contains(o.Status, "Pull complete") {
+		return s
+	}
+	// } else {
+	return fmt.Sprintf("%s\r", s)
+	// }
+
+	// return "*"
 }
 
 func handleBuildOutput(b []byte) string {
