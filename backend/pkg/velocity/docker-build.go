@@ -57,7 +57,7 @@ func (dB DockerBuild) GetDetails() string {
 func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("build")
 	writer.SetStatus(StateRunning)
-	writer.Write([]byte(fmt.Sprintf("%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
+	writer.Write([]byte(fmt.Sprintf("\n%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
 
 	authConfigs := getAuthConfigsMap(t.Docker.Registries)
 
@@ -72,7 +72,7 @@ func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	if err != nil {
 		writer.SetStatus(StateFailed)
-		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+		writer.Write([]byte(fmt.Sprintf("\n%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 		return err
 	}
 

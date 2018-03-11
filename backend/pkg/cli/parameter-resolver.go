@@ -19,9 +19,9 @@ func (pR ParameterResolver) Resolve(paramName string) (string, error) {
 
 	for text == "" {
 		if len(fromEnv) > 0 {
-			fmt.Printf("Enter value for %s (%s): ", paramName, fromEnv)
+			fmt.Printf("\nEnter value for %s (%s): ", paramName, fromEnv)
 		} else {
-			fmt.Printf("Enter value for %s: ", paramName)
+			fmt.Printf("\nEnter value for %s: ", paramName)
 		}
 		text, _ = reader.ReadString('\n')
 		if text == "\n" {
