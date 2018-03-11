@@ -8,7 +8,6 @@ module Request.Errors
         , mapUnhandledError
         )
 
-import Request.Channel as Channel
 import Http
 
 
@@ -40,13 +39,6 @@ handleHttpError err =
 
             _ ->
                 unhandled
-
-
-handleChannelError : Channel.Error -> Error Channel.Error
-handleChannelError err =
-    case err of
-        Channel.AccessDenied ->
-            HandledError Unauthorized
 
 
 mapUnhandledError : (Http.Error -> defaultError) -> Error Http.Error -> Error defaultError

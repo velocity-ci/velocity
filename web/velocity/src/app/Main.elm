@@ -303,6 +303,16 @@ handledErrorToMsg err =
             SessionExpired
 
 
+handledChannelErrorToMsg : Request.Errors.Error unhandled -> Msg
+handledChannelErrorToMsg err =
+    case err of
+        Request.Errors.HandledError err ->
+            handledErrorToMsg err
+
+        _ ->
+            NoOp
+
+
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
 setRoute maybeRoute model =
     let
@@ -334,7 +344,7 @@ setRoute maybeRoute model =
             session.socket
 
         joinChannels =
-            Request.Channel.joinChannels socket
+            Request.Channel.joinChannels socket handledChannelErrorToMsg
     in
         case maybeRoute of
             Nothing ->
@@ -481,7 +491,7 @@ updatePage page msg model =
             pageErrored model
 
         joinChannels =
-            Request.Channel.joinChannels session.socket
+            Request.Channel.joinChannels session.socket handledChannelErrorToMsg
     in
         case ( msg, page ) of
             ( SocketMsg msg, _ ) ->
