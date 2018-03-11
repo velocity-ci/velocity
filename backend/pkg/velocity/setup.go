@@ -105,7 +105,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		if err != nil {
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("could not resolve parameter: %v", err)))
-			return fmt.Errorf("could not resolve %v", err)
+			return fmt.Errorf("could not resolve %v\n", err)
 		}
 		for _, param := range params {
 			parameters[param.Name] = param
@@ -128,7 +128,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	authedRegistries := []DockerRegistry{}
 	for _, registry := range t.Docker.Registries {
 		r, err := dockerLogin(registry, writer, t.RunID, parameters, t.Docker.Registries)
-		if err != nil {
+		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("could not login to Docker registry: %v", err)))
 			return err
@@ -140,8 +140,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	t.Docker.Registries = authedRegistries
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte(""))
-	writer.Write([]byte("Setup success.\n"))
+	writer.Write([]byte("Setup success."))
 
 	return nil
 }

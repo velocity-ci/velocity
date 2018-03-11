@@ -112,7 +112,6 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 		writer := writers[serviceName]
 		writer.SetStatus(StateRunning)
 		s := dC.Contents.Services[serviceName]
-		writer.Write([]byte(fmt.Sprintf("Configured %+v", s)))
 
 		// generate containerConfig + hostConfig
 		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, networkResp.ID)

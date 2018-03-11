@@ -95,12 +95,12 @@ func (p *Plugin) Execute(emitter Emitter, t *Task) error {
 
 	if exitCode != 0 {
 		writer.SetStatus("failed")
-		writer.Write([]byte(fmt.Sprintf("%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
+		writer.Write([]byte(fmt.Sprintf("\n%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
 	writer.SetStatus("success")
-	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
+	writer.Write([]byte(fmt.Sprintf("\n%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
 	return nil
 }
 
