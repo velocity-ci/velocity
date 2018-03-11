@@ -1,6 +1,11 @@
 import './styles.scss';
 
-const app = require('./app/Main.elm').Main.fullscreen(localStorage.session || null);
+const flags = {
+  session: localStorage.session || null,
+  apiUrlBase: process.env.ARCHITECT_ADDRESS
+};
+
+const app = require("./app/Main.elm").Main.fullscreen(flags);
 
 app.ports.storeSession.subscribe(session => localStorage.session = session);
 
