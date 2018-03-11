@@ -343,8 +343,11 @@ setRoute maybeRoute model =
         socket =
             session.socket
 
+        maybeToken =
+            Maybe.map .token session.user
+
         joinChannels =
-            Request.Channel.joinChannels socket handledChannelErrorToMsg
+            Request.Channel.joinChannels socket maybeToken handledChannelErrorToMsg
     in
         case maybeRoute of
             Nothing ->
@@ -490,8 +493,11 @@ updatePage page msg model =
         errored =
             pageErrored model
 
+        maybeToken =
+            Maybe.map .token session.user
+
         joinChannels =
-            Request.Channel.joinChannels session.socket handledChannelErrorToMsg
+            Request.Channel.joinChannels session.socket maybeToken handledChannelErrorToMsg
     in
         case ( msg, page ) of
             ( SocketMsg msg, _ ) ->

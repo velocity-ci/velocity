@@ -12,14 +12,19 @@ import Util exposing ((=>))
 
 joinChannels :
     Socket toMsg
+    -> Maybe AuthToken
     -> (Request.Errors.Error Error -> toMsg)
     -> (msg -> toMsg)
     -> Dict String (List ( String, Encode.Value -> msg ))
     -> ( Socket toMsg, Cmd (Socket.Msg toMsg) )
-joinChannels socket errorHandler toMsg channelsDict =
-    channelsDict
-        |> Dict.toList
-        |> List.foldl (joinChannel toMsg errorHandler) ( socket, Cmd.none )
+joinChannels socket maybeAuthToken errorHandler toMsg channels =
+    let
+        join =
+            joinChannel toMsg maybeAuthToken errorHandler
+    in
+        channels
+            |> Dict.toList
+            |> List.foldl join ( socket, Cmd.none )
 
 
 leaveChannels :
@@ -40,24 +45,25 @@ leaveChannels toMsg channels socket =
 
 
 withAuthToken :
-    ( Channel msg, Cmd toMsg )
+    Channel msg
     -> AuthToken
-    -> ( Channel msg, Cmd toMsg )
-withAuthToken ( channel, cmd ) authToken =
+    -> Channel msg
+withAuthToken channel authToken =
     let
         payload =
             Encode.object [ "token" => AuthToken.encode authToken ]
     in
-        Channel.withPayload payload channel => cmd
+        Channel.withPayload payload channel
 
 
 joinChannel :
     (msg -> toMsg)
+    -> Maybe AuthToken
     -> (Request.Errors.Error Error -> toMsg)
     -> ( String, List ( String, Encode.Value -> msg ) )
     -> ( Socket toMsg, Cmd (Socket.Msg toMsg) )
     -> ( Socket toMsg, Cmd (Socket.Msg toMsg) )
-joinChannel toMsg errorHandler ( channelName, events ) ( socket, cmd ) =
+joinChannel toMsg maybeAuthToken errorHandler ( channelName, events ) ( socket, cmd ) =
     let
         onJoinError value =
             value
@@ -65,11 +71,16 @@ joinChannel toMsg errorHandler ( channelName, events ) ( socket, cmd ) =
                 |> handleChannelError
                 |> errorHandler
 
-        channel =
+        channel_ =
             channelName
                 |> Channel.init
                 |> Channel.map toMsg
                 |> Channel.onJoinError onJoinError
+
+        channel =
+            maybeAuthToken
+                |> Maybe.map (withAuthToken channel_)
+                |> Maybe.withDefault channel_
 
         ( channelSocket, socketCmd ) =
             Socket.join channel socket
