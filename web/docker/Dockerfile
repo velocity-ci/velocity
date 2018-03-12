@@ -13,3 +13,4 @@ RUN chmod 554 /etc/cont-init.d/set_architect
 ENV ARCHITECT_ENDPOINT ""
 
 COPY velocity/dist /usr/share/nginx/html
+COPY docker/vhost.conf /etc/nginx/conf.d/default.conf
