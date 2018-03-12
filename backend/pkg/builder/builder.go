@@ -17,6 +17,7 @@ import (
 )
 
 type Builder struct {
+	run bool
 }
 
 func (b *Builder) Start() {
@@ -25,24 +26,28 @@ func (b *Builder) Start() {
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
-	if !waitForService(client, address) {
-		logrus.Fatalf("Could not connect to: %s", address)
+
+	for b.run {
+		if !waitForService(client, address) {
+			logrus.Fatalf("Could not connect to: %s", address)
+		}
+
+		ws := connectToArchitect(address, secret)
+
+		logrus.Infof("connected to %s", address)
+
+		monitorCommands(ws)
 	}
-
-	ws := connectToArchitect(address, secret)
-
-	logrus.Infof("connected to %s", address)
-
-	go monitorCommands(ws)
 }
 
 func (b *Builder) Stop() error {
+	b.run = false
 	return nil
 }
 
 func New() architect.App {
 	velocity.SetLogLevel()
-	return &Builder{}
+	return &Builder{run: true}
 }
 
 func getArchitectAddress() string {
