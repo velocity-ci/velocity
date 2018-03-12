@@ -21,7 +21,7 @@ func (pR *ParameterResolver) Resolve(paramName string) (string, error) {
 		return val, nil
 	}
 
-	fromEnv := os.Getenv(paramName) // load from env. TODO: could secure by having prefix
+	fromEnv := os.Getenv(fmt.Sprintf("VCI_%s", paramName))
 	if len(fromEnv) > 0 {
 		return fromEnv, nil
 	}
