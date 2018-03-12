@@ -27,6 +27,11 @@ build-cli:
 
 build-all: build-architect build-builder build-cli
 
+publish-all:
+	docker push civelocity/architect:${GIT_VERSION}
+	docker push civelocity/builder:${GIT_VERSION}
+	# TODO: CLI publishing
+
 test:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
