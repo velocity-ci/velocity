@@ -35,7 +35,7 @@ list context maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 
@@ -69,4 +69,4 @@ create context config token =
             |> withBody body
             |> withExpect expect
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError

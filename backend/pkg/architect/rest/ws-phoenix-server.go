@@ -1,6 +1,12 @@
 package rest
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/Sirupsen/logrus"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 )
@@ -21,7 +27,32 @@ type Client struct {
 	subscriptions []string
 }
 
-func (c *Client) Subscribe(s string, ref uint64) {
+func jwtKeyFunc(t *jwt.Token) (interface{}, error) {
+	// Check the signing method (from echo.labstack.jwt middleware)
+	if t.Method.Alg() != jwtSigningMethod.Name {
+		return nil, fmt.Errorf("Unexpected jwt signing method=%v", t.Header["alg"])
+	}
+	return []byte(os.Getenv("JWT_SECRET")), nil
+}
+
+func (c *Client) Subscribe(s string, ref uint64, payload *PhoenixGuardianJoinPayload) {
+	_, err := jwt.ParseWithClaims(payload.Token, jwtStandardClaims, jwtKeyFunc)
+	if err != nil {
+		c.ws.WriteJSON(PhoenixMessage{
+			Event: PhxReplyEvent,
+			Topic: s,
+			Ref:   ref,
+			Payload: PhoenixReplyPayload{
+				Status: "error",
+				Response: map[string]string{
+					"message": "access denied",
+				},
+			},
+		})
+		logrus.Warnf("websocket channel auth failed: %s", err)
+		return
+	}
+
 	c.subscriptions = append(c.subscriptions, s)
 	c.ws.WriteJSON(PhoenixMessage{
 		Event: PhxReplyEvent,
@@ -80,7 +111,7 @@ func (c *Client) HandleMessage(m *PhoenixMessage) {
 
 	switch m.Event {
 	case PhxJoinEvent:
-		c.Subscribe(m.Topic, m.Ref)
+		c.Subscribe(m.Topic, m.Ref, m.Payload.(*PhoenixGuardianJoinPayload))
 		break
 	case PhxLeaveEvent:
 		c.Unsubscribe(m.Topic, m.Ref)
@@ -109,4 +140,55 @@ type PhoenixMessage struct {
 type PhoenixReplyPayload struct {
 	Status   string      `json:"status"`
 	Response interface{} `json:"response"`
+}
+
+type PhoenixGuardianJoinPayload struct {
+	Token string `json:"token"`
+}
+
+func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	// We'll store the error (if any) so we can return it if necessary
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	// Deserialize Event
+	err = json.Unmarshal(*objMap["event"], &m.Event)
+	if err != nil {
+		return err
+	}
+	// Deserialize Topic
+	err = json.Unmarshal(*objMap["topic"], &m.Topic)
+	if err != nil {
+		return err
+	}
+	// Deserialize Ref
+	err = json.Unmarshal(*objMap["ref"], &m.Ref)
+	if err != nil {
+		return err
+	}
+
+	// Deserialize Payload by Event
+	var rawData json.RawMessage
+	err = json.Unmarshal(*objMap["payload"], &rawData)
+	if err != nil {
+		return err
+	}
+
+	switch m.Event {
+	case PhxJoinEvent:
+		p := PhoenixGuardianJoinPayload{}
+		err := json.Unmarshal(rawData, &p)
+		if err != nil {
+			return err
+		}
+		m.Payload = &p
+		break
+	default:
+		logrus.Debugf("no payload for %s event", m.Event)
+	}
+
+	return nil
 }

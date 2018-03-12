@@ -67,7 +67,7 @@ list context projectSlug maybeBranch amount page maybeToken =
             |> HttpBuilder.withQueryParams queryParams
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> ElmTask.mapError Request.Errors.handleError
+            |> ElmTask.mapError Request.Errors.handleHttpError
 
 
 
@@ -93,7 +93,7 @@ get context projectSlug hash maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> ElmTask.mapError Request.Errors.handleError
+            |> ElmTask.mapError Request.Errors.handleHttpError
 
 
 
@@ -121,7 +121,7 @@ tasks context projectSlug hash maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> ElmTask.mapError Request.Errors.handleError
+            |> ElmTask.mapError Request.Errors.handleHttpError
 
 
 task : Context -> Project.Slug -> Commit.Hash -> Task.Name -> Maybe AuthToken -> ElmTask.Task Request.Errors.HttpError Task
@@ -145,7 +145,7 @@ task context projectSlug hash name maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> ElmTask.mapError Request.Errors.handleError
+            |> ElmTask.mapError Request.Errors.handleHttpError
 
 
 
@@ -173,7 +173,7 @@ builds context projectSlug hash maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> ElmTask.mapError Request.Errors.handleError
+            |> ElmTask.mapError Request.Errors.handleHttpError
 
 
 createBuild : Context -> Project.Slug -> Commit.Hash -> Task.Name -> List ( String, String ) -> AuthToken -> ElmTask.Task Request.Errors.HttpError Build
@@ -224,4 +224,4 @@ createBuild context projectSlug hash taskName params token =
             |> withAuthorization (Just token)
             |> withBody body
             |> HttpBuilder.toTask
-            |> ElmTask.mapError Request.Errors.handleError
+            |> ElmTask.mapError Request.Errors.handleHttpError

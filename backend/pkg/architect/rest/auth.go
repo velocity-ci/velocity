@@ -21,15 +21,21 @@ type authResponse struct {
 	Expires  time.Time `json:"expires"`
 }
 
+var jwtSigningMethod = jwt.SigningMethodHS512
+var jwtStandardClaims = &jwt.StandardClaims{
+	Issuer: "Velocity CI",
+}
+
 func newAuthResponse(u *user.User) *authResponse {
 	now := time.Now()
 	expires := time.Now().Add(time.Hour * 24 * 2)
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		ExpiresAt: expires.Unix(),
-		Issuer:    "Velocity CI",
-		NotBefore: now.Unix(),
-	})
+	claims := jwtStandardClaims
+	claims.ExpiresAt = expires.Unix()
+	claims.NotBefore = now.Unix()
+	claims.IssuedAt = now.Unix()
+
+	token := jwt.NewWithClaims(jwtSigningMethod, claims)
 	tokenString, _ := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 
 	return &authResponse{
