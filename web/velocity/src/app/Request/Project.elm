@@ -46,7 +46,7 @@ list context maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 
@@ -65,7 +65,7 @@ sync context slug token =
             |> withAuthorization (Just token)
             |> withExpect expect
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 
@@ -85,7 +85,7 @@ branches context slug maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 
@@ -105,7 +105,7 @@ builds context slug maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 
@@ -124,7 +124,7 @@ get context slug maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 
@@ -167,7 +167,7 @@ create context config token =
             |> withBody body
             |> withExpect expect
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 
@@ -181,4 +181,4 @@ delete context slug token =
         |> withAuthorization (Just token)
         |> withExpect (Http.expectStringResponse (\_ -> Ok ()))
         |> HttpBuilder.toTask
-        |> Task.mapError Request.Errors.handleError
+        |> Task.mapError Request.Errors.handleHttpError

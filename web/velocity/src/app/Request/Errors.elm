@@ -3,7 +3,7 @@ module Request.Errors
         ( Error(..)
         , HttpError
         , HandledError(..)
-        , handleError
+        , handleHttpError
         , withDefaultError
         , mapUnhandledError
         )
@@ -24,8 +24,8 @@ type alias HttpError =
     Error Http.Error
 
 
-handleError : Http.Error -> Error Http.Error
-handleError err =
+handleHttpError : Http.Error -> Error Http.Error
+handleHttpError err =
     let
         unhandled =
             UnhandledError err

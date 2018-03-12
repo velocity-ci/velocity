@@ -32,7 +32,7 @@ steps context id maybeToken =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 streams :
@@ -52,7 +52,7 @@ streams context maybeToken id =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
 
 
 streamOutput :
@@ -73,4 +73,4 @@ streamOutput context maybeToken id =
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
-            |> Task.mapError Request.Errors.handleError
+            |> Task.mapError Request.Errors.handleHttpError
