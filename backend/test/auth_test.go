@@ -70,7 +70,6 @@ func iAmAuthenticated() error {
 
 	var r map[string]interface{}
 	json.Unmarshal(responseBody, &r)
-	// log.Println(r)
 
 	headers.Set("Authorization", fmt.Sprintf("Bearer %s", r["token"].(string)))
 

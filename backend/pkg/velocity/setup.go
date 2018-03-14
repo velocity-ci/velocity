@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -66,14 +65,14 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	if s.repository != nil {
 		repo, dir, err := GitClone(s.repository, false, true, t.Git.Submodule, writer)
 		if err != nil {
-			log.Println(err)
+			logrus.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err
 		}
 		w, err := repo.Worktree()
 		if err != nil {
-			log.Println(err)
+			logrus.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err
@@ -83,7 +82,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			Hash: plumbing.NewHash(s.commitHash),
 		})
 		if err != nil {
-			log.Println(err)
+			logrus.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err
@@ -281,7 +280,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		log.Println(err)
+		logrus.Error(err)
 	}
 	blankEmitter := NewBlankEmitter()
 	w := blankEmitter.GetStreamWriter("setup")
@@ -313,7 +312,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: false},
 	)
 	if err != nil {
-		log.Printf("param container %s logs err: %s", sR.containerID, err)
+		logrus.Errorf("param container %s logs err: %s", sR.containerID, err)
 	}
 	headerBytes := make([]byte, 8)
 	logsResp.Read(headerBytes)
@@ -323,7 +322,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		log.Printf("network %s remove err: %s", networkResp.ID, err)
+		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
 	}
 
 	var dOutput dockerLoginOutput

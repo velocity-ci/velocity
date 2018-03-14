@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/go/canonical/json"
 
 	"github.com/docker/docker/api/types"
@@ -126,7 +126,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		log.Println(err)
+		logrus.Error(err)
 	}
 	blankEmitter := NewBlankEmitter()
 	w := blankEmitter.GetStreamWriter("setup")
@@ -158,7 +158,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: false},
 	)
 	if err != nil {
-		log.Printf("param container %s logs err: %s", sR.containerID, err)
+		logrus.Errorf("param container %s logs err: %s", sR.containerID, err)
 	}
 	headerBytes := make([]byte, 8)
 	logsResp.Read(headerBytes)
@@ -168,7 +168,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		log.Printf("network %s remove err: %s", networkResp.ID, err)
+		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
 	}
 
 	params := []Parameter{}

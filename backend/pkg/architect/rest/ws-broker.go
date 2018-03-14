@@ -2,7 +2,6 @@ package rest
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
@@ -86,7 +85,6 @@ func (m *broker) EmitAll(message *domain.Emit) {
 			}
 		}
 	}
-	log.Printf("Emitted %s to %d clients", mess.Topic, clientCount)
 }
 
 func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
