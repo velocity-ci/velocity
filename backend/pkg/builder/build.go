@@ -11,21 +11,22 @@ func runBuild(build *builder.BuildCtrl, ws *websocket.Conn) {
 
 	backupResolver := NewParameterResolver(build.Build.Parameters)
 
-	t := build.Build.Task
+	vT := build.Build.Task.VTask
 
-	for _, step := range build.Steps {
-		emitter.SetStepAndStreams(step, build.Streams)
+	for i, step := range vT.Steps {
+		bStep := build.Steps[i]
+		emitter.SetStepAndStreams(bStep, build.Streams)
 
-		s := *step.VStep
-		if s.GetType() == "setup" {
-			s.(*velocity.Setup).Init(
+		// s := *step.VStep
+		if step.GetType() == "setup" {
+			step.(*velocity.Setup).Init(
 				&backupResolver,
 				&build.Build.Task.Commit.Project.Config,
 				build.Build.Task.Commit.Hash,
 			)
 		}
 
-		err := s.Execute(emitter, t.VTask)
+		err := step.Execute(emitter, vT)
 		if err != nil {
 			break
 		}

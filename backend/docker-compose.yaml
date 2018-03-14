@@ -27,5 +27,5 @@ services:
       ARCHITECT_ADDRESS: http://architect
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/backend/"
-      - "./builder_data:/var/velocityci"
+      - "/var/velocityci:/var/velocityci"
       - "/var/run/docker.sock:/var/run/docker.sock"
