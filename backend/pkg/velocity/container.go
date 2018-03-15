@@ -327,6 +327,7 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io
 		}
 
 		if o != "*" {
+			logrus.Debugf(o)
 			replacedParams := []string{}
 			for _, p := range parameters {
 				if p.IsSecret {
@@ -334,7 +335,6 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io
 					replacedParams = append(replacedParams, p.Name)
 				}
 			}
-			logrus.Debugf(o)
 			writer.Write([]byte(o))
 		}
 	}
