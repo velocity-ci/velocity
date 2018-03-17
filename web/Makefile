@@ -20,13 +20,14 @@ build:
 	--volume ${CURDIR}/velocity:/app \
 	--workdir /app \
 	node:8 \
-	sh -c "NODE_ENV=prod ARCHITECT_ADDRESS=http://localhost/v1 node_modules/.bin/webpack"
+	sh -c "NODE_ENV=prod ARCHITECT_ADDRESS=__ARCHITECT_ADDRESS__ node_modules/.bin/webpack"
 
 	@docker build -t civelocity/web:${GIT_VERSION} -f docker/Dockerfile .
 	@docker tag civelocity/web:${GIT_VERSION} civelocity/web:latest
 
-serve_build: build
-	docker run --rm -p 4200:80 civelocity/web:latest
+serve_dist: build
+	docker run --rm -p 4200:80 -e ARCHITECT_ENDPOINT='http://localhost/v1' \
+	civelocity/web:latest
 
 publish:
 	@docker push civelocity/web:${GIT_VERSION}
