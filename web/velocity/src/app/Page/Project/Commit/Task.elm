@@ -84,7 +84,7 @@ type Stream
 
 
 type alias LoadedOutputStreams =
-    Dict String ( Int, Maybe ProjectTask.Step, BuildStep.Id, Array BuildStreamOutput )
+    Dict String ( Int, Maybe ProjectTask.Step, BuildStep.Id, Array BuildStreamOutput, Ansi.Log.Model )
 
 
 type BuildType
@@ -138,8 +138,17 @@ loadBuild context task maybeAuthToken build =
                     |> List.foldr
                         (\( id, taskStep, buildStep, outputStreams ) dict ->
                             let
+                                ansiInit =
+                                    Ansi.Log.init Ansi.Log.Cooked
+
+                                lineAnsi outputLine ansi =
+                                    Ansi.Log.update outputLine.output ansi
+
+                                ansi =
+                                    Array.foldl lineAnsi ansiInit outputStreams
+
                                 streamTuple =
-                                    ( buildStep.number, taskStep, buildStep.id, outputStreams )
+                                    ( buildStep.number, taskStep, buildStep.id, outputStreams, ansi )
                             in
                                 Dict.insert (BuildStream.idToString id) streamTuple dict
                         )
@@ -529,19 +538,14 @@ viewTabFrame model builds =
 
                     ansiOutput =
                         Dict.toList streams
-                            |> List.sortBy (\( _, ( number, _, _, _ ) ) -> number)
+                            |> List.sortBy (\( _, ( number, _, _, _, _ ) ) -> number)
                             |> List.map
-                                (\( streamId, ( number, taskStep, buildStepId, outputLines ) ) ->
+                                (\( streamId, ( number, taskStep, buildStepId, outputLines, ansi ) ) ->
                                     let
-                                        lineAnsi outputLine ansi =
-                                            Ansi.Log.update outputLine.output ansi
-
-                                        ansi =
-                                            outputLines
-                                                |> Array.foldl lineAnsi ansiInit
-                                                |> Ansi.Log.view
+                                        ansiView =
+                                            Ansi.Log.view ansi
                                     in
-                                        ( ansi, taskStep, buildStepId )
+                                        ( ansiView, taskStep, buildStepId )
                                 )
                             |> List.map
                                 (\( ansi, taskStep, buildStepId ) ->
@@ -940,7 +944,7 @@ update context project commit builds session msg model =
                                                     Dict.get streamKey streams
                                             in
                                                 case streamLines of
-                                                    Just ( number, taskStep, buildStepId, streamLines ) ->
+                                                    Just ( number, taskStep, buildStepId, streamLines, ansi ) ->
                                                         let
                                                             streamLineLength =
                                                                 Array.length streamLines - 1
@@ -951,8 +955,14 @@ update context project commit builds session msg model =
                                                                 else
                                                                     Array.set b.line b streamLines
 
+                                                            lineAnsi outputLine ansi =
+                                                                Ansi.Log.update outputLine.output ansi
+
+                                                            updatedAnsi =
+                                                                Array.foldl lineAnsi ansi (Array.initialize 1 (always b))
+
                                                             streamTuple =
-                                                                ( number, taskStep, buildStepId, updatedStreamLines )
+                                                                ( number, taskStep, buildStepId, updatedStreamLines, updatedAnsi )
                                                         in
                                                             Dict.insert streamKey streamTuple streams
 

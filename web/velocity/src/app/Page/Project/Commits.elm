@@ -251,8 +251,14 @@ viewBreadcrumbExtraItems project model =
     in
         div [ class "ml-auto p-2" ]
             [ button
-                [ class "ml-auto btn btn-dark", type_ "button", onClick SubmitSync, disabled submitting ]
-                [ i [ classList iconClassList ] [], text " Refresh " ]
+                [ class "ml-auto btn btn-dark"
+                , type_ "button"
+                , onClick SubmitSync
+                , disabled submitting
+                ]
+                [ i [ classList iconClassList ] []
+                , text " Refresh "
+                ]
             ]
 
 
