@@ -56,8 +56,8 @@ const commonConfig = {
           loader: 'file-loader',
           options: {
             name: '[name].[ext]',
-            outputPath: 'fonts/',    // where the fonts will go
-            publicPath: '../'       // override the default path
+            outputPath: 'static/fonts/',    // where the fonts will go
+            publicPath: '/'       // override the default path
           }
         }]
       }
@@ -77,7 +77,7 @@ if (prod) {
         {
           test: /\.elm$/,
           exclude: [/elm-stuff/, /node_modules/],
-          use: 'elm-webpack-loader?pathToMake=./node_modules/.bin/elm-make'
+          use: 'elm-webpack-loader?pathToMake=./node_modules/.bin/elm-make&debug=false'
         },
         {
           test: /\.sc?ss$/,

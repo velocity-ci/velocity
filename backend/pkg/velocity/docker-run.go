@@ -122,9 +122,11 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	cwd, _ := os.Getwd()
-	if os.Getenv("SIB_CWD") != "" {
-		cwd = os.Getenv("SIB_CWD")
-	}
+
+	// Only used for Docker-based CLI. Unsupported right now.
+	// if os.Getenv("SIB_CWD") != "" {
+	// 	cwd = os.Getenv("SIB_CWD")
+	// }
 
 	config := &container.Config{
 		Image: dR.Image,
