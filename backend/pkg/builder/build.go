@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"os"
+
 	"github.com/gorilla/websocket"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
@@ -31,4 +33,7 @@ func runBuild(build *builder.BuildCtrl, ws *websocket.Conn) {
 			break
 		}
 	}
+	wd, _ := os.Getwd()
+	os.RemoveAll(wd)
+	os.Chdir("/var/velocityci")
 }
