@@ -55,7 +55,23 @@ func (s Setup) GetDetails() string {
 	return ""
 }
 
+func makeVelocityDirs() error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	os.MkdirAll(fmt.Sprintf("%s/.velocityci/plugins", wd), os.ModePerm)
+
+	return nil
+}
+
 func (s *Setup) Execute(emitter Emitter, t *Task) error {
+
+	if err := makeVelocityDirs(); err != nil {
+		return err
+	}
+
 	t.RunID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
 
 	writer := emitter.GetStreamWriter("setup")
@@ -104,7 +120,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		if err != nil {
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("could not resolve parameter: %v", err)))
-			return fmt.Errorf("could not resolve %v\n", err)
+			return fmt.Errorf("could not resolve %v", err)
 		}
 		for _, param := range params {
 			parameters[param.Name] = param
