@@ -137,6 +137,7 @@ func getBinary(u string) (binaryLocation string, _ error) {
 			return "", err
 		}
 		logrus.Infof("downloaded %d bytes for %s to %s", size, u, binaryLocation)
+		outFile.Chmod(os.ModePerm)
 	}
 
 	return binaryLocation, nil

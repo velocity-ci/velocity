@@ -61,16 +61,14 @@ func makeVelocityDirs() error {
 		return err
 	}
 
+	logrus.Infof("mkdir -p %s", fmt.Sprintf("%s/.velocityci/plugins", wd))
+
 	os.MkdirAll(fmt.Sprintf("%s/.velocityci/plugins", wd), os.ModePerm)
 
 	return nil
 }
 
 func (s *Setup) Execute(emitter Emitter, t *Task) error {
-
-	if err := makeVelocityDirs(); err != nil {
-		return err
-	}
 
 	t.RunID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
 
@@ -104,6 +102,10 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			return err
 		}
 		os.Chdir(dir)
+	}
+
+	if err := makeVelocityDirs(); err != nil {
+		return err
 	}
 
 	// Resolve parameters
