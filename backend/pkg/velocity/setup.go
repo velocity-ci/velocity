@@ -279,19 +279,17 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 		return r, err
 	}
 
-	args := []string{
-		fmt.Sprintf("-address=%s", registry.Address),
-	}
+	extraEnv := []string{}
 	for k, v := range registry.Arguments {
 		for _, pV := range parameters {
 			v = strings.Replace(v, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 			k = strings.Replace(k, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 		}
-		args = append(args, fmt.Sprintf("%s=%s", k, v))
+		extraEnv = append(extraEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	cmd := exec.Command(bin, args...)
-	cmd.Env = os.Environ()
+	cmd := exec.Command(bin)
+	cmd.Env = append(os.Environ(), extraEnv...)
 
 	cmdOutBytes, err := cmd.Output()
 	if err != nil {
