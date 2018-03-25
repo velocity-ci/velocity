@@ -2,19 +2,18 @@ package velocity
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -265,92 +264,68 @@ func getGitParams() map[string]Parameter {
 	}
 }
 
-func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parameters map[string]Parameter, authConfigs []DockerRegistry) (DockerRegistry, error) {
-	env := []string{
-		fmt.Sprintf("address=%s", registry.Address),
+func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parameters map[string]Parameter, authConfigs []DockerRegistry) (r DockerRegistry, _ error) {
+
+	type registryAuthConfig struct {
+		Username      string `json:"username"`
+		Password      string `json:"password"`
+		ServerAddress string `json:"serverAddress"`
+		Error         string `json:"error"`
+		State         string `json:"state"`
+	}
+
+	bin, err := getBinary(registry.Use)
+	if err != nil {
+		return r, err
+	}
+
+	args := []string{
+		fmt.Sprintf("-address=%s", registry.Address),
 	}
 	for k, v := range registry.Arguments {
 		for _, pV := range parameters {
 			v = strings.Replace(v, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 			k = strings.Replace(k, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 		}
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-	containerConfig := &container.Config{
-		Image: registry.Use,
-		Env:   env,
-		Volumes: map[string]struct{}{
-			"/var/run/docker.sock": {},
-		},
+		args = append(args, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	hostConfig := &container.HostConfig{
-		Binds: []string{
-			"/var/run/docker.sock:/var/run/docker.sock",
-		},
+	cmd := exec.Command(bin, args...)
+	cmd.Env = os.Environ()
+
+	cmdOutBytes, err := cmd.Output()
+	if err != nil {
+		return r, err
+	}
+	var dOutput registryAuthConfig
+	json.Unmarshal(cmdOutBytes, &dOutput)
+
+	if dOutput.State != "success" {
+		return r, fmt.Errorf("registry auth error: %s", dOutput.Error)
 	}
 
-	var wg sync.WaitGroup
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
-
-	networkResp, err := cli.NetworkCreate(ctx, RunID, types.NetworkCreate{
-		Labels: map[string]string{"owner": "velocity-ci"},
+	_, err = cli.RegistryLogin(ctx, types.AuthConfig{
+		Username:      dOutput.Username,
+		Password:      dOutput.Password,
+		ServerAddress: dOutput.ServerAddress,
 	})
 	if err != nil {
-		logrus.Error(err)
+		return r, err
 	}
-	blankEmitter := NewBlankEmitter()
-	w := blankEmitter.GetStreamWriter("setup")
-	sR := newServiceRunner(
-		cli,
-		ctx,
-		w,
-		&wg,
-		map[string]Parameter{},
-		fmt.Sprintf("%s-%s", RunID, "dLogin"),
-		registry.Use,
-		nil,
-		containerConfig,
-		hostConfig,
-		nil,
-		networkResp.ID,
-	)
 
-	sR.PullOrBuild(authConfigs)
-	sR.Create()
-	stopServicesChannel := make(chan string, 32)
-	wg.Add(1)
-	go sR.Run(stopServicesChannel)
-	_ = <-stopServicesChannel
-
-	logsResp, err := sR.dockerCli.ContainerLogs(
-		sR.context,
-		sR.containerID,
-		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: false},
-	)
+	authConfig := types.AuthConfig{
+		Username: dOutput.Username,
+		Password: dOutput.Password,
+	}
+	encodedJSON, err := json.Marshal(authConfig)
 	if err != nil {
-		logrus.Errorf("param container %s logs err: %s", sR.containerID, err)
+		return r, err
 	}
-	headerBytes := make([]byte, 8)
-	logsResp.Read(headerBytes)
-	content, _ := ioutil.ReadAll(logsResp)
-	logsResp.Close()
-	sR.Stop()
-	wg.Wait()
-	err = cli.NetworkRemove(ctx, networkResp.ID)
-	if err != nil {
-		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
-	}
+	registry.AuthorizationToken = base64.URLEncoding.EncodeToString(encodedJSON)
+	registry.Address = dOutput.ServerAddress
 
-	var dOutput dockerLoginOutput
-	json.Unmarshal(content, &dOutput)
-	if dOutput.State != "success" {
-		return registry, fmt.Errorf(dOutput.Error)
-	}
-
-	registry.AuthorizationToken = dOutput.AuthorizationToken
-	registry.Address = dOutput.Address
 	return registry, nil
 }
 
