@@ -3,7 +3,6 @@ package velocity
 import (
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"os"
 	"time"
@@ -41,7 +40,7 @@ func GitClone(
 	os.RemoveAll(dir)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 		return nil, "", err
 	}
 

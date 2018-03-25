@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types/network"
 
 	"github.com/docker/docker/api/types"
@@ -99,7 +99,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		log.Println(err)
+		logrus.Error(err)
 	}
 
 	writers := map[string]StreamWriter{}
@@ -158,7 +158,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		log.Printf("network %s remove err: %s", networkResp.ID, err)
+		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
 	}
 	success := true
 	for _, serviceRunner := range services {
@@ -214,8 +214,6 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, 
 		}
 	}
 
-	log.Printf("bound: %v", binds)
-
 	containerConfig := &container.Config{
 		Image:      s.Image,
 		Cmd:        s.Command,
@@ -239,7 +237,6 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, 
 		}
 		links = append(links, fmt.Sprintf("%s:%s", target, alias))
 	}
-	log.Printf("linked: %v", links)
 
 	hostConfig := &container.HostConfig{
 		Binds: binds,
@@ -323,7 +320,7 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 	var serviceMap map[string]interface{}
 	err := unmarshal(&serviceMap)
 	if err != nil {
-		log.Printf("unable to unmarshal service")
+		logrus.Errorf("unable to unmarshal service: %s", err)
 		return err
 	}
 

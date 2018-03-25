@@ -21,11 +21,11 @@ parameters:
     secret: true
   # Haved default exports to keep DRY
   # * Default to secret, but can be not secret.
-  - use: civelocity/aws-credentials # by default, export AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+  - use: https://github.com/velocity-ci/parameters-aws-credentials/releases/download/v0.0.1/aws-credentials
     arguments:
       roleName: testRole
   # If container fails during task setup, attempt to get exports (from container) from environment.
-  - use: civelocity/s3-credentials
+  - use: https://github.com/velocity-ci/parameters-aws-s3/releases/download/v0.0.1/aws-s3
     secret: true
     arguments:
       uri: s3://mybucket/secrets/registry_credentials # path on S3

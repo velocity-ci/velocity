@@ -1,10 +1,10 @@
 package domain
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 )
 
@@ -13,7 +13,7 @@ func NewStormDB(path string) *storm.DB {
 	os.MkdirAll(dir, os.ModePerm)
 	db, err := storm.Open(path)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 
 	return db
