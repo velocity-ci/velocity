@@ -1,0 +1,6 @@
+description: "Example using docker-compose files to output multiple streams at once"
+name: compose-example-streams
+
+steps:
+  - type: compose
+    composeFile: tasks/example.compose.2.yml
