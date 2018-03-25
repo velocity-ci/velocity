@@ -9,10 +9,10 @@ parameters:
 
 docker:
   registries:
-    - use: civelocity/auth-docker-hub
+    - use: https://github.com/velocity-ci/registry-docker-hub/releases/download/v0.0.1/registry-docker-hub
       arguments:
-        USERNAME: ${docker_hub_username}
-        PASSWORD: ${docker_hub_password}
+        username: ${docker_hub_username}
+        password: ${docker_hub_password}
 
 steps: 
   - type: build
