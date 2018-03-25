@@ -1,106 +1,60 @@
 package velocity
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
-	"sync"
-
-	"github.com/Sirupsen/logrus"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"os"
+	"os/exec"
 )
 
 type Plugin struct {
 	BaseStep
-	Image          string            `json:"image" yaml:"image"`
-	DockerInDocker bool              `json:"dind" yaml:"dind"`
-	Environment    map[string]string `json:"environment" yaml:"environment"`
+	Use       string            `json:"use" yaml:"use"`
+	Arguments map[string]string `json:"arguments" yaml:"arguments"`
 }
 
 func (p Plugin) GetDetails() string {
-	return fmt.Sprintf("image: %s dind: %v", p.Image, p.DockerInDocker)
+	return fmt.Sprintf("use: %s", p.Use)
 }
 
 func (p *Plugin) Execute(emitter Emitter, t *Task) error {
+
+	type output struct {
+		State string `json:"state"`
+		Error string `json:"error"`
+	}
+
 	writer := emitter.GetStreamWriter("plugin")
 	writer.SetStatus(StateRunning)
-	env := []string{}
-	for k, v := range p.Environment {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
 
-	config := &container.Config{
-		Image: p.Image,
-		Cmd:   []string{"/app/run.sh"},
-		Env:   env,
-	}
-
-	hostConfig := &container.HostConfig{}
-
-	if p.DockerInDocker {
-		config.Volumes = map[string]struct{}{
-			"/var/run/docker.sock": {},
-		}
-		hostConfig.Binds = []string{
-			"/var/run/docker.sock:/var/run/docker.sock",
-		}
-	}
-
-	var wg sync.WaitGroup
-	cli, _ := client.NewEnvClient()
-	ctx := context.Background()
-
-	networkResp, err := cli.NetworkCreate(ctx, "", types.NetworkCreate{
-		Labels: map[string]string{"owner": "velocity-ci"},
-	})
-	if err != nil {
-		logrus.Error(err)
-	}
-
-	sR := newServiceRunner(
-		cli,
-		ctx,
-		writer,
-		&wg,
-		t.ResolvedParameters,
-		fmt.Sprintf("%s-%s", p.GetRunID(), "plugin"),
-		p.Image,
-		nil,
-		config,
-		hostConfig,
-		nil,
-		networkResp.ID,
-	)
-
-	sR.PullOrBuild(t.Docker.Registries)
-	sR.Create()
-	stopServicesChannel := make(chan string, 32)
-	wg.Add(1)
-	go sR.Run(stopServicesChannel)
-	_ = <-stopServicesChannel
-	sR.Stop()
-
-	wg.Wait()
-	err = cli.NetworkRemove(ctx, networkResp.ID)
-	if err != nil {
-		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
-	}
-
-	exitCode := sR.exitCode
-
+	bin, err := getBinary(p.Use)
 	if err != nil {
 		return err
 	}
 
-	if exitCode != 0 {
+	env := []string{}
+	for k, v := range p.Arguments {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	cmd := exec.Command(bin)
+	cmd.Env = append(os.Environ(), env...)
+
+	cmdOutBytes, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	var dOutput output
+	json.Unmarshal(cmdOutBytes, &dOutput)
+
+	if dOutput.State != "success" {
 		writer.SetStatus("failed")
-		writer.Write([]byte(fmt.Sprintf("\n%s\n### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
-		return fmt.Errorf("Non-zero exit code: %d", exitCode)
+		writer.Write([]byte(fmt.Sprintf("\n%s\n### FAILED (error: %s)\x1b[0m", errorANSI, dOutput.Error)))
+		return fmt.Errorf("error: %s", dOutput.Error)
 	}
 
 	writer.SetStatus("success")
-	writer.Write([]byte(fmt.Sprintf("\n%s\n### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
+	writer.Write([]byte(fmt.Sprintf("\n%s\n### SUCCESS \x1b[0m", successANSI)))
 	return nil
 }
 
