@@ -36,6 +36,7 @@ import Json.Encode as Encode
 import Array exposing (Array)
 import Html.Lazy as Lazy
 import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
+import Component.BuildOutput as BuildOutput
 
 
 -- MODEL --
@@ -83,15 +84,6 @@ type Stream
     = Stream BuildStream.Id
 
 
-type alias LoadedOutputStreams =
-    Dict String ( Int, Maybe ProjectTask.Step, BuildStep.Id, Array BuildStreamOutput, Ansi.Log.Model )
-
-
-type BuildType
-    = LoadedBuild Build.Id LoadedOutputStreams
-    | LoadingBuild (Maybe FromBuild) (Maybe ToBuild)
-
-
 type Tab
     = NewFormTab
     | BuildTab Int
@@ -102,60 +94,9 @@ type Frame
     | NewFormFrame
 
 
-loadBuild :
-    Context
-    -> ProjectTask.Task
-    -> Maybe AuthToken
-    -> Build
-    -> Task Request.Errors.HttpError (Maybe BuildType)
-loadBuild context task maybeAuthToken build =
-    build.steps
-        |> List.sortBy .number
-        |> List.map
-            (\buildStep ->
-                let
-                    taskStep =
-                        task.steps
-                            |> Array.fromList
-                            |> Array.get buildStep.number
-                in
-                    ( taskStep, buildStep )
-            )
-        |> List.map
-            (\( taskStep, buildStep ) ->
-                List.map
-                    (\{ id } ->
-                        Request.Build.streamOutput context maybeAuthToken id
-                            |> Task.map (\output -> ( id, taskStep, buildStep, output ))
-                    )
-                    buildStep.streams
-            )
-        |> List.foldr (++) []
-        |> Task.sequence
-        |> Task.map
-            (\streamOutputList ->
-                streamOutputList
-                    |> List.foldr
-                        (\( id, taskStep, buildStep, outputStreams ) dict ->
-                            let
-                                ansiInit =
-                                    Ansi.Log.init Ansi.Log.Cooked
-
-                                lineAnsi outputLine ansi =
-                                    Ansi.Log.update outputLine.output ansi
-
-                                ansi =
-                                    Array.foldl lineAnsi ansiInit outputStreams
-
-                                streamTuple =
-                                    ( buildStep.number, taskStep, buildStep.id, outputStreams, ansi )
-                            in
-                                Dict.insert (BuildStream.idToString id) streamTuple dict
-                        )
-                        Dict.empty
-                    |> LoadedBuild build.id
-                    |> Just
-            )
+type BuildType
+    = LoadedBuild Build.Id BuildOutput.Model
+    | LoadingBuild (Maybe FromBuild) (Maybe ToBuild)
 
 
 buildOutput : Array BuildStreamOutput -> Ansi.Log.Model
@@ -228,8 +169,8 @@ init context session id hash task maybeSelectedTab builds =
                 in
                     case build of
                         Just b ->
-                            loadBuild context task maybeAuthToken b
-                                |> Task.map (Maybe.map BuildFrame >> initialModel)
+                            BuildOutput.init context task maybeAuthToken b
+                                |> Task.map (LoadedBuild b.id >> BuildFrame >> Just >> initialModel)
                                 |> Task.mapError handleLoadError
 
                         Nothing ->
@@ -489,143 +430,8 @@ viewTabFrame model builds =
             NewFormFrame ->
                 buildForm
 
-            BuildFrame (LoadedBuild id streams) ->
-                let
-                    ansiInit =
-                        Ansi.Log.init Ansi.Log.Cooked
-
-                    build =
-                        findBuild id
-
-                    cardClasses =
-                        build
-                            |> Maybe.map
-                                (\b ->
-                                    case b.status of
-                                        Build.Success ->
-                                            [ "border-success" => True, "text-success" => True ]
-
-                                        Build.Failed ->
-                                            [ "border-danger" => True, "text-danger" => True ]
-
-                                        _ ->
-                                            []
-                                )
-                            |> Maybe.withDefault []
-
-                    titleOutput =
-                        build
-                            |> Maybe.map
-                                (\d ->
-                                    div [ class "card mt-3", classList cardClasses ]
-                                        [ div [ class "card-body" ]
-                                            [ dl [ class "row mb-0" ]
-                                                [ dt [ class "col-sm-3" ] [ text "Id" ]
-                                                , dd [ class "col-sm-9" ] [ text (Build.idToString d.id) ]
-                                                , dt [ class "col-sm-3" ] [ text "Created" ]
-                                                , dd [ class "col-sm-9" ] [ text (formatDateTime d.createdAt) ]
-                                                , dt [ class "col-sm-3" ] [ text "Started" ]
-                                                , dd [ class "col-sm-9" ] [ text (Maybe.map formatDateTime d.startedAt |> Maybe.withDefault "-") ]
-                                                , dt [ class "col-sm-3" ] [ text "Completed" ]
-                                                , dd [ class "col-sm-9" ] [ text (Maybe.map formatDateTime d.completedAt |> Maybe.withDefault "-") ]
-                                                , dt [ class "col-sm-3" ] [ text "Status" ]
-                                                , dd [ class "col-sm-9" ] [ text (Build.statusToString d.status) ]
-                                                ]
-                                            ]
-                                        ]
-                                )
-                            |> Maybe.withDefault (text "")
-
-                    ansiOutput =
-                        Dict.toList streams
-                            |> List.sortBy (\( _, ( number, _, _, _, _ ) ) -> number)
-                            |> List.map
-                                (\( streamId, ( number, taskStep, buildStepId, outputLines, ansi ) ) ->
-                                    let
-                                        ansiView =
-                                            Ansi.Log.view ansi
-                                    in
-                                        ( ansiView, taskStep, buildStepId )
-                                )
-                            |> List.map
-                                (\( ansi, taskStep, buildStepId ) ->
-                                    let
-                                        cardTitle =
-                                            case taskStep of
-                                                Just (Build _) ->
-                                                    "Build"
-
-                                                Just (Run _) ->
-                                                    "Run"
-
-                                                Just (Clone _) ->
-                                                    "Clone"
-
-                                                Just (Compose _) ->
-                                                    "Compose"
-
-                                                Just (Push _) ->
-                                                    "Push"
-
-                                                Nothing ->
-                                                    ""
-
-                                        buildStep =
-                                            build
-                                                |> Maybe.map (.steps >> List.filter (\s -> s.id == buildStepId))
-                                                |> Maybe.andThen List.head
-                                    in
-                                        case buildStep of
-                                            Just buildStep ->
-                                                let
-                                                    cardIcon =
-                                                        viewBuildStepStatusIcon buildStep
-
-                                                    borderColor =
-                                                        case buildStep.status of
-                                                            BuildStep.Waiting ->
-                                                                "border border-light"
-
-                                                            BuildStep.Running ->
-                                                                "border border-primary"
-
-                                                            BuildStep.Success ->
-                                                                "border border-success text-white"
-
-                                                            BuildStep.Failed ->
-                                                                "border border-danger text-white"
-
-                                                    headerBgColor =
-                                                        case buildStep.status of
-                                                            BuildStep.Waiting ->
-                                                                ""
-
-                                                            BuildStep.Running ->
-                                                                ""
-
-                                                            BuildStep.Success ->
-                                                                "bg-success"
-
-                                                            BuildStep.Failed ->
-                                                                "bg-danger"
-                                                in
-                                                    if buildStep.status == BuildStep.Waiting then
-                                                        text ""
-                                                    else
-                                                        div [ class "card mt-3", classList [ borderColor => True ] ]
-                                                            [ h5
-                                                                [ class "card-header d-flex justify-content-between"
-                                                                , classList [ headerBgColor => True ]
-                                                                ]
-                                                                [ text cardTitle, text " ", cardIcon ]
-                                                            , div [ class "card-body text-white" ] [ ansi ]
-                                                            ]
-
-                                            _ ->
-                                                text ""
-                                )
-                in
-                    div [] (titleOutput :: ansiOutput)
+            BuildFrame (LoadedBuild _ buildOutputModel) ->
+                BuildOutput.view buildOutputModel
 
             _ ->
                 text ""
@@ -836,16 +642,17 @@ update context project commit builds session msg model =
                         => NoOp
 
             LoadBuild build ->
-                let
-                    cmd =
-                        build
-                            |> loadBuild context model.task maybeAuthToken
-                            |> Task.attempt BuildLoaded
-                in
-                    model
-                        => cmd
-                        => NoOp
+                model => Cmd.none => NoOp
 
+            --                let
+            --                    cmd =
+            --                        build
+            --                            |> BuildOutput.init context model.task maybeAuthToken
+            --                            |> Task.attempt BuildLoaded
+            --                in
+            --                    model
+            --                        => cmd
+            --                        => NoOp
             BuildLoaded (Ok (Just loadedBuild)) ->
                 model
                     => Cmd.none
@@ -927,61 +734,62 @@ update context project commit builds session msg model =
                         => NoOp
 
             AddStreamOutput buildStream outputJson ->
-                let
-                    frame =
-                        case model.frame of
-                            BuildFrame (LoadedBuild build streams) ->
-                                outputJson
-                                    |> Decode.decodeValue BuildStream.outputDecoder
-                                    |> Result.toMaybe
-                                    |> Maybe.map
-                                        (\b ->
-                                            let
-                                                streamKey =
-                                                    BuildStream.idToString buildStream.id
-
-                                                streamLines =
-                                                    Dict.get streamKey streams
-                                            in
-                                                case streamLines of
-                                                    Just ( number, taskStep, buildStepId, streamLines, ansi ) ->
-                                                        let
-                                                            streamLineLength =
-                                                                Array.length streamLines - 1
-
-                                                            updatedStreamLines =
-                                                                if b.line > streamLineLength then
-                                                                    Array.push b streamLines
-                                                                else
-                                                                    Array.set b.line b streamLines
-
-                                                            lineAnsi outputLine ansi =
-                                                                Ansi.Log.update outputLine.output ansi
-
-                                                            updatedAnsi =
-                                                                Array.foldl lineAnsi ansi (Array.initialize 1 (always b))
-
-                                                            streamTuple =
-                                                                ( number, taskStep, buildStepId, updatedStreamLines, updatedAnsi )
-                                                        in
-                                                            Dict.insert streamKey streamTuple streams
-
-                                                    _ ->
-                                                        streams
-                                        )
-                                    |> Maybe.withDefault streams
-                                    |> LoadedBuild build
-                                    |> BuildFrame
-
-                            _ ->
-                                model.frame
-                in
-                    { model | frame = frame }
-                        => Cmd.none
-                        => NoOp
+                model => Cmd.none => NoOp
 
 
 
+--                let
+--                    frame =
+--                        case model.frame of
+--                            BuildFrame (LoadedBuild build streams) ->
+--                                outputJson
+--                                    |> Decode.decodeValue BuildStream.outputDecoder
+--                                    |> Result.toMaybe
+--                                    |> Maybe.map
+--                                        (\b ->
+--                                            let
+--                                                streamKey =
+--                                                    BuildStream.idToString buildStream.id
+--
+--                                                streamLines =
+--                                                    Dict.get streamKey streams
+--                                            in
+--                                                case streamLines of
+--                                                    Just ( number, taskStep, buildStepId, streamLines, ansi ) ->
+--                                                        let
+--                                                            streamLineLength =
+--                                                                Array.length streamLines - 1
+--
+--                                                            updatedStreamLines =
+--                                                                if b.line > streamLineLength then
+--                                                                    Array.push b streamLines
+--                                                                else
+--                                                                    Array.set b.line b streamLines
+--
+--                                                            lineAnsi outputLine ansi =
+--                                                                Ansi.Log.update outputLine.output ansi
+--
+--                                                            updatedAnsi =
+--                                                                Array.foldl lineAnsi ansi (Array.initialize 1 (always b))
+--
+--                                                            streamTuple =
+--                                                                ( number, taskStep, buildStepId, updatedStreamLines, updatedAnsi )
+--                                                        in
+--                                                            Dict.insert streamKey streamTuple streams
+--
+--                                                    _ ->
+--                                                        streams
+--                                        )
+--                                    |> Maybe.withDefault streams
+--                                    |> LoadedBuild build
+--                                    |> BuildFrame
+--
+--                            _ ->
+--                                model.frame
+--                in
+--                    { model | frame = frame }
+--                        => Cmd.none
+--                        => NoOp
 -- VALIDATION --
 
 
