@@ -2,6 +2,7 @@ module Page.Helpers
     exposing
         ( formatDate
         , formatTime
+        , formatTimeSeconds
         , formatDateTime
         , sortByDatetime
         , getFieldErrors
@@ -34,6 +35,15 @@ formatTime dateTime =
             DateTime.toTuple dateTime
     in
         appendZero hour ++ ":" ++ appendZero minute
+
+
+formatTimeSeconds : DateTime -> String
+formatTimeSeconds dateTime =
+    let
+        ( _, _, _, hour, minute, second, _ ) =
+            DateTime.toTuple dateTime
+    in
+        appendZero hour ++ ":" ++ appendZero minute ++ ":" ++ appendZero second
 
 
 formatDateTime : DateTime -> String

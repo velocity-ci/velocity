@@ -432,6 +432,7 @@ viewTabFrame model builds =
 
             BuildFrame (LoadedBuild _ buildOutputModel) ->
                 BuildOutput.view buildOutputModel
+                    |> Html.map BuildOutputMsg
 
             _ ->
                 text ""
@@ -513,6 +514,7 @@ type Msg
     | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
     | AddStreamOutput BuildStream Encode.Value
     | BuildUpdated Encode.Value
+    | BuildOutputMsg BuildOutput.Msg
 
 
 type ExternalMsg
@@ -732,6 +734,22 @@ update context project commit builds session msg model =
                     }
                         => Navigation.newUrl url
                         => NoOp
+
+            BuildOutputMsg subMsg ->
+                case model.frame of
+                    BuildFrame (LoadedBuild id outputModel) ->
+                        let
+                            ( newOutputModel, newOutputCmd ) =
+                                BuildOutput.update subMsg outputModel
+                        in
+                            { model | frame = BuildFrame (LoadedBuild id newOutputModel) }
+                                => Cmd.map BuildOutputMsg newOutputCmd
+                                => NoOp
+
+                    _ ->
+                        model
+                            => Cmd.none
+                            => NoOp
 
             AddStreamOutput buildStream outputJson ->
                 model => Cmd.none => NoOp

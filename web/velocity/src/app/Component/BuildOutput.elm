@@ -1,4 +1,4 @@
-module Component.BuildOutput exposing (Model, init, view)
+module Component.BuildOutput exposing (Model, Msg, init, view, update)
 
 -- INTERNAL
 
@@ -11,7 +11,7 @@ import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
 import Request.Build
 import Request.Errors
 import Util exposing ((=>))
-import Page.Helpers exposing (validClasses, formatDateTime)
+import Page.Helpers exposing (validClasses, formatDateTime, formatTimeSeconds)
 import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
 
 
@@ -22,7 +22,10 @@ import Html.Attributes exposing (..)
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Task exposing (Task)
+import Time.DateTime as DateTime exposing (DateTime)
 import Ansi.Log
+import Json.Encode as Encode
+import Json.Decode as Decode
 
 
 -- MODEL
@@ -34,16 +37,22 @@ type alias Model =
     }
 
 
+type alias BuildStepOutput =
+    { taskStep : ProjectTask.Step
+    , buildStep : BuildStep
+    , streams : List OutputStream
+    }
+
+
 type alias OutputStream =
-    { buildStepNumber : Int
-    , taskStep : ProjectTask.Step
-    , buildStepId : BuildStep.Id
+    { buildStream : BuildStream
     , ansi : Ansi.Log.Model
+    , raw : Array BuildStreamOutput
     }
 
 
 type alias OutputStreams =
-    Dict String OutputStream
+    Dict String BuildStepOutput
 
 
 init :
@@ -109,14 +118,32 @@ loadBuildStreams context task maybeAuthToken build =
                                 ansi =
                                     Array.foldl lineAnsi ansiInit outputStreams
 
+                                dictKey =
+                                    BuildStep.idToString buildStep.id
+
                                 outputStream =
-                                    { buildStepNumber = buildStep.number
-                                    , taskStep = taskStep
-                                    , buildStepId = buildStep.id
+                                    { buildStream = buildStream
                                     , ansi = ansi
+                                    , raw = outputStreams
                                     }
                             in
-                                Dict.insert (BuildStream.idToString buildStream.id) outputStream dict
+                                case Dict.get dictKey dict of
+                                    Just exists ->
+                                        let
+                                            updated =
+                                                { exists | streams = exists.streams ++ [ outputStream ] }
+                                        in
+                                            Dict.insert dictKey updated dict
+
+                                    Nothing ->
+                                        let
+                                            buildStepOutput =
+                                                { taskStep = taskStep
+                                                , buildStep = buildStep
+                                                , streams = [ outputStream ]
+                                                }
+                                        in
+                                            Dict.insert dictKey buildStepOutput dict
 
                         Nothing ->
                             dict
@@ -126,77 +153,154 @@ loadBuildStreams context task maybeAuthToken build =
 
 
 
+-- UPDATE --
+
+
+type Msg
+    = AddStreamOutput BuildStream Encode.Value
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        AddStreamOutput buildStream outputJson ->
+            let
+                outputStreams =
+                    outputJson
+                        |> Decode.decodeValue BuildStream.outputDecoder
+                        |> Result.toMaybe
+                        |> Maybe.map
+                            (\stream ->
+                                model.outputStreams
+                            )
+                        |> Maybe.withDefault model.outputStreams
+            in
+                { model | outputStreams = outputStreams }
+                    => Cmd.none
+
+
+
 -- VIEW
 
 
-view : Model -> Html msg
+view : Model -> Html Msg
 view { build, outputStreams } =
     let
         ansiOutput =
             outputStreams
                 |> Dict.toList
-                |> List.sortBy (\( _, outputStream ) -> outputStream.buildStepNumber)
-                |> List.map
-                    (\( streamId, { taskStep, buildStepId, ansi } ) ->
-                        let
-                            ansiView =
-                                Ansi.Log.view ansi
-
-                            buildStep =
-                                build.steps
-                                    |> List.filter (\s -> s.id == buildStepId)
-                                    |> List.head
-                        in
-                            case buildStep of
-                                Just buildStep ->
-                                    if buildStep.status == BuildStep.Waiting then
-                                        text ""
-                                    else
-                                        div
-                                            [ class "card mt-3"
-                                            , classList (buildStepBorderColourClassList buildStep)
-                                            ]
-                                            [ h5
-                                                [ class "card-header d-flex justify-content-between"
-                                                , classList (headerBackgroundColourClassList buildStep)
-                                                ]
-                                                [ text (viewCardTitle taskStep)
-                                                , text " "
-                                                , viewBuildStepStatusIcon buildStep
-                                                ]
-                                            , div [ class "card-body text-white" ] [ ansiView ]
-                                            ]
-
-                                _ ->
-                                    text ""
-                    )
+                |> List.sortBy (\( _, outputStream ) -> outputStream.buildStep.number)
+                |> List.map viewStepContainer
     in
         div [] (viewBuildInformation build :: ansiOutput)
 
 
-viewBuildInformation : Build -> Html msg
-viewBuildInformation build =
-    div [ class "card mt-3", classList (buildCardClassList build) ]
-        [ div [ class "card-body" ]
-            [ dl [ class "row mb-0" ]
-                [ dt [ class "col-sm-3" ] [ text "Id" ]
-                , dd [ class "col-sm-9" ] [ text (Build.idToString build.id) ]
-                , dt [ class "col-sm-3" ] [ text "Created" ]
-                , dd [ class "col-sm-9" ] [ text (formatDateTime build.createdAt) ]
-                , dt [ class "col-sm-3" ] [ text "Started" ]
-                , dd [ class "col-sm-9" ] [ text (Maybe.map formatDateTime build.startedAt |> Maybe.withDefault "-") ]
-                , dt [ class "col-sm-3" ] [ text "Completed" ]
-                , dd [ class "col-sm-9" ] [ text (Maybe.map formatDateTime build.completedAt |> Maybe.withDefault "-") ]
-                , dt [ class "col-sm-3" ] [ text "Status" ]
-                , dd [ class "col-sm-9" ] [ text (Build.statusToString build.status) ]
-                ]
+viewStepContainer : ( a, { b | buildStep : BuildStep, streams : List OutputStream, taskStep : Step } ) -> Html Msg
+viewStepContainer ( stepId, { taskStep, buildStep, streams } ) =
+    if buildStep.status == BuildStep.Waiting then
+        text ""
+    else
+        div
+            [ class "card mt-3"
+            , classList (buildStepBorderColourClassList buildStep)
             ]
+            [ h5
+                [ class "card-header d-flex justify-content-between"
+                , classList (headerBackgroundColourClassList buildStep)
+                ]
+                [ text (viewCardTitle taskStep)
+                , text " "
+                , viewBuildStepStatusIcon buildStep
+                ]
+            , div [ class "card-body" ] [ viewStepLog streams ]
+            ]
+
+
+viewStepLog : List OutputStream -> Html Msg
+viewStepLog streams =
+    let
+        mapStream streamIndex { ansi, buildStream, raw } =
+            ansi.lines
+                |> Array.indexedMap (\i ansiLine -> ( Array.get i raw, buildStream.name, ansiLine, streamIndex ))
+
+        lines =
+            streams
+                |> List.indexedMap mapStream
+                |> List.foldl (Array.append) Array.empty
+                |> Array.toList
+                |> List.filterMap
+                    (\( maybeBuildOutput, streamName, ansiLine, streamIndex ) ->
+                        maybeBuildOutput
+                            |> Maybe.map (\{ timestamp } -> ( timestamp, streamName, ansiLine, streamIndex ))
+                    )
+                |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
+    in
+        table [] (List.map viewLine lines)
+
+
+viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg
+viewLine ( timestamp, streamName, line, streamIndex ) =
+    tr []
+        [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
+        , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
+        , td [] [ Ansi.Log.viewLine line ]
         ]
 
 
+viewBuildInformation : Build -> Html Msg
+viewBuildInformation build =
+    let
+        dateText date =
+            date
+                |> Maybe.map formatDateTime
+                |> Maybe.withDefault "-"
+    in
+        div [ class "card mt-3", classList (buildCardClassList build) ]
+            [ div [ class "card-body" ]
+                [ dl [ class "row mb-0" ]
+                    [ dt [ class "col-sm-3" ] [ text "Id" ]
+                    , dd [ class "col-sm-9" ] [ text (Build.idToString build.id) ]
+                    , dt [ class "col-sm-3" ] [ text "Created" ]
+                    , dd [ class "col-sm-9" ] [ text (formatDateTime build.createdAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Started" ]
+                    , dd [ class "col-sm-9" ] [ text (dateText build.startedAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Completed" ]
+                    , dd [ class "col-sm-9" ] [ text (dateText build.completedAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Status" ]
+                    , dd [ class "col-sm-9" ] [ text (Build.statusToString build.status) ]
+                    ]
+                ]
+            ]
+
+
+streamBadgeClass : Int -> String
+streamBadgeClass index =
+    case index of
+        0 ->
+            "badge-primary"
+
+        1 ->
+            "badge-secondary"
+
+        2 ->
+            "badge-success"
+
+        3 ->
+            "badge-danger"
+
+        4 ->
+            "badge-warning"
+
+        5 ->
+            "badge-info"
+
+        _ ->
+            "badge-dark"
+
+
 headerBackgroundColourClassList : BuildStep -> List ( String, Bool )
-headerBackgroundColourClassList buildStep =
-    case buildStep.status of
+headerBackgroundColourClassList { status } =
+    case status of
         BuildStep.Waiting ->
             []
 
@@ -211,8 +315,8 @@ headerBackgroundColourClassList buildStep =
 
 
 buildStepBorderColourClassList : BuildStep -> List ( String, Bool )
-buildStepBorderColourClassList buildStep =
-    case buildStep.status of
+buildStepBorderColourClassList { status } =
+    case status of
         BuildStep.Waiting ->
             [ "border" => True
             , "border-light" => True
@@ -226,19 +330,17 @@ buildStepBorderColourClassList buildStep =
         BuildStep.Success ->
             [ "border" => True
             , "border-success" => True
-            , "text-white" => True
             ]
 
         BuildStep.Failed ->
             [ "border" => True
             , "border-danger" => True
-            , "text-white" => True
             ]
 
 
 buildCardClassList : Build -> List ( String, Bool )
-buildCardClassList build =
-    case build.status of
+buildCardClassList { status } =
+    case status of
         Build.Success ->
             [ "border-success" => True
             , "text-success" => True
