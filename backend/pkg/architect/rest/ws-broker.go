@@ -77,7 +77,7 @@ func (m *broker) EmitAll(message *domain.Emit) {
 		}
 		for _, s := range c.subscriptions {
 			if s == mess.Topic {
-				err := c.ws.WriteJSON(mess)
+				err := c.WriteJSON(mess)
 				clientCount++
 				if err != nil {
 					logrus.Println(err)
