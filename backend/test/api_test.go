@@ -44,7 +44,7 @@ func theResponseHasStatus(expectedStatus string) error {
 	if response.Status == expectedStatus {
 		return nil
 	}
-	// log.Println(string(responseBody))
+
 	return fmt.Errorf("expected: %s, got: %s", expectedStatus, response.Status)
 }
 

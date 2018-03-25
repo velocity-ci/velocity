@@ -2,7 +2,6 @@ package user
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/Sirupsen/logrus"
@@ -57,7 +56,7 @@ func (m *Manager) EnsureAdminUser() {
 		if err != nil {
 			logrus.Error(err)
 		}
-		log.Printf("\n\n\nCreated Administrator:\n\tusername: admin \n\tpassword: %s\n\n\n", password)
+		fmt.Printf("\n\n\nCreated Administrator:\n\tusername: admin \n\tpassword: %s\n\n\n", password)
 	}
 }
 

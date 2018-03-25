@@ -2,7 +2,6 @@ package builder
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -111,8 +110,8 @@ func monitorCommands(ws *websocket.Conn) {
 		command := &builder.BuilderCtrlMessage{}
 		err := ws.ReadJSON(command)
 		if err != nil {
-			log.Println(err)
-			log.Println("Closing WebSocket")
+			logrus.Error(err)
+			logrus.Info("Closing WebSocket")
 			ws.Close()
 			return
 		}

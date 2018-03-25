@@ -2,7 +2,8 @@ package velocity
 
 import (
 	"encoding/json"
-	"log"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type Task struct {
@@ -26,19 +27,13 @@ type TaskDocker struct {
 }
 
 type DockerRegistry struct {
-	Address            string            `json:"address" yaml:"address"`
+	Address            string            `json:"address"`
 	Use                string            `json:"use" yaml:"use"`
 	Arguments          map[string]string `json:"arguments" yaml:"arguments"`
 	AuthorizationToken string            `json:"authToken"`
 }
 
 func (d *DockerRegistry) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-
-	switch x := y["address"].(type) {
-	case interface{}:
-		d.Address = x.(string)
-		break
-	}
 
 	switch x := y["use"].(type) {
 	case interface{}:
@@ -95,14 +90,14 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 				var m map[string]interface{}
 				err = json.Unmarshal(*rawMessage, &m)
 				if err != nil {
-					log.Println("could not unmarshal parameters")
+					logrus.Error("could not unmarshal parameters")
 					return err
 				}
 				if _, ok := m["use"]; ok { // derivedParam
 					p := DerivedParameter{}
 					err = json.Unmarshal(*rawMessage, &p)
 					if err != nil {
-						log.Println("could not unmarshal determined parameter")
+						logrus.Error("could not unmarshal determined parameter")
 						return err
 					}
 					t.Parameters = append(t.Parameters, p)
@@ -110,7 +105,7 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 					p := BasicParameter{}
 					err = json.Unmarshal(*rawMessage, &p)
 					if err != nil {
-						log.Println("could not unmarshal determined parameter")
+						logrus.Error("could not unmarshal determined parameter")
 						return err
 					}
 					t.Parameters = append(t.Parameters, p)
@@ -133,17 +128,17 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 			for _, rawMessage := range rawSteps {
 				err = json.Unmarshal(*rawMessage, &m)
 				if err != nil {
-					log.Println("could not unmarshal step")
+					logrus.Error("could not unmarshal step")
 					return err
 				}
 
 				s, err := DetermineStepFromInterface(m)
 				if err != nil {
-					log.Println(err)
+					logrus.Error(err)
 				} else {
 					err := json.Unmarshal(*rawMessage, s)
 					if err != nil {
-						log.Println(err)
+						logrus.Error(err)
 					} else {
 						t.Steps = append(t.Steps, s)
 					}
@@ -159,7 +154,7 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var taskMap map[string]interface{}
 	err := unmarshal(&taskMap)
 	if err != nil {
-		log.Printf("unable to unmarshal task")
+		logrus.Error("unable to unmarshal task")
 		return err
 	}
 
@@ -239,11 +234,11 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				}
 				s, err := DetermineStepFromInterface(m)
 				if err != nil {
-					log.Println(err)
+					logrus.Error(err)
 				} else {
 					err = s.UnmarshalYamlInterface(y)
 					if err != nil {
-						log.Println(err)
+						logrus.Error(err)
 					} else {
 						t.Steps = append(t.Steps, s)
 					}
@@ -254,6 +249,5 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		break
 	}
 
-	// log.Printf("Unmarshalled Task: %+v", t)
 	return nil
 }

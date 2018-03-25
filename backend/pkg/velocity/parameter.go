@@ -1,20 +1,17 @@
 package velocity
 
 import (
-	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
-	"sync"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
 	"time"
 
-	"github.com/docker/go/canonical/json"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"github.com/Sirupsen/logrus"
+	"github.com/gosimple/slug"
 )
 
 type Parameter struct {
@@ -108,79 +105,76 @@ func (p DerivedParameter) GetInfo() string {
 	return p.Use
 }
 
-func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) ([]Parameter, error) {
-	env := []string{}
+func getBinary(u string) (binaryLocation string, _ error) {
+
+	parsedURL, err := url.Parse(u)
+	if err != nil {
+		return "", err
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", wd, slug.Make(parsedURL.Path))
+
+	if _, err := os.Stat(binaryLocation); os.IsNotExist(err) {
+		logrus.Infof("downloading %s to %s", u, binaryLocation)
+		outFile, err := os.Create(binaryLocation)
+		if err != nil {
+			return "", err
+		}
+		defer outFile.Close()
+		resp, err := http.Get(u)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+
+		size, err := io.Copy(outFile, resp.Body)
+		if err != nil {
+			return "", err
+		}
+		logrus.Infof("downloaded %d bytes for %s to %s", size, u, binaryLocation)
+		outFile.Chmod(os.ModePerm)
+	}
+
+	return binaryLocation, nil
+}
+
+func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) (r []Parameter, _ error) {
+
+	// Download binary from use:
+	bin, err := getBinary(p.Use)
+	if err != nil {
+		return r, err
+	}
+
+	// Process arguments
+	args := []string{}
 	for k, v := range p.Arguments {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-	containerConfig := &container.Config{
-		Image: p.Use,
-		Env:   env,
+		args = append(args, fmt.Sprintf("-%s=%s", k, v))
 	}
 
-	var wg sync.WaitGroup
-	cli, _ := client.NewEnvClient()
-	ctx := context.Background()
+	cmd := exec.Command(bin, args...)
+	cmd.Env = os.Environ()
 
-	networkResp, err := cli.NetworkCreate(ctx, t.RunID, types.NetworkCreate{
-		Labels: map[string]string{"owner": "velocity-ci"},
-	})
+	// Run binary
+	cmdOutBytes, err := cmd.Output()
 	if err != nil {
-		log.Println(err)
+		return r, err
 	}
-	blankEmitter := NewBlankEmitter()
-	w := blankEmitter.GetStreamWriter("setup")
-	sR := newServiceRunner(
-		cli,
-		ctx,
-		w,
-		&wg,
-		map[string]Parameter{},
-		fmt.Sprintf("%s-%s", t.RunID, "dParam"),
-		p.Use,
-		nil,
-		containerConfig,
-		nil,
-		nil,
-		networkResp.ID,
-	)
-
-	sR.PullOrBuild(t.Docker.Registries)
-	sR.Create()
-	stopServicesChannel := make(chan string, 32)
-	wg.Add(1)
-	go sR.Run(stopServicesChannel)
-	_ = <-stopServicesChannel
-
-	logsResp, err := sR.dockerCli.ContainerLogs(
-		sR.context,
-		sR.containerID,
-		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: false},
-	)
-	if err != nil {
-		log.Printf("param container %s logs err: %s", sR.containerID, err)
-	}
-	headerBytes := make([]byte, 8)
-	logsResp.Read(headerBytes)
-	content, _ := ioutil.ReadAll(logsResp)
-	logsResp.Close()
-	sR.Stop()
-	wg.Wait()
-	err = cli.NetworkRemove(ctx, networkResp.ID)
-	if err != nil {
-		log.Printf("network %s remove err: %s", networkResp.ID, err)
-	}
-
-	params := []Parameter{}
 	var dOutput derivedOutput
-	json.Unmarshal(content, &dOutput)
+	json.Unmarshal(cmdOutBytes, &dOutput)
+
 	if dOutput.State == "warning" {
 		for paramName := range dOutput.Exports {
 			val, err := backupResolver.Resolve(paramName)
 			if err != nil {
-				return []Parameter{}, err
+				return r, err
 			}
-			params = append(params, Parameter{
+			r = append(r, Parameter{
 				Name:     paramName,
 				Value:    val,
 				IsSecret: dOutput.Secret,
@@ -188,17 +182,17 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 		}
 	} else if dOutput.State == "success" {
 		for paramName, val := range dOutput.Exports {
-			params = append(params, Parameter{
+			r = append(r, Parameter{
 				Name:     paramName,
 				Value:    val,
 				IsSecret: dOutput.Secret,
 			})
 		}
-	} else { // failed
-		return []Parameter{}, errors.New(dOutput.Error)
+	} else {
+		return r, fmt.Errorf("binary %s: %s", dOutput.State, dOutput.Error)
 	}
 
-	return params, nil
+	return r, nil
 }
 
 func (p *DerivedParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {

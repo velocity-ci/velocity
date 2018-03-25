@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
@@ -60,7 +60,7 @@ func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 			RegistryAuth: authToken,
 		})
 		if err != nil {
-			log.Println(err)
+			logrus.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("\nPush failed: %s", err)))
 			return err

@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -152,7 +152,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		log.Println(err)
+		logrus.Error(err)
 	}
 
 	sR := newServiceRunner(
@@ -180,7 +180,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		log.Printf("network %s remove err: %s", networkResp.ID, err)
+		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
 	}
 
 	exitCode := sR.exitCode

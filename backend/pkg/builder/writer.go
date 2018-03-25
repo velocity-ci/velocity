@@ -106,7 +106,6 @@ func (w *StreamWriter) Write(p []byte) (n int, err error) {
 		Type: "log",
 		Data: lM,
 	}
-	logrus.Debugf("emitted %s:%d:%s\n%s", w.StreamID, w.LineNumber, w.status, o)
 	err = w.ws.WriteJSON(m)
 
 	if err != nil {
