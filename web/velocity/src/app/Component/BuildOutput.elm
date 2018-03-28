@@ -1,4 +1,4 @@
-module Component.BuildOutput exposing (Model, Msg, init, view, update)
+module Component.BuildOutput exposing (Model, Msg, init, view, update, events, leaveChannels)
 
 -- INTERNAL
 
@@ -153,25 +153,91 @@ loadBuildStreams context task maybeAuthToken build =
 
 
 
+-- CHANNELS --
+
+
+streamChannelName : BuildStream -> String
+streamChannelName stream =
+    "stream:" ++ (BuildStream.idToString stream.id)
+
+
+events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
+events model =
+    let
+        streams =
+            model.outputStreams
+                |> Dict.foldl (\buildStepId val acc -> ( buildStepId, List.map .buildStream val.streams ) :: acc) []
+
+        foldStreamEvents ( buildStepId, streams_ ) dict =
+            streams_
+                |> List.foldl
+                    (\stream acc ->
+                        let
+                            channelName =
+                                streamChannelName stream
+
+                            events =
+                                [ ( "streamLine:new", AddStreamOutput buildStepId stream ) ]
+                        in
+                            Dict.insert channelName events acc
+                    )
+                    dict
+    in
+        List.foldl foldStreamEvents Dict.empty streams
+
+
+leaveChannels : Model -> List String
+leaveChannels model =
+    Dict.keys (events model)
+
+
+
 -- UPDATE --
 
 
 type Msg
-    = AddStreamOutput BuildStream Encode.Value
+    = AddStreamOutput String BuildStream Encode.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AddStreamOutput buildStream outputJson ->
+        AddStreamOutput buildStepId buildStream outputJson ->
             let
                 outputStreams =
                     outputJson
                         |> Decode.decodeValue BuildStream.outputDecoder
                         |> Result.toMaybe
                         |> Maybe.map
-                            (\stream ->
-                                model.outputStreams
+                            (\s ->
+                                let
+                                    outputStreams =
+                                        model.outputStreams
+                                            |> Dict.update buildStepId
+                                                (\maybeValue ->
+                                                    case maybeValue of
+                                                        Just value ->
+                                                            let
+                                                                streams =
+                                                                    value.streams
+                                                                        |> List.map
+                                                                            (\stream ->
+                                                                                if stream.buildStream.id == buildStream.id then
+                                                                                    { stream
+                                                                                        | raw = (Array.push s stream.raw)
+                                                                                        , ansi = Ansi.Log.update s.output stream.ansi
+                                                                                    }
+                                                                                else
+                                                                                    stream
+                                                                            )
+                                                            in
+                                                                Just { value | streams = streams }
+
+                                                        Nothing ->
+                                                            Nothing
+                                                )
+                                in
+                                    outputStreams
                             )
                         |> Maybe.withDefault model.outputStreams
             in
@@ -197,23 +263,23 @@ view { build, outputStreams } =
 
 viewStepContainer : ( a, { b | buildStep : BuildStep, streams : List OutputStream, taskStep : Step } ) -> Html Msg
 viewStepContainer ( stepId, { taskStep, buildStep, streams } ) =
-    if buildStep.status == BuildStep.Waiting then
-        text ""
-    else
-        div
-            [ class "card mt-3"
-            , classList (buildStepBorderColourClassList buildStep)
+    --    if buildStep.status == BuildStep.Waiting then
+    --        text ""
+    --    else
+    div
+        [ class "card mt-3"
+        , classList (buildStepBorderColourClassList buildStep)
+        ]
+        [ h5
+            [ class "card-header d-flex justify-content-between"
+            , classList (headerBackgroundColourClassList buildStep)
             ]
-            [ h5
-                [ class "card-header d-flex justify-content-between"
-                , classList (headerBackgroundColourClassList buildStep)
-                ]
-                [ text (viewCardTitle taskStep)
-                , text " "
-                , viewBuildStepStatusIcon buildStep
-                ]
-            , div [ class "card-body" ] [ viewStepLog streams ]
+            [ text (viewCardTitle taskStep)
+            , text " "
+            , viewBuildStepStatusIcon buildStep
             ]
+        , div [ class "card-body" ] [ viewStepLog streams ]
+        ]
 
 
 viewStepLog : List OutputStream -> Html Msg

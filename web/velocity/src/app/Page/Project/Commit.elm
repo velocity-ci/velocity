@@ -144,7 +144,7 @@ loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg )
 loadedEvents msg model =
     case msg of
         CommitTaskLoaded (Ok subModel) ->
-            CommitTask.events model.builds subModel
+            CommitTask.events subModel
                 |> mapEvents CommitTaskMsg
 
         _ ->
@@ -155,10 +155,10 @@ leaveChannels : Model -> Maybe CommitRoute.Route -> List String
 leaveChannels model maybeCommitRoute =
     case ( getSubPage model.subPageState, maybeCommitRoute ) of
         ( CommitTask subModel, Just (CommitRoute.Task _ buildName) ) ->
-            CommitTask.leaveChannels model.builds subModel buildName
+            CommitTask.leaveChannels subModel
 
         ( CommitTask subModel, _ ) ->
-            CommitTask.leaveChannels model.builds subModel Nothing
+            CommitTask.leaveChannels subModel
 
         _ ->
             []

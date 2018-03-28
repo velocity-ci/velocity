@@ -224,67 +224,34 @@ streamChannelName stream =
     "stream:" ++ (BuildStream.idToString stream.id)
 
 
-buildEvents : List Build -> Build.Id -> Dict String (List ( String, Encode.Value -> Msg ))
-buildEvents builds buildId =
-    let
-        build =
-            builds
-                |> List.filter (\b -> b.id == buildId)
-                |> List.head
-
-        streams =
-            build
-                |> Maybe.map (\build -> List.map .streams build.steps)
-                |> Maybe.map (List.foldr (++) [])
-                |> Maybe.withDefault []
-
-        foldStreamEvents stream dict =
-            let
-                channelName =
-                    streamChannelName stream
-
-                events =
-                    [ ( "streamLine:new", AddStreamOutput stream ) ]
-            in
-                Dict.insert channelName events dict
-    in
-        List.foldl foldStreamEvents Dict.empty streams
-
-
-events : List Build -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
-events builds model =
+events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
+events model =
     case model.frame of
-        BuildFrame (LoadedBuild id _) ->
-            buildEvents builds id
+        BuildFrame (LoadedBuild _ buildOutputModel) ->
+            BuildOutput.events buildOutputModel
+                |> mapEvents BuildOutputMsg
 
         _ ->
             Dict.empty
 
 
-leaveChannels : List Build -> Model -> Maybe String -> List String
-leaveChannels builds model maybeBuildId =
-    let
-        channels id b =
-            if id == Build.idToString b then
-                []
-            else
-                Dict.keys (buildEvents builds b)
-    in
-        case ( maybeBuildId, model.frame ) of
-            ( Just buildId, BuildFrame (LoadedBuild id _) ) ->
-                channels buildId id
+leaveChannels : Model -> List String
+leaveChannels model =
+    case model.frame of
+        BuildFrame (LoadedBuild _ buildOutputModel) ->
+            BuildOutput.leaveChannels buildOutputModel
 
-            ( Just buildId, BuildFrame (LoadingBuild (Just id) _) ) ->
-                channels buildId id
+        _ ->
+            []
 
-            ( _, BuildFrame (LoadedBuild id _) ) ->
-                Dict.keys (buildEvents builds id)
 
-            ( _, BuildFrame (LoadingBuild (Just b) _) ) ->
-                Dict.keys (buildEvents builds b)
-
-            _ ->
-                []
+mapEvents :
+    (b -> c)
+    -> Dict comparable (List ( a1, a -> b ))
+    -> Dict comparable (List ( a1, a -> c ))
+mapEvents fromMsg events =
+    events
+        |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) v)
 
 
 

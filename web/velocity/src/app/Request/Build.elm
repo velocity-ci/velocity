@@ -27,7 +27,7 @@ steps context id maybeToken =
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl context ("/builds" ++ "/" ++ Build.idToString id ++ "/steps")
+        apiUrl context ("/builds" ++ "/" ++ Build.idToString id ++ "/steps?amount=-1")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
@@ -47,7 +47,7 @@ streams context maybeToken id =
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl context ("/steps" ++ "/" ++ BuildStep.idToString id ++ "/streams")
+        apiUrl context ("/steps" ++ "/" ++ BuildStep.idToString id ++ "/streams?amount=-1")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
@@ -68,7 +68,7 @@ streamOutput context maybeToken id =
                 |> Decode.at [ "data" ]
                 |> Http.expectJson
     in
-        apiUrl context ("/streams/" ++ BuildStream.idToString id ++ "/log")
+        apiUrl context ("/streams/" ++ BuildStream.idToString id ++ "/log?amount=-1")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
