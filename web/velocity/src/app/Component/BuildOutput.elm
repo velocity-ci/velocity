@@ -281,7 +281,7 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
                         , text " "
                         , viewBuildStepStatusIcon step
                         ]
-                    , div [ class "card-body" ] [ viewStepLog streams ]
+                    , div [ class "card-body p-0 small" ] [ viewStepLog streams ]
                     ]
 
             Nothing ->
@@ -307,7 +307,7 @@ viewStepLog streams =
                     )
                 |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
     in
-        table [] (List.map viewLine lines)
+        table [ class "table table-striped table-hover table-sm mb-0" ] (List.map viewLine lines)
 
 
 viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg
