@@ -80,7 +80,7 @@ branches context slug maybeToken =
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/branches")
+        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/branches?amount=-1")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken

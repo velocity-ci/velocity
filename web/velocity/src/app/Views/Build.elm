@@ -52,7 +52,7 @@ viewBuildStepStatusIcon : BuildStep -> Html msg
 viewBuildStepStatusIcon buildStep =
     case buildStep.status of
         BuildStep.Waiting ->
-            i [ class "fa fa-cog fa-spin" ] []
+            i [ class "fa fa-clock-o" ] []
 
         BuildStep.Running ->
             i [ class "fa fa-cog fa-spin" ] []

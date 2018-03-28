@@ -32,9 +32,7 @@ import Json.Decode as Decode
 
 
 type alias Model =
-    { build : Build
-    , outputStreams : OutputStreams
-    }
+    { outputStreams : OutputStreams }
 
 
 type alias BuildStepOutput =
@@ -64,9 +62,7 @@ init :
 init context task maybeAuthToken build =
     let
         initialModel outputStreams =
-            { build = build
-            , outputStreams = outputStreams
-            }
+            { outputStreams = outputStreams }
     in
         build
             |> loadBuildStreams context task maybeAuthToken
@@ -210,34 +206,30 @@ update msg model =
                         |> Result.toMaybe
                         |> Maybe.map
                             (\s ->
-                                let
-                                    outputStreams =
-                                        model.outputStreams
-                                            |> Dict.update buildStepId
-                                                (\maybeValue ->
-                                                    case maybeValue of
-                                                        Just value ->
-                                                            let
-                                                                streams =
-                                                                    value.streams
-                                                                        |> List.map
-                                                                            (\stream ->
-                                                                                if stream.buildStream.id == buildStream.id then
-                                                                                    { stream
-                                                                                        | raw = (Array.push s stream.raw)
-                                                                                        , ansi = Ansi.Log.update s.output stream.ansi
-                                                                                    }
-                                                                                else
-                                                                                    stream
-                                                                            )
-                                                            in
-                                                                Just { value | streams = streams }
+                                model.outputStreams
+                                    |> Dict.update buildStepId
+                                        (\maybeValue ->
+                                            case maybeValue of
+                                                Just value ->
+                                                    let
+                                                        streams =
+                                                            value.streams
+                                                                |> List.map
+                                                                    (\stream ->
+                                                                        if stream.buildStream.id == buildStream.id then
+                                                                            { stream
+                                                                                | raw = (Array.push s stream.raw)
+                                                                                , ansi = Ansi.Log.update s.output stream.ansi
+                                                                            }
+                                                                        else
+                                                                            stream
+                                                                    )
+                                                    in
+                                                        Just { value | streams = streams }
 
-                                                        Nothing ->
-                                                            Nothing
-                                                )
-                                in
-                                    outputStreams
+                                                Nothing ->
+                                                    Nothing
+                                        )
                             )
                         |> Maybe.withDefault model.outputStreams
             in
@@ -249,37 +241,48 @@ update msg model =
 -- VIEW
 
 
-view : Model -> Html Msg
-view { build, outputStreams } =
+view : Build -> Model -> Html Msg
+view build { outputStreams } =
     let
         ansiOutput =
             outputStreams
                 |> Dict.toList
                 |> List.sortBy (\( _, outputStream ) -> outputStream.buildStep.number)
-                |> List.map viewStepContainer
+                |> List.map (viewStepContainer build)
     in
         div [] (viewBuildInformation build :: ansiOutput)
 
 
-viewStepContainer : ( a, { b | buildStep : BuildStep, streams : List OutputStream, taskStep : Step } ) -> Html Msg
-viewStepContainer ( stepId, { taskStep, buildStep, streams } ) =
+viewStepContainer : Build -> ( a, { b | buildStep : BuildStep, streams : List OutputStream, taskStep : Step } ) -> Html Msg
+viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
     --    if buildStep.status == BuildStep.Waiting then
     --        text ""
     --    else
-    div
-        [ class "card mt-3"
-        , classList (buildStepBorderColourClassList buildStep)
-        ]
-        [ h5
-            [ class "card-header d-flex justify-content-between"
-            , classList (headerBackgroundColourClassList buildStep)
-            ]
-            [ text (viewCardTitle taskStep)
-            , text " "
-            , viewBuildStepStatusIcon buildStep
-            ]
-        , div [ class "card-body" ] [ viewStepLog streams ]
-        ]
+    let
+        buildStep_ =
+            build.steps
+                |> List.filter (\s -> s.id == buildStep.id)
+                |> List.head
+    in
+        case buildStep_ of
+            Just step ->
+                div
+                    [ class "card mt-3"
+                    , classList (buildStepBorderColourClassList step)
+                    ]
+                    [ h5
+                        [ class "card-header d-flex justify-content-between"
+                        , classList (headerBackgroundColourClassList step)
+                        ]
+                        [ text (viewCardTitle taskStep)
+                        , text " "
+                        , viewBuildStepStatusIcon step
+                        ]
+                    , div [ class "card-body" ] [ viewStepLog streams ]
+                    ]
+
+            Nothing ->
+                text ""
 
 
 viewStepLog : List OutputStream -> Html Msg

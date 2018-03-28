@@ -397,9 +397,14 @@ viewTabFrame model builds =
             NewFormFrame ->
                 buildForm
 
-            BuildFrame (LoadedBuild _ buildOutputModel) ->
-                BuildOutput.view buildOutputModel
-                    |> Html.map BuildOutputMsg
+            BuildFrame (LoadedBuild buildId buildOutputModel) ->
+                case findBuild buildId of
+                    Just build ->
+                        BuildOutput.view build buildOutputModel
+                            |> Html.map BuildOutputMsg
+
+                    Nothing ->
+                        text ""
 
             _ ->
                 text ""
