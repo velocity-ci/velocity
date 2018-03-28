@@ -62,6 +62,7 @@ func (m *StreamFileManager) StartWorker() {
 				writer := bufio.NewWriter(file)
 				for _, s := range lF.contents {
 					writer.Write(s)
+					writer.WriteRune('\n')
 				}
 				writer.Flush()
 				lF.needsFlush = false
@@ -84,10 +85,10 @@ func (m *StreamFileManager) getLinesByStream(s *Stream, q *domain.PagingQuery) (
 	skipCounter := 0
 
 	for _, l := range logFile.contents {
-		if len(r) >= q.Limit {
+		if q.Limit > 0 && len(r) >= q.Limit {
 			break
 		}
-		if skipCounter < (q.Page-1)*q.Limit {
+		if q.Limit > 0 && skipCounter < (q.Page-1)*q.Limit {
 			skipCounter++
 			break
 		}
