@@ -45,7 +45,7 @@ type alias BuildStepOutput =
 type alias OutputStream =
     { buildStream : BuildStream
     , ansi : Ansi.Log.Model
-    , raw : Array BuildStreamOutput
+    , raw : Dict Int BuildStreamOutput
     }
 
 
@@ -117,10 +117,13 @@ loadBuildStreams context task maybeAuthToken build =
                                 dictKey =
                                     BuildStep.idToString buildStep.id
 
+                                raw =
+                                    Array.foldl (\v a -> Dict.insert v.line v a) Dict.empty outputStreams
+
                                 outputStream =
                                     { buildStream = buildStream
                                     , ansi = ansi
-                                    , raw = outputStreams
+                                    , raw = raw
                                     }
                             in
                                 case Dict.get dictKey dict of
@@ -218,8 +221,8 @@ update msg model =
                                                                     (\stream ->
                                                                         if stream.buildStream.id == buildStream.id then
                                                                             { stream
-                                                                                | raw = (Array.push s stream.raw)
-                                                                                , ansi = Ansi.Log.update s.output stream.ansi
+                                                                                | ansi = Ansi.Log.update s.output stream.ansi
+                                                                                , raw = Dict.insert s.line s stream.raw
                                                                             }
                                                                         else
                                                                             stream
@@ -290,7 +293,7 @@ viewStepLog streams =
     let
         mapStream streamIndex { ansi, buildStream, raw } =
             ansi.lines
-                |> Array.indexedMap (\i ansiLine -> ( Array.get i raw, buildStream.name, ansiLine, streamIndex ))
+                |> Array.indexedMap (\i ansiLine -> ( Dict.get i raw, buildStream.name, ansiLine, streamIndex ))
 
         lines =
             streams
