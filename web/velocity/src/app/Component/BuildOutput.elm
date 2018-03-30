@@ -388,8 +388,8 @@ headerBackgroundColourClassList { status } =
             ]
 
         BuildStep.Failed ->
-            [ "bg-danger" => True
-            , "bg-transparent" => True
+            [ "bg-transparent" => True
+            , "text-danger" => True
             ]
 
 
