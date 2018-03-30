@@ -1,22 +1,18 @@
 module Page.Project.Commit.Task exposing (..)
 
-import Ansi.Log
 import Context exposing (Context)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
 import Data.Build as Build exposing (Build)
-import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
 import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
-import Data.AuthToken as AuthToken exposing (AuthToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (validClasses, formatDateTime)
 import Request.Commit
-import Request.Build
 import Request.Errors
 import Task exposing (Task)
 import Util exposing ((=>))
@@ -473,7 +469,6 @@ type Msg
     | BuildCreated (Result Request.Errors.HttpError Build)
     | SelectTab Tab String
     | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
-    | AddStreamOutput BuildStream Encode.Value
     | BuildOutputMsg BuildOutput.Msg
 
 
@@ -686,63 +681,8 @@ update context project commit builds session msg model =
                             => Cmd.none
                             => NoOp
 
-            AddStreamOutput buildStream outputJson ->
-                model => Cmd.none => NoOp
 
 
-
---                let
---                    frame =
---                        case model.frame of
---                            BuildFrame (LoadedBuild build streams) ->
---                                outputJson
---                                    |> Decode.decodeValue BuildStream.outputDecoder
---                                    |> Result.toMaybe
---                                    |> Maybe.map
---                                        (\b ->
---                                            let
---                                                streamKey =
---                                                    BuildStream.idToString buildStream.id
---
---                                                streamLines =
---                                                    Dict.get streamKey streams
---                                            in
---                                                case streamLines of
---                                                    Just ( number, taskStep, buildStepId, streamLines, ansi ) ->
---                                                        let
---                                                            streamLineLength =
---                                                                Array.length streamLines - 1
---
---                                                            updatedStreamLines =
---                                                                if b.line > streamLineLength then
---                                                                    Array.push b streamLines
---                                                                else
---                                                                    Array.set b.line b streamLines
---
---                                                            lineAnsi outputLine ansi =
---                                                                Ansi.Log.update outputLine.output ansi
---
---                                                            updatedAnsi =
---                                                                Array.foldl lineAnsi ansi (Array.initialize 1 (always b))
---
---                                                            streamTuple =
---                                                                ( number, taskStep, buildStepId, updatedStreamLines, updatedAnsi )
---                                                        in
---                                                            Dict.insert streamKey streamTuple streams
---
---                                                    _ ->
---                                                        streams
---                                        )
---                                    |> Maybe.withDefault streams
---                                    |> LoadedBuild build
---                                    |> BuildFrame
---
---                            _ ->
---                                model.frame
---                in
---                    { model | frame = frame }
---                        => Cmd.none
---                        => NoOp
 -- VALIDATION --
 
 
