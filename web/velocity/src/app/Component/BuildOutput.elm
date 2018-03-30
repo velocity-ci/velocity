@@ -204,40 +204,46 @@ update msg model =
         AddStreamOutput buildStepId buildStream outputJson ->
             let
                 outputStreams =
-                    outputJson
-                        |> Decode.decodeValue BuildStream.outputDecoder
-                        |> Result.toMaybe
-                        |> Maybe.map
-                            (\s ->
-                                model.outputStreams
-                                    |> Dict.update buildStepId
-                                        (\maybeValue ->
-                                            case maybeValue of
-                                                Just value ->
-                                                    let
-                                                        streams =
-                                                            value.streams
-                                                                |> List.map
-                                                                    (\stream ->
-                                                                        if stream.buildStream.id == buildStream.id then
-                                                                            { stream
-                                                                                | ansi = Ansi.Log.update s.output stream.ansi
-                                                                                , raw = Dict.insert s.line s stream.raw
-                                                                            }
-                                                                        else
-                                                                            stream
-                                                                    )
-                                                    in
-                                                        Just { value | streams = streams }
-
-                                                Nothing ->
-                                                    Nothing
-                                        )
-                            )
-                        |> Maybe.withDefault model.outputStreams
+                    addStreamOutput ( buildStepId, buildStream, outputJson ) model.outputStreams
             in
                 { model | outputStreams = outputStreams }
                     => Cmd.none
+
+
+addStreamOutput : ( String, BuildStream, Encode.Value ) -> OutputStreams -> OutputStreams
+addStreamOutput ( buildStepId, targetBuildStream, outputJson ) outputStreams =
+    let
+        updateOutputStream newBuildOutput =
+            outputStreams
+                |> Dict.update buildStepId
+                    (\maybeValue ->
+                        case maybeValue of
+                            Just value ->
+                                let
+                                    streams =
+                                        value.streams
+                                            |> List.map
+                                                (\stream ->
+                                                    if stream.buildStream.id == targetBuildStream.id then
+                                                        { stream
+                                                            | ansi = Ansi.Log.update newBuildOutput.output stream.ansi
+                                                            , raw = Dict.insert newBuildOutput.line newBuildOutput stream.raw
+                                                        }
+                                                    else
+                                                        stream
+                                                )
+                                in
+                                    Just { value | streams = streams }
+
+                            Nothing ->
+                                Nothing
+                    )
+    in
+        outputJson
+            |> Decode.decodeValue BuildStream.outputDecoder
+            |> Result.toMaybe
+            |> Maybe.map updateOutputStream
+            |> Maybe.withDefault outputStreams
 
 
 
@@ -307,7 +313,7 @@ viewStepLog streams =
                     )
                 |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
     in
-        table [ class "table table-striped table-hover table-sm mb-0" ] (List.map viewLine lines)
+        table [ class "table table-hover table-sm mb-0" ] (List.map viewLine lines)
 
 
 viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg

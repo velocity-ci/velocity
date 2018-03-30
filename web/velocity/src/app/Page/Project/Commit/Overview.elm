@@ -37,7 +37,6 @@ view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
 view project commit tasks builds =
     div []
         [ viewCommitDetails commit
-          --        , viewBuildTable project commit builds
         , viewTaskList project commit tasks builds
         ]
 
@@ -86,47 +85,6 @@ viewTaskList project commit tasks builds =
             [ h5 [ class "card-header" ] [ text "Tasks" ]
             , taskList
             ]
-
-
-
---
---viewBuildTable : Project -> Commit -> List Build -> Html Msg
---viewBuildTable project commit builds =
---    let
---        header =
---            thead []
---                [ tr []
---                    [ th [ scope "col" ] [ text "#" ]
---                    , th [ scope "col" ] [ text "Task" ]
---                    , th [ scope "col" ] [ text "Status" ]
---                    ]
---                ]
---    in
---        table [ class "table table-bordered mt-3" ]
---            [ header
---            , tbody [] (List.map (viewBuildTableRow project commit) builds)
---            ]
---
---
---viewBuildTableRow : Project -> Commit -> Build -> Html Msg
---viewBuildTableRow project commit build =
---    let
---        route =
---            CommitRoute.Build build.id
---                |> ProjectRoute.Commit commit.hash
---                |> Route.Project project.id
---    in
---        tr []
---            [ td []
---                [ a
---                    [ Route.href route
---                    , onClickPage NewUrl route
---                    ]
---                    [ text <| Build.idToString build.id ]
---                ]
---            , td [] [ text <| ProjectTask.nameToString build.task ]
---            , td [] []
---            ]
 
 
 taskBuilds : ProjectTask.Task -> List Build -> List Build

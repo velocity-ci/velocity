@@ -99,13 +99,6 @@ type BuildType
     | LoadingBuild (Maybe FromBuild) (Maybe ToBuild)
 
 
-buildOutput : Array BuildStreamOutput -> Ansi.Log.Model
-buildOutput buildOutput =
-    Array.foldl Ansi.Log.update
-        (Ansi.Log.init Ansi.Log.Cooked)
-        (Array.map .output buildOutput)
-
-
 stringToTab : Maybe String -> List Build -> Tab
 stringToTab maybeSelectedTab builds =
     case maybeSelectedTab of
@@ -482,10 +475,8 @@ type Msg
     | SubmitForm
     | BuildCreated (Result Request.Errors.HttpError Build)
     | SelectTab Tab String
-    | LoadBuild Build
     | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
     | AddStreamOutput BuildStream Encode.Value
-    | BuildUpdated Encode.Value
     | BuildOutputMsg BuildOutput.Msg
 
 
@@ -615,18 +606,6 @@ update context project commit builds session msg model =
                         => cmd
                         => NoOp
 
-            LoadBuild build ->
-                model => Cmd.none => NoOp
-
-            --                let
-            --                    cmd =
-            --                        build
-            --                            |> BuildOutput.init context model.task maybeAuthToken
-            --                            |> Task.attempt BuildLoaded
-            --                in
-            --                    model
-            --                        => cmd
-            --                        => NoOp
             BuildLoaded (Ok (Just loadedBuild)) ->
                 model
                     => Cmd.none
@@ -656,19 +635,6 @@ update context project commit builds session msg model =
                     model
                         => Navigation.newUrl (Route.routeToString route)
                         => AddBuild build
-
-            BuildUpdated buildJson ->
-                let
-                    externalMsg =
-                        buildJson
-                            |> Decode.decodeValue Build.decoder
-                            |> Result.toMaybe
-                            |> Maybe.map UpdateBuild
-                            |> Maybe.withDefault NoOp
-                in
-                    model
-                        => Cmd.none
-                        => externalMsg
 
             BuildCreated (Err _) ->
                 model
