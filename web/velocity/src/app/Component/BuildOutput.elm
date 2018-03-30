@@ -383,10 +383,14 @@ headerBackgroundColourClassList { status } =
             []
 
         BuildStep.Success ->
-            [ "text-success" => True ]
+            [ "text-success" => True
+            , "bg-transparent" => True
+            ]
 
         BuildStep.Failed ->
-            [ "bg-danger" => True ]
+            [ "bg-danger" => True
+            , "bg-transparent" => True
+            ]
 
 
 buildStepBorderColourClassList : BuildStep -> List ( String, Bool )
