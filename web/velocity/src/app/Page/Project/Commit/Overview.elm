@@ -85,11 +85,6 @@ viewTaskListItem project commit builds task =
         maybeBuild =
             maybeBuildFromTask task builds
 
-        icon =
-            maybeBuild
-                |> Maybe.map viewBuildStatusIcon
-                |> Maybe.withDefault (text "")
-
         textClass =
             maybeBuild
                 |> Maybe.map viewBuildTextClass
@@ -102,7 +97,6 @@ viewTaskListItem project commit builds task =
             ]
             [ div [ class "" ] [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ] ]
             , p [ class "mb-1" ] [ text task.description ]
-            , icon
             ]
 
 
