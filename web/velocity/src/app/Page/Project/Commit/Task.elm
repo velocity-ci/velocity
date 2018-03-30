@@ -277,13 +277,10 @@ view project commit model builds =
 
 viewTaskDescriptor : ProjectTask.Task -> Html Msg
 viewTaskDescriptor task =
-    div [ class "card mb-3 border-secondary" ]
+    div [ class "card mb-3" ]
         [ div [ class "card-body" ]
-            [ h3 []
-                [ text (ProjectTask.nameToString task.name)
-                , text " "
-                , small [ class "text-muted" ] [ text task.description ]
-                ]
+            [ h3 [] [ text (ProjectTask.nameToString task.name) ]
+            , p [ class "mb-0" ] [ text task.description ]
             ]
         ]
 
