@@ -36,41 +36,7 @@ initialModel =
 view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
 view project commit tasks builds =
     div []
-        [ viewCommitDetails commit
-        , viewTaskList project commit tasks builds
-        ]
-
-
-viewCommitDetails : Commit -> Html Msg
-viewCommitDetails commit =
-    let
-        viewCommitDetailsIcon_ =
-            viewCommitDetailsIcon commit
-    in
-        div [ class "card mt-3 bg-light" ]
-            [ div [ class "card-body d-flex justify-content-between" ]
-                [ ul [ class "list-unstyled mb-0" ]
-                    [ viewCommitDetailsIcon_ "fa-comment-o" .message
-                    , viewCommitDetailsIcon_ "fa-file-code-o" (.hash >> Commit.hashToString)
-                    , viewCommitDetailsIcon_ "fa-user" .author
-                    , viewCommitDetailsIcon_ "fa-calendar" (.date >> formatDateTime)
-                    ]
-                ]
-            ]
-
-
-viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
-viewCommitDetailsIcon commit iconClass fn =
-    li []
-        [ i
-            [ attribute "aria-hidden" "true"
-            , classList
-                [ ( "fa", True )
-                , ( iconClass, True )
-                ]
-            ]
-            []
-        , " " ++ fn commit |> text
+        [ viewTaskList project commit tasks builds
         ]
 
 

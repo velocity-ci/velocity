@@ -383,7 +383,7 @@ headerBackgroundColourClassList { status } =
             []
 
         BuildStep.Success ->
-            [ "bg-success" => True ]
+            [ "text-success" => True ]
 
         BuildStep.Failed ->
             [ "bg-danger" => True ]

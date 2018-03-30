@@ -25,8 +25,9 @@ import Data.PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
-import Page.Helpers exposing (sortByDatetime)
+import Page.Helpers exposing (sortByDatetime, formatDateTime)
 import Views.Helpers exposing (onClickPage)
+import Views.Spinner exposing (spinner)
 
 
 -- SUB PAGES --
@@ -181,12 +182,12 @@ view project model =
                 |> frame project model.commit CommitTaskMsg
 
         _ ->
-            Html.text "Nope"
+            div [ class "d-flex justify-content-center" ] [ spinner ]
 
 
 frame :
     { b | slug : Project.Slug }
-    -> { c | hash : Commit.Hash }
+    -> Commit
     -> (a -> Msg)
     -> Html a
     -> Html Msg
@@ -204,6 +205,22 @@ frame project commit toMsg content =
         link =
             a [ Route.href route, onClickPage NewUrl route ] [ commitTitle ]
 
+        viewCommitDetails =
+            let
+                viewCommitDetailsIcon_ =
+                    viewCommitDetailsIcon commit
+            in
+                div [ class "card mt-3 mb-3 bg-light" ]
+                    [ div [ class "card-body d-flex justify-content-between" ]
+                        [ ul [ class "list-unstyled mb-0" ]
+                            [ viewCommitDetailsIcon_ "fa-comment-o" .message
+                            , viewCommitDetailsIcon_ "fa-file-code-o" (.hash >> Commit.hashToString)
+                            , viewCommitDetailsIcon_ "fa-user" .author
+                            , viewCommitDetailsIcon_ "fa-calendar" (.date >> formatDateTime)
+                            ]
+                        ]
+                    ]
+
         commitTitleStyle =
             [ ( "position", "absolute" )
             , ( "top", "2rem" )
@@ -212,8 +229,24 @@ frame project commit toMsg content =
     in
         div []
             [ h2 [ style commitTitleStyle, class "display-7" ] [ link ]
+            , viewCommitDetails
             , Html.map toMsg content
             ]
+
+
+viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
+viewCommitDetailsIcon commit iconClass fn =
+    li []
+        [ i
+            [ attribute "aria-hidden" "true"
+            , classList
+                [ ( "fa", True )
+                , ( iconClass, True )
+                ]
+            ]
+            []
+        , " " ++ fn commit |> text
+        ]
 
 
 breadcrumb : Project -> Commit -> SubPageState -> List ( Route, String )
