@@ -216,27 +216,24 @@ addStreamOutput ( buildStepId, targetBuildStream, outputJson ) outputStreams =
         updateOutputStream newBuildOutput =
             outputStreams
                 |> Dict.update buildStepId
-                    (\maybeValue ->
-                        case maybeValue of
-                            Just value ->
-                                let
-                                    streams =
-                                        value.streams
-                                            |> List.map
-                                                (\stream ->
-                                                    if stream.buildStream.id == targetBuildStream.id then
-                                                        { stream
-                                                            | ansi = Ansi.Log.update newBuildOutput.output stream.ansi
-                                                            , raw = Dict.insert newBuildOutput.line newBuildOutput stream.raw
-                                                        }
-                                                    else
-                                                        stream
-                                                )
-                                in
-                                    Just { value | streams = streams }
-
-                            Nothing ->
-                                Nothing
+                    (Maybe.map
+                        (\value ->
+                            let
+                                streams =
+                                    value.streams
+                                        |> List.map
+                                            (\stream ->
+                                                if stream.buildStream.id == targetBuildStream.id then
+                                                    { stream
+                                                        | ansi = Ansi.Log.update newBuildOutput.output stream.ansi
+                                                        , raw = Dict.insert newBuildOutput.line newBuildOutput stream.raw
+                                                    }
+                                                else
+                                                    stream
+                                            )
+                            in
+                                { value | streams = streams }
+                        )
                     )
     in
         outputJson
