@@ -88,25 +88,30 @@ func NewEmitter(ws *websocket.Conn, b *build.Build) *Emitter {
 }
 
 func (w *StreamWriter) Write(p []byte) (n int, err error) {
+	o := string(p)
+	if !strings.ContainsRune(string(p), '\r') {
+		w.LineNumber++
+		o = strings.TrimSpace(o)
+		o += "\n"
+	}
 	lM := builder.BuilderStreamLineMessage{
 		BuildID:    w.BuildID,
 		StepID:     w.StepID,
 		StreamID:   w.StreamID,
 		LineNumber: w.LineNumber,
 		Status:     w.status,
-		Output:     string(p),
+		Output:     o,
 	}
 	m := builder.BuilderRespMessage{
 		Type: "log",
 		Data: lM,
 	}
 	err = w.ws.WriteJSON(m)
+
 	if err != nil {
 		return 0, err
 	}
-	if !strings.ContainsRune(string(p), '\r') {
-		w.LineNumber++
-	}
+
 	return len(p), nil
 }
 

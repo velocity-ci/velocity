@@ -165,7 +165,7 @@ builds context projectSlug hash maybeToken =
             , Project.slugToString projectSlug
             , "commits"
             , Commit.hashToString hash
-            , "builds"
+            , "builds?amount=-1"
             ]
     in
         apiUrl context (String.join "/" urlPieces)

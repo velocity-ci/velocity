@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+
+  a:
+    image: busybox
+    command: ping -c 20 b
+    networks:
+      default:
+        aliases:
+          - "a"
+
+  b:
+    image: busybox
+    command: ping -c 20 c
+    networks:
+      default:
+        aliases:
+          - "b"
+  
+  c:
+    image: busybox
+    command: ping -c 20 d
+    networks:
+      default:
+        aliases:
+          - "c"
+
+  d:
+    image: busybox
+    command: ping -c 20 a
+    networks:
+      default:
+        aliases:
+          - "d"

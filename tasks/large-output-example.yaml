@@ -1,0 +1,28 @@
+description: Example showing a large amount of output (5000 lines) in one stream
+name: large-output-example
+
+steps:
+  - type: run
+    description: Output
+    image: bash:latest
+    command: bash -c 'for i in {1..1000}; do date; done'
+
+  - type: run
+    description: Output
+    image: bash:latest
+    command: bash -c 'for i in {1..1000}; do date; done'
+  
+  - type: run
+    description: Output
+    image: bash:latest
+    command: bash -c 'for i in {1..1000}; do date; done'
+  
+  - type: run
+    description: Output
+    image: bash:latest
+    command: bash -c 'for i in {1..1000}; do date; done'
+  
+  - type: run
+    description: Output
+    image: bash:latest
+    command: bash -c 'for i in {1..1000}; do date; done'

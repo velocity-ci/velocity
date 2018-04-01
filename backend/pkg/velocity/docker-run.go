@@ -41,8 +41,14 @@ func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error 
 		}
 		break
 	case interface{}:
-		// TODO: handle /bin/sh -c "sleep 3"; should be: ["/bin/sh", "-c", "\"sleep 3\""]
-		s.Command = strings.Split(x.(string), " ")
+		re := regexp.MustCompile(`(".+")|('.+')|(\S+)`)
+		matches := re.FindAllString(x.(string), -1)
+		s.Command = []string{}
+		for _, m := range matches {
+			s.Command = append(s.Command, strings.TrimFunc(m, func(r rune) bool {
+				return string(r) == `"` || string(r) == `'`
+			}))
+		}
 		break
 	}
 

@@ -36,42 +36,7 @@ initialModel =
 view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
 view project commit tasks builds =
     div []
-        [ viewCommitDetails commit
-          --        , viewBuildTable project commit builds
-        , viewTaskList project commit tasks builds
-        ]
-
-
-viewCommitDetails : Commit -> Html Msg
-viewCommitDetails commit =
-    let
-        viewCommitDetailsIcon_ =
-            viewCommitDetailsIcon commit
-    in
-        div [ class "card mt-3 bg-light" ]
-            [ div [ class "card-body d-flex justify-content-between" ]
-                [ ul [ class "list-unstyled mb-0" ]
-                    [ viewCommitDetailsIcon_ "fa-comment-o" .message
-                    , viewCommitDetailsIcon_ "fa-file-code-o" (.hash >> Commit.hashToString)
-                    , viewCommitDetailsIcon_ "fa-user" .author
-                    , viewCommitDetailsIcon_ "fa-calendar" (.date >> formatDateTime)
-                    ]
-                ]
-            ]
-
-
-viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
-viewCommitDetailsIcon commit iconClass fn =
-    li []
-        [ i
-            [ attribute "aria-hidden" "true"
-            , classList
-                [ ( "fa", True )
-                , ( iconClass, True )
-                ]
-            ]
-            []
-        , " " ++ fn commit |> text
+        [ viewTaskList project commit tasks builds
         ]
 
 
@@ -86,47 +51,6 @@ viewTaskList project commit tasks builds =
             [ h5 [ class "card-header" ] [ text "Tasks" ]
             , taskList
             ]
-
-
-
---
---viewBuildTable : Project -> Commit -> List Build -> Html Msg
---viewBuildTable project commit builds =
---    let
---        header =
---            thead []
---                [ tr []
---                    [ th [ scope "col" ] [ text "#" ]
---                    , th [ scope "col" ] [ text "Task" ]
---                    , th [ scope "col" ] [ text "Status" ]
---                    ]
---                ]
---    in
---        table [ class "table table-bordered mt-3" ]
---            [ header
---            , tbody [] (List.map (viewBuildTableRow project commit) builds)
---            ]
---
---
---viewBuildTableRow : Project -> Commit -> Build -> Html Msg
---viewBuildTableRow project commit build =
---    let
---        route =
---            CommitRoute.Build build.id
---                |> ProjectRoute.Commit commit.hash
---                |> Route.Project project.id
---    in
---        tr []
---            [ td []
---                [ a
---                    [ Route.href route
---                    , onClickPage NewUrl route
---                    ]
---                    [ text <| Build.idToString build.id ]
---                ]
---            , td [] [ text <| ProjectTask.nameToString build.task ]
---            , td [] []
---            ]
 
 
 taskBuilds : ProjectTask.Task -> List Build -> List Build
@@ -161,11 +85,6 @@ viewTaskListItem project commit builds task =
         maybeBuild =
             maybeBuildFromTask task builds
 
-        icon =
-            maybeBuild
-                |> Maybe.map viewBuildStatusIcon
-                |> Maybe.withDefault (text "")
-
         textClass =
             maybeBuild
                 |> Maybe.map viewBuildTextClass
@@ -178,7 +97,6 @@ viewTaskListItem project commit builds task =
             ]
             [ div [ class "" ] [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ] ]
             , p [ class "mb-1" ] [ text task.description ]
-            , icon
             ]
 
 

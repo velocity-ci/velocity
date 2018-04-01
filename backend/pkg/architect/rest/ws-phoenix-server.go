@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -24,6 +25,7 @@ type Client struct {
 	ID            string
 	alive         bool
 	ws            *websocket.Conn
+	wsLock        sync.RWMutex
 	subscriptions []string
 }
 
@@ -35,10 +37,16 @@ func jwtKeyFunc(t *jwt.Token) (interface{}, error) {
 	return []byte(os.Getenv("JWT_SECRET")), nil
 }
 
+func (c *Client) WriteJSON(v interface{}) error {
+	c.wsLock.Lock()
+	defer c.wsLock.Unlock()
+	return c.ws.WriteJSON(v)
+}
+
 func (c *Client) Subscribe(s string, ref uint64, payload *PhoenixGuardianJoinPayload) {
 	_, err := jwt.ParseWithClaims(payload.Token, jwtStandardClaims, jwtKeyFunc)
 	if err != nil {
-		c.ws.WriteJSON(PhoenixMessage{
+		c.WriteJSON(PhoenixMessage{
 			Event: PhxReplyEvent,
 			Topic: s,
 			Ref:   ref,
@@ -54,7 +62,7 @@ func (c *Client) Subscribe(s string, ref uint64, payload *PhoenixGuardianJoinPay
 	}
 
 	c.subscriptions = append(c.subscriptions, s)
-	c.ws.WriteJSON(PhoenixMessage{
+	c.WriteJSON(PhoenixMessage{
 		Event: PhxReplyEvent,
 		Topic: s,
 		Ref:   ref,
@@ -76,7 +84,7 @@ func (c *Client) Unsubscribe(s string, ref uint64) {
 	if element < len(c.subscriptions) {
 		c.subscriptions = append(c.subscriptions[:element], c.subscriptions[element+1:]...)
 	}
-	c.ws.WriteJSON(PhoenixMessage{
+	c.WriteJSON(PhoenixMessage{
 		Event: PhxReplyEvent,
 		Topic: s,
 		Ref:   ref,
@@ -88,7 +96,7 @@ func (c *Client) Unsubscribe(s string, ref uint64) {
 }
 
 func (c *Client) HandleHeartbeat(ref uint64) {
-	c.ws.WriteJSON(PhoenixMessage{
+	c.WriteJSON(PhoenixMessage{
 		Event: PhxReplyEvent,
 		Topic: PhxSystemTopic,
 		Ref:   ref,
