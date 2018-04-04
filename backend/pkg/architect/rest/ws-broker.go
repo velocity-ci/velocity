@@ -167,7 +167,7 @@ var wsEventMapping = map[string]string{
 
 	build.EventBuildCreate:      "build:new",
 	build.EventBuildUpdate:      "build:update",
-	build.EventStepUpdate:       "step:update",
+	build.EventStepUpdate:       "build:update",
 	build.EventStreamLineCreate: "streamLine:new",
 
 	// "": "builder:new",
