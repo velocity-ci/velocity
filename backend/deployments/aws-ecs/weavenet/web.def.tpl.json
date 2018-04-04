@@ -1,0 +1,33 @@
+[
+    {
+        "name": "velocityci_web",
+        "image": "civelocity/web:${version}",
+        "memoryReservation": 128,
+        "hostname": "velocityci-web.weave.local",
+        "essential": true,
+        "portMappings": [
+            {
+                "containerPort": 80
+            }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "${logs_group}",
+                "awslogs-region": "${logs_region}",
+                "awslogs-stream-prefix": "web"
+            }
+        },
+        "environment": [
+            {
+                "name": "WEAVE_CIDR",
+                "value": "net:${weave_cidr}"
+            },
+            {
+                "name": "ARCHITECT_ENDPOINT",
+                "value": "${architect_endpoint}"
+            }
+        ],
+        "dockerLabels": ${web_labels}
+    }
+]
