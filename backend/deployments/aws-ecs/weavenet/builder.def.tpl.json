@@ -1,0 +1,40 @@
+[
+    {
+        "name": "velocityci_builder",
+        "image": "civelocity/builder:${version}",
+        "memoryReservation": 128,
+        "essential": true,
+        "mountPoints": [
+            {
+                "sourceVolume": "docker-engine",
+                "containerPath": "/var/run/docker.sock"
+            },
+            {
+                "sourceVolume": "velocity-workspace",
+                "containerPath": "/var/velocityci"
+            }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "${logs_group}",
+                "awslogs-region": "${logs_region}",
+                "awslogs-stream-prefix": "builder"
+            }
+        },
+        "environment": [
+            {
+                "name": "WEAVE_CIDR",
+                "value": "net:${weave_cidr}"
+            },
+            {
+                "Name": "ARCHITECT_ADDRESS",
+                "Value": "http://velocityci-architect.weave.local"
+            },
+            {
+                "Name": "BUILDER_SECRET",
+                "Value": "${builder_secret}"
+            }
+        ]
+    }
+]
