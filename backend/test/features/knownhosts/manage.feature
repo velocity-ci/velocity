@@ -28,8 +28,8 @@ I need to be able to manage trusted hosts
     When I list the known hosts
     Then the response has status "200 OK"
     And the response has the following attributes:
-      | attribute          | type    | value                                              |
-      | total              | integer | 1                                                  |
+      | attribute        | type    | value                                              |
+      | total            | integer | 1                                                  |
       | data[0].id       | string  | *any                                               |
       | data[0].hosts[0] | string  | github.com                                         |
       | data[0].comment  | string  |                                                    |
