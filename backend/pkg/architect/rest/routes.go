@@ -69,10 +69,10 @@ func AddRoutes(
 
 	r := e.Group("/v1/users")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
-	r.POST("/users", userHandler.create)
-	r.GET("/users", userHandler.getAll)
-	r.GET("/users/:username", userHandler.get)
-	r.DELETE("/users/:username", userHandler.delete)
+	r.POST("", userHandler.create)
+	r.GET("", userHandler.getAll)
+	r.GET("/:username", userHandler.get)
+	r.DELETE("/:username", userHandler.delete)
 
 	r = e.Group("/v1/ssh")
 	r.Use(middleware.JWTWithConfig(jwtConfig))
