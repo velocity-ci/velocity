@@ -1,6 +1,15 @@
 version: '3'
 
 services:
+  swagger:
+    image: swaggerapi/swagger-ui
+    volumes:
+      - "./api/swagger.yaml:/swagger.yaml"
+    environment:
+      SWAGGER_JSON: /swagger.yaml
+    ports:
+      - "8080:8080"
+
   architect:
     image: golang:1.9
     command: go run cmd/vci-architect/main.go
