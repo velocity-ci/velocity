@@ -25,7 +25,7 @@ resource "aws_ecs_task_definition" "builder" {
 
   volume {
     name = "velocity-workspace"
-    host_path = "/var/velocityci"
+    host_path = "/opt/velocityci"
   }
 }
 

@@ -11,7 +11,7 @@
             },
             {
                 "sourceVolume": "velocity-workspace",
-                "containerPath": "/var/velocityci"
+                "containerPath": "/opt/velocityci"
             }
         ],
         "logConfiguration": {

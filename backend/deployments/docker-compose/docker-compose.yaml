@@ -14,7 +14,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - "./architect_data:/var/velocityci"
+      - "./architect_data:/opt/velocityci"
 
   builder:
     build:
@@ -25,5 +25,5 @@ services:
       BUILDER_SECRET: local
       ARCHITECT_ADDRESS: http://architect
     volumes:
-      - "./builder_data:/var/velocityci"
+      - "./builder_data:/opt/velocityci"
       - "/var/run/docker.sock:/var/run/docker.sock"
