@@ -24,7 +24,7 @@ services:
       - "80:80"
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/backend/"
-      - "./architect_data:/var/velocityci"
+      - "./architect_data:/opt/velocityci"
 
   builder:
     image: golang:1.9
@@ -36,5 +36,5 @@ services:
       ARCHITECT_ADDRESS: http://architect
     volumes:
       - "./:/go/src/github.com/velocity-ci/velocity/backend/"
-      - "/var/velocityci:/var/velocityci"
+      - "/opt/velocityci:/opt/velocityci"
       - "/var/run/docker.sock:/var/run/docker.sock"

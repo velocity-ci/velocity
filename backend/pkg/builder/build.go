@@ -35,5 +35,5 @@ func runBuild(build *builder.BuildCtrl, ws *websocket.Conn) {
 	}
 	wd, _ := os.Getwd()
 	os.RemoveAll(wd)
-	os.Chdir("/var/velocityci")
+	os.Chdir("/opt/velocityci")
 }
