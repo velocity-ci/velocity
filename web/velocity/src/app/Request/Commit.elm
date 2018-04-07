@@ -113,7 +113,7 @@ tasks context projectSlug hash maybeToken =
             , Project.slugToString projectSlug
             , "commits"
             , Commit.hashToString hash
-            , "tasks"
+            , "tasks?amount=-1"
             ]
     in
         apiUrl context (String.join "/" urlPieces)

@@ -30,6 +30,8 @@ import Json.Decode as Decode
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Json.Encode as Encode
+import Component.BranchFilter as BranchFilter
+import Dom
 
 
 -- MODEL --
@@ -41,6 +43,8 @@ type alias Model =
     , page : Int
     , submitting : Bool
     , branch : Maybe Branch
+    , dropdownState : BranchFilter.DropdownState
+    , branchFilterTerm : String
     }
 
 
@@ -70,6 +74,8 @@ init context session branches projectSlug maybeBranchName maybePage =
             , page = defaultPage
             , submitting = False
             , branch = maybeBranch
+            , dropdownState = BranchFilter.initialDropdownState
+            , branchFilterTerm = ""
             }
 
         handleLoadError _ =
@@ -82,6 +88,33 @@ init context session branches projectSlug maybeBranchName maybePage =
 perPage : Int
 perPage =
     10
+
+
+branchFilterConfig : BranchFilter.Config Msg
+branchFilterConfig =
+    { dropdownMsg = BranchFilterDropdownMsg
+    , termMsg = BranchFilterTermMsg
+    , noOpMsg = NoOp
+    , selectBranchMsg = FilterBranch
+    }
+
+
+branchFilterContext : List Branch -> Model -> BranchFilter.Context
+branchFilterContext branches { dropdownState, branchFilterTerm } =
+    { branches = branches
+    , dropdownState = dropdownState
+    , filterTerm = branchFilterTerm
+    }
+
+
+
+-- SUBSCRIPTIONS --
+
+
+subscriptions : List Branch -> Model -> Sub Msg
+subscriptions branches model =
+    branchFilterContext branches model
+        |> BranchFilter.subscriptions branchFilterConfig
 
 
 
@@ -115,9 +148,13 @@ view project branches model =
         commits =
             commitListToDict model.commits
                 |> viewCommitListContainer project
+
+        branchFilter =
+            branchFilterContext branches model
+                |> BranchFilter.view branchFilterConfig
     in
         div []
-            [ viewCommitToolbar project model.branch branches
+            [ branchFilter
             , commits
             , pagination model.page model.total project model.branch
             ]
@@ -304,6 +341,9 @@ type Msg
     | NewUrl String
     | RefreshCommitList
     | RefreshCompleted (Result Request.Errors.HttpError (PaginatedList Commit))
+    | BranchFilterDropdownMsg BranchFilter.DropdownState
+    | BranchFilterTermMsg String
+    | NoOp
 
 
 update : Context -> Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -385,4 +425,15 @@ update context project session msg model =
                 => Cmd.none
 
         RefreshCompleted (Err _) ->
+            model => Cmd.none
+
+        BranchFilterDropdownMsg state ->
+            { model | dropdownState = state }
+                => Task.attempt (always NoOp) (Dom.focus "filter-branch-input")
+
+        BranchFilterTermMsg term ->
+            { model | branchFilterTerm = term }
+                => Cmd.none
+
+        NoOp ->
             model => Cmd.none

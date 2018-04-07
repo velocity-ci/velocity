@@ -100,7 +100,7 @@ builds context slug maybeToken =
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/builds")
+        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/builds?amount=-1")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
