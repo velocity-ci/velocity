@@ -32,6 +32,7 @@ import Views.Helpers exposing (onClickPage)
 import Json.Encode as Encode
 import Component.BranchFilter as BranchFilter
 import Dom
+import Bootstrap.Button as Button
 
 
 -- MODEL --
@@ -153,9 +154,18 @@ view project branches model =
         branchFilter =
             branchFilterContext branches model
                 |> BranchFilter.view branchFilterConfig
+
+        refreshCommitsButton =
+            refreshButton project model
+
+        buttons =
+            div [ class "btn-toolbar" ]
+                [ branchFilter
+                , refreshCommitsButton
+                ]
     in
         div []
-            [ branchFilter
+            [ buttons
             , commits
             , pagination model.page model.total project model.branch
             ]
@@ -278,6 +288,11 @@ breadcrumb project =
 
 viewBreadcrumbExtraItems : Project -> Model -> Html Msg
 viewBreadcrumbExtraItems project model =
+    text ""
+
+
+refreshButton : Project -> Model -> Html Msg
+refreshButton project model =
     let
         submitting =
             project.synchronising || model.submitting
@@ -287,16 +302,16 @@ viewBreadcrumbExtraItems project model =
             , ("fa-spin fa-fw" => submitting)
             ]
     in
-        div [ class "ml-auto p-2" ]
-            [ button
+        Button.button
+            [ Button.outlineSecondary
+            , Button.attrs
                 [ class "ml-auto btn btn-dark"
-                , type_ "button"
                 , onClick SubmitSync
                 , disabled submitting
                 ]
-                [ i [ classList iconClassList ] []
-                , text " Refresh "
-                ]
+            ]
+            [ i [ classList iconClassList ] []
+            , text " Refresh"
             ]
 
 
