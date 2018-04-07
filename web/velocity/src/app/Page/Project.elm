@@ -231,12 +231,13 @@ type ActiveSubPage
 view : Session msg -> Model -> Html Msg
 view session model =
     let
-        ( subPageFrame, breadcrumb ) =
+        subPageFrame =
             viewSubPage session model
     in
         div []
-            [ breadcrumb
-            , div [ class "container-fluid" ] [ subPageFrame ]
+            [ div [ class "container-fluid" ]
+                [ subPageFrame
+                ]
             ]
 
 
@@ -290,9 +291,8 @@ viewBreadcrumb project additionalElements items =
         itemElements =
             List.indexedMap breadcrumbItem allItems
     in
-        div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container" ]
-            [ div [ class "p-2" ]
-                [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ] itemElements ]
+        div [ class "row" ]
+            [ ol [ class "breadcrumb bg-white" ] itemElements
             , additionalElements
             ]
 
@@ -315,7 +315,7 @@ viewBreadcrumbItem active ( route, name ) =
             [ children ]
 
 
-viewSubPage : Session msg -> Model -> ( Html Msg, Html Msg )
+viewSubPage : Session msg -> Model -> Html Msg
 viewSubPage session model =
     let
         page =
@@ -338,80 +338,59 @@ viewSubPage session model =
     in
         case page of
             Blank ->
-                let
-                    content =
-                        Html.text ""
-                            |> pageFrame (sidebar OtherPage)
-                in
-                    ( content, breadcrumb (text "") [] )
+                Html.text ""
+                    |> pageFrame (sidebar OtherPage) (breadcrumb (text "") [])
 
             Errored subModel ->
-                let
-                    content =
-                        Html.text "Errored"
-                            |> pageFrame (sidebar OtherPage)
-                in
-                    ( content, breadcrumb (text "") [] )
+                Html.text "Errored"
+                    |> pageFrame (sidebar OtherPage) (breadcrumb (text "") [])
 
             Overview _ ->
-                let
-                    content =
-                        Overview.view project model.builds
-                            |> Html.map OverviewMsg
-                            |> pageFrame (sidebar OverviewPage)
-                in
-                    ( content, breadcrumb (text "") [] )
+                Overview.view project model.builds
+                    |> Html.map OverviewMsg
+                    |> pageFrame (sidebar OverviewPage) (breadcrumb (text "") [])
 
             Commits subModel ->
                 let
-                    content =
-                        Commits.view project branches subModel
-                            |> Html.map CommitsMsg
-                            |> pageFrame (sidebar CommitsPage)
+                    crumb =
+                        Commits.breadcrumb project
+                            |> breadcrumb crumbExtraItems
 
                     crumbExtraItems =
                         Commits.viewBreadcrumbExtraItems project subModel
                             |> Html.map CommitsMsg
-
-                    crumb =
-                        Commits.breadcrumb project
-                            |> breadcrumb crumbExtraItems
                 in
-                    ( content, crumb )
+                    Commits.view project branches subModel
+                        |> Html.map CommitsMsg
+                        |> pageFrame (sidebar CommitsPage) crumb
 
             Commit subModel ->
                 let
-                    content =
-                        Commit.view project subModel
-                            |> Html.map CommitMsg
-                            |> pageFrame (sidebar CommitsPage)
-
                     crumb =
                         Commit.breadcrumb project subModel.commit subModel.subPageState
                             |> breadcrumb (text "")
                 in
-                    ( content, crumb )
+                    Commit.view project subModel
+                        |> Html.map CommitMsg
+                        |> pageFrame (sidebar CommitsPage) crumb
 
             Settings subModel ->
                 let
-                    content =
-                        Settings.view project subModel
-                            |> Html.map SettingsMsg
-                            |> pageFrame (sidebar SettingsPage)
-
                     crumb =
                         Settings.breadcrumb project
                             |> breadcrumb (text "")
                 in
-                    ( content, crumb )
+                    Settings.view project subModel
+                        |> Html.map SettingsMsg
+                        |> pageFrame (sidebar SettingsPage) crumb
 
 
-frame : Project -> Html msg -> Html msg -> Html msg
-frame project sidebar content =
+frame : Project -> Html msg -> Html msg -> Html msg -> Html msg
+frame project sidebar breadcrumb content =
     div [ class "row" ]
         [ sidebar
-        , div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3 project-content-container " ]
-            [ h1 [ class "display-6" ] [ text project.name ]
+        , div [ class "col-sm-9 ml-sm-auto col-md-10 project-content-container " ]
+            [ breadcrumb
             , content
             ]
         ]
