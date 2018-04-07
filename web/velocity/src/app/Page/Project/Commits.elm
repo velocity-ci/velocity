@@ -100,10 +100,11 @@ branchFilterConfig =
 
 
 branchFilterContext : List Branch -> Model -> BranchFilter.Context
-branchFilterContext branches { dropdownState, branchFilterTerm } =
+branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
     { branches = branches
     , dropdownState = dropdownState
     , filterTerm = branchFilterTerm
+    , selectedBranch = branch
     }
 
 
