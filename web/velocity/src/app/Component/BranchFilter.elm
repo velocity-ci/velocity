@@ -65,7 +65,7 @@ view config context =
     div []
         [ Dropdown.dropdown
             context.dropdownState
-            { options = [ Dropdown.menuAttrs [ onClick (config.noOpMsg) ] ]
+            { options = [ Dropdown.menuAttrs [ onClick (config.noOpMsg), class "branch-filter-dropdown" ] ]
             , toggleMsg = config.dropdownMsg
             , toggleButton = toggleButton context
             , items = viewDropdownItems config context
@@ -98,22 +98,22 @@ viewDropdownItems config context =
             viewBranchItems config context
 
         allBranchItemButton =
-            allBranchItem config
+            allBranchItem config context
     in
         filterForm :: Dropdown.divider :: allBranchItemButton :: Dropdown.divider :: branchItems
 
 
-allBranchItem : Config msg -> Dropdown.DropdownItem msg
-allBranchItem config =
-    branchItem config.selectBranchMsg Nothing
+allBranchItem : Config msg -> Context -> Dropdown.DropdownItem msg
+allBranchItem { selectBranchMsg } { selectedBranch } =
+    branchItem selectBranchMsg selectedBranch Nothing
 
 
 viewBranchItems : Config msg -> Context -> List (Dropdown.DropdownItem msg)
-viewBranchItems config { branches, filterTerm } =
+viewBranchItems config { branches, filterTerm, selectedBranch } =
     branches
         |> List.filter (branchFilter filterTerm)
         |> List.sortBy (.name >> Just >> Branch.nameToString)
-        |> List.map (Just >> branchItem config.selectBranchMsg)
+        |> List.map (Just >> branchItem config.selectBranchMsg selectedBranch)
 
 
 branchFilter : String -> Branch -> Bool
@@ -121,17 +121,26 @@ branchFilter filterTerm { name, active } =
     active && String.contains filterTerm (Branch.nameToString (Just name))
 
 
-branchItem : (Maybe Branch -> msg) -> Maybe Branch -> Dropdown.DropdownItem msg
-branchItem selectMsg maybeBranch =
+branchItem : (Maybe Branch -> msg) -> Maybe Branch -> Maybe Branch -> Dropdown.DropdownItem msg
+branchItem selectMsg selectedBranch maybeBranch =
     let
         itemText =
             maybeBranch
                 |> Maybe.map .name
                 |> Branch.nameToString
+                |> text
+
+        itemIcon =
+            if selectedBranch == maybeBranch then
+                i [ class "fa fa-check" ] []
+            else
+                text ""
     in
         Dropdown.buttonItem
             [ onClick (selectMsg <| maybeBranch) ]
-            [ text itemText ]
+            [ itemIcon
+            , itemText
+            ]
 
 
 viewForm : (String -> msg) -> Context -> Html msg

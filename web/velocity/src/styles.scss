@@ -76,6 +76,22 @@ h1 {
   border-bottom: 1px solid #eee;
 }
 
+
+/*
+Branch filter
+ */
+
+.branch-filter-dropdown {
+  .dropdown-item {
+    padding: 0.25rem 2.5rem;
+  }
+  i.fa {
+    position: absolute;;
+    left: 12px;
+    margin-top: 5px;
+  }
+}
+
 /*
  * Sidebar
  */
@@ -256,3 +272,4 @@ h1 {
 .ansi-blink{
   animation:1s blinker step-end infinite
 }
+
