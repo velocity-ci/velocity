@@ -1,0 +1,3 @@
+[submodule "web/velocity/elm-bootstrap"]
+	path = web/velocity/elm-bootstrap
+	url = https://github.com/EddyLane/elm-bootstrap.git
