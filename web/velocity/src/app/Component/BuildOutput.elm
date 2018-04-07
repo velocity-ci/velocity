@@ -1,5 +1,8 @@
 module Component.BuildOutput exposing (Model, Msg, init, view, update, events, leaveChannels)
 
+{- A stateful BuildOutput component.
+   I plan to convert this to a stateless component soon.
+-}
 -- INTERNAL
 
 import Context exposing (Context)

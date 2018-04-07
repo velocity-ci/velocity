@@ -225,8 +225,24 @@ subscriptions model =
 
         socket =
             Socket.listen model.session.socket SocketMsg
+
+        page =
+            model.pageState
+                |> getPage
+                |> pageSubscriptions
     in
-        Sub.batch [ header, session, socket ]
+        Sub.batch [ header, session, socket, page ]
+
+
+pageSubscriptions : Page -> Sub Msg
+pageSubscriptions page =
+    case page of
+        Project subModel ->
+            Project.subscriptions subModel
+                |> Sub.map ProjectMsg
+
+        _ ->
+            Sub.none
 
 
 sessionChange : Sub (Maybe User)

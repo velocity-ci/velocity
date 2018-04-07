@@ -203,6 +203,21 @@ leaveChannels model maybeProjectSlug maybeProjectRoute =
 
 
 
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case (getSubPage model.subPageState) of
+        Commits subModel ->
+            Commits.subscriptions model.branches subModel
+                |> Sub.map CommitsMsg
+
+        _ ->
+            Sub.none
+
+
+
 -- VIEW --
 
 
