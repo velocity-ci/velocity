@@ -163,11 +163,15 @@ view project branches model =
                 [ branchFilter
                 , refreshCommitsButton
                 ]
+
+        paginationToolbar =
+            div [ class "btn-toolbar" ]
+                [ pagination model.page model.total project model.branch ]
     in
         div []
             [ buttons
             , commits
-            , pagination model.page model.total project model.branch
+            , paginationToolbar
             ]
 
 

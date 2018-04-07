@@ -243,7 +243,7 @@ view session model =
 
 viewSidebar : Project -> ActiveSubPage -> Html Msg
 viewSidebar project subPage =
-    nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
+    nav [ class "col-sm-3 col-md-2 col-lg-1 d-none d-sm-block bg-secondary sidebar" ]
         [ ul [ class "nav nav-pills flex-column" ]
             [ sidebarLink (subPage == OverviewPage)
                 (Route.Project project.slug ProjectRoute.Overview)
@@ -262,7 +262,7 @@ sidebarLink : Bool -> Route -> List (Html Msg) -> Html Msg
 sidebarLink isActive route linkContent =
     li [ class "nav-item" ]
         [ a
-            [ class "nav-link"
+            [ class "nav-link text-light"
             , Route.href route
             , classList [ ( "active", isActive ) ]
             , onClickPage NewUrl route
@@ -304,7 +304,7 @@ viewBreadcrumbItem active ( route, name ) =
             if active then
                 text name
             else
-                a [ Route.href route ] [ text name ]
+                a [ Route.href route, class "text-secondary" ] [ text name ]
     in
         li
             [ Route.href route
@@ -389,7 +389,7 @@ frame : Project -> Html msg -> Html msg -> Html msg -> Html msg
 frame project sidebar breadcrumb content =
     div [ class "row" ]
         [ sidebar
-        , div [ class "col-sm-9 ml-sm-auto col-md-10 project-content-container " ]
+        , div [ class "col-sm-9 ml-sm-auto col-md-10 col-lg-11 project-content-container " ]
             [ breadcrumb
             , content
             ]

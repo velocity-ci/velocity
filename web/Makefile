@@ -26,6 +26,14 @@ build:
 	@docker build -t civelocity/web:${GIT_VERSION} -f docker/Dockerfile .
 	@docker tag civelocity/web:${GIT_VERSION} civelocity/web:latest
 
+rebuild-deps:
+	docker run --rm -it -v \
+	${CURDIR}/velocity:/app \
+	 -p 4200:4200 \
+	 -w /app \
+	 node:8 /bin/sh \
+	 -c 'npm rebuild'
+
 serve_dist: build
 	docker run --rm -p 4200:80 -e ARCHITECT_ENDPOINT='http://localhost/v1' \
 	civelocity/web:latest
