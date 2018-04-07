@@ -26,6 +26,7 @@ type alias Context =
     { branches : List Branch
     , dropdownState : Dropdown.State
     , filterTerm : String
+    , selectedBranch : Maybe Branch
     }
 
 
@@ -66,15 +67,25 @@ view config context =
             context.dropdownState
             { options = [ Dropdown.menuAttrs [ onClick (config.noOpMsg) ] ]
             , toggleMsg = config.dropdownMsg
-            , toggleButton =
-                Dropdown.toggle
-                    [ Button.outlineSecondary ]
-                    [ i [ class "fa fa-code-fork" ] []
-                    , text " All branches"
-                    ]
+            , toggleButton = toggleButton context
             , items = viewDropdownItems config context
             }
         ]
+
+
+toggleButton : Context -> Dropdown.DropdownToggle msg
+toggleButton { selectedBranch } =
+    let
+        toggleText =
+            selectedBranch
+                |> Maybe.map .name
+                |> Branch.nameToString
+    in
+        Dropdown.toggle
+            [ Button.outlineSecondary ]
+            [ i [ class "fa fa-code-fork" ] []
+            , text (" " ++ toggleText)
+            ]
 
 
 viewDropdownItems : Config msg -> Context -> List (Dropdown.DropdownItem msg)
@@ -85,8 +96,16 @@ viewDropdownItems config context =
 
         branchItems =
             viewBranchItems config context
+
+        allBranchItemButton =
+            allBranchItem config
     in
-        filterForm :: Dropdown.divider :: branchItems
+        filterForm :: Dropdown.divider :: allBranchItemButton :: Dropdown.divider :: branchItems
+
+
+allBranchItem : Config msg -> Dropdown.DropdownItem msg
+allBranchItem config =
+    branchItem config.selectBranchMsg Nothing
 
 
 viewBranchItems : Config msg -> Context -> List (Dropdown.DropdownItem msg)
@@ -94,7 +113,7 @@ viewBranchItems config { branches, filterTerm } =
     branches
         |> List.filter (branchFilter filterTerm)
         |> List.sortBy (.name >> Just >> Branch.nameToString)
-        |> List.map (viewBranchItem config.selectBranchMsg)
+        |> List.map (Just >> branchItem config.selectBranchMsg)
 
 
 branchFilter : String -> Branch -> Bool
@@ -102,21 +121,28 @@ branchFilter filterTerm { name, active } =
     active && String.contains filterTerm (Branch.nameToString (Just name))
 
 
-viewBranchItem : (Maybe Branch -> msg) -> Branch -> Dropdown.DropdownItem msg
-viewBranchItem selectMsg branch =
-    Dropdown.buttonItem
-        [ onClick (selectMsg <| Just branch) ]
-        [ text (Just branch.name |> Branch.nameToString) ]
+branchItem : (Maybe Branch -> msg) -> Maybe Branch -> Dropdown.DropdownItem msg
+branchItem selectMsg maybeBranch =
+    let
+        itemText =
+            maybeBranch
+                |> Maybe.map .name
+                |> Branch.nameToString
+    in
+        Dropdown.buttonItem
+            [ onClick (selectMsg <| maybeBranch) ]
+            [ text itemText ]
 
 
 viewForm : (String -> msg) -> Context -> Html msg
 viewForm msg { filterTerm } =
-    Form.form [ class "px-2 py-1", style [ "width" => "400px" ] ]
+    Form.form [ class "px-2 py-0", style [ "width" => "400px" ] ]
         [ Form.group []
             [ Input.email
                 [ Input.id "filter-branch-input"
                 , Input.placeholder "Filter branches"
                 , Input.attrs [ onInput msg ]
+                , Input.value filterTerm
                 ]
             ]
         ]
