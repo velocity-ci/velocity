@@ -1,4 +1,9 @@
 //@import "~bootswatch/dist/yeti/_variables.scss";
+
+
+$popover-bg: #000;
+$popover-body-color: #fff;
+
 @import "~bootstrap/scss/bootstrap.scss";
 //@import "~bootswatch/dist/yeti/_bootswatch.scss";
 $fa-font-path: "~font-awesome/fonts";
@@ -65,6 +70,7 @@ $fa-font-path: "~font-awesome/fonts";
 body {
   //padding-top: 3.5rem;
   min-width: 576px;
+  background-color: transparent;
 }
 
 /*
@@ -97,6 +103,7 @@ Branch filter
 Project container
  */
 .project-content-container {
+  position:relative;
   margin-left: 75px;
 }
 
@@ -107,16 +114,21 @@ Project container
 .sidebar {
   width: 75px;
   position: fixed;
-  top: 0px;
+  top: 0;
   bottom: 0;
   left: 0;
   z-index: 1000;
   padding-top:1rem;
-  overflow-x: hidden;
-  overflow-y: auto;
+  //overflow-x: hidden;
+  //overflow-y: auto;
+  //padding-right: 200px;
 
   .nav-link.active {
     background-color: grey;
+  }
+
+  .popover {
+    width: 84px;
   }
 
 }

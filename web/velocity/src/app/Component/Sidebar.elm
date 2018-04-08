@@ -26,38 +26,50 @@ type ActiveSubPage
 
 
 type alias Config msg =
-    { newUrlMsg : String -> msg }
+    { newUrlMsg : String -> msg
+    , commitPopMsg : Popover.State -> msg
+    , settingsPopMsg : Popover.State -> msg
+    }
 
 
 type alias State a =
     { a
         | commitIconPopover : Popover.State
-        , projectIconPopover : Popover.State
+        , settingsIconPopover : Popover.State
     }
 
 
-view : Config msg -> Project -> ActiveSubPage -> Html msg
-view config project subPage =
+view : State a -> Config msg -> Project -> ActiveSubPage -> Html msg
+view state config project subPage =
     nav [ class "sidebar bg-secondary" ]
         [ ul [ class "nav nav-pills flex-column" ]
-            [ sidebarProjectLink config project
-            , sidebarLink config
+            [ sidebarProjectLink state config project
+            , sidebarLink state
+                config
+                CommitsPage
                 (subPage == CommitsPage)
                 (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
+                "Commits"
                 [ i [ attribute "aria-hidden" "true", class "fa fa-code-fork" ] [] ]
-            , sidebarLink config
+            , sidebarLink state
+                config
+                SettingsPage
                 (subPage == SettingsPage)
                 (Route.Project project.slug ProjectRoute.Settings)
+                "Settings"
                 [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [] ]
             ]
         ]
 
 
-sidebarProjectLink : Config msg -> Project -> Html msg
-sidebarProjectLink config project =
-    sidebarLink config
+sidebarProjectLink : State a -> Config msg -> Project -> Html msg
+sidebarProjectLink state config project =
+    sidebarLink state
+        config
+        OverviewPage
         False
         (Route.Project project.slug ProjectRoute.Overview)
+        "Overview"
         [ div
             [ class "badge badge-primary project-badge" ]
             [ i [ attribute "aria-hidden" "true", class "fa fa-code" ] []
@@ -65,26 +77,65 @@ sidebarProjectLink config project =
         ]
 
 
-sidebarLink : Config msg -> Bool -> Route -> List (Html msg) -> Html msg
-sidebarLink { newUrlMsg } isActive route linkContent =
+sidebarLink : State a -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Html msg) -> Html msg
+sidebarLink state config activeSubPage isActive route tooltip linkContent =
+    tooltipConfig config state activeSubPage
+        |> Maybe.map
+            (\( popMsg, popState ) ->
+                tooltipLink config isActive route linkContent ( popMsg, popState )
+                    |> popover Popover.right popState tooltip
+            )
+        |> Maybe.withDefault (nonTooltipLink config isActive route linkContent)
+
+
+nonTooltipLink : Config msg -> Bool -> Route -> List (Html msg) -> Html msg
+nonTooltipLink config isActive route content =
     li [ class "nav-item" ]
         [ a
             [ class "nav-link text-light text-center h4"
             , Route.href route
             , classList [ ( "active", isActive ) ]
-            , onClickPage newUrlMsg route
+            , onClickPage config.newUrlMsg route
             ]
-            linkContent
+            content
         ]
+
+
+tooltipLink : Config msg -> Bool -> Route -> List (Html msg) -> ( Popover.State -> msg, Popover.State ) -> Html msg
+tooltipLink config isActive route content ( popMsg, popState ) =
+    li ([ class "nav-item" ] ++ Popover.onHover popState popMsg)
+        [ a
+            ([ class "nav-link text-light text-center h4"
+             , Route.href route
+             , classList [ ( "active", isActive ) ]
+             , onClickPage config.newUrlMsg route
+             ]
+            )
+            content
+        ]
+
+
+tooltipConfig : Config msg -> State a -> ActiveSubPage -> Maybe ( Popover.State -> msg, Popover.State )
+tooltipConfig { commitPopMsg, settingsPopMsg } { commitIconPopover, settingsIconPopover } activeSubPage =
+    case activeSubPage of
+        CommitsPage ->
+            Just ( commitPopMsg, commitIconPopover )
+
+        SettingsPage ->
+            Just ( settingsPopMsg, settingsIconPopover )
+
+        _ ->
+            Nothing
 
 
 popover :
     (Popover.Config msg -> Popover.Config msg1)
     -> Popover.State
+    -> String
     -> Html msg
     -> Html msg1
-popover posFn popState btn =
+popover posFn popState tooltipText btn =
     Popover.config btn
         |> posFn
-        |> Popover.content [] [ text "Tooltip" ]
+        |> Popover.content [] [ text tooltipText ]
         |> Popover.view popState

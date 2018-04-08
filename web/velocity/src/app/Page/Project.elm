@@ -58,6 +58,8 @@ type alias Model =
     , branches : List Branch
     , subPageState : SubPageState
     , builds : List Build
+    , commitIconPopover : Popover.State
+    , settingsIconPopover : Popover.State
     }
 
 
@@ -86,6 +88,8 @@ init context session slug maybeRoute =
             , branches = branches.results
             , subPageState = Loaded initialSubPage
             , builds = builds.results
+            , commitIconPopover = Popover.initialState
+            , settingsIconPopover = Popover.initialState
             }
 
         handleLoadError e =
@@ -228,6 +232,14 @@ view session model =
     viewSubPage session model
 
 
+sidebarConfig : Sidebar.Config Msg
+sidebarConfig =
+    { newUrlMsg = NewUrl
+    , commitPopMsg = CommitsIconPopMsg
+    , settingsPopMsg = SettingsIconPopMsg
+    }
+
+
 viewSubPage : Session msg -> Model -> Html Msg
 viewSubPage session model =
     let
@@ -244,7 +256,7 @@ viewSubPage session model =
             viewBreadcrumb project
 
         sidebar =
-            Sidebar.view { newUrlMsg = NewUrl } project
+            Sidebar.view model sidebarConfig project
 
         pageFrame =
             frame project
@@ -378,6 +390,8 @@ type Msg
     | AddBuildEvent Encode.Value
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
+    | CommitsIconPopMsg Popover.State
+    | SettingsIconPopMsg Popover.State
 
 
 getSubPage : SubPageState -> SubPage
@@ -497,6 +511,14 @@ updateSubPage context session subPage msg model =
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
+
+            ( CommitsIconPopMsg state, _ ) ->
+                { model | commitIconPopover = state }
+                    => Cmd.none
+
+            ( SettingsIconPopMsg state, _ ) ->
+                { model | settingsIconPopover = state }
+                    => Cmd.none
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model
