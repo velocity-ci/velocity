@@ -292,9 +292,7 @@ refreshButton project model =
                 , disabled submitting
                 ]
             ]
-            [ i [ classList iconClassList ] []
-            , text " Refresh"
-            ]
+            [ i [ classList iconClassList ] [] ]
 
 
 pagination : Int -> Int -> Project -> Maybe Branch -> Html Msg
