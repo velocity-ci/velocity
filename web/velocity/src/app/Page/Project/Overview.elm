@@ -35,11 +35,9 @@ initialModel =
 
 view : Project -> List Build -> Html Msg
 view project builds =
-    div [ class "container-fluid" ]
-        [ div [ class "row" ]
-            [ viewOverviewCard project
-            , viewBuildHistoryTable project builds
-            ]
+    div [ class "row" ]
+        [ viewOverviewCard project
+        , viewBuildHistoryTable project builds
         ]
 
 
@@ -109,7 +107,7 @@ viewBuildHistoryTableRow project build =
             [ td [] [ buildLink taskName commitTaskRoute ]
             , td [] [ buildLink truncatedHash commitRoute ]
             , td [] [ buildLink createdAt commitTaskRoute ]
-            , td [ style [ "text-align" => "right" ] ] [ viewBuildStatusIcon build ]
+            , td [ class "text-right" ] [ viewBuildStatusIcon build ]
             ]
 
 

@@ -16,7 +16,7 @@ import Request.Errors
 import Request.Channel
 import Route exposing (Route)
 import Util exposing ((=>))
-import Page.Header as Header
+import Component.Header as Header
 import Phoenix.Socket as Socket exposing (Socket)
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
@@ -123,14 +123,12 @@ view model =
         case model.pageState of
             Loaded activePage ->
                 div []
-                    [ header False activePage
-                    , page False activePage
+                    [ page False activePage
                     ]
 
             TransitioningFrom activePage ->
                 div []
-                    [ header True activePage
-                    , page True activePage
+                    [ page True activePage
                     ]
 
 

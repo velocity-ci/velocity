@@ -28,6 +28,8 @@ import Json.Decode as Decode
 import Dict exposing (Dict)
 import Data.Build as Build exposing (Build, addBuild)
 import Page.Helpers exposing (sortByDatetime)
+import Bootstrap.Popover as Popover
+import Component.Sidebar as Sidebar exposing (ActiveSubPage(..))
 
 
 -- SUB PAGES --
@@ -221,98 +223,9 @@ subscriptions model =
 -- VIEW --
 
 
-type ActiveSubPage
-    = OtherPage
-    | OverviewPage
-    | CommitsPage
-    | SettingsPage
-
-
 view : Session msg -> Model -> Html Msg
 view session model =
-    let
-        subPageFrame =
-            viewSubPage session model
-    in
-        div []
-            [ div [ class "container-fluid" ]
-                [ subPageFrame
-                ]
-            ]
-
-
-viewSidebar : Project -> ActiveSubPage -> Html Msg
-viewSidebar project subPage =
-    nav [ class "col-sm-3 col-md-2 col-lg-1 d-none d-sm-block bg-secondary sidebar" ]
-        [ ul [ class "nav nav-pills flex-column" ]
-            [ sidebarLink (subPage == OverviewPage)
-                (Route.Project project.slug ProjectRoute.Overview)
-                [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
-            , sidebarLink (subPage == CommitsPage)
-                (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
-                [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
-            , sidebarLink (subPage == SettingsPage)
-                (Route.Project project.slug ProjectRoute.Settings)
-                [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [], text " Settings" ]
-            ]
-        ]
-
-
-sidebarLink : Bool -> Route -> List (Html Msg) -> Html Msg
-sidebarLink isActive route linkContent =
-    li [ class "nav-item" ]
-        [ a
-            [ class "nav-link text-light"
-            , Route.href route
-            , classList [ ( "active", isActive ) ]
-            , onClickPage NewUrl route
-            ]
-            (linkContent ++ [ Util.viewIf isActive (span [ class "sr-only" ] [ text "(current)" ]) ])
-        ]
-
-
-viewBreadcrumb : Project -> Html Msg -> List ( Route, String ) -> Html Msg
-viewBreadcrumb project additionalElements items =
-    let
-        fixedItems =
-            [ ( Route.Projects, "Projects" )
-            , ( Route.Project project.slug ProjectRoute.Overview, project.name )
-            ]
-
-        allItems =
-            fixedItems ++ items
-
-        allItemLength =
-            List.length allItems
-
-        breadcrumbItem i item =
-            item |> viewBreadcrumbItem (i == (allItemLength - 1))
-
-        itemElements =
-            List.indexedMap breadcrumbItem allItems
-    in
-        div [ class "row" ]
-            [ ol [ class "breadcrumb bg-white" ] itemElements
-            , additionalElements
-            ]
-
-
-viewBreadcrumbItem : Bool -> ( Route, String ) -> Html Msg
-viewBreadcrumbItem active ( route, name ) =
-    let
-        children =
-            if active then
-                text name
-            else
-                a [ Route.href route, class "text-secondary" ] [ text name ]
-    in
-        li
-            [ Route.href route
-            , onClickPage NewUrl route
-            , class "breadcrumb-item"
-            , classList [ ( "active", active ) ]
-            ]
-            [ children ]
+    viewSubPage session model
 
 
 viewSubPage : Session msg -> Model -> Html Msg
@@ -331,7 +244,7 @@ viewSubPage session model =
             viewBreadcrumb project
 
         sidebar =
-            viewSidebar project
+            Sidebar.view { newUrlMsg = NewUrl } project
 
         pageFrame =
             frame project
@@ -387,13 +300,61 @@ viewSubPage session model =
 
 frame : Project -> Html msg -> Html msg -> Html msg -> Html msg
 frame project sidebar breadcrumb content =
-    div [ class "row" ]
+    div []
         [ sidebar
-        , div [ class "col-sm-9 ml-sm-auto col-md-10 col-lg-11 project-content-container " ]
+        , div [ class "project-content-container px-4" ]
             [ breadcrumb
             , content
             ]
         ]
+
+
+
+-- BREADCRUMB
+
+
+viewBreadcrumb : Project -> Html Msg -> List ( Route, String ) -> Html Msg
+viewBreadcrumb project additionalElements items =
+    let
+        fixedItems =
+            [ ( Route.Projects, "Projects" )
+            , ( Route.Project project.slug ProjectRoute.Overview, project.name )
+            ]
+
+        allItems =
+            fixedItems ++ items
+
+        allItemLength =
+            List.length allItems
+
+        breadcrumbItem i item =
+            item |> viewBreadcrumbItem (i == (allItemLength - 1))
+
+        itemElements =
+            List.indexedMap breadcrumbItem allItems
+    in
+        div [ class "row" ]
+            [ ol [ class "breadcrumb bg-white" ] itemElements
+            , additionalElements
+            ]
+
+
+viewBreadcrumbItem : Bool -> ( Route, String ) -> Html Msg
+viewBreadcrumbItem active ( route, name ) =
+    let
+        children =
+            if active then
+                text name
+            else
+                a [ Route.href route, class "text-secondary" ] [ text name ]
+    in
+        li
+            [ Route.href route
+            , onClickPage NewUrl route
+            , class "breadcrumb-item"
+            , classList [ ( "active", active ) ]
+            ]
+            [ children ]
 
 
 

@@ -1,4 +1,4 @@
-module Page.Header exposing (Msg(..), view, Model, init, update, subscriptions)
+module Component.Header exposing (Msg(..), view, Model, init, update, subscriptions)
 
 import Util exposing ((=>))
 import Views.Page as Page exposing (ActivePage(..))
@@ -49,8 +49,9 @@ view model user isLoading page =
         |> Navbar.collapseExtraLarge
         |> Navbar.lightCustom Color.white
         |> Navbar.fixTop
-        |> Navbar.brand [ onClickPage NewUrl Route.Home, Route.href Route.Home ] [ text "Velocity CI" ]
-        |> Navbar.items (navbarItems user page)
+        --        |> Navbar.brand [ onClickPage NewUrl Route.Home, Route.href Route.Home ] [ text "Velocity CI" ]
+        |>
+            Navbar.items (navbarItems user page)
         |> Navbar.customItems (navbarCustomItems isLoading)
         |> Navbar.view model.navbarState
 

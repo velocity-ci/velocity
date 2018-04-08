@@ -26,7 +26,6 @@ import Page.Helpers exposing (formatDate)
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
-import Json.Decode as Decode
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Json.Encode as Encode
@@ -198,27 +197,6 @@ commitListToDict commits =
         List.foldl reducer Dict.empty commits
 
 
-viewCommitToolbar : Project -> Maybe Branch -> List Branch -> Html Msg
-viewCommitToolbar project selectedBranch branches =
-    let
-        o b =
-            option
-                [ selected (b == selectedBranch) ]
-                [ text (Branch.nameToString (Maybe.map .name b)) ]
-
-        branchesSelect =
-            List.map Just branches
-                |> List.append [ Nothing ]
-                |> List.map o
-                |> select [ class "form-control", onChange ]
-
-        onChange =
-            on "change" (Decode.map FilterBranch Branch.selectDecoder)
-    in
-        nav [ class "navbar bg-light" ]
-            [ branchesSelect ]
-
-
 viewCommitListContainer : Project -> Dict ( Int, Int, Int ) (List Commit) -> Html Msg
 viewCommitListContainer project dict =
     let
@@ -250,8 +228,8 @@ viewCommitList project ( dateTuple, commits ) =
             Date.fromTuple dateTuple
                 |> formatDate
     in
-        div [ class "default-margin-bottom" ]
-            [ h6 [ class "mb-2 text-muted" ] [ text formattedDate ]
+        div []
+            [ h6 [ class "mb-2 mt-2 text-muted" ] [ text formattedDate ]
             , div [ class "card" ]
                 [ div [ class "list-group list-group-flush" ] commitListItems
                 ]
@@ -269,13 +247,13 @@ viewCommitListItem slug commit =
 
         branchList =
             commit.branches
-                |> List.map (\b -> span [ class "badge badge-secondary" ] [ text (Branch.nameToString (Just b)) ])
+                |> List.map (\b -> span [ class "badge badge-secondary" ] [ i [ class "fa fa-code-fork" ] [], text (" " ++ (Branch.nameToString (Just b))) ])
                 |> List.map (\b -> li [ class "list-inline-item" ] [ b ])
                 |> (ul [ class "mb-0 list-inline" ])
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route, onClickPage NewUrl route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
-                [ h5 [ class "mb-1 text-overflow" ] [ text commit.message ]
+                [ h6 [ class "mb-1 text-overflow" ] [ text commit.message ]
                 , small [] [ text truncatedHash ]
                 ]
             , div [ class "d-flex w-100 justify-content-between" ]
@@ -428,7 +406,8 @@ update context project session msg model =
                 newRoute =
                     Route.Project project.slug <| ProjectRoute.Commits uriEncoded (Just 1)
             in
-                model => Route.modifyUrl newRoute
+                { model | commits = [] }
+                    => Route.modifyUrl newRoute
 
         RefreshCommitList ->
             let

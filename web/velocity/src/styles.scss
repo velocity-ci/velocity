@@ -63,7 +63,7 @@ $fa-font-path: "~font-awesome/fonts";
 
 /* Move down content because we have a fixed navbar that is 3.5rem tall */
 body {
-  padding-top: 3.5rem;
+  //padding-top: 3.5rem;
   min-width: 576px;
 }
 
@@ -94,20 +94,38 @@ Branch filter
 }
 
 /*
+Project container
+ */
+.project-content-container {
+  margin-left: 75px;
+}
+
+/*
  * Sidebar
  */
 
 .sidebar {
+  width: 75px;
   position: fixed;
-  top: 56px;
+  top: 0px;
   bottom: 0;
   left: 0;
   z-index: 1000;
   padding-top:1rem;
   overflow-x: hidden;
-  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+  overflow-y: auto;
+
+  .nav-link.active {
+    background-color: grey;
+  }
+
 }
 
+.project-badge {
+  padding: 10px;
+  position: relative;
+  left: -3px;
+}
 /* Sidebar navigation */
 .sidebar {
   padding-left: 0;

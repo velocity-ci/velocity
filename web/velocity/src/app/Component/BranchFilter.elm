@@ -64,7 +64,12 @@ view : Config msg -> Context -> Html msg
 view config context =
     Dropdown.dropdown
         context.dropdownState
-        { options = [ Dropdown.menuAttrs [ onClick (config.noOpMsg), class "branch-filter-dropdown" ] ]
+        { options =
+            [ Dropdown.menuAttrs
+                [ onClick (config.noOpMsg)
+                , class "branch-filter-dropdown"
+                ]
+            ]
         , toggleMsg = config.dropdownMsg
         , toggleButton = toggleButton context
         , items = viewDropdownItems config context
