@@ -32,6 +32,7 @@ type alias Config msg =
     , commitPopMsg : Popover.State -> msg
     , settingsPopMsg : Popover.State -> msg
     , userDropdownMsg : Dropdown.State -> msg
+    , projectBadgePopMsg : Popover.State -> msg
     }
 
 
@@ -40,6 +41,7 @@ type alias State a =
         | commitIconPopover : Popover.State
         , settingsIconPopover : Popover.State
         , userDropdown : Dropdown.State
+        , projectBadgePopover : Popover.State
     }
 
 
@@ -58,25 +60,30 @@ subscriptions { userDropdownMsg } { userDropdown } =
 
 view : State a -> Config msg -> Project -> ActiveSubPage -> Html msg
 view state config project subPage =
-    nav [ class "sidebar bg-secondary" ]
-        [ ul [ class "nav nav-pills flex-column" ]
-            [ sidebarProjectLink state config project
-            , sidebarLink state
-                config
-                CommitsPage
-                (subPage == CommitsPage)
-                (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
-                "Project commits"
-                [ i [ attribute "aria-hidden" "true", class "fa fa-code-fork" ] [] ]
-            , sidebarLink state
-                config
-                SettingsPage
-                (subPage == SettingsPage)
-                (Route.Project project.slug ProjectRoute.Settings)
-                "Project settings"
-                [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [] ]
-            ]
+    nav [ class "sidebar" ]
+        [ sidebarProjectNavigation state config project subPage
         , sidebarUserDropdown state config
+        ]
+
+
+sidebarProjectNavigation : State a -> Config msg -> Project -> ActiveSubPage -> Html msg
+sidebarProjectNavigation state config project subPage =
+    ul [ class "nav nav-pills flex-column project-navigation" ]
+        [ sidebarProjectLink state config project
+        , sidebarLink state
+            config
+            CommitsPage
+            (subPage == CommitsPage)
+            (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
+            "Project commits"
+            [ i [ attribute "aria-hidden" "true", class "fa fa-code-fork" ] [] ]
+        , sidebarLink state
+            config
+            SettingsPage
+            (subPage == SettingsPage)
+            (Route.Project project.slug ProjectRoute.Settings)
+            "Project settings"
+            [ i [ attribute "aria-hidden" "true", class "fa fa-wrench" ] [] ]
         ]
 
 
@@ -87,11 +94,10 @@ sidebarProjectLink state config project =
         OverviewPage
         False
         (Route.Project project.slug ProjectRoute.Overview)
-        "Overview"
+        project.name
         [ div
-            [ class "badge badge-primary project-badge" ]
-            [ i [ attribute "aria-hidden" "true", class "fa fa-code" ] []
-            ]
+            [ class "badge badge-info project-badge" ]
+            [ i [ attribute "aria-hidden" "true", class "fa fa-code" ] [] ]
         ]
 
 
@@ -106,7 +112,7 @@ sidebarUserDropdown { userDropdown } config =
         , toggleMsg = config.userDropdownMsg
         , toggleButton =
             Dropdown.toggle
-                [ Button.secondary
+                [ Button.light
                 , Button.large
                 ]
                 []
@@ -133,10 +139,9 @@ sidebarLink state config activeSubPage isActive route tooltip linkContent =
 
 nonTooltipLink : Config msg -> Bool -> Route -> List (Html msg) -> Html msg
 nonTooltipLink config isActive route content =
-    li [ class "nav-item" ]
+    li []
         [ a
-            [ class "nav-link text-light text-center h4"
-            , Route.href route
+            [ Route.href route
             , classList [ ( "active", isActive ) ]
             , onClickPage config.newUrlMsg route
             ]
@@ -148,7 +153,7 @@ tooltipLink : Config msg -> Bool -> Route -> List (Html msg) -> ( Popover.State 
 tooltipLink config isActive route content ( popMsg, popState ) =
     li ([ class "nav-item" ] ++ Popover.onHover popState popMsg)
         [ a
-            ([ class "nav-link text-light text-center h4"
+            ([ class "nav-link text-center h4"
              , Route.href route
              , classList [ ( "active", isActive ) ]
              , onClickPage config.newUrlMsg route
@@ -159,13 +164,16 @@ tooltipLink config isActive route content ( popMsg, popState ) =
 
 
 tooltipConfig : Config msg -> State a -> ActiveSubPage -> Maybe ( Popover.State -> msg, Popover.State )
-tooltipConfig { commitPopMsg, settingsPopMsg } { commitIconPopover, settingsIconPopover } activeSubPage =
+tooltipConfig config state activeSubPage =
     case activeSubPage of
         CommitsPage ->
-            Just ( commitPopMsg, commitIconPopover )
+            Just ( config.commitPopMsg, state.commitIconPopover )
 
         SettingsPage ->
-            Just ( settingsPopMsg, settingsIconPopover )
+            Just ( config.settingsPopMsg, state.settingsIconPopover )
+
+        OverviewPage ->
+            Just ( config.projectBadgePopMsg, state.projectBadgePopover )
 
         _ ->
             Nothing

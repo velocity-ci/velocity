@@ -62,6 +62,7 @@ type alias Model =
     , commitIconPopover : Popover.State
     , settingsIconPopover : Popover.State
     , userDropdown : Dropdown.State
+    , projectBadgePopover : Popover.State
     }
 
 
@@ -93,6 +94,7 @@ init context session slug maybeRoute =
             , commitIconPopover = Popover.initialState
             , settingsIconPopover = Popover.initialState
             , userDropdown = Dropdown.initialState
+            , projectBadgePopover = Popover.initialState
             }
 
         handleLoadError e =
@@ -251,6 +253,7 @@ sidebarConfig =
     , commitPopMsg = CommitsIconPopMsg
     , settingsPopMsg = SettingsIconPopMsg
     , userDropdownMsg = UserDropdownToggleMsg
+    , projectBadgePopMsg = ProjectBadgePopMsg
     }
 
 
@@ -357,10 +360,11 @@ viewBreadcrumb project additionalElements items =
             item |> viewBreadcrumbItem (i == (allItemLength - 1))
 
         itemElements =
-            List.indexedMap breadcrumbItem allItems
+            allItems
+                |> List.indexedMap breadcrumbItem
     in
         div [ class "row" ]
-            [ ol [ class "breadcrumb bg-white" ] itemElements
+            [ ol [ class "breadcrumb bg-white mb-2 pb-0" ] itemElements
             , additionalElements
             ]
 
@@ -407,6 +411,7 @@ type Msg
     | CommitsIconPopMsg Popover.State
     | SettingsIconPopMsg Popover.State
     | UserDropdownToggleMsg Dropdown.State
+    | ProjectBadgePopMsg Popover.State
     | NoOp
 
 
@@ -541,6 +546,10 @@ updateSubPage context session subPage msg model =
 
             ( UserDropdownToggleMsg state, _ ) ->
                 { model | userDropdown = state }
+                    => Cmd.none
+
+            ( ProjectBadgePopMsg state, _ ) ->
+                { model | projectBadgePopover = state }
                     => Cmd.none
 
             ( SetRoute route, _ ) ->

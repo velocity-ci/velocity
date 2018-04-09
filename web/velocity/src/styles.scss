@@ -119,16 +119,21 @@ Project container
   left: 0;
   z-index: 1;
   padding-top:1rem;
-  //overflow-x: hidden;
-  //overflow-y: auto;
-  //padding-right: 200px;
+  background-color: rgb(244, 245, 247);
+  color: rgb(66, 82, 110);
 
   .nav-link.active {
-    background-color: grey;
+    background-color: rgba(9, 30, 66, 0.04);
+    color: rgb(0, 82, 204);
+    fill: rgba(9, 30, 66, 0.04);
   }
 
   .popover {
     width: 135px;
+  }
+
+  .project-navigation {
+    //margin-top: 80px;
   }
 
 }
@@ -152,6 +157,8 @@ Project container
     text-align: center;
     font-size: 23px;
     line-height: 1.42857;
+    background-color: rgb(244, 245, 247);
+    color: rgb(66, 82, 110);
   }
 
   .dropdown-toggle::before {
@@ -177,8 +184,6 @@ Project container
 
 .project-badge {
   padding: 10px;
-  position: relative;
-  left: -3px;
 }
 /* Sidebar navigation */
 .sidebar {
