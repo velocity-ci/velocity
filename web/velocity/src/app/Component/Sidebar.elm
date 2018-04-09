@@ -1,10 +1,12 @@
-module Component.Sidebar exposing (Config, ActiveSubPage(..), view)
+module Component.Sidebar exposing (Config, ActiveSubPage(..), view, subscriptions)
 
 -- EXTERNAL --
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Bootstrap.Popover as Popover
+import Bootstrap.Dropdown as Dropdown
+import Bootstrap.Button as Button
 
 
 -- INTERNAL --
@@ -15,7 +17,7 @@ import Route exposing (Route)
 import Views.Helpers exposing (onClickPage)
 
 
--- VIEW --
+-- MODEL --
 
 
 type ActiveSubPage
@@ -29,6 +31,7 @@ type alias Config msg =
     { newUrlMsg : String -> msg
     , commitPopMsg : Popover.State -> msg
     , settingsPopMsg : Popover.State -> msg
+    , userDropdownMsg : Dropdown.State -> msg
     }
 
 
@@ -36,7 +39,21 @@ type alias State a =
     { a
         | commitIconPopover : Popover.State
         , settingsIconPopover : Popover.State
+        , userDropdown : Dropdown.State
     }
+
+
+
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Config msg -> State a -> Sub msg
+subscriptions { userDropdownMsg } { userDropdown } =
+    Dropdown.subscriptions userDropdown userDropdownMsg
+
+
+
+-- VIEW --
 
 
 view : State a -> Config msg -> Project -> ActiveSubPage -> Html msg
@@ -49,16 +66,17 @@ view state config project subPage =
                 CommitsPage
                 (subPage == CommitsPage)
                 (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
-                "Commits"
+                "Project commits"
                 [ i [ attribute "aria-hidden" "true", class "fa fa-code-fork" ] [] ]
             , sidebarLink state
                 config
                 SettingsPage
                 (subPage == SettingsPage)
                 (Route.Project project.slug ProjectRoute.Settings)
-                "Settings"
+                "Project settings"
                 [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [] ]
             ]
+        , sidebarUserDropdown state config
         ]
 
 
@@ -75,6 +93,31 @@ sidebarProjectLink state config project =
             [ i [ attribute "aria-hidden" "true", class "fa fa-code" ] []
             ]
         ]
+
+
+sidebarUserDropdown : State a -> Config msg -> Html msg
+sidebarUserDropdown { userDropdown } config =
+    Dropdown.dropdown
+        userDropdown
+        { options =
+            [ Dropdown.dropUp
+            , Dropdown.attrs [ class "menu-toggle-dropdown d-flex justify-content-center" ]
+            ]
+        , toggleMsg = config.userDropdownMsg
+        , toggleButton =
+            Dropdown.toggle
+                [ Button.secondary
+                , Button.large
+                ]
+                []
+        , items =
+            [ Dropdown.header [ text "Management" ]
+            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.KnownHosts ] [ text "Known hosts" ]
+            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.Projects ] [ text "Projects" ]
+            , Dropdown.header [ text "User" ]
+            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.Logout ] [ text "Log out" ]
+            ]
+        }
 
 
 sidebarLink : State a -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Html msg) -> Html msg

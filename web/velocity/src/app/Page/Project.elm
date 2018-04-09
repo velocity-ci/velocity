@@ -29,6 +29,7 @@ import Dict exposing (Dict)
 import Data.Build as Build exposing (Build, addBuild)
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
+import Bootstrap.Dropdown as Dropdown
 import Component.Sidebar as Sidebar exposing (ActiveSubPage(..))
 
 
@@ -60,6 +61,7 @@ type alias Model =
     , builds : List Build
     , commitIconPopover : Popover.State
     , settingsIconPopover : Popover.State
+    , userDropdown : Dropdown.State
     }
 
 
@@ -90,6 +92,7 @@ init context session slug maybeRoute =
             , builds = builds.results
             , commitIconPopover = Popover.initialState
             , settingsIconPopover = Popover.initialState
+            , userDropdown = Dropdown.initialState
             }
 
         handleLoadError e =
@@ -214,13 +217,23 @@ leaveChannels model maybeProjectSlug maybeProjectRoute =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case (getSubPage model.subPageState) of
-        Commits subModel ->
-            Commits.subscriptions model.branches subModel
-                |> Sub.map CommitsMsg
+    let
+        subPageSubscriptions =
+            case (getSubPage model.subPageState) of
+                Commits subModel ->
+                    Commits.subscriptions model.branches subModel
+                        |> Sub.map CommitsMsg
 
-        _ ->
-            Sub.none
+                _ ->
+                    Sub.none
+
+        sidebarSubscriptions =
+            Sidebar.subscriptions sidebarConfig model
+    in
+        Sub.batch
+            [ subPageSubscriptions
+            , sidebarSubscriptions
+            ]
 
 
 
@@ -237,6 +250,7 @@ sidebarConfig =
     { newUrlMsg = NewUrl
     , commitPopMsg = CommitsIconPopMsg
     , settingsPopMsg = SettingsIconPopMsg
+    , userDropdownMsg = UserDropdownToggleMsg
     }
 
 
@@ -392,6 +406,8 @@ type Msg
     | DeleteBuildEvent Encode.Value
     | CommitsIconPopMsg Popover.State
     | SettingsIconPopMsg Popover.State
+    | UserDropdownToggleMsg Dropdown.State
+    | NoOp
 
 
 getSubPage : SubPageState -> SubPage
@@ -508,6 +524,9 @@ updateSubPage context session subPage msg model =
             pageErrored model
     in
         case ( msg, subPage ) of
+            ( NoOp, _ ) ->
+                model => Cmd.none
+
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
@@ -518,6 +537,10 @@ updateSubPage context session subPage msg model =
 
             ( SettingsIconPopMsg state, _ ) ->
                 { model | settingsIconPopover = state }
+                    => Cmd.none
+
+            ( UserDropdownToggleMsg state, _ ) ->
+                { model | userDropdown = state }
                     => Cmd.none
 
             ( SetRoute route, _ ) ->
