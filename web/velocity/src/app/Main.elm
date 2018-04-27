@@ -9,7 +9,6 @@ import Page.Errored as Errored exposing (PageLoadError)
 import Page.Home as Home
 import Page.Login as Login
 import Page.NotFound as NotFound
-import Page.Projects as Projects
 import Page.Project as Project
 import Page.KnownHosts as KnownHosts
 import Request.Errors
@@ -29,7 +28,6 @@ type Page
     | NotFound
     | Errored PageLoadError
     | Home Home.Model
-    | Projects Projects.Model
     | Project Project.Model
     | Login Login.Model
     | KnownHosts KnownHosts.Model
@@ -143,9 +141,6 @@ pageToActivePage page =
         Home _ ->
             Page.Home
 
-        Projects _ ->
-            Page.Projects
-
         Project _ ->
             Page.Project
 
@@ -202,11 +197,6 @@ viewPage session isLoading page =
                 Home.view session subModel
                     |> Html.map HomeMsg
                     |> frame Page.Home
-
-            Projects subModel ->
-                Projects.view session subModel
-                    |> Html.map ProjectsMsg
-                    |> frame Page.Projects
 
             Project subModel ->
                 Project.view session subModel
@@ -288,8 +278,6 @@ type Msg
     | SessionExpired
     | LoadFailed PageLoadError
     | LoginMsg Login.Msg
-    | ProjectsLoaded Projects.Model
-    | ProjectsMsg Projects.Msg
     | ProjectLoaded ( Project.Model, Cmd Project.Msg )
     | ProjectMsg Project.Msg
     | KnownHostsLoaded KnownHosts.Model
@@ -307,12 +295,6 @@ leavePageChannels session page route =
 
         ( newSocket, leaveCmd ) =
             case page of
-                Projects _ ->
-                    if route == Just Route.Projects then
-                        session.socket => Cmd.none
-                    else
-                        leaveChannels [ Projects.channelName ] session.socket
-
                 Home _ ->
                     if route == Just Route.Home then
                         session.socket => Cmd.none
@@ -421,20 +403,7 @@ setRoute maybeRoute model =
                           ]
 
             Just (Route.Projects) ->
-                case model.session.user of
-                    Just user ->
-                        let
-                            ( newModel, pageCmd ) =
-                                transition ProjectsLoaded (Projects.init model.context model.session)
-
-                            ( listeningSocket, socketCmd ) =
-                                joinChannels ProjectsMsg Projects.initialEvents
-                        in
-                            { newModel | session = { session | socket = listeningSocket } }
-                                ! [ pageCmd, Cmd.map SocketMsg socketCmd ]
-
-                    Nothing ->
-                        model => Route.modifyUrl Route.Login
+                setRoute (Just Route.Home) model
 
             Just (Route.KnownHosts) ->
                 case model.session.user of
@@ -629,27 +598,6 @@ updatePage page msg model =
                                 update (handledErrorToMsg err) model_
                 in
                     modelAfterExternalMsg ! [ Cmd.map HomeMsg newSubCmd, cmdAfterExternalMsg ]
-
-            ( ProjectsLoaded subModel, _ ) ->
-                { model | pageState = Loaded (Projects subModel) } => Cmd.none
-
-            ( ProjectsMsg subMsg, Projects subModel ) ->
-                let
-                    ( ( newSubModel, newSubCmd ), externalMsg ) =
-                        Projects.update model.context session subMsg subModel
-
-                    model_ =
-                        { model | pageState = Loaded (Projects newSubModel) }
-
-                    ( modelAfterExternalMsg, cmdAfterExternalMsg ) =
-                        case externalMsg of
-                            Projects.NoOp ->
-                                model_ => Cmd.none
-
-                            Projects.HandleRequestError err ->
-                                update (handledErrorToMsg err) model_
-                in
-                    modelAfterExternalMsg ! [ Cmd.map ProjectsMsg newSubCmd, cmdAfterExternalMsg ]
 
             ( KnownHostsLoaded subModel, _ ) ->
                 { model | pageState = Loaded (KnownHosts subModel) } => Cmd.none
