@@ -1,36 +1,51 @@
-module Page.Home exposing (view, update, Model, Msg, init, channelName, initialEvents)
+module Page.Home exposing (view, update, Model, Msg, ExternalMsg(..), init, channelName, initialEvents)
 
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
-import Context exposing (Context)
+-- EXTERNAL
+
+import Http
 import Html exposing (..)
 import Html.Attributes exposing (class, href, id, placeholder, attribute, classList, style)
+import Html.Events exposing (onClick)
+import Task exposing (Task)
+import Navigation exposing (newUrl)
+import Dict exposing (Dict)
+import Time.DateTime as DateTime
+import Json.Encode as Encode
+import Json.Decode as Decode
+import Bootstrap.Modal as Modal
+import Bootstrap.Button as Button
+import Json.Decode as Decode exposing (decodeString)
+
+
+-- INTERNAL
+
+import Context exposing (Context)
+import Component.ProjectForm as ProjectForm
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
-import Util exposing ((=>), onClickStopPropagation)
+import Page.Helpers exposing (formatDate, sortByDatetime)
+import Page.Project.Route as ProjectRoute
+import Views.Helpers exposing (onClickPage)
 import Views.Page as Page
-import Task exposing (Task)
+import Util exposing ((=>), onClickStopPropagation, viewIf)
 import Request.Project
 import Request.Errors
-import Page.Helpers exposing (formatDate, sortByDatetime)
 import Route
-import Page.Project.Route as ProjectRoute
-import Time.DateTime as DateTime
-import Views.Helpers exposing (onClickPage)
-import Navigation exposing (newUrl)
-import Json.Encode as Encode
-import Json.Decode as Decode
-import Dict exposing (Dict)
 
 
 -- MODEL --
 
 
 type alias Model =
-    { projects : List Project }
+    { projects : List Project
+    , newProjectForm : ProjectForm.Context
+    , newProjectModalVisibility : Modal.Visibility
+    }
 
 
 init : Context -> Session msg -> Task (Request.Errors.Error PageLoadError) Model
@@ -44,8 +59,14 @@ init context session =
 
         errorPage =
             pageLoadError Page.Home "Homepage is currently unavailable."
+
+        initialModel projects =
+            { projects = projects
+            , newProjectForm = ProjectForm.init
+            , newProjectModalVisibility = Modal.hidden
+            }
     in
-        Task.map (\(Paginated { results }) -> Model results) loadProjects
+        Task.map (\(Paginated { results }) -> initialModel results) loadProjects
             |> Task.mapError (Request.Errors.withDefaultError errorPage)
 
 
@@ -73,58 +94,29 @@ initialEvents =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    div [ class "container-fluid" ]
-        [ div [ class "row default-margin-top" ]
-            [ div [ class "col-12 col-md-6" ]
-                [ div [ class "card" ]
-                    [ h4 [ class "card-header" ]
-                        [ text "Last builds" ]
-                    , ul [ class "list-group" ]
-                        [ li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-                            [ div [ class "d-flex w-100 justify-content-between" ]
-                                [ h5 [ class "mb-1" ]
-                                    [ text "List group item heading" ]
-                                , small []
-                                    [ text "3 days ago" ]
-                                ]
-                            , p [ class "mb-1" ]
-                                [ text "Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit." ]
-                            , small []
-                                [ text "Donec id elit non mi porta." ]
-                            ]
-                        , li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-                            [ div [ class "d-flex w-100 justify-content-between" ]
-                                [ h5 [ class "mb-1" ]
-                                    [ text "List group item heading" ]
-                                , small [ class "text-muted" ]
-                                    [ text "3 days ago" ]
-                                ]
-                            ]
-                        , li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-                            [ div [ class "d-flex w-100 justify-content-between" ]
-                                [ h5 [ class "mb-1" ]
-                                    [ text "List group item heading" ]
-                                , small [ class "text-muted" ]
-                                    [ text "3 days ago" ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            , div [ class "col-12 col-md-6" ]
-                [ div [ class "card" ]
-                    [ h4
-                        [ class "card-header" ]
-                        [ a
-                            [ Route.href Route.Projects
-                            , onClickPage NewUrl Route.Projects
-                            ]
-                            [ text "Projects" ]
-                        ]
-                    , viewProjectList model.projects
-                    ]
-                ]
+    let
+        hasProjects =
+            not (List.isEmpty model.projects)
+
+        projectList =
+            viewProjectList model.projects
+    in
+        div [ class "py-2 my-4" ]
+            [ viewToolbar
+            , viewIf hasProjects projectList
+            , viewNewProjectModal model.newProjectForm model.newProjectModalVisibility
             ]
+
+
+viewToolbar : Html Msg
+viewToolbar =
+    div [ class "btn-toolbar d-flex flex-row-reverse" ]
+        [ button
+            [ class "btn btn-primary btn-lg"
+            , style [ "border-radius" => "25px" ]
+            , onClick ShowNewProjectModal
+            ]
+            [ i [ class "fa fa-plus" ] [] ]
         ]
 
 
@@ -134,7 +126,30 @@ viewProjectList projects =
         latestProjects =
             sortByDatetime .updatedAt projects
     in
-        ul [ class "list-group" ] (List.map viewProjectListItem latestProjects)
+        div []
+            [ h6 [] [ text "Projects" ]
+            , ul [ class "list-group list-group-flush" ] (List.map viewProjectListItem latestProjects)
+            ]
+
+
+projectFormConfig : ProjectForm.Config Msg
+projectFormConfig =
+    { setNameMsg = SetProjectFormName
+    , setRepositoryMsg = SetProjectFormRepository
+    , setPrivateKeyMsg = SetProjectFormPrivateKey
+    , submitMsg = SubmitProjectForm
+    }
+
+
+viewNewProjectModal : ProjectForm.Context -> Modal.Visibility -> Html Msg
+viewNewProjectModal projectForm visibility =
+    Modal.config CloseNewProjectModal
+        |> Modal.large
+        |> Modal.hideOnBackdropClick True
+        |> Modal.h3 [] [ text "Create project" ]
+        |> Modal.body [] [ ProjectForm.view projectFormConfig projectForm ]
+        |> Modal.footer [] [ ProjectForm.viewSubmitButton projectFormConfig projectForm ]
+        |> Modal.view visibility
 
 
 viewProjectListItem : Project -> Html Msg
@@ -142,21 +157,26 @@ viewProjectListItem project =
     let
         route =
             Route.Project project.slug ProjectRoute.Overview
-    in
-        li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
-            [ div [ class "d-flex w-100 justify-content-between" ]
-                [ h5 [ class "mb-1" ]
-                    [ a
-                        [ Route.href route
-                        , onClickPage NewUrl route
-                        ]
-                        [ text project.name ]
-                    ]
-                , small []
-                    [ DateTime.date project.updatedAt |> formatDate |> text ]
+
+        lastUpdatedText =
+            "Last updated " ++ formatDate (DateTime.date project.updatedAt)
+
+        smallText =
+            project.repository
+
+        projectLink =
+            a
+                [ Route.href route
+                , onClickPage NewUrl route
                 ]
-            , small []
-                [ text project.repository ]
+                [ text project.name ]
+    in
+        li [ class "list-group-item flex-column align-items-start px-0" ]
+            [ div [ class "d-flex w-100 justify-content-between" ]
+                [ h5 [ class "mb-1" ] [ projectLink ]
+                , small [] [ text lastUpdatedText ]
+                ]
+            , small [] [ text smallText ]
             ]
 
 
@@ -167,31 +187,132 @@ viewProjectListItem project =
 type Msg
     = NewUrl String
     | AddProject Encode.Value
+    | CloseNewProjectModal
+    | ShowNewProjectModal
+    | SubmitProjectForm
+    | SetProjectFormName String
+    | SetProjectFormRepository String
+    | SetProjectFormPrivateKey String
+    | ProjectCreated (Result Request.Errors.HttpError Project)
 
 
-update : Session msg -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg model =
+type ExternalMsg
+    = NoOp
+    | HandleRequestError Request.Errors.HandledError
+
+
+findProject : List Project -> Project -> Maybe Project
+findProject projects project =
+    List.filter (\a -> a.id == project.id) projects
+        |> List.head
+
+
+addProject : List Project -> Project -> List Project
+addProject projects project =
+    case findProject projects project of
+        Just _ ->
+            projects
+
+        Nothing ->
+            project :: projects
+
+
+update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update context session msg model =
     case msg of
         NewUrl url ->
-            model => newUrl url
+            model
+                => newUrl url
+                => NoOp
+
+        CloseNewProjectModal ->
+            { model | newProjectModalVisibility = Modal.hidden }
+                => Cmd.none
+                => NoOp
+
+        SetProjectFormName name ->
+            { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.Name name }
+                => Cmd.none
+                => NoOp
+
+        SetProjectFormRepository repository ->
+            { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.Repository repository }
+                => Cmd.none
+                => NoOp
+
+        SetProjectFormPrivateKey privateKey ->
+            { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.PrivateKey privateKey }
+                => Cmd.none
+                => NoOp
+
+        SubmitProjectForm ->
+            let
+                cmdFromAuth authToken =
+                    authToken
+                        |> Request.Project.create context (ProjectForm.submitValues model.newProjectForm)
+                        |> Task.attempt ProjectCreated
+
+                cmd =
+                    session
+                        |> Session.attempt "create project" cmdFromAuth
+                        |> Tuple.second
+            in
+                { model | newProjectForm = ProjectForm.submit model.newProjectForm }
+                    => cmd
+                    => NoOp
+
+        ProjectCreated (Err err) ->
+            let
+                ( updatedProjectForm, externalMsg ) =
+                    case err of
+                        Request.Errors.HandledError handledError ->
+                            model.newProjectForm
+                                => HandleRequestError handledError
+
+                        Request.Errors.UnhandledError (Http.BadStatus response) ->
+                            let
+                                errors =
+                                    response.body
+                                        |> decodeString ProjectForm.errorsDecoder
+                                        |> Result.withDefault []
+                            in
+                                model.newProjectForm
+                                    |> ProjectForm.updateServerErrors errors
+                                    => NoOp
+
+                        _ ->
+                            model.newProjectForm
+                                |> ProjectForm.updateServerErrors [ "" => "Unable to process project." ]
+                                => NoOp
+            in
+                { model | newProjectForm = ProjectForm.submitting False updatedProjectForm }
+                    => Cmd.none
+                    => externalMsg
+
+        ProjectCreated (Ok project) ->
+            { model
+                | newProjectForm = ProjectForm.init
+                , newProjectModalVisibility = Modal.hidden
+                , projects = addProject model.projects project
+            }
+                => Cmd.none
+                => NoOp
+
+        ShowNewProjectModal ->
+            { model | newProjectModalVisibility = Modal.shown }
+                => Cmd.none
+                => NoOp
 
         AddProject projectJson ->
             let
-                find p =
-                    List.filter (\a -> a.id == p.id) model.projects
-                        |> List.head
-
-                newModel =
+                projects =
                     case Decode.decodeValue Project.decoder projectJson of
                         Ok project ->
-                            case find project of
-                                Just _ ->
-                                    model
-
-                                Nothing ->
-                                    { model | projects = project :: model.projects }
+                            addProject model.projects project
 
                         Err _ ->
-                            model
+                            model.projects
             in
-                newModel => Cmd.none
+                { model | projects = projects }
+                    => Cmd.none
+                    => NoOp

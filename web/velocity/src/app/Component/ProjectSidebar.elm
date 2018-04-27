@@ -1,4 +1,4 @@
-module Component.Sidebar exposing (Config, ActiveSubPage(..), view, subscriptions)
+module Component.ProjectSidebar exposing (State, Config, ActiveSubPage(..), view, subscriptions)
 
 -- EXTERNAL --
 
@@ -15,6 +15,7 @@ import Data.Project as Project exposing (Project)
 import Page.Project.Route as ProjectRoute
 import Route exposing (Route)
 import Views.Helpers exposing (onClickPage)
+import Views.Project exposing (badge)
 
 
 -- MODEL --
@@ -36,12 +37,11 @@ type alias Config msg =
     }
 
 
-type alias State a =
-    { a
-        | commitIconPopover : Popover.State
-        , settingsIconPopover : Popover.State
-        , userDropdown : Dropdown.State
-        , projectBadgePopover : Popover.State
+type alias State =
+    { commitIconPopover : Popover.State
+    , settingsIconPopover : Popover.State
+    , userDropdown : Dropdown.State
+    , projectBadgePopover : Popover.State
     }
 
 
@@ -49,7 +49,7 @@ type alias State a =
 -- SUBSCRIPTIONS --
 
 
-subscriptions : Config msg -> State a -> Sub msg
+subscriptions : Config msg -> State -> Sub msg
 subscriptions { userDropdownMsg } { userDropdown } =
     Dropdown.subscriptions userDropdown userDropdownMsg
 
@@ -58,15 +58,12 @@ subscriptions { userDropdownMsg } { userDropdown } =
 -- VIEW --
 
 
-view : State a -> Config msg -> Project -> ActiveSubPage -> Html msg
+view : State -> Config msg -> Project -> ActiveSubPage -> Html msg
 view state config project subPage =
-    nav [ class "sidebar" ]
-        [ sidebarProjectNavigation state config project subPage
-        , sidebarUserDropdown state config
-        ]
+    sidebarProjectNavigation state config project subPage
 
 
-sidebarProjectNavigation : State a -> Config msg -> Project -> ActiveSubPage -> Html msg
+sidebarProjectNavigation : State -> Config msg -> Project -> ActiveSubPage -> Html msg
 sidebarProjectNavigation state config project subPage =
     ul [ class "nav nav-pills flex-column project-navigation" ]
         [ sidebarProjectLink state config project
@@ -87,7 +84,7 @@ sidebarProjectNavigation state config project subPage =
         ]
 
 
-sidebarProjectLink : State a -> Config msg -> Project -> Html msg
+sidebarProjectLink : State -> Config msg -> Project -> Html msg
 sidebarProjectLink state config project =
     sidebarLink state
         config
@@ -95,13 +92,10 @@ sidebarProjectLink state config project =
         False
         (Route.Project project.slug ProjectRoute.Overview)
         project.name
-        [ div
-            [ class "badge badge-info project-badge" ]
-            [ i [ attribute "aria-hidden" "true", class "fa fa-code" ] [] ]
-        ]
+        [ badge ]
 
 
-sidebarUserDropdown : State a -> Config msg -> Html msg
+sidebarUserDropdown : State -> Config msg -> Html msg
 sidebarUserDropdown { userDropdown } config =
     Dropdown.dropdown
         userDropdown
@@ -126,7 +120,7 @@ sidebarUserDropdown { userDropdown } config =
         }
 
 
-sidebarLink : State a -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Html msg) -> Html msg
+sidebarLink : State -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Html msg) -> Html msg
 sidebarLink state config activeSubPage isActive route tooltip linkContent =
     tooltipConfig config state activeSubPage
         |> Maybe.map
@@ -163,7 +157,7 @@ tooltipLink config isActive route content ( popMsg, popState ) =
         ]
 
 
-tooltipConfig : Config msg -> State a -> ActiveSubPage -> Maybe ( Popover.State -> msg, Popover.State )
+tooltipConfig : Config msg -> State -> ActiveSubPage -> Maybe ( Popover.State -> msg, Popover.State )
 tooltipConfig config state activeSubPage =
     case activeSubPage of
         CommitsPage ->

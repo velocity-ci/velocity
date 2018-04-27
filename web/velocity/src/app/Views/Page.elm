@@ -1,9 +1,10 @@
-module Views.Page exposing (frame, ActivePage(..))
+module Views.Page exposing (frame, sidebarFrame, ActivePage(..))
 
 {-| The frame around a typical page - that is, the header and footer.
 -}
 
 import Html exposing (..)
+import Html.Attributes exposing (class)
 import Data.User as User exposing (User)
 
 
@@ -34,7 +35,7 @@ in the header. (This comes up during slow page transitions.)
 -}
 frame : Bool -> Maybe User -> ActivePage -> Html msg -> Html msg
 frame isLoading user page content =
-    div []
+    div [ class "content-container px-4" ]
         [ viewContent content
         , viewFooter
         ]
@@ -43,6 +44,12 @@ frame isLoading user page content =
 viewContent : Html msg -> Html msg
 viewContent content =
     div []
+        [ content ]
+
+
+sidebarFrame : Html msg -> Html msg
+sidebarFrame content =
+    nav [ class "sidebar" ]
         [ content ]
 
 

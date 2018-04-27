@@ -168,7 +168,7 @@ view project branches model =
                 [ pagination model.page model.total project model.branch ]
     in
         div []
-            [ h4 [ class "mb-4" ] [ text "Commits" ]
+            [ h4 [ class "mb-2" ] [ text "Commits" ]
             , buttons
             , commits
             , paginationToolbar

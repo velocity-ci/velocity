@@ -30,7 +30,7 @@ import Data.Build as Build exposing (Build, addBuild)
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
 import Bootstrap.Dropdown as Dropdown
-import Component.Sidebar as Sidebar exposing (ActiveSubPage(..))
+import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
 
 
 -- SUB PAGES --
@@ -59,10 +59,7 @@ type alias Model =
     , branches : List Branch
     , subPageState : SubPageState
     , builds : List Build
-    , commitIconPopover : Popover.State
-    , settingsIconPopover : Popover.State
-    , userDropdown : Dropdown.State
-    , projectBadgePopover : Popover.State
+    , sidebar : Sidebar.State
     }
 
 
@@ -91,10 +88,12 @@ init context session slug maybeRoute =
             , branches = branches.results
             , subPageState = Loaded initialSubPage
             , builds = builds.results
-            , commitIconPopover = Popover.initialState
-            , settingsIconPopover = Popover.initialState
-            , userDropdown = Dropdown.initialState
-            , projectBadgePopover = Popover.initialState
+            , sidebar =
+                { commitIconPopover = Popover.initialState
+                , settingsIconPopover = Popover.initialState
+                , userDropdown = Dropdown.initialState
+                , projectBadgePopover = Popover.initialState
+                }
             }
 
         handleLoadError e =
@@ -230,7 +229,7 @@ subscriptions model =
                     Sub.none
 
         sidebarSubscriptions =
-            Sidebar.subscriptions sidebarConfig model
+            Sidebar.subscriptions sidebarConfig model.sidebar
     in
         Sub.batch
             [ subPageSubscriptions
@@ -257,6 +256,32 @@ sidebarConfig =
     }
 
 
+viewSidebar : Session msg -> Model -> Html Msg
+viewSidebar session model =
+    let
+        page =
+            getSubPage model.subPageState
+
+        sidebar =
+            Sidebar.view model.sidebar sidebarConfig model.project
+    in
+        case page of
+            Overview _ ->
+                sidebar OverviewPage
+
+            Commits _ ->
+                sidebar CommitsPage
+
+            Commit _ ->
+                sidebar CommitsPage
+
+            Settings _ ->
+                sidebar SettingsPage
+
+            _ ->
+                sidebar OtherPage
+
+
 viewSubPage : Session msg -> Model -> Html Msg
 viewSubPage session model =
     let
@@ -272,25 +297,22 @@ viewSubPage session model =
         breadcrumb =
             viewBreadcrumb project
 
-        sidebar =
-            Sidebar.view model sidebarConfig project
-
         pageFrame =
             frame project
     in
         case page of
             Blank ->
                 Html.text ""
-                    |> pageFrame (sidebar OtherPage) (breadcrumb (text "") [])
+                    |> pageFrame (breadcrumb (text "") [])
 
             Errored subModel ->
                 Html.text "Errored"
-                    |> pageFrame (sidebar OtherPage) (breadcrumb (text "") [])
+                    |> pageFrame (breadcrumb (text "") [])
 
             Overview _ ->
                 Overview.view project model.builds
                     |> Html.map OverviewMsg
-                    |> pageFrame (sidebar OverviewPage) (breadcrumb (text "") [])
+                    |> pageFrame (breadcrumb (text "") [])
 
             Commits subModel ->
                 let
@@ -304,7 +326,7 @@ viewSubPage session model =
                 in
                     Commits.view project branches subModel
                         |> Html.map CommitsMsg
-                        |> pageFrame (sidebar CommitsPage) crumb
+                        |> pageFrame crumb
 
             Commit subModel ->
                 let
@@ -314,7 +336,7 @@ viewSubPage session model =
                 in
                     Commit.view project subModel
                         |> Html.map CommitMsg
-                        |> pageFrame (sidebar CommitsPage) crumb
+                        |> pageFrame crumb
 
             Settings subModel ->
                 let
@@ -324,17 +346,14 @@ viewSubPage session model =
                 in
                     Settings.view project subModel
                         |> Html.map SettingsMsg
-                        |> pageFrame (sidebar SettingsPage) crumb
+                        |> pageFrame crumb
 
 
-frame : Project -> Html msg -> Html msg -> Html msg -> Html msg
-frame project sidebar breadcrumb content =
+frame : Project -> Html msg -> Html msg -> Html msg
+frame project breadcrumb content =
     div []
-        [ sidebar
-        , div [ class "project-content-container px-4" ]
-            [ breadcrumb
-            , content
-            ]
+        [ breadcrumb
+        , content
         ]
 
 
@@ -525,6 +544,9 @@ updateSubPage context session subPage msg model =
             in
                 ( { model | subPageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
 
+        sidebar =
+            model.sidebar
+
         errored =
             pageErrored model
     in
@@ -537,20 +559,36 @@ updateSubPage context session subPage msg model =
                     => newUrl url
 
             ( CommitsIconPopMsg state, _ ) ->
-                { model | commitIconPopover = state }
-                    => Cmd.none
+                let
+                    updatedSidebar =
+                        { sidebar | commitIconPopover = state }
+                in
+                    { model | sidebar = updatedSidebar }
+                        => Cmd.none
 
             ( SettingsIconPopMsg state, _ ) ->
-                { model | settingsIconPopover = state }
-                    => Cmd.none
+                let
+                    updatedSidebar =
+                        { sidebar | settingsIconPopover = state }
+                in
+                    { model | sidebar = updatedSidebar }
+                        => Cmd.none
 
             ( UserDropdownToggleMsg state, _ ) ->
-                { model | userDropdown = state }
-                    => Cmd.none
+                let
+                    updatedSidebar =
+                        { sidebar | userDropdown = state }
+                in
+                    { model | sidebar = updatedSidebar }
+                        => Cmd.none
 
             ( ProjectBadgePopMsg state, _ ) ->
-                { model | projectBadgePopover = state }
-                    => Cmd.none
+                let
+                    updatedSidebar =
+                        { sidebar | projectBadgePopover = state }
+                in
+                    { model | sidebar = updatedSidebar }
+                        => Cmd.none
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model

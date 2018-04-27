@@ -117,18 +117,23 @@ view model =
         page =
             viewPage model.session
 
+        sidebar =
+            viewSidebar model.session
+
         header =
             viewHeader model
     in
         case model.pageState of
             Loaded activePage ->
                 div []
-                    [ page False activePage
+                    [ sidebar False activePage
+                    , page False activePage
                     ]
 
             TransitioningFrom activePage ->
                 div []
-                    [ page True activePage
+                    [ sidebar True activePage
+                    , page True activePage
                     ]
 
 
@@ -157,6 +162,19 @@ viewHeader { session, headerState } isLoading page =
         |> pageToActivePage
         |> Header.view headerState session.user isLoading
         |> Html.map HeaderMsg
+
+
+viewSidebar : Session Msg -> Bool -> Page -> Html Msg
+viewSidebar session isLoading page =
+    case page of
+        Project subModel ->
+            Project.viewSidebar session subModel
+                |> Html.map ProjectMsg
+                |> Page.sidebarFrame
+
+        _ ->
+            text ""
+                |> Page.sidebarFrame
 
 
 viewPage : Session Msg -> Bool -> Page -> Html Msg
@@ -595,7 +613,22 @@ updatePage page msg model =
                 { model | pageState = Loaded (Home subModel) } => Cmd.none
 
             ( HomeMsg subMsg, Home subModel ) ->
-                toPage Home HomeMsg (Home.update session) subMsg subModel
+                let
+                    ( ( newSubModel, newSubCmd ), externalMsg ) =
+                        Home.update model.context session subMsg subModel
+
+                    model_ =
+                        { model | pageState = Loaded (Home newSubModel) }
+
+                    ( modelAfterExternalMsg, cmdAfterExternalMsg ) =
+                        case externalMsg of
+                            Home.NoOp ->
+                                model_ => Cmd.none
+
+                            Home.HandleRequestError err ->
+                                update (handledErrorToMsg err) model_
+                in
+                    modelAfterExternalMsg ! [ Cmd.map HomeMsg newSubCmd, cmdAfterExternalMsg ]
 
             ( ProjectsLoaded subModel, _ ) ->
                 { model | pageState = Loaded (Projects subModel) } => Cmd.none

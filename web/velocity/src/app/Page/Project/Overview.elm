@@ -35,7 +35,7 @@ initialModel =
 
 view : Project -> List Build -> Html Msg
 view project builds =
-    div [ class "row" ]
+    div []
         [ viewOverviewCard project
         , viewBuildHistoryTable project builds
         ]
@@ -43,25 +43,21 @@ view project builds =
 
 viewOverviewCard : Project -> Html Msg
 viewOverviewCard project =
-    div [ class "col-md-6" ]
-        [ div [ class "card mb-3" ]
-            [ div [ class "card-body" ]
-                [ dl [ class "mb-0" ]
-                    [ dt [] [ text "Repository" ]
-                    , dd [] [ text project.repository ]
-                    , dt [] [ text "Last update" ]
-                    , dd [] [ text (formatDateTime project.updatedAt) ]
-                    ]
-                ]
+    div [ class "col-md-12 px-0 mx-0" ]
+        [ dl [ class "mt-4 mb-5" ]
+            [ dt [] [ text "Repository" ]
+            , dd [] [ text project.repository ]
+            , dt [] [ text "Last update" ]
+            , dd [] [ text (formatDateTime project.updatedAt) ]
             ]
         ]
 
 
 viewBuildHistoryTable : Project -> List Build -> Html Msg
 viewBuildHistoryTable project builds =
-    div [ class "col-md-6" ]
-        [ div [ class "card" ]
-            [ h5 [ class "card-header border-bottom-0" ] [ text "Build history" ]
+    div [ class "col-md-12 px-0 mx-0" ]
+        [ div []
+            [ h6 [] [ text "Last 10 builds" ]
             , table [ class "table mb-0 " ] (List.map (viewBuildHistoryTableRow project) (List.take 10 builds))
             ]
         ]
@@ -104,10 +100,10 @@ viewBuildHistoryTableRow project build =
                 [ text content ]
     in
         tr [ classList colourClassList ]
-            [ td [] [ buildLink taskName commitTaskRoute ]
-            , td [] [ buildLink truncatedHash commitRoute ]
-            , td [] [ buildLink createdAt commitTaskRoute ]
-            , td [ class "text-right" ] [ viewBuildStatusIcon build ]
+            [ td [ class "px-0" ] [ buildLink taskName commitTaskRoute ]
+            , td [ class "px-0" ] [ buildLink truncatedHash commitRoute ]
+            , td [ class "px-0" ] [ buildLink createdAt commitTaskRoute ]
+            , td [ class "px-0 text-right" ] [ viewBuildStatusIcon build ]
             ]
 
 
