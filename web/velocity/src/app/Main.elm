@@ -5,6 +5,7 @@ import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
 import Navigation exposing (Location)
 import Views.Page as Page exposing (ActivePage)
+import Bootstrap.Dropdown as Dropdown
 import Page.Errored as Errored exposing (PageLoadError)
 import Page.Home as Home
 import Page.Login as Login
@@ -21,6 +22,7 @@ import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
 import Task
 import Ports
+import Component.UserSidebar as UserSidebar
 
 
 type Page
@@ -47,6 +49,7 @@ type alias Model =
     , context : Context
     , pageState : PageState
     , headerState : Header.Model
+    , userSidebar : UserSidebar.State
     }
 
 
@@ -79,6 +82,7 @@ init flags location =
                 , context = context
                 , session = session
                 , headerState = headerState
+                , userSidebar = UserSidebar.init
                 }
     in
         initialModel
@@ -105,6 +109,13 @@ initialSocket { wsUrl } =
     Socket.init wsUrl
 
 
+userSidebarConfig : UserSidebar.Config Msg
+userSidebarConfig =
+    { userDropdownMsg = UserDropdownToggleMsg
+    , newUrlMsg = NewUrl
+    }
+
+
 
 -- VIEW --
 
@@ -116,7 +127,7 @@ view model =
             viewPage model.session
 
         sidebar =
-            viewSidebar model.session
+            viewSidebar model
 
         header =
             viewHeader model
@@ -159,17 +170,28 @@ viewHeader { session, headerState } isLoading page =
         |> Html.map HeaderMsg
 
 
-viewSidebar : Session Msg -> Bool -> Page -> Html Msg
-viewSidebar session isLoading page =
-    case page of
-        Project subModel ->
-            Project.viewSidebar session subModel
-                |> Html.map ProjectMsg
-                |> Page.sidebarFrame
+viewSidebar : Model -> Bool -> Page -> Html Msg
+viewSidebar model isLoading page =
+    let
+        pageSidebar =
+            case page of
+                Project subModel ->
+                    Project.viewSidebar model.session subModel
+                        |> Html.map ProjectMsg
 
-        _ ->
-            text ""
-                |> Page.sidebarFrame
+                _ ->
+                    text ""
+
+        userSidebar =
+            case model.session.user of
+                Just user ->
+                    UserSidebar.view model.userSidebar userSidebarConfig
+
+                Nothing ->
+                    text ""
+    in
+        div [] [ pageSidebar, userSidebar ]
+            |> Page.sidebarFrame
 
 
 viewPage : Session Msg -> Bool -> Page -> Html Msg
@@ -232,12 +254,15 @@ subscriptions model =
         socket =
             Socket.listen model.session.socket SocketMsg
 
+        userSidebar =
+            UserSidebar.subscriptions userSidebarConfig model.userSidebar
+
         page =
             model.pageState
                 |> getPage
                 |> pageSubscriptions
     in
-        Sub.batch [ header, session, socket, page ]
+        Sub.batch [ header, session, socket, page, userSidebar ]
 
 
 pageSubscriptions : Page -> Sub Msg
@@ -246,6 +271,10 @@ pageSubscriptions page =
         Project subModel ->
             Project.subscriptions subModel
                 |> Sub.map ProjectMsg
+
+        Home subModel ->
+            Home.subscriptions subModel
+                |> Sub.map HomeMsg
 
         _ ->
             Sub.none
@@ -271,7 +300,8 @@ getPage pageState =
 
 
 type Msg
-    = SetRoute (Maybe Route)
+    = NewUrl String
+    | SetRoute (Maybe Route)
     | HomeMsg Home.Msg
     | HomeLoaded Home.Model
     | SetUser (Maybe User)
@@ -284,6 +314,7 @@ type Msg
     | KnownHostsMsg KnownHosts.Msg
     | SocketMsg (Socket.Msg Msg)
     | HeaderMsg Header.Msg
+    | UserDropdownToggleMsg Dropdown.State
     | NoOp
 
 
@@ -507,6 +538,10 @@ updatePage page msg model =
             Request.Channel.joinChannels session.socket maybeToken handledChannelErrorToMsg
     in
         case ( msg, page ) of
+            ( NewUrl url, _ ) ->
+                model
+                    => Navigation.newUrl url
+
             ( SocketMsg msg, _ ) ->
                 let
                     ( newSocket, socketCmd ) =
@@ -529,6 +564,14 @@ updatePage page msg model =
 
             ( SessionExpired, _ ) ->
                 setRouteUpdate (Just Route.Logout) model
+
+            ( UserDropdownToggleMsg state, _ ) ->
+                let
+                    sidebar =
+                        model.userSidebar
+                in
+                    { model | userSidebar = { sidebar | userDropdown = state } }
+                        => Cmd.none
 
             ( SetUser user, _ ) ->
                 let

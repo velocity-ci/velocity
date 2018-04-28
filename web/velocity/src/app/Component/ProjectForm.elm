@@ -183,6 +183,13 @@ update context field value =
         }
 
 
+isUntouched : Context -> Bool
+isUntouched { form } =
+    [ form.name.dirty, form.repository.dirty, form.privateKey.dirty ]
+        |> List.member True
+        |> not
+
+
 submitValues : Context -> { name : String, repository : String, privateKey : Maybe String }
 submitValues { form } =
     let
@@ -298,22 +305,31 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
                         [ nameField
                         , repositoryField
                         , Util.viewIf (not publicRepository) privateKeyField
-                        , Util.viewIf context.submitting Form.viewSpinner
                         ]
                    ]
             )
 
 
 viewSubmitButton : Config msg -> Context -> Html msg
-viewSubmitButton { submitMsg } { errors, submitting } =
-    Button.button
-        [ Button.outlinePrimary
-        , Button.attrs
-            [ onClick submitMsg
-            , disabled ((not <| List.isEmpty errors) || submitting)
+viewSubmitButton { submitMsg } context =
+    let
+        hasErrors =
+            not <| List.isEmpty context.errors
+
+        submitting =
+            context.submitting
+
+        untouched =
+            isUntouched context
+    in
+        Button.button
+            [ Button.outlinePrimary
+            , Button.attrs
+                [ onClick submitMsg
+                , disabled (hasErrors || submitting || untouched)
+                ]
             ]
-        ]
-        [ text "Create" ]
+            [ text "Create" ]
 
 
 viewGlobalError : Error -> Html msg

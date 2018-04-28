@@ -1,4 +1,4 @@
-module Page.Home exposing (view, update, Model, Msg, ExternalMsg(..), init, channelName, initialEvents)
+module Page.Home exposing (view, update, Model, Msg, ExternalMsg(..), init, channelName, initialEvents, subscriptions)
 
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
@@ -68,6 +68,15 @@ init context session =
     in
         Task.map (\(Paginated { results }) -> initialModel results) loadProjects
             |> Task.mapError (Request.Errors.withDefaultError errorPage)
+
+
+
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions { newProjectModalVisibility } =
+    Modal.subscriptions newProjectModalVisibility AnimateNewProjectModal
 
 
 
@@ -144,6 +153,7 @@ projectFormConfig =
 viewNewProjectModal : ProjectForm.Context -> Modal.Visibility -> Html Msg
 viewNewProjectModal projectForm visibility =
     Modal.config CloseNewProjectModal
+        |> Modal.withAnimation AnimateNewProjectModal
         |> Modal.large
         |> Modal.hideOnBackdropClick True
         |> Modal.h3 [] [ text "Create project" ]
@@ -188,6 +198,7 @@ type Msg
     = NewUrl String
     | AddProject Encode.Value
     | CloseNewProjectModal
+    | AnimateNewProjectModal Modal.Visibility
     | ShowNewProjectModal
     | SubmitProjectForm
     | SetProjectFormName String
@@ -226,7 +237,15 @@ update context session msg model =
                 => NoOp
 
         CloseNewProjectModal ->
-            { model | newProjectModalVisibility = Modal.hidden }
+            { model
+                | newProjectModalVisibility = Modal.hidden
+                , newProjectForm = ProjectForm.init
+            }
+                => Cmd.none
+                => NoOp
+
+        AnimateNewProjectModal visibility ->
+            { model | newProjectModalVisibility = visibility }
                 => Cmd.none
                 => NoOp
 

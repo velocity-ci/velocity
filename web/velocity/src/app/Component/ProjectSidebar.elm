@@ -1,11 +1,10 @@
-module Component.ProjectSidebar exposing (State, Config, ActiveSubPage(..), view, subscriptions)
+module Component.ProjectSidebar exposing (State, Config, ActiveSubPage(..), view)
 
 -- EXTERNAL --
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Bootstrap.Popover as Popover
-import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Button as Button
 
 
@@ -32,7 +31,6 @@ type alias Config msg =
     { newUrlMsg : String -> msg
     , commitPopMsg : Popover.State -> msg
     , settingsPopMsg : Popover.State -> msg
-    , userDropdownMsg : Dropdown.State -> msg
     , projectBadgePopMsg : Popover.State -> msg
     }
 
@@ -40,18 +38,8 @@ type alias Config msg =
 type alias State =
     { commitIconPopover : Popover.State
     , settingsIconPopover : Popover.State
-    , userDropdown : Dropdown.State
     , projectBadgePopover : Popover.State
     }
-
-
-
--- SUBSCRIPTIONS --
-
-
-subscriptions : Config msg -> State -> Sub msg
-subscriptions { userDropdownMsg } { userDropdown } =
-    Dropdown.subscriptions userDropdown userDropdownMsg
 
 
 
@@ -93,31 +81,6 @@ sidebarProjectLink state config project =
         (Route.Project project.slug ProjectRoute.Overview)
         project.name
         [ badge ]
-
-
-sidebarUserDropdown : State -> Config msg -> Html msg
-sidebarUserDropdown { userDropdown } config =
-    Dropdown.dropdown
-        userDropdown
-        { options =
-            [ Dropdown.dropUp
-            , Dropdown.attrs [ class "menu-toggle-dropdown d-flex justify-content-center" ]
-            ]
-        , toggleMsg = config.userDropdownMsg
-        , toggleButton =
-            Dropdown.toggle
-                [ Button.light
-                , Button.large
-                ]
-                []
-        , items =
-            [ Dropdown.header [ text "Management" ]
-            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.KnownHosts ] [ text "Known hosts" ]
-            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.Projects ] [ text "Projects" ]
-            , Dropdown.header [ text "User" ]
-            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.Logout ] [ text "Log out" ]
-            ]
-        }
 
 
 sidebarLink : State -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Html msg) -> Html msg

@@ -91,7 +91,6 @@ init context session slug maybeRoute =
             , sidebar =
                 { commitIconPopover = Popover.initialState
                 , settingsIconPopover = Popover.initialState
-                , userDropdown = Dropdown.initialState
                 , projectBadgePopover = Popover.initialState
                 }
             }
@@ -218,23 +217,13 @@ leaveChannels model maybeProjectSlug maybeProjectRoute =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    let
-        subPageSubscriptions =
-            case (getSubPage model.subPageState) of
-                Commits subModel ->
-                    Commits.subscriptions model.branches subModel
-                        |> Sub.map CommitsMsg
+    case (getSubPage model.subPageState) of
+        Commits subModel ->
+            Commits.subscriptions model.branches subModel
+                |> Sub.map CommitsMsg
 
-                _ ->
-                    Sub.none
-
-        sidebarSubscriptions =
-            Sidebar.subscriptions sidebarConfig model.sidebar
-    in
-        Sub.batch
-            [ subPageSubscriptions
-            , sidebarSubscriptions
-            ]
+        _ ->
+            Sub.none
 
 
 
@@ -251,7 +240,6 @@ sidebarConfig =
     { newUrlMsg = NewUrl
     , commitPopMsg = CommitsIconPopMsg
     , settingsPopMsg = SettingsIconPopMsg
-    , userDropdownMsg = UserDropdownToggleMsg
     , projectBadgePopMsg = ProjectBadgePopMsg
     }
 
@@ -429,7 +417,6 @@ type Msg
     | DeleteBuildEvent Encode.Value
     | CommitsIconPopMsg Popover.State
     | SettingsIconPopMsg Popover.State
-    | UserDropdownToggleMsg Dropdown.State
     | ProjectBadgePopMsg Popover.State
     | NoOp
 
@@ -570,14 +557,6 @@ updateSubPage context session subPage msg model =
                 let
                     updatedSidebar =
                         { sidebar | settingsIconPopover = state }
-                in
-                    { model | sidebar = updatedSidebar }
-                        => Cmd.none
-
-            ( UserDropdownToggleMsg state, _ ) ->
-                let
-                    updatedSidebar =
-                        { sidebar | userDropdown = state }
                 in
                     { model | sidebar = updatedSidebar }
                         => Cmd.none
