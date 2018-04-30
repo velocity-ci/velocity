@@ -72,7 +72,7 @@ viewTaskListItem project commit builds task =
             List.length (taskBuilds task builds)
 
         routeTabParam =
-            if buildNum > 0 then
+            if buildNum > 1 then
                 Just ("build-" ++ (toString buildNum))
             else
                 Nothing

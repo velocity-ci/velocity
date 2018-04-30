@@ -231,7 +231,7 @@ view project commit model builds =
                     |> Maybe.withDefault (text "")
     in
         div [ class "row" ]
-            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
+            [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
                 [ viewToolbar
                 , navigation
                 , viewTabFrame model builds

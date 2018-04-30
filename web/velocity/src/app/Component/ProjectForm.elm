@@ -242,12 +242,6 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
             else
                 []
 
-        privateKeyHelpText =
-            if publicRepository then
-                "Not required for HTTP(S) repositories."
-            else
-                "The private key required to access this repository."
-
         nameField =
             Form.input
                 { name = "name"
@@ -279,25 +273,27 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
                 []
 
         privateKeyField =
-            Form.textarea
-                { name = "key"
-                , label = "Private key"
-                , help = Just privateKeyHelpText
-                , errors = errors form.privateKey
-                }
-                [ attribute "required" ""
-                , rows
-                    (if publicRepository then
-                        1
-                     else
-                        5
-                    )
-                , value form.privateKey.value
-                , onInput setPrivateKeyMsg
-                , classList <| inputClassList form.privateKey
-                , disabled (context.submitting || publicRepository)
-                ]
-                []
+            let
+                help =
+                    if publicRepository then
+                        "Not required for HTTP(S) repositories."
+                    else
+                        "The private key required to access this repository."
+            in
+                Form.textarea
+                    { name = "key"
+                    , label = "Private key"
+                    , help = Just help
+                    , errors = errors form.privateKey
+                    }
+                    [ attribute "required" ""
+                    , rows 5
+                    , value form.privateKey.value
+                    , onInput setPrivateKeyMsg
+                    , classList <| inputClassList form.privateKey
+                    , disabled (context.submitting || publicRepository)
+                    ]
+                    []
     in
         div []
             (List.map viewGlobalError globalErrors
