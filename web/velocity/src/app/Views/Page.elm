@@ -50,7 +50,15 @@ viewContent content =
 sidebarFrame : Html msg -> Html msg
 sidebarFrame content =
     nav [ class "sidebar" ]
-        [ content ]
+        [ sidebarLogo
+        , content
+        ]
+
+
+sidebarLogo : Html msg
+sidebarLogo =
+    div [ class "d-flex justify-content-center" ]
+        [ h1 [] [ i [ class "fa fa-rocket" ] [] ] ]
 
 
 viewFooter : Html msg
