@@ -276,6 +276,10 @@ pageSubscriptions page =
             Home.subscriptions subModel
                 |> Sub.map HomeMsg
 
+        KnownHosts subModel ->
+            KnownHosts.subscriptions subModel
+                |> Sub.map KnownHostsMsg
+
         _ ->
             Sub.none
 
