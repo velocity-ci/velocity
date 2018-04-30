@@ -26,7 +26,6 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime, formatDateTime)
-import Views.Helpers exposing (onClickPage)
 import Views.Spinner exposing (spinner)
 
 
@@ -101,6 +100,21 @@ init context session project hash maybeRoute =
                             ( successModel, Cmd.none )
                 )
             |> Task.mapError handleLoadError
+
+
+
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case (getSubPage model.subPageState) of
+        CommitTask subModel ->
+            CommitTask.subscriptions subModel
+                |> Sub.map CommitTaskMsg
+
+        _ ->
+            Sub.none
 
 
 
@@ -193,43 +207,22 @@ frame :
     -> Html Msg
 frame project commit toMsg content =
     let
-        commitTitle =
-            commit.hash
-                |> Commit.truncateHash
-                |> String.append "Commit "
-                |> text
-
-        route =
-            Route.Project project.slug <| ProjectRoute.Commit commit.hash CommitRoute.Overview
-
-        link =
-            a [ Route.href route, onClickPage NewUrl route ] [ commitTitle ]
-
         viewCommitDetails =
             let
                 viewCommitDetailsIcon_ =
                     viewCommitDetailsIcon commit
             in
-                div [ class "card mt-3 mb-3 bg-light" ]
-                    [ div [ class "card-body d-flex justify-content-between" ]
+                div [ class "card my-4" ]
+                    [ div [ class "d-flex justify-content-between card-body" ]
                         [ ul [ class "list-unstyled mb-0" ]
                             [ viewCommitDetailsIcon_ "fa-comment-o" .message
-                            , viewCommitDetailsIcon_ "fa-file-code-o" (.hash >> Commit.hashToString)
                             , viewCommitDetailsIcon_ "fa-user" .author
-                            , viewCommitDetailsIcon_ "fa-calendar" (.date >> formatDateTime)
                             ]
                         ]
                     ]
-
-        commitTitleStyle =
-            [ ( "position", "absolute" )
-            , ( "top", "2rem" )
-            , ( "right", "1rem" )
-            ]
     in
         div []
-            [ h2 [ style commitTitleStyle, class "display-7" ] [ link ]
-            , viewCommitDetails
+            [ viewCommitDetails
             , Html.map toMsg content
             ]
 
@@ -245,7 +238,8 @@ viewCommitDetailsIcon commit iconClass fn =
                 ]
             ]
             []
-        , " " ++ fn commit |> text
+        , text " "
+        , fn commit |> text
         ]
 
 

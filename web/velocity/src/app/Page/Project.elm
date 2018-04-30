@@ -29,7 +29,6 @@ import Dict exposing (Dict)
 import Data.Build as Build exposing (Build, addBuild)
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
-import Bootstrap.Dropdown as Dropdown
 import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
 
 
@@ -221,6 +220,10 @@ subscriptions model =
         Commits subModel ->
             Commits.subscriptions model.branches subModel
                 |> Sub.map CommitsMsg
+
+        Commit subModel ->
+            Commit.subscriptions subModel
+                |> Sub.map CommitMsg
 
         _ ->
             Sub.none
