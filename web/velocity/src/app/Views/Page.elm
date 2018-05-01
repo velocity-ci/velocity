@@ -6,6 +6,8 @@ module Views.Page exposing (frame, sidebarFrame, ActivePage(..))
 import Html exposing (..)
 import Html.Attributes exposing (class)
 import Data.User as User exposing (User)
+import Route as Route
+import Views.Helpers exposing (onClickPage)
 
 
 {-| Determines which navbar link (if any) will be rendered as active.
@@ -47,18 +49,25 @@ viewContent content =
         [ content ]
 
 
-sidebarFrame : Html msg -> Html msg
-sidebarFrame content =
+sidebarFrame : (String -> msg) -> Html msg -> Html msg
+sidebarFrame newUrlMsg content =
     nav [ class "sidebar" ]
-        [ sidebarLogo
+        [ sidebarLogo newUrlMsg
         , content
         ]
 
 
-sidebarLogo : Html msg
-sidebarLogo =
+sidebarLogo : (String -> msg) -> Html msg
+sidebarLogo newUrlMsg =
     div [ class "d-flex justify-content-center" ]
-        [ h1 [] [ i [ class "fa fa-rocket" ] [] ] ]
+        [ a
+            [ Route.href Route.Home
+            , onClickPage newUrlMsg Route.Home
+            ]
+            [ h1 []
+                [ i [ class "fa fa-rocket" ] [] ]
+            ]
+        ]
 
 
 viewFooter : Html msg

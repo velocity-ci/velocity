@@ -18,11 +18,11 @@ import Route exposing (Route)
 import Util exposing ((=>))
 import Component.Header as Header
 import Phoenix.Socket as Socket exposing (Socket)
-import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
 import Task
 import Ports
 import Component.UserSidebar as UserSidebar
+import Html exposing (Html, text, div)
 
 
 type Page
@@ -191,7 +191,7 @@ viewSidebar model isLoading page =
                     text ""
     in
         div [] [ pageSidebar, userSidebar ]
-            |> Page.sidebarFrame
+            |> Page.sidebarFrame NewUrl
 
 
 viewPage : Session Msg -> Bool -> Page -> Html Msg
