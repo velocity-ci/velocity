@@ -15,7 +15,7 @@ import Request.Build
 import Request.Errors
 import Util exposing ((=>))
 import Page.Helpers exposing (validClasses, formatDateTime, formatTimeSeconds)
-import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
+import Views.Build exposing (..)
 
 
 -- EXTERNAL
@@ -264,9 +264,6 @@ view build { outputStreams } =
 
 viewStepContainer : Build -> ( a, { b | buildStep : BuildStep, streams : List OutputStream, taskStep : Step } ) -> Html Msg
 viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
-    --    if buildStep.status == BuildStep.Waiting then
-    --        text ""
-    --    else
     let
         buildStep_ =
             build.steps
@@ -349,108 +346,3 @@ viewBuildInformation build =
                     ]
                 ]
             ]
-
-
-streamBadgeClass : Int -> String
-streamBadgeClass index =
-    case index of
-        0 ->
-            "badge-primary"
-
-        1 ->
-            "badge-secondary"
-
-        2 ->
-            "badge-success"
-
-        3 ->
-            "badge-danger"
-
-        4 ->
-            "badge-warning"
-
-        5 ->
-            "badge-info"
-
-        _ ->
-            "badge-dark"
-
-
-headerBackgroundColourClassList : BuildStep -> List ( String, Bool )
-headerBackgroundColourClassList { status } =
-    case status of
-        BuildStep.Waiting ->
-            []
-
-        BuildStep.Running ->
-            []
-
-        BuildStep.Success ->
-            [ "text-success" => True
-            , "bg-transparent" => True
-            ]
-
-        BuildStep.Failed ->
-            [ "bg-transparent" => True
-            , "text-danger" => True
-            ]
-
-
-buildStepBorderColourClassList : BuildStep -> List ( String, Bool )
-buildStepBorderColourClassList { status } =
-    case status of
-        BuildStep.Waiting ->
-            [ "border" => True
-            , "border-light" => True
-            ]
-
-        BuildStep.Running ->
-            [ "border" => True
-            , "border-primary" => True
-            ]
-
-        BuildStep.Success ->
-            [ "border" => True
-            , "border-success" => True
-            ]
-
-        BuildStep.Failed ->
-            [ "border" => True
-            , "border-danger" => True
-            ]
-
-
-buildCardClassList : Build -> List ( String, Bool )
-buildCardClassList { status } =
-    case status of
-        Build.Success ->
-            [ "border-success" => True
-            , "text-success" => True
-            ]
-
-        Build.Failed ->
-            [ "border-danger" => True
-            , "text-danger" => True
-            ]
-
-        _ ->
-            []
-
-
-viewCardTitle : ProjectTask.Step -> String
-viewCardTitle taskStep =
-    case taskStep of
-        Build _ ->
-            "Build"
-
-        Run _ ->
-            "Run"
-
-        Clone _ ->
-            "Clone"
-
-        Compose _ ->
-            "Compose"
-
-        Push _ ->
-            "Push"

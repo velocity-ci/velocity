@@ -54,14 +54,14 @@ view state config =
 
 
 sidebarUserDropdown : State -> Config msg -> Html msg
-sidebarUserDropdown { userDropdown } config =
+sidebarUserDropdown { userDropdown } { userDropdownMsg, newUrlMsg } =
     Dropdown.dropdown
         userDropdown
         { options =
             [ Dropdown.dropUp
             , Dropdown.attrs [ class "menu-toggle-dropdown d-flex justify-content-center" ]
             ]
-        , toggleMsg = config.userDropdownMsg
+        , toggleMsg = userDropdownMsg
         , toggleButton =
             Dropdown.toggle
                 [ Button.light
@@ -70,9 +70,9 @@ sidebarUserDropdown { userDropdown } config =
                 []
         , items =
             [ Dropdown.header [ text "Management" ]
-            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.KnownHosts ] [ text "Known hosts" ]
-            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.Projects ] [ text "Projects" ]
+            , Dropdown.buttonItem [ onClickPage newUrlMsg Route.KnownHosts ] [ text "Known hosts" ]
+            , Dropdown.buttonItem [ onClickPage newUrlMsg Route.Projects ] [ text "Projects" ]
             , Dropdown.header [ text "User" ]
-            , Dropdown.buttonItem [ onClickPage config.newUrlMsg Route.Logout ] [ text "Log out" ]
+            , Dropdown.buttonItem [ onClickPage newUrlMsg Route.Logout ] [ text "Log out" ]
             ]
         }

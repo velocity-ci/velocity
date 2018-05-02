@@ -14,9 +14,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Util exposing ((=>))
-import Views.Form as Form
-import Validate exposing (..)
-import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, formatDateTime, sortByDatetime, getFieldErrors)
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Component.KnownHostForm as KnownHostForm
 import Bootstrap.Modal as Modal

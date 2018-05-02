@@ -1,4 +1,18 @@
-module Component.KnownHostForm exposing (..)
+module Component.KnownHostForm
+    exposing
+        ( Context
+        , Config
+        , init
+        , Field(..)
+        , update
+        , updateServerErrors
+        , errorsDecoder
+        , view
+        , viewSubmitButton
+        , submitting
+        , submitValues
+        , submit
+        )
 
 -- EXTERNAL
 
@@ -58,11 +72,6 @@ initialForm =
     { scannedKey = newField ScannedKey }
 
 
-updateInput : Field -> String -> FormField
-updateInput field value =
-    FormField value True field
-
-
 
 -- UPDATE HELPERS --
 
@@ -93,6 +102,11 @@ updateForm form field value =
 
             Form ->
                 form
+
+
+updateInput : Field -> String -> FormField
+updateInput field value =
+    FormField value True field
 
 
 update : Context -> Field -> String -> Context

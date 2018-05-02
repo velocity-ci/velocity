@@ -5,7 +5,9 @@ import Html.Attributes exposing (..)
 import Data.Build as Build exposing (Build)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (BuildStreamOutput)
+import Data.Task as ProjectTask
 import Ansi.Log
+import Util exposing ((=>))
 
 
 viewBuildContainer : Build -> List BuildStep -> Ansi.Log.Model -> Html msg
@@ -62,3 +64,108 @@ viewBuildStepStatusIcon buildStep =
 
         BuildStep.Failed ->
             i [ class "fa fa-times" ] []
+
+
+streamBadgeClass : Int -> String
+streamBadgeClass index =
+    case index of
+        0 ->
+            "badge-primary"
+
+        1 ->
+            "badge-secondary"
+
+        2 ->
+            "badge-success"
+
+        3 ->
+            "badge-danger"
+
+        4 ->
+            "badge-warning"
+
+        5 ->
+            "badge-info"
+
+        _ ->
+            "badge-dark"
+
+
+headerBackgroundColourClassList : BuildStep -> List ( String, Bool )
+headerBackgroundColourClassList { status } =
+    case status of
+        BuildStep.Waiting ->
+            []
+
+        BuildStep.Running ->
+            []
+
+        BuildStep.Success ->
+            [ "text-success" => True
+            , "bg-transparent" => True
+            ]
+
+        BuildStep.Failed ->
+            [ "bg-transparent" => True
+            , "text-danger" => True
+            ]
+
+
+buildStepBorderColourClassList : BuildStep -> List ( String, Bool )
+buildStepBorderColourClassList { status } =
+    case status of
+        BuildStep.Waiting ->
+            [ "border" => True
+            , "border-light" => True
+            ]
+
+        BuildStep.Running ->
+            [ "border" => True
+            , "border-primary" => True
+            ]
+
+        BuildStep.Success ->
+            [ "border" => True
+            , "border-success" => True
+            ]
+
+        BuildStep.Failed ->
+            [ "border" => True
+            , "border-danger" => True
+            ]
+
+
+buildCardClassList : Build -> List ( String, Bool )
+buildCardClassList { status } =
+    case status of
+        Build.Success ->
+            [ "border-success" => True
+            , "text-success" => True
+            ]
+
+        Build.Failed ->
+            [ "border-danger" => True
+            , "text-danger" => True
+            ]
+
+        _ ->
+            []
+
+
+viewCardTitle : ProjectTask.Step -> String
+viewCardTitle taskStep =
+    case taskStep of
+        ProjectTask.Build _ ->
+            "Build"
+
+        ProjectTask.Run _ ->
+            "Run"
+
+        ProjectTask.Clone _ ->
+            "Clone"
+
+        ProjectTask.Compose _ ->
+            "Compose"
+
+        ProjectTask.Push _ ->
+            "Push"
