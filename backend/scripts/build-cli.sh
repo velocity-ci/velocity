@@ -1,7 +1,5 @@
 #!/bin/sh -e
 
-scripts/install-deps.sh
-
 go get -u github.com/mitchellh/gox
 
 gox -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}" \

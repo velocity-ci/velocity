@@ -33,26 +33,25 @@ func sync(
 	defer finishProjectSync(p, taskManager.projectManager)
 	repo, dir, err := velocity.GitClone(&p.Config, false, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
 	if err != nil {
-		logrus.Error(err)
+		logrus.Errorf("could not clone repository %s", err)
 		return
 	}
 	defer os.RemoveAll(dir) // clean up
 
 	refIter, err := repo.References()
 	if err != nil {
-		logrus.Error(err)
+		logrus.Errorf("could not get references %s", err)
 		return
 	}
 	w, err := repo.Worktree()
 	if err != nil {
-		logrus.Error(err)
+		logrus.Errorf("could not get worktree %s", err)
 		return
 	}
 	remoteBranchNames := []string{}
 	for {
 		r, err := refIter.Next()
 		if err != nil {
-			logrus.Error(err)
 			break
 		}
 

@@ -23,11 +23,11 @@ ignored = ["github.com/velocity-ci/velocity"]
 
 [[constraint]]
   name = "github.com/labstack/echo"
-  version = "^3.2.1"
+  version = "^3.3.5"
 
 [[constraint]]
   name = "github.com/dgrijalva/jwt-go"
-  version = "^3.0.0"
+  version = "^3.2.0"
 
 [[constraint]]
   name = "github.com/docker/docker"
@@ -47,7 +47,7 @@ ignored = ["github.com/velocity-ci/velocity"]
 
 [[constraint]]
   name = "github.com/gorilla/websocket"
-  version = "1.1.0"
+  version = "1.2.0"
 
 [[constraint]]
   name = "github.com/gosimple/slug"
@@ -71,7 +71,7 @@ ignored = ["github.com/velocity-ci/velocity"]
 
 [[constraint]]
   name = "gopkg.in/src-d/go-git.v4"
-  version = "v4.1.0"
+  version = "v4.3.1"
 
 [[constraint]]
   branch = "v2"

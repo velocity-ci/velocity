@@ -7,7 +7,7 @@ dep-install:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	golang:1.9 \
+	vjftw/go-dep:1.10 \
 	scripts/install-deps.sh
 
 build-architect:
@@ -22,7 +22,7 @@ build-cli:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	golang:1.9 \
+	golang:1.10 \
 	scripts/build-cli.sh
 
 build-all: build-architect build-builder build-cli
@@ -36,7 +36,7 @@ test:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	golang:1.9 \
+	golang:1.10 \
 	scripts/test-unit.sh
 
 download-test-repo:
