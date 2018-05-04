@@ -1,7 +1,5 @@
 #!/bin/sh -e
 
-scripts/install-deps.sh
-
 if ! [ -x "$(command -v godog)" ]; then
     echo "godog is not installed. Installing..."
     go get github.com/DATA-DOG/godog/cmd/godog

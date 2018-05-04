@@ -70,12 +70,13 @@ func GitClone(
 	}
 
 	if submodule {
-		cloneOpts.RecurseSubmodules = 5
+		// cloneOpts.RecurseSubmodules = 5
 	}
 
 	repo, err := git.PlainClone(dir, bare, cloneOpts)
 
 	if err != nil {
+		logrus.Errorf("could not clone repository %s", err)
 		os.RemoveAll(dir)
 		return nil, "", err
 	}
