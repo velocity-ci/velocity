@@ -97,6 +97,7 @@ branchFilterConfig =
     , noOpMsg = NoOp
     , selectItemMsg = FilterBranch
     , labelFn = (.name >> Just >> Branch.nameToString)
+    , icon = (i [ class "fa fa-code-fork" ] [])
     }
 
 
@@ -106,7 +107,6 @@ branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
         items =
             branches
                 |> List.filter .active
-                |> List.sortBy (.name >> Just >> Branch.nameToString)
                 |> List.sortBy (branchFilterConfig.labelFn)
     in
         { items = items
@@ -435,7 +435,7 @@ update context project session msg model =
 
         BranchFilterDropdownMsg state ->
             { model | dropdownState = state }
-                => Task.attempt (always NoOp) (Dom.focus "filter-branch-input")
+                => Task.attempt (always NoOp) (Dom.focus "filter-item-input")
 
         BranchFilterTermMsg term ->
             { model | branchFilterTerm = term }

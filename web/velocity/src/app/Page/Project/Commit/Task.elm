@@ -430,19 +430,13 @@ update context project commit builds session msg model =
                 let
                     form =
                         BuildForm.init model.task
-
-                    hasFields =
-                        not (List.isEmpty form.fields)
                 in
-                    if hasFields then
-                        { model
-                            | formModalVisibility = Modal.shown
-                            , form = form
-                        }
-                            => Cmd.none
-                            => NoOp
-                    else
-                        update context project commit builds session SubmitForm model
+                    { model
+                        | formModalVisibility = Modal.shown
+                        , form = form
+                    }
+                        => Cmd.none
+                        => NoOp
 
             CloseFormModal ->
                 { model

@@ -30,6 +30,7 @@ type alias Config msg item =
     , noOpMsg : msg
     , selectItemMsg : Maybe item -> msg
     , labelFn : item -> String
+    , icon : Html msg
     }
 
 
@@ -72,19 +73,14 @@ view config context =
 
 
 toggleButton : Context a -> Config msg a -> Dropdown.DropdownToggle msg
-toggleButton { selectedItem } { labelFn } =
+toggleButton { selectedItem } config =
     let
         toggleText =
-            case selectedItem of
-                Just b ->
-                    labelFn b
-
-                Nothing ->
-                    ""
+            itemLabelString config selectedItem
     in
         Dropdown.toggle
             [ Button.outlineSecondary ]
-            [ i [ class "fa fa-code-fork" ] []
+            [ config.icon
             , text (" " ++ toggleText)
             ]
 
@@ -116,15 +112,16 @@ viewItems config { items, filterTerm, selectedItem } =
         |> List.map (Just >> viewItem config selectedItem)
 
 
+itemLabelString : Config msg a -> Maybe a -> String
+itemLabelString config maybeItem =
+    maybeItem
+        |> Maybe.map config.labelFn
+        |> Maybe.withDefault "all-items"
+
+
 viewItem : Config msg a -> Maybe a -> Maybe a -> Dropdown.DropdownItem msg
 viewItem config selectedItem maybeItem =
     let
-        itemText =
-            maybeItem
-                |> Maybe.map config.labelFn
-                |> Maybe.withDefault "all-items"
-                |> text
-
         itemIcon =
             if selectedItem == maybeItem then
                 i [ class "fa fa-check" ] []
@@ -134,7 +131,7 @@ viewItem config selectedItem maybeItem =
         Dropdown.buttonItem
             [ onClick (config.selectItemMsg <| maybeItem) ]
             [ itemIcon
-            , itemText
+            , text (itemLabelString config maybeItem)
             ]
 
 
@@ -144,7 +141,7 @@ viewForm msg { filterTerm } =
         [ Form.group []
             [ Input.text
                 [ Input.placeholder "Filter items"
-                , Input.attrs [ onInput msg ]
+                , Input.attrs [ onInput msg, id "filter-item-input" ]
                 , Input.value filterTerm
                 ]
             ]
