@@ -237,7 +237,7 @@ view project commit model builds =
             [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
                 [ viewToolbar
                 , navigation
-                , viewTabFrame model builds
+                , viewTabFrame model builds commit
                 , viewFormModal model.task model.form model.formModalVisibility
                 ]
             ]
@@ -257,11 +257,17 @@ viewFormModal task form visibility =
                 |> Modal.h3 [] [ text (ProjectTask.nameToString task.name) ]
                 |> Modal.footer [] [ BuildForm.viewSubmitButton buildFormConfig form ]
 
+        noParametersAlert =
+            div [ class "alert alert-primary m-0" ]
+                [ i [ class "fa fa-info-circle" ] []
+                , text " No parameters required"
+                ]
+
         modal =
             if hasFields then
                 Modal.body [] (BuildForm.view buildFormConfig form) basicModal
             else
-                basicModal
+                Modal.body [] [ noParametersAlert ] basicModal
     in
         Modal.view visibility modal
 
@@ -345,29 +351,59 @@ viewToolbar =
         ]
 
 
-viewTabFrame : Model -> List Build -> Html Msg
-viewTabFrame model builds =
+viewTabFrame : Model -> List Build -> Commit -> Html Msg
+viewTabFrame model builds commit =
     let
         findBuild id =
             builds
                 |> List.filter (\a -> a.id == id)
                 |> List.head
     in
-        case model.frame of
-            BlankFrame ->
-                text ""
+        if List.isEmpty builds then
+            viewNoBuildsAlert model.task commit
+        else
+            case model.frame of
+                BlankFrame ->
+                    text ""
 
-            BuildFrame (LoadedBuild buildId buildOutputModel) ->
-                case findBuild buildId of
-                    Just build ->
-                        BuildOutput.view build buildOutputModel
-                            |> Html.map BuildOutputMsg
+                BuildFrame (LoadedBuild buildId buildOutputModel) ->
+                    case findBuild buildId of
+                        Just build ->
+                            BuildOutput.view build buildOutputModel
+                                |> Html.map BuildOutputMsg
 
-                    Nothing ->
-                        text ""
+                        Nothing ->
+                            text ""
 
-            BuildFrame (LoadingBuild _ _) ->
-                text ""
+                BuildFrame (LoadingBuild _ _) ->
+                    text ""
+
+
+viewNoBuildsAlert : ProjectTask.Task -> Commit -> Html Msg
+viewNoBuildsAlert task commit =
+    let
+        icon =
+            i [ class "fa fa-info-circle" ] []
+
+        preTaskNameText =
+            text " Task "
+
+        taskNameText =
+            strong [] [ text (ProjectTask.nameToString task.name) ]
+
+        postTaskNameText =
+            text " has not run yet for commit "
+
+        commitShaText =
+            strong [] [ text (Commit.truncateHash commit.hash) ]
+    in
+        div [ class "alert alert-info mt-4" ]
+            [ icon
+            , preTaskNameText
+            , taskNameText
+            , postTaskNameText
+            , commitShaText
+            ]
 
 
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )

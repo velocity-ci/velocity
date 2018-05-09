@@ -31,6 +31,8 @@ type alias Config msg item =
     , selectItemMsg : Maybe item -> msg
     , labelFn : item -> String
     , icon : Html msg
+    , showFilter : Bool
+    , showAllItemsItem : Bool
     }
 
 
@@ -88,16 +90,30 @@ toggleButton { selectedItem } config =
 viewDropdownItems : Config msg a -> Context a -> List (Dropdown.DropdownItem msg)
 viewDropdownItems config context =
     let
-        filterForm =
-            Dropdown.customItem (viewForm config.termMsg context)
+        filter existing =
+            if config.showFilter then
+                filterForm config context :: existing
+            else
+                existing
 
-        items =
-            viewItems config context
-
-        noItemSelectedButton =
-            noItemSelected config context
+        noItemSelectedItems existing =
+            if config.showAllItemsItem then
+                [ Dropdown.divider
+                , (noItemSelected config context)
+                , Dropdown.divider
+                ]
+                    ++ existing
+            else
+                existing
     in
-        filterForm :: Dropdown.divider :: noItemSelectedButton :: Dropdown.divider :: items
+        viewItems config context
+            |> noItemSelectedItems
+            |> filter
+
+
+filterForm : Config msg a -> Context a -> Dropdown.DropdownItem msg
+filterForm config context =
+    Dropdown.customItem (viewForm config.termMsg context)
 
 
 noItemSelected : Config msg a -> Context a -> Dropdown.DropdownItem msg

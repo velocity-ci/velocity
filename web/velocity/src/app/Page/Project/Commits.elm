@@ -98,6 +98,8 @@ branchFilterConfig =
     , selectItemMsg = FilterBranch
     , labelFn = (.name >> Just >> Branch.nameToString)
     , icon = (i [ class "fa fa-code-fork" ] [])
+    , showFilter = True
+    , showAllItemsItem = True
     }
 
 

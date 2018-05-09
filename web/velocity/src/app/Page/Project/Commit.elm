@@ -299,7 +299,9 @@ taskDropdownFilterConfig =
     , noOpMsg = NoOp
     , selectItemMsg = FilterTask
     , labelFn = (.name >> ProjectTask.nameToString)
-    , icon = (i [ class "fa fa-tasks" ] [])
+    , icon = (strong [] [ text "Task: " ])
+    , showFilter = False
+    , showAllItemsItem = False
     }
 
 
