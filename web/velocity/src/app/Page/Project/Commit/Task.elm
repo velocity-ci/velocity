@@ -80,6 +80,9 @@ type BuildType
 stringToTab : Maybe String -> List Build -> Maybe Tab
 stringToTab maybeSelectedTab builds =
     case maybeSelectedTab of
+        Just "build-1" ->
+            Nothing
+
         Just tabText ->
             tabText
                 |> String.split "-"

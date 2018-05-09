@@ -166,26 +166,21 @@ streamChannelName stream =
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
 events model =
     let
-        streams =
-            model.outputStreams
-                |> Dict.foldl (\buildStepId val acc -> ( buildStepId, List.map .buildStream val.streams ) :: acc) []
-
-        foldStreamEvents ( buildStepId, streams_ ) dict =
-            streams_
+        foldStreamEvents ( buildStepId, streams ) dict =
+            streams
                 |> List.foldl
                     (\stream acc ->
                         let
-                            channelName =
-                                streamChannelName stream
-
                             events =
                                 [ ( "streamLine:new", AddStreamOutput buildStepId stream ) ]
                         in
-                            Dict.insert channelName events acc
+                            Dict.insert (streamChannelName stream) events acc
                     )
                     dict
     in
-        List.foldl foldStreamEvents Dict.empty streams
+        model.outputStreams
+            |> Dict.foldl (\buildStepId val acc -> ( buildStepId, List.map .buildStream val.streams ) :: acc) []
+            |> List.foldl foldStreamEvents Dict.empty
 
 
 leaveChannels : Model -> List String

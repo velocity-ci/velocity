@@ -29,7 +29,7 @@ import Page.Project.Commit.Route as CommitRoute
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Json.Encode as Encode
-import Component.BranchFilter as BranchFilter
+import Component.DropdownFilter as DropdownFilter
 import Dom
 import Bootstrap.Button as Button
 
@@ -43,7 +43,7 @@ type alias Model =
     , page : Int
     , submitting : Bool
     , branch : Maybe Branch
-    , dropdownState : BranchFilter.DropdownState
+    , dropdownState : DropdownFilter.DropdownState
     , branchFilterTerm : String
     }
 
@@ -74,7 +74,7 @@ init context session branches projectSlug maybeBranchName maybePage =
             , page = defaultPage
             , submitting = False
             , branch = maybeBranch
-            , dropdownState = BranchFilter.initialDropdownState
+            , dropdownState = DropdownFilter.initialDropdownState
             , branchFilterTerm = ""
             }
 
@@ -90,22 +90,30 @@ perPage =
     10
 
 
-branchFilterConfig : BranchFilter.Config Msg
+branchFilterConfig : DropdownFilter.Config Msg Branch
 branchFilterConfig =
     { dropdownMsg = BranchFilterDropdownMsg
     , termMsg = BranchFilterTermMsg
     , noOpMsg = NoOp
-    , selectBranchMsg = FilterBranch
+    , selectItemMsg = FilterBranch
+    , labelFn = (.name >> Just >> Branch.nameToString)
     }
 
 
-branchFilterContext : List Branch -> Model -> BranchFilter.Context
+branchFilterContext : List Branch -> Model -> DropdownFilter.Context Branch
 branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
-    { branches = branches
-    , dropdownState = dropdownState
-    , filterTerm = branchFilterTerm
-    , selectedBranch = branch
-    }
+    let
+        items =
+            branches
+                |> List.filter .active
+                |> List.sortBy (.name >> Just >> Branch.nameToString)
+                |> List.sortBy (branchFilterConfig.labelFn)
+    in
+        { items = items
+        , dropdownState = dropdownState
+        , filterTerm = branchFilterTerm
+        , selectedItem = branch
+        }
 
 
 
@@ -115,7 +123,7 @@ branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
 subscriptions : List Branch -> Model -> Sub Msg
 subscriptions branches model =
     branchFilterContext branches model
-        |> BranchFilter.subscriptions branchFilterConfig
+        |> DropdownFilter.subscriptions branchFilterConfig
 
 
 
@@ -152,7 +160,7 @@ view project branches model =
 
         branchFilter =
             branchFilterContext branches model
-                |> BranchFilter.view branchFilterConfig
+                |> DropdownFilter.view branchFilterConfig
 
         refreshCommitsButton =
             refreshButton project model
@@ -338,7 +346,7 @@ type Msg
     | NewUrl String
     | RefreshCommitList
     | RefreshCompleted (Result Request.Errors.HttpError (PaginatedList Commit))
-    | BranchFilterDropdownMsg BranchFilter.DropdownState
+    | BranchFilterDropdownMsg DropdownFilter.DropdownState
     | BranchFilterTermMsg String
     | NoOp
 
