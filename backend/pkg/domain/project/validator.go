@@ -76,7 +76,7 @@ func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 		return
 	}
 
-	_, dir, err := v.projectManager.clone(&p.Config, true, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
+	repo, err := v.projectManager.clone(&p.Config, true, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
 
 	if err != nil {
 		if _, ok := err.(velocity.SSHKeyError); ok {
@@ -85,7 +85,7 @@ func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 			sl.ReportError(p.Config.Address, "repository", "repository", "gitRepository", "")
 		}
 	}
-	os.RemoveAll(dir)
+	os.RemoveAll(repo.Directory)
 }
 
 func registerFuncRepository(ut ut.Translator) error {

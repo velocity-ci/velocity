@@ -13,7 +13,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
-	git "gopkg.in/src-d/go-git.v4"
 )
 
 type CommitSuite struct {
@@ -44,8 +43,8 @@ func (s *CommitSuite) SetupTest() {
 	}
 
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.Repository, string, error) {
-		return &git.Repository{}, "/testDir", nil
+	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
+		return &velocity.RawRepository{Directory: "/testDir"}, nil
 	}
 	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
 	s.branchManager = githistory.NewBranchManager(s.storm)

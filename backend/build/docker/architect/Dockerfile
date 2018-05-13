@@ -5,12 +5,13 @@ RUN apk add --no-cache curl git gcc musl-dev
 
 WORKDIR /go/src/github.com/velocity-ci/velocity/backend
 COPY . .
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 RUN scripts/install-deps.sh
 RUN scripts/build-architect.sh
 
 FROM alpine
 
-RUN apk --no-cache --update add ca-certificates openssh-client
+RUN apk --no-cache --update add ca-certificates openssh-client git
 
 ENV JWT_SECRET changeme
 ENV PORT 80
