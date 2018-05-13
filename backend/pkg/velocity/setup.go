@@ -8,16 +8,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 type Setup struct {
@@ -76,14 +72,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 
 	// Clone repository if necessary
 	if s.repository != nil {
-		repo, dir, err := GitClone(s.repository, false, true, t.Git.Submodule, writer)
-		if err != nil {
-			logrus.Error(err)
-			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
-			return err
-		}
-		w, err := repo.Worktree()
+		repo, err := Clone(s.repository, false, true, t.Git.Submodule, writer)
 		if err != nil {
 			logrus.Error(err)
 			writer.SetStatus(StateFailed)
@@ -91,16 +80,14 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			return err
 		}
 		logrus.Infof("Checking out %s", s.commitHash)
-		err = w.Checkout(&git.CheckoutOptions{
-			Hash: plumbing.NewHash(s.commitHash),
-		})
+		repo.Checkout(s.commitHash)
 		if err != nil {
 			logrus.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err
 		}
-		os.Chdir(dir)
+		os.Chdir(repo.Directory)
 	}
 
 	if err := makeVelocityDirs(); err != nil {
@@ -172,93 +159,37 @@ func (s Setup) Validate(params map[string]Parameter) error {
 func getGitParams() map[string]Parameter {
 	path, _ := os.Getwd()
 
-	// We instance a new repository targeting the given path (the .git folder)
-	r, err := git.PlainOpen(fmt.Sprintf("%s/", path))
-	if err != nil {
-		panic(err)
-	}
+	repo := &RawRepository{Directory: path}
 
-	// ... retrieving the HEAD reference
-	ref, err := r.Head()
-	if err != nil {
-		panic(err)
-	}
-	SHA := ref.Hash().String()
-	shortSHA := SHA[:7]
-	branch := ref.Name().Short()
-	describe := shortSHA
-
-	commit, err := r.CommitObject(ref.Hash())
-	mParts := strings.Split(commit.Message, "-----END PGP SIGNATURE-----")
-	message := mParts[0]
-	if len(mParts) > 1 {
-		message = mParts[1]
-	}
-	message = strings.TrimSpace(message)
-	if err != nil {
-		return map[string]Parameter{}
-	}
-
-	tags, _ := r.Tags()
-	defer tags.Close()
-	var lastTag *object.Tag
-	for {
-		t, err := tags.Next()
-		if err == io.EOF {
-			break
-		}
-
-		tObj, err := r.TagObject(t.Hash())
-		if err != nil {
-			panic(err)
-		}
-
-		c, _ := tObj.Commit()
-		if c.Hash.String() == SHA {
-			describe = tObj.Name
-		}
-		lastTag = tObj
-	}
-
-	if describe == shortSHA {
-		if lastTag == nil {
-			describe = shortSHA
-		} else {
-			describe = fmt.Sprintf("%s+%s", lastTag.Name, shortSHA)
-		}
-	}
+	rawCommit := repo.GetCurrentCommitInfo()
 
 	return map[string]Parameter{
 		"GIT_COMMIT_LONG_SHA": {
-			Value:    SHA,
+			Value:    rawCommit.SHA,
 			IsSecret: false,
 		},
 		"GIT_COMMIT_SHORT_SHA": {
-			Value:    shortSHA,
+			Value:    rawCommit.SHA[:7],
 			IsSecret: false,
 		},
-		"GIT_BRANCH": {
-			Value:    branch,
-			IsSecret: false,
-		},
+		// "GIT_BRANCH": {
+		// 	Value:    branch,
+		// 	IsSecret: false,
+		// },
 		"GIT_DESCRIBE": {
-			Value:    describe,
+			Value:    repo.GetDescribe(),
 			IsSecret: false,
 		},
 		"GIT_COMMIT_AUTHOR": {
-			Value:    commit.Author.Email,
+			Value:    rawCommit.AuthorEmail,
 			IsSecret: false,
 		},
 		"GIT_COMMIT_MESSAGE": {
-			Value:    message,
+			Value:    rawCommit.Message,
 			IsSecret: false,
 		},
 		"GIT_COMMIT_TIMESTAMP": {
-			Value:    commit.Committer.When.String(),
-			IsSecret: false,
-		},
-		"GIT_COMMIT_TIMESTAMP_EPOCH": {
-			Value:    strconv.FormatInt(commit.Committer.When.Unix(), 10),
+			Value:    rawCommit.AuthorDate.String(),
 			IsSecret: false,
 		},
 	}
