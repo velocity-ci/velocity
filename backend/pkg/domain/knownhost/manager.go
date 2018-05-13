@@ -36,6 +36,8 @@ func NewManager(
 		fileManager: NewFileManager(homedir),
 	}
 	m.validator = newValidator(validator, translator, m)
+	knownHosts, _ := m.GetAll(&domain.PagingQuery{Limit: 50, Page: 1})
+	m.fileManager.WriteAll(knownHosts)
 	return m
 }
 

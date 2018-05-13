@@ -4,14 +4,18 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/ssh/agent"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/go-cmd/cmd"
 	"github.com/gosimple/slug"
+	"golang.org/x/crypto/ssh"
 )
 
 type SSHKeyError string
@@ -71,8 +75,21 @@ func Clone(
 	shCmd = append(shCmd, r.Address)
 	shCmd = append(shCmd, dir)
 
-	opts := cmd.Options{Buffered: false, Streaming: true}
+	if r.Address[:3] == "git" {
+		key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
+		if err != nil {
+			return nil, err
+		}
+		if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+			a := agent.NewClient(sshAgent)
+			a.Add(agent.AddedKey{PrivateKey: key})
+			signer, _ := ssh.NewSignerFromKey(key)
 
+			defer a.Remove(signer.PublicKey())
+		}
+	}
+
+	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
 	stdOut := []string{}
 	stdErr := []string{}
