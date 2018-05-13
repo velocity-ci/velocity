@@ -76,6 +76,8 @@ func FeatureContext(s *godog.Suite) {
 	s.Step(`^I create the following known host:$`, iCreateTheFollowingKnownHost)
 	s.Step(`^the following known host exists:$`, theFollowingKnownHostExists)
 	s.Step(`^I list the known hosts$`, iListTheKnownHosts)
+	s.Step(`^I create the following user:$`, iCreateTheFollowingUser)
+	s.Step(`^I list the users$`, iListTheUsers)
 	// s.Step(`^I create the following project:$`, iCreateTheFollowingProject)
 
 	s.BeforeSuite(func() {
