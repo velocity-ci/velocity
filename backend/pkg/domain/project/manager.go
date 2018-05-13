@@ -12,7 +12,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	govalidator "gopkg.in/go-playground/validator.v9"
-	git "gopkg.in/src-d/go-git.v4"
 )
 
 // Event constants
@@ -25,7 +24,7 @@ const (
 type Manager struct {
 	validator *validator
 	db        *stormDB
-	clone     func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error)
+	clone     func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*velocity.RawRepository, error)
 	brokers   []domain.Broker
 }
 
@@ -33,7 +32,7 @@ func NewManager(
 	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
-	cloneFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*git.Repository, string, error),
+	cloneFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*velocity.RawRepository, error),
 ) *Manager {
 	m := &Manager{
 		db:      newStormDB(db),

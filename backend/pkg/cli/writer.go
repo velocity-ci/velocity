@@ -35,7 +35,7 @@ func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 
 func (w *StreamWriter) Write(p []byte) (n int, err error) {
 	fmt.Printf("%s:    %s", w.StreamName, string(p))
-	if !strings.ContainsRune(string(p), '\r') {
+	if !strings.HasSuffix(string(p), "\r") {
 		fmt.Println()
 	}
 	return len(p), nil
