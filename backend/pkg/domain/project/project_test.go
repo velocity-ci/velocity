@@ -66,7 +66,7 @@ func (s *ProjectSuite) TestValidNew() {
 
 func (s *ProjectSuite) TestSSHInvalidCreate() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*git.RawRepository, error) {
+	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
 		return nil, velocity.SSHKeyError("")
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)

@@ -252,6 +252,7 @@
     "internal/chacha20",
     "poly1305",
     "ssh",
+    "ssh/agent",
     "ssh/terminal"
   ]
   revision = "b4956d363a8b14623cc81db401707679605930a3"
@@ -293,6 +294,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a7ac9057d92012939e59b496cefbac15b62f5b71b1bf33a89ad7fef39ff70c6a"
+  inputs-digest = "eef8da9871f732906958fda713a194f3bd1c262e6e3c780e79343cb351649971"
   solver-name = "gps-cdcl"
   solver-version = 1
