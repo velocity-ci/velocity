@@ -29,7 +29,7 @@ import Bootstrap.Button as Button
 import Util exposing ((=>))
 import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
 import Views.Form as Form
-import Page.Helpers exposing (validClasses)
+import Component.Form exposing (validClasses)
 
 
 -- MODEL --

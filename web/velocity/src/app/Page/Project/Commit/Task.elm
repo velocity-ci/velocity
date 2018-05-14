@@ -18,6 +18,7 @@ import Navigation
 import Context exposing (Context)
 import Component.BuildOutput as BuildOutput
 import Component.BuildForm as BuildForm
+import Component.DropdownFilter as DropdownFilter
 import Data.AuthToken as AuthToken exposing (AuthToken)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
@@ -48,6 +49,8 @@ type alias Model =
     , formModalVisibility : Modal.Visibility
     , selectedTab : Maybe Tab
     , frame : Frame
+    , buildDropdownState : DropdownFilter.DropdownState
+    , buildFilterTerm : String
     }
 
 
@@ -156,6 +159,8 @@ initialModel task selectedTab frame =
     , formModalVisibility = Modal.hidden
     , selectedTab = selectedTab
     , frame = frame
+    , buildDropdownState = DropdownFilter.initialDropdownState
+    , buildFilterTerm = ""
     }
 
 
@@ -213,6 +218,17 @@ mapEvents fromMsg events =
 
 
 
+--buildDropdownFilterConfig : DropdownFilter.Config Msg ProjectTask.Task
+--buildDropdownFilterConfig =
+--    { dropdownMsg = BuildFilterDropdownMsg
+--    , termMsg = BuildFilterTermMsg
+--    , noOpMsg = NoOp_
+--    , selectItemMsg = FilterTask
+--    , labelFn = (.name >> ProjectTask.nameToString)
+--    , icon = (strong [] [ text "Task: " ])
+--    , showFilter = False
+--    , showAllItemsItem = False
+--    }
 -- VIEW --
 
 
@@ -254,11 +270,14 @@ viewFormModal task form visibility =
                 |> Modal.withAnimation AnimateFormModal
                 |> Modal.large
                 |> Modal.hideOnBackdropClick True
-                |> Modal.h3 [] [ text (ProjectTask.nameToString task.name) ]
+                |> Modal.h5 []
+                    [ text "Start "
+                    , strong [] [ text <| ProjectTask.nameToString task.name ]
+                    ]
                 |> Modal.footer [] [ BuildForm.viewSubmitButton buildFormConfig form ]
 
         noParametersAlert =
-            div [ class "alert alert-primary m-0" ]
+            div [ class "alert alert-info m-0" ]
                 [ i [ class "fa fa-info-circle" ] []
                 , text " No parameters required"
                 ]
@@ -425,11 +444,15 @@ type Msg
     | SubmitForm
     | BuildCreated (Result Request.Errors.HttpError Build)
     | SelectTab Tab String
+    | SelectBuild (Maybe Build)
     | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
     | BuildOutputMsg BuildOutput.Msg
     | CloseFormModal
     | AnimateFormModal Modal.Visibility
     | ShowOrSubmitTaskForm
+    | BuildFilterDropdownMsg DropdownFilter.DropdownState
+    | BuildFilterTermMsg String
+    | NoOp_
 
 
 type ExternalMsg
@@ -597,3 +620,29 @@ update context project commit builds session msg model =
                         model
                             => Cmd.none
                             => NoOp
+
+            BuildFilterDropdownMsg state ->
+                { model | buildDropdownState = state }
+                    => Cmd.none
+                    => NoOp
+
+            BuildFilterTermMsg term ->
+                { model | buildFilterTerm = term }
+                    => Cmd.none
+                    => NoOp
+
+            SelectBuild maybeBuild ->
+                let
+                    route =
+                        CommitRoute.Task model.task.name Nothing
+                            |> ProjectRoute.Commit commitHash
+                            |> Route.Project project.slug
+                in
+                    model
+                        => Route.modifyUrl route
+                        => NoOp
+
+            NoOp_ ->
+                model
+                    => Cmd.none
+                    => NoOp

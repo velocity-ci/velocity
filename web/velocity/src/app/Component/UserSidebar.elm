@@ -72,6 +72,7 @@ sidebarUserDropdown { userDropdown } { userDropdownMsg, newUrlMsg } =
             [ Dropdown.header [ text "Management" ]
             , Dropdown.buttonItem [ onClickPage newUrlMsg Route.KnownHosts ] [ text "Known hosts" ]
             , Dropdown.buttonItem [ onClickPage newUrlMsg Route.Projects ] [ text "Projects" ]
+            , Dropdown.buttonItem [ onClickPage newUrlMsg Route.Users ] [ text "Users" ]
             , Dropdown.header [ text "User" ]
             , Dropdown.buttonItem [ onClickPage newUrlMsg Route.Logout ] [ text "Log out" ]
             ]

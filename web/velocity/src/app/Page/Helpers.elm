@@ -5,10 +5,6 @@ module Page.Helpers
         , formatTimeSeconds
         , formatDateTime
         , sortByDatetime
-        , getFieldErrors
-        , ifBelowLength
-        , ifAboveLength
-        , validClasses
         )
 
 import Validate exposing (Validator, ifInvalid)
@@ -59,35 +55,6 @@ sortByDatetime property items =
 
 
 
--- FORM VALIDATION --
-
-
-getFieldErrors : List ( field, error ) -> { b | field : field } -> List ( field, error )
-getFieldErrors errors formField =
-    List.filter (\e -> formField.field == Tuple.first e) errors
-
-
-ifBelowLength : Int -> error -> Validator error String
-ifBelowLength length =
-    ifInvalid (\s -> String.length s < length)
-
-
-ifAboveLength : Int -> error -> Validator error String
-ifAboveLength length =
-    ifInvalid (\s -> String.length s > length)
-
-
-validClasses :
-    List ( field, error )
-    -> { formField | dirty : Bool, field : field }
-    -> List ( String, Bool )
-validClasses errors formField =
-    [ ( "is-invalid", isInvalid errors formField )
-    , ( "is-valid", isValid errors formField )
-    ]
-
-
-
 -- INTERNAL --
 
 
@@ -97,13 +64,3 @@ appendZero int =
         "0" ++ toString int
     else
         toString int
-
-
-isInvalid : List ( field, error ) -> { formField | dirty : Bool, field : field } -> Bool
-isInvalid errors formField =
-    formField.dirty && List.length (getFieldErrors errors formField) > 0
-
-
-isValid : List ( field, error ) -> { formField | dirty : Bool, field : field } -> Bool
-isValid errors formField =
-    formField.dirty && List.isEmpty (getFieldErrors errors formField)

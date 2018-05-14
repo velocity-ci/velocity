@@ -18,6 +18,7 @@ import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Component.KnownHostForm as KnownHostForm
 import Bootstrap.Modal as Modal
 import Util exposing ((=>), onClickStopPropagation, viewIf)
+import Component.Form as Form
 
 
 -- MODEL --
@@ -181,7 +182,7 @@ update context session msg model =
                         |> Session.attempt "create knownHost" cmdFromAuth
                         |> Tuple.second
             in
-                { model | form = KnownHostForm.submit model.form }
+                { model | form = Form.submit model.form }
                     => cmd
                     => NoOp
 
@@ -206,15 +207,15 @@ update context session msg model =
                                         |> Result.withDefault []
                             in
                                 model.form
-                                    |> KnownHostForm.updateServerErrors errors
+                                    |> Form.updateServerErrors errors KnownHostForm.serverErrorToFormError
                                     => NoOp
 
                         _ ->
                             model.form
-                                |> KnownHostForm.updateServerErrors [ "" => "Unable to process known hosts." ]
+                                |> Form.updateServerErrors [ "" => "Unable to process known hosts." ] KnownHostForm.serverErrorToFormError
                                 => NoOp
             in
-                { model | form = KnownHostForm.submitting False updatedForm }
+                { model | form = Form.submitting False updatedForm }
                     => Cmd.none
                     => externalMsg
 

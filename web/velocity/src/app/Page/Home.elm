@@ -24,6 +24,7 @@ import Json.Decode as Decode exposing (decodeString)
 
 import Context exposing (Context)
 import Component.ProjectForm as ProjectForm
+import Component.Form as Form
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
@@ -276,7 +277,7 @@ update context session msg model =
                         |> Session.attempt "create project" cmdFromAuth
                         |> Tuple.second
             in
-                { model | newProjectForm = ProjectForm.submit model.newProjectForm }
+                { model | newProjectForm = Form.submit model.newProjectForm }
                     => cmd
                     => NoOp
 
@@ -296,15 +297,15 @@ update context session msg model =
                                         |> Result.withDefault []
                             in
                                 model.newProjectForm
-                                    |> ProjectForm.updateServerErrors errors
+                                    |> Form.updateServerErrors errors ProjectForm.serverErrorToFormError
                                     => NoOp
 
                         _ ->
                             model.newProjectForm
-                                |> ProjectForm.updateServerErrors [ "" => "Unable to process project." ]
+                                |> Form.updateServerErrors [ "" => "Unable to process project." ] ProjectForm.serverErrorToFormError
                                 => NoOp
             in
-                { model | newProjectForm = ProjectForm.submitting False updatedProjectForm }
+                { model | newProjectForm = Form.submitting False updatedProjectForm }
                     => Cmd.none
                     => externalMsg
 

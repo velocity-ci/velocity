@@ -8,11 +8,9 @@ module Component.ProjectForm
         , viewSubmitButton
         , update
         , validate
-        , submit
-        , submitting
         , submitValues
-        , updateServerErrors
         , errorsDecoder
+        , serverErrorToFormError
         )
 
 -- EXTERNAL
@@ -29,10 +27,11 @@ import Bootstrap.Button as Button
 -- INTERNAL
 
 import Data.Project as Project exposing (Project)
-import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, formatDateTime, sortByDatetime, getFieldErrors)
+import Page.Helpers exposing (formatDateTime, sortByDatetime)
 import Util exposing ((=>))
 import Views.Form as Form
 import Request.Errors
+import Component.Form as BaseForm exposing (..)
 
 
 -- MODEL --
@@ -45,23 +44,11 @@ type Field
     | PrivateKey
 
 
-type alias FormField =
-    { value : String
-    , dirty : Bool
-    , field : Field
-    }
-
-
 type alias ProjectForm =
-    { name : FormField
-    , repository : FormField
-    , privateKey : FormField
+    { name : FormField Field
+    , repository : FormField Field
+    , privateKey : FormField Field
     }
-
-
-newField : Field -> FormField
-newField field =
-    FormField "" False field
 
 
 initialForm : ProjectForm
@@ -70,11 +57,6 @@ initialForm =
     , repository = newField Repository
     , privateKey = newField PrivateKey
     }
-
-
-updateInput : Field -> String -> FormField
-updateInput field value =
-    FormField value True field
 
 
 type alias Config msg =
@@ -86,11 +68,7 @@ type alias Config msg =
 
 
 type alias Context =
-    { form : ProjectForm
-    , errors : List Error
-    , serverErrors : List Error
-    , submitting : Bool
-    }
+    BaseForm.Context Field ProjectForm
 
 
 init : Context
@@ -104,20 +82,6 @@ init =
 
 
 -- UPDATE HELPERS --
-
-
-resetServerErrors : List Error -> Field -> List Error
-resetServerErrors errors field =
-    let
-        shouldInclude error =
-            Tuple.first error /= field && Tuple.first error /= Form
-    in
-        List.filter shouldInclude errors
-
-
-resetServerErrorsForField : Context -> Field -> List Error
-resetServerErrorsForField context field =
-    resetServerErrors context.serverErrors field
 
 
 updateForm : ProjectForm -> Field -> String -> ProjectForm
@@ -140,17 +104,7 @@ updateForm form field value =
                 form
 
 
-updateServerErrors : List ( String, String ) -> Context -> Context
-updateServerErrors errorMessages context =
-    { context | serverErrors = List.map serverErrorToFormError errorMessages }
-
-
-submitting : Bool -> Context -> Context
-submitting submitting context =
-    { context | submitting = submitting }
-
-
-serverErrorToFormError : ( String, String ) -> Error
+serverErrorToFormError : ( String, String ) -> Error Field
 serverErrorToFormError ( fieldNameString, errorString ) =
     let
         field =
@@ -203,15 +157,6 @@ submitValues { form } =
         , repository = form.repository.value
         , privateKey = privateKey
         }
-
-
-submit : Context -> Context
-submit context =
-    { context
-        | submitting = True
-        , serverErrors = []
-        , errors = []
-    }
 
 
 
@@ -328,7 +273,7 @@ viewSubmitButton { submitMsg } context =
             [ text "Create" ]
 
 
-viewGlobalError : Error -> Html msg
+viewGlobalError : Error Field -> Html msg
 viewGlobalError error =
     div [ class "alert alert-danger" ] [ text (Tuple.second error) ]
 
@@ -337,16 +282,12 @@ viewGlobalError error =
 -- VALIDATION --
 
 
-type alias Error =
-    ( Field, String )
-
-
 isSshAddress : String -> Bool
 isSshAddress address =
     String.slice 0 3 address == "git"
 
 
-validate : Validator Error ProjectForm
+validate : Validator (Error Field) ProjectForm
 validate =
     let
         privateKeyValidator ( privateKey, repository ) =
@@ -370,12 +311,3 @@ errorsDecoder =
         |> optionalError "name"
         |> optionalError "repository"
         |> optionalError "key"
-
-
-optionalError : String -> Decoder (List ( String, String ) -> a) -> Decoder a
-optionalError fieldName =
-    let
-        errorToTuple errorMessage =
-            ( fieldName, errorMessage )
-    in
-        optional fieldName (Decode.list (Decode.map errorToTuple string)) []

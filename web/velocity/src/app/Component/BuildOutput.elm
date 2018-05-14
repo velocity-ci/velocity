@@ -14,7 +14,7 @@ import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
 import Request.Build
 import Request.Errors
 import Util exposing ((=>))
-import Page.Helpers exposing (validClasses, formatDateTime, formatTimeSeconds)
+import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
 import Views.Build exposing (..)
 
 
@@ -268,7 +268,7 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
         case buildStep_ of
             Just step ->
                 div
-                    [ class "card mt-3"
+                    [ class "card mt-3 b-0"
                     , classList (buildStepBorderColourClassList step)
                     ]
                     [ h5
@@ -279,7 +279,7 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
                         , text " "
                         , viewBuildStepStatusIcon step
                         ]
-                    , div [ class "card-body p-0 small" ] [ viewStepLog streams ]
+                    , div [ class "card-body p-0 small b-0" ] [ viewStepLog streams ]
                     ]
 
             Nothing ->
@@ -305,12 +305,12 @@ viewStepLog streams =
                     )
                 |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
     in
-        table [ class "table table-hover table-sm mb-0" ] (List.map viewLine lines)
+        table [ class "table-sm mb-0" ] (List.map viewLine lines)
 
 
 viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg
 viewLine ( timestamp, streamName, line, streamIndex ) =
-    tr []
+    tr [ class "b-0" ]
         [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
         , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
         , td [] [ Ansi.Log.viewLine line ]

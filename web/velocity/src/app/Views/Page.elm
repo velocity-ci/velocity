@@ -24,6 +24,7 @@ type ActivePage
     | Projects
     | Project
     | KnownHosts
+    | Users
 
 
 {-| Take a page's Html and frame it with a header and footer.

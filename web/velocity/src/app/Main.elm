@@ -12,6 +12,8 @@ import Page.Login as Login
 import Page.NotFound as NotFound
 import Page.Project as Project
 import Page.KnownHosts as KnownHosts
+import Page.Users as Users
+import Page.Users as User
 import Request.Errors
 import Request.Channel
 import Route exposing (Route)
@@ -33,6 +35,7 @@ type Page
     | Project Project.Model
     | Login Login.Model
     | KnownHosts KnownHosts.Model
+    | Users Users.Model
 
 
 type PageState
@@ -235,6 +238,11 @@ viewPage session isLoading page =
                     |> Html.map KnownHostsMsg
                     |> frame Page.KnownHosts
 
+            Users subModel ->
+                Users.view session subModel
+                    |> Html.map (always NoOp)
+                    |> frame Page.Users
+
 
 
 -- SUBSCRIPTIONS --
@@ -316,6 +324,8 @@ type Msg
     | ProjectMsg Project.Msg
     | KnownHostsLoaded KnownHosts.Model
     | KnownHostsMsg KnownHosts.Msg
+    | UsersLoaded Users.Model
+    | UsersMsg Users.Msg
     | SocketMsg (Socket.Msg Msg)
     | HeaderMsg Header.Msg
     | UserDropdownToggleMsg Dropdown.State
@@ -426,6 +436,14 @@ setRoute maybeRoute model =
 
             Just (Route.Login) ->
                 { model | pageState = Loaded (Login Login.initialModel) } => Cmd.none
+
+            Just (Route.Users) ->
+                case model.session.user of
+                    Just user ->
+                        transition UsersLoaded (Users.init model.context model.session)
+
+                    Nothing ->
+                        model => Route.modifyUrl Route.Login
 
             Just (Route.Logout) ->
                 let
@@ -645,6 +663,28 @@ updatePage page msg model =
                                 update (handledErrorToMsg err) model_
                 in
                     modelAfterExternalMsg ! [ Cmd.map HomeMsg newSubCmd, cmdAfterExternalMsg ]
+
+            ( UsersLoaded subModel, _ ) ->
+                { model | pageState = Loaded (Users subModel) }
+                    => Cmd.none
+
+            ( UsersMsg subMsg, Users subModel ) ->
+                let
+                    ( ( newSubModel, newSubCmd ), externalMsg ) =
+                        Users.update model.context session subMsg subModel
+
+                    model_ =
+                        { model | pageState = Loaded (Users newSubModel) }
+
+                    ( modelAfterExternalMsg, cmdAfterExternalMsg ) =
+                        case externalMsg of
+                            Users.NoOp ->
+                                model_ => Cmd.none
+
+                            Users.HandleRequestError err ->
+                                update (handledErrorToMsg err) model_
+                in
+                    modelAfterExternalMsg ! [ Cmd.map UsersMsg newSubCmd, cmdAfterExternalMsg ]
 
             ( KnownHostsLoaded subModel, _ ) ->
                 { model | pageState = Loaded (KnownHosts subModel) } => Cmd.none

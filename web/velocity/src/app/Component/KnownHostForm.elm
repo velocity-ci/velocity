@@ -5,13 +5,11 @@ module Component.KnownHostForm
         , init
         , Field(..)
         , update
-        , updateServerErrors
         , errorsDecoder
         , view
         , viewSubmitButton
-        , submitting
+        , serverErrorToFormError
         , submitValues
-        , submit
         )
 
 -- EXTERNAL
@@ -28,10 +26,9 @@ import Bootstrap.Button as Button
 -- INTERNAL
 
 import Data.Project as Project exposing (Project)
-import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, formatDateTime, sortByDatetime, getFieldErrors)
 import Util exposing ((=>))
 import Views.Form as Form
-import Request.Errors
+import Component.Form as BaseForm exposing (..)
 
 
 -- MODEL --
@@ -42,29 +39,17 @@ type Field
     | ScannedKey
 
 
-type alias FormField =
-    { value : String
-    , dirty : Bool
-    , field : Field
-    }
-
-
 type alias KnownHostForm =
-    { scannedKey : FormField
+    { scannedKey : FormField Field
     }
 
 
 type alias Context =
-    { form : KnownHostForm
-    , errors : List Error
-    , serverErrors : List Error
-    , submitting : Bool
-    }
+    BaseForm.Context Field KnownHostForm
 
 
-newField : Field -> FormField
-newField field =
-    FormField "" False field
+type alias Error =
+    BaseForm.Error Field
 
 
 initialForm : KnownHostForm
@@ -74,20 +59,6 @@ initialForm =
 
 
 -- UPDATE HELPERS --
-
-
-resetServerErrors : List Error -> Field -> List Error
-resetServerErrors errors field =
-    let
-        shouldInclude error =
-            Tuple.first error /= field && Tuple.first error /= Form
-    in
-        List.filter shouldInclude errors
-
-
-resetServerErrorsForField : Context -> Field -> List Error
-resetServerErrorsForField context field =
-    resetServerErrors context.serverErrors field
 
 
 updateForm : KnownHostForm -> Field -> String -> KnownHostForm
@@ -102,11 +73,6 @@ updateForm form field value =
 
             Form ->
                 form
-
-
-updateInput : Field -> String -> FormField
-updateInput field value =
-    FormField value True field
 
 
 update : Context -> Field -> String -> Context
@@ -125,25 +91,6 @@ update context field value =
 submitValues : Context -> { scannedKey : String }
 submitValues { form } =
     { scannedKey = form.scannedKey.value }
-
-
-updateServerErrors : List ( String, String ) -> Context -> Context
-updateServerErrors errorMessages context =
-    { context | serverErrors = List.map serverErrorToFormError errorMessages }
-
-
-submitting : Bool -> Context -> Context
-submitting submitting context =
-    { context | submitting = submitting }
-
-
-submit : Context -> Context
-submit context =
-    { context
-        | submitting = True
-        , serverErrors = []
-        , errors = []
-    }
 
 
 serverErrorToFormError : ( String, String ) -> Error
@@ -186,10 +133,7 @@ view { setScannedKeyMsg, submitMsg } context =
             context.form
 
         combinedErrors =
-            context.errors ++ context.serverErrors
-
-        globalErrors =
-            List.filter (\e -> (Tuple.first e) == Form) combinedErrors
+            allErrors context
 
         errors field =
             if field.dirty then
@@ -218,7 +162,7 @@ view { setScannedKeyMsg, submitMsg } context =
                 []
     in
         div []
-            (List.map viewGlobalError globalErrors
+            (List.map viewGlobalError (globalErrors Form combinedErrors)
                 ++ [ Html.form [ attribute "novalidate" "", onSubmit submitMsg ]
                         [ scannedKeyField ]
                    ]
@@ -261,10 +205,6 @@ viewSubmitButton { submitMsg } context =
 -- VALIDATION --
 
 
-type alias Error =
-    ( Field, String )
-
-
 validate : Validator ( Field, String ) KnownHostForm
 validate =
     Validate.all
@@ -276,12 +216,3 @@ errorsDecoder : Decoder (List ( String, String ))
 errorsDecoder =
     decode (\scannedKey -> List.concat [ scannedKey ])
         |> optionalError "entry"
-
-
-optionalError : String -> Decoder (List ( String, String ) -> a) -> Decoder a
-optionalError fieldName =
-    let
-        errorToTuple errorMessage =
-            ( fieldName, errorMessage )
-    in
-        optional fieldName (Decode.list (Decode.map errorToTuple string)) []

@@ -15,7 +15,7 @@ import Request.User exposing (storeSession)
 import Request.Errors
 import Util exposing ((=>))
 import Data.User as User exposing (User)
-import Page.Helpers exposing (ifBelowLength, validClasses)
+import Component.Form exposing (ifBelowLength, validClasses)
 import Task
 
 
