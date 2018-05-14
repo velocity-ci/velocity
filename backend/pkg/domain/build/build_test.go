@@ -1,7 +1,6 @@
 package build_test
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -34,6 +33,10 @@ type BuildSuite struct {
 	wg                sync.WaitGroup
 }
 
+var syncMock = func(*velocity.GitRepository) bool {
+	return true
+}
+
 func TestBuildSuite(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 	suite.Run(t, new(BuildSuite))
@@ -55,9 +58,6 @@ func (s *BuildSuite) SetupTest() {
 	}
 
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
 	s.commitManager = githistory.NewCommitManager(s.storm)
 	s.branchManager = githistory.NewBranchManager(s.storm)

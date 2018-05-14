@@ -1,11 +1,8 @@
 package project
 
 import (
-	"os"
-
 	ut "github.com/go-playground/universal-translator"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	govalidator "gopkg.in/go-playground/validator.v9"
 )
 
@@ -76,17 +73,19 @@ func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 		return
 	}
 
-	repo, err := v.projectManager.clone(&p.Config, true, false, true, velocity.NewBlankEmitter().GetStreamWriter("clone"))
-
-	if err != nil {
-		if _, ok := err.(velocity.SSHKeyError); ok {
-			sl.ReportError(p.Config.PrivateKey, "key", "key", "sshPrivateKey", err.Error())
-		} else {
-			sl.ReportError(p.Config.Address, "repository", "repository", "gitRepository", "")
-		}
-	} else {
-		os.RemoveAll(repo.Directory)
+	if !v.projectManager.validate(&p.Config) {
+		sl.ReportError(p.Config.PrivateKey, "key", "key", "sshPrivateKey", "")
 	}
+
+	// if err != nil {
+	// 	if _, ok := err.(velocity.SSHKeyError); ok {
+	// 		sl.ReportError(p.Config.PrivateKey, "key", "key", "sshPrivateKey", err.Error())
+	// 	} else {
+	// 		sl.ReportError(p.Config.Address, "repository", "repository", "gitRepository", "")
+	// 	}
+	// } else {
+	// 	os.RemoveAll(repo.Directory)
+	// }
 }
 
 func registerFuncRepository(ut ut.Translator) error {

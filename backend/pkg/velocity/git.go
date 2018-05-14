@@ -29,6 +29,70 @@ type GitRepository struct {
 	PrivateKey string `json:"privateKey"`
 }
 
+const workspace = "/opt/velocity"
+
+func getUniqueWorkspace(r *GitRepository) (string, error) {
+	psuedoRandom := rand.NewSource(time.Now().UnixNano())
+	randNumber := rand.New(psuedoRandom)
+	dir := fmt.Sprintf("%s/workspaces/_%s-%d", workspace, slug.Make(r.Address), randNumber.Int63())
+	os.RemoveAll(dir)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		logrus.Fatal(err)
+		return "", err
+	}
+
+	return dir, nil
+}
+
+func handleGitSSH(privateKey string) (ssh.Signer, agent.Agent, error) {
+	key, err := ssh.ParseRawPrivateKey([]byte(privateKey))
+	if err != nil {
+		return nil, nil, err.(SSHKeyError)
+	}
+	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+		a := agent.NewClient(sshAgent)
+		a.Add(agent.AddedKey{PrivateKey: key})
+		signer, _ := ssh.NewSignerFromKey(key)
+		return signer, a, nil
+	}
+
+	return nil, nil, fmt.Errorf("ssh-agent not found")
+}
+
+func Validate(r *GitRepository) bool {
+	wd, _ := os.Getwd()
+	defer os.Chdir(wd)
+
+	dir, _ := getUniqueWorkspace(r)
+	os.Chdir(dir)
+	shCmd := []string{"git", "init"}
+	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	<-c.Start()
+
+	shCmd = []string{"git", "remote", "add", "origin", r.Address}
+	c = cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	<-c.Start()
+
+	if r.Address[:3] == "git" {
+		signer, agent, err := handleGitSSH(r.PrivateKey)
+		if err != nil {
+			return false
+		}
+		defer agent.Remove(signer.PublicKey())
+	}
+
+	shCmd = []string{"git", "ls-remote"}
+	c = cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	s := <-c.Start()
+
+	if s.Exit == 0 {
+		return true
+	}
+
+	return false
+}
+
 func Clone(
 	r *GitRepository,
 	bare,
@@ -36,15 +100,11 @@ func Clone(
 	submodule bool,
 	writer io.Writer,
 ) (*RawRepository, error) {
-	psuedoRandom := rand.NewSource(time.Now().UnixNano())
-	randNumber := rand.New(psuedoRandom)
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
-	dir := fmt.Sprintf("%s/workspaces/_%s-%d", wd, slug.Make(r.Address), randNumber.Int63())
-	os.RemoveAll(dir)
-	err := os.MkdirAll(dir, os.ModePerm)
+
+	dir, err := getUniqueWorkspace(r)
 	if err != nil {
-		logrus.Fatal(err)
 		return nil, err
 	}
 
@@ -66,17 +126,11 @@ func Clone(
 	shCmd = append(shCmd, dir)
 
 	if r.Address[:3] == "git" {
-		key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
+		signer, agent, err := handleGitSSH(r.PrivateKey)
 		if err != nil {
 			return nil, err.(SSHKeyError)
 		}
-		if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-			a := agent.NewClient(sshAgent)
-			a.Add(agent.AddedKey{PrivateKey: key})
-			signer, _ := ssh.NewSignerFromKey(key)
-
-			defer a.Remove(signer.PublicKey())
-		}
+		defer agent.Remove(signer.PublicKey())
 	}
 
 	opts := cmd.Options{Buffered: false, Streaming: true}
