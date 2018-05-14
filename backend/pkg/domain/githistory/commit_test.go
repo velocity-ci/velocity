@@ -66,7 +66,7 @@ func (s *CommitSuite) TestNew() {
 	b := s.branchManager.Create(p, "testBranch")
 
 	ts := time.Now().UTC()
-	c := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
+	c := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts, "")
 
 	s.NotNil(c)
 
@@ -87,7 +87,7 @@ func (s *CommitSuite) TestGetByProjectAndHash() {
 	b := s.branchManager.Create(p, "testBranch")
 
 	ts := time.Now()
-	nC := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
+	nC := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts, "")
 
 	c, err := m.GetByProjectAndHash(p, nC.Hash)
 	s.Nil(err)
@@ -105,8 +105,8 @@ func (s *CommitSuite) TestGetAllForProject() {
 
 	b := s.branchManager.Create(p, "testBranch")
 
-	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now())
-	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", time.Now().Add(1*time.Second))
+	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now(), "")
+	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", time.Now().Add(1*time.Second), "")
 
 	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
 		Limit: 5,
@@ -147,9 +147,9 @@ func (s *CommitSuite) TestGetAllForProjectBranchFilter() {
 	b1 := s.branchManager.Create(p, "testBranch1")
 	b2 := s.branchManager.Create(p, "testBranch2")
 
-	m.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now())
-	c2 := m.Create(b2, p, "123456", "2est commit", "me@velocityci.io", time.Now().Add(1*time.Second))
-	c3 := m.Create(b2, p, "1234567", "2est commit", "me@velocityci.io", time.Now().Add(2*time.Second))
+	m.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now(), "")
+	c2 := m.Create(b2, p, "123456", "2est commit", "me@velocityci.io", time.Now().Add(1*time.Second), "")
+	c3 := m.Create(b2, p, "1234567", "2est commit", "me@velocityci.io", time.Now().Add(2*time.Second), "")
 
 	cs, total := m.GetAllForProject(p, &githistory.CommitQuery{
 		Limit:    5,
@@ -194,8 +194,8 @@ func (s *CommitSuite) TestGetAllForBranch() {
 
 	ts := time.Now()
 
-	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts)
-	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", ts)
+	c1 := m.Create(b, p, "abcdef", "test commit", "me@velocityci.io", ts, "")
+	c2 := m.Create(b, p, "123456", "2est commit", "me@velocityci.io", ts, "")
 
 	cs, total := m.GetAllForBranch(b, &domain.PagingQuery{Limit: 5, Page: 1})
 

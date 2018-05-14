@@ -130,7 +130,7 @@ func (s *BranchSuite) TestGetAllForCommit() {
 	b1 := m.Create(p, "testBranch")
 	b2 := m.Create(p, "2estBranch")
 
-	c := s.commitManager.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now())
+	c := s.commitManager.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now(), "")
 	s.commitManager.AddCommitToBranch(c, b2)
 
 	bs, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
