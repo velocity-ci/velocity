@@ -26,12 +26,12 @@ import Page.Helpers exposing (formatDate)
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
-import Json.Decode as Decode
 import Navigation
 import Views.Helpers exposing (onClickPage)
 import Json.Encode as Encode
-import Component.BranchFilter as BranchFilter
+import Component.DropdownFilter as DropdownFilter
 import Dom
+import Bootstrap.Button as Button
 
 
 -- MODEL --
@@ -43,7 +43,7 @@ type alias Model =
     , page : Int
     , submitting : Bool
     , branch : Maybe Branch
-    , dropdownState : BranchFilter.DropdownState
+    , dropdownState : DropdownFilter.DropdownState
     , branchFilterTerm : String
     }
 
@@ -74,7 +74,7 @@ init context session branches projectSlug maybeBranchName maybePage =
             , page = defaultPage
             , submitting = False
             , branch = maybeBranch
-            , dropdownState = BranchFilter.initialDropdownState
+            , dropdownState = DropdownFilter.initialDropdownState
             , branchFilterTerm = ""
             }
 
@@ -90,22 +90,32 @@ perPage =
     10
 
 
-branchFilterConfig : BranchFilter.Config Msg
+branchFilterConfig : DropdownFilter.Config Msg Branch
 branchFilterConfig =
     { dropdownMsg = BranchFilterDropdownMsg
     , termMsg = BranchFilterTermMsg
     , noOpMsg = NoOp
-    , selectBranchMsg = FilterBranch
+    , selectItemMsg = FilterBranch
+    , labelFn = (.name >> Just >> Branch.nameToString)
+    , icon = (i [ class "fa fa-code-fork" ] [])
+    , showFilter = True
+    , showAllItemsItem = True
     }
 
 
-branchFilterContext : List Branch -> Model -> BranchFilter.Context
+branchFilterContext : List Branch -> Model -> DropdownFilter.Context Branch
 branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
-    { branches = branches
-    , dropdownState = dropdownState
-    , filterTerm = branchFilterTerm
-    , selectedBranch = branch
-    }
+    let
+        items =
+            branches
+                |> List.filter .active
+                |> List.sortBy (branchFilterConfig.labelFn)
+    in
+        { items = items
+        , dropdownState = dropdownState
+        , filterTerm = branchFilterTerm
+        , selectedItem = branch
+        }
 
 
 
@@ -115,7 +125,7 @@ branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
 subscriptions : List Branch -> Model -> Sub Msg
 subscriptions branches model =
     branchFilterContext branches model
-        |> BranchFilter.subscriptions branchFilterConfig
+        |> DropdownFilter.subscriptions branchFilterConfig
 
 
 
@@ -152,12 +162,26 @@ view project branches model =
 
         branchFilter =
             branchFilterContext branches model
-                |> BranchFilter.view branchFilterConfig
+                |> DropdownFilter.view branchFilterConfig
+
+        refreshCommitsButton =
+            refreshButton project model
+
+        buttons =
+            div [ class "btn-toolbar" ]
+                [ branchFilter
+                , refreshCommitsButton
+                ]
+
+        paginationToolbar =
+            div [ class "btn-toolbar" ]
+                [ pagination model.page model.total project model.branch ]
     in
         div []
-            [ branchFilter
+            [ h4 [ class "mb-2" ] [ text "Commits" ]
+            , buttons
             , commits
-            , pagination model.page model.total project model.branch
+            , paginationToolbar
             ]
 
 
@@ -182,27 +206,6 @@ commitListToDict commits =
                 Dict.insert date insert dict
     in
         List.foldl reducer Dict.empty commits
-
-
-viewCommitToolbar : Project -> Maybe Branch -> List Branch -> Html Msg
-viewCommitToolbar project selectedBranch branches =
-    let
-        o b =
-            option
-                [ selected (b == selectedBranch) ]
-                [ text (Branch.nameToString (Maybe.map .name b)) ]
-
-        branchesSelect =
-            List.map Just branches
-                |> List.append [ Nothing ]
-                |> List.map o
-                |> select [ class "form-control", onChange ]
-
-        onChange =
-            on "change" (Decode.map FilterBranch Branch.selectDecoder)
-    in
-        nav [ class "navbar bg-light" ]
-            [ branchesSelect ]
 
 
 viewCommitListContainer : Project -> Dict ( Int, Int, Int ) (List Commit) -> Html Msg
@@ -236,8 +239,8 @@ viewCommitList project ( dateTuple, commits ) =
             Date.fromTuple dateTuple
                 |> formatDate
     in
-        div [ class "default-margin-bottom" ]
-            [ h6 [ class "mb-2 text-muted" ] [ text formattedDate ]
+        div []
+            [ h6 [ class "mb-2 mt-2 text-muted" ] [ text formattedDate ]
             , div [ class "card" ]
                 [ div [ class "list-group list-group-flush" ] commitListItems
                 ]
@@ -255,13 +258,13 @@ viewCommitListItem slug commit =
 
         branchList =
             commit.branches
-                |> List.map (\b -> span [ class "badge badge-secondary" ] [ text (Branch.nameToString (Just b)) ])
+                |> List.map (\b -> span [ class "badge badge-secondary" ] [ i [ class "fa fa-code-fork" ] [], text (" " ++ (Branch.nameToString (Just b))) ])
                 |> List.map (\b -> li [ class "list-inline-item" ] [ b ])
                 |> (ul [ class "mb-0 list-inline" ])
     in
         a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route, onClickPage NewUrl route ]
             [ div [ class "d-flex w-100 justify-content-between" ]
-                [ h5 [ class "mb-1 text-overflow" ] [ text commit.message ]
+                [ h6 [ class "mb-1 text-overflow" ] [ text commit.message ]
                 , small [] [ text truncatedHash ]
                 ]
             , div [ class "d-flex w-100 justify-content-between" ]
@@ -278,6 +281,11 @@ breadcrumb project =
 
 viewBreadcrumbExtraItems : Project -> Model -> Html Msg
 viewBreadcrumbExtraItems project model =
+    text ""
+
+
+refreshButton : Project -> Model -> Html Msg
+refreshButton project model =
     let
         submitting =
             project.synchronising || model.submitting
@@ -287,17 +295,15 @@ viewBreadcrumbExtraItems project model =
             , ("fa-spin fa-fw" => submitting)
             ]
     in
-        div [ class "ml-auto p-2" ]
-            [ button
+        Button.button
+            [ Button.outlineSecondary
+            , Button.attrs
                 [ class "ml-auto btn btn-dark"
-                , type_ "button"
                 , onClick SubmitSync
                 , disabled submitting
                 ]
-                [ i [ classList iconClassList ] []
-                , text " Refresh "
-                ]
             ]
+            [ i [ classList iconClassList ] [] ]
 
 
 pagination : Int -> Int -> Project -> Maybe Branch -> Html Msg
@@ -342,7 +348,7 @@ type Msg
     | NewUrl String
     | RefreshCommitList
     | RefreshCompleted (Result Request.Errors.HttpError (PaginatedList Commit))
-    | BranchFilterDropdownMsg BranchFilter.DropdownState
+    | BranchFilterDropdownMsg DropdownFilter.DropdownState
     | BranchFilterTermMsg String
     | NoOp
 
@@ -409,7 +415,8 @@ update context project session msg model =
                 newRoute =
                     Route.Project project.slug <| ProjectRoute.Commits uriEncoded (Just 1)
             in
-                model => Route.modifyUrl newRoute
+                { model | commits = [] }
+                    => Route.modifyUrl newRoute
 
         RefreshCommitList ->
             let
@@ -430,7 +437,7 @@ update context project session msg model =
 
         BranchFilterDropdownMsg state ->
             { model | dropdownState = state }
-                => Task.attempt (always NoOp) (Dom.focus "filter-branch-input")
+                => Task.attempt (always NoOp) (Dom.focus "filter-item-input")
 
         BranchFilterTermMsg term ->
             { model | branchFilterTerm = term }

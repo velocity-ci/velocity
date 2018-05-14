@@ -84,7 +84,7 @@ addBuild builds build =
         found =
             List.filter (compare build) builds
     in
-        if (List.length found == 0) then
+        if List.isEmpty found then
             List.append builds [ build ]
         else
             builds

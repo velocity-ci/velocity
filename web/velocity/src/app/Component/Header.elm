@@ -1,4 +1,4 @@
-module Page.Header exposing (Msg(..), view, Model, init, update, subscriptions)
+module Component.Header exposing (Msg(..), view, Model, init, update, subscriptions)
 
 import Util exposing ((=>))
 import Views.Page as Page exposing (ActivePage(..))
@@ -10,6 +10,7 @@ import Views.Spinner exposing (spinner)
 import Views.Helpers exposing (onClickPage)
 import Bootstrap.Navbar as Navbar
 import Navigation
+import Color
 
 
 -- MODEL --
@@ -45,11 +46,12 @@ view : Model -> Maybe User -> Bool -> ActivePage -> Html Msg
 view model user isLoading page =
     Navbar.config NavbarMsg
         |> Navbar.withAnimation
-        |> Navbar.collapseMedium
-        |> Navbar.dark
+        |> Navbar.collapseExtraLarge
+        |> Navbar.lightCustom Color.white
         |> Navbar.fixTop
-        |> Navbar.brand [ onClickPage NewUrl Route.Home, Route.href Route.Home ] [ text "Velocity CI" ]
-        |> Navbar.items (navbarItems user page)
+        --        |> Navbar.brand [ onClickPage NewUrl Route.Home, Route.href Route.Home ] [ text "Velocity CI" ]
+        |>
+            Navbar.items (navbarItems user page)
         |> Navbar.customItems (navbarCustomItems isLoading)
         |> Navbar.view model.navbarState
 

@@ -1,38 +1,42 @@
 module Page.Project.Commit.Task exposing (..)
 
+-- EXTERNAL --
+
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput, on, onSubmit)
+import Task exposing (Task)
+import Dict exposing (Dict)
+import Json.Encode as Encode
+import Array exposing (Array)
+import Bootstrap.Modal as Modal
+import Navigation
+
+
+-- INTERNAL --
+
 import Context exposing (Context)
+import Component.BuildOutput as BuildOutput
+import Component.BuildForm as BuildForm
+import Component.DropdownFilter as DropdownFilter
+import Data.AuthToken as AuthToken exposing (AuthToken)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
 import Data.Build as Build exposing (Build)
 import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
 import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Page.Helpers exposing (validClasses, formatDateTime)
-import Request.Commit
-import Request.Errors
-import Task exposing (Task)
-import Util exposing ((=>))
-import Validate exposing (..)
-import Views.Form as Form
-import Views.Page as Page
-import Json.Decode as Decode
-import Html.Events.Extra exposing (targetSelectedIndex)
-import Route
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
+import Util exposing ((=>))
+import Views.Page as Page
 import Views.Task exposing (viewStepList)
 import Views.Helpers exposing (onClickPage)
-import Navigation
-import Dict exposing (Dict)
-import Json.Encode as Encode
-import Array exposing (Array)
-import Html.Lazy as Lazy
 import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
-import Component.BuildOutput as BuildOutput
+import Request.Commit
+import Request.Errors
+import Route
 
 
 -- MODEL --
@@ -41,31 +45,13 @@ import Component.BuildOutput as BuildOutput
 type alias Model =
     { task : ProjectTask.Task
     , toggledStep : Maybe Step
-    , form : List Field
-    , errors : List Error
-    , selectedTab : Tab
+    , form : BuildForm.Context
+    , formModalVisibility : Modal.Visibility
+    , selectedTab : Maybe Tab
     , frame : Frame
+    , buildDropdownState : DropdownFilter.DropdownState
+    , buildFilterTerm : String
     }
-
-
-type alias InputFormField =
-    { value : String
-    , dirty : Bool
-    , field : String
-    }
-
-
-type alias ChoiceFormField =
-    { value : Maybe String
-    , dirty : Bool
-    , field : String
-    , options : List String
-    }
-
-
-type Field
-    = Input InputFormField
-    | Choice ChoiceFormField
 
 
 type alias FromBuild =
@@ -81,13 +67,12 @@ type Stream
 
 
 type Tab
-    = NewFormTab
-    | BuildTab Int
+    = BuildTab Int
 
 
 type Frame
     = BuildFrame BuildType
-    | NewFormFrame
+    | BlankFrame
 
 
 type BuildType
@@ -95,11 +80,11 @@ type BuildType
     | LoadingBuild (Maybe FromBuild) (Maybe ToBuild)
 
 
-stringToTab : Maybe String -> List Build -> Tab
+stringToTab : Maybe String -> List Build -> Maybe Tab
 stringToTab maybeSelectedTab builds =
     case maybeSelectedTab of
-        Just "new" ->
-            NewFormTab
+        Just "build-1" ->
+            Nothing
 
         Just tabText ->
             tabText
@@ -108,10 +93,9 @@ stringToTab maybeSelectedTab builds =
                 |> List.head
                 |> Maybe.andThen (String.toInt >> Result.toMaybe)
                 |> Maybe.map BuildTab
-                |> Maybe.withDefault NewFormTab
 
         Nothing ->
-            NewFormTab
+            Nothing
 
 
 init : Context -> Session msg -> Project.Id -> Commit.Hash -> ProjectTask.Task -> Maybe String -> List Build -> Task PageLoadError Model
@@ -120,88 +104,78 @@ init context session id hash task maybeSelectedTab builds =
         maybeAuthToken =
             Maybe.map .token session.user
 
-        handleLoadError _ =
-            pageLoadError Page.Project "Project unavailable."
-
         selectedTab =
             stringToTab maybeSelectedTab builds
 
-        initialModel frame =
-            let
-                toggledStep =
-                    Nothing
+        maybeMostRecentBuild =
+            builds
+                |> List.reverse
+                |> List.head
 
-                form =
-                    List.filterMap newField task.parameters
-
-                errors =
-                    List.concatMap validator form
-            in
-                { task = task
-                , toggledStep = toggledStep
-                , form = form
-                , errors = errors
-                , selectedTab = selectedTab
-                , frame = Maybe.withDefault NewFormFrame frame
-                }
+        init =
+            maybeBuildToModel context task maybeAuthToken selectedTab
     in
         case selectedTab of
-            NewFormTab ->
-                Task.succeed (initialModel (Just NewFormFrame))
-
-            BuildTab buildIndex ->
+            Just (BuildTab buildIndex) ->
                 let
                     build =
                         builds
                             |> Array.fromList
                             |> Array.get (buildIndex - 1)
                 in
-                    case build of
-                        Just b ->
-                            BuildOutput.init context task maybeAuthToken b
-                                |> Task.map (LoadedBuild b.id >> BuildFrame >> Just >> initialModel)
-                                |> Task.mapError handleLoadError
+                    init build
 
-                        Nothing ->
-                            Task.succeed (initialModel (Just NewFormFrame))
+            Nothing ->
+                init maybeMostRecentBuild
 
 
-newField : Parameter -> Maybe Field
-newField parameter =
-    case parameter of
-        StringParam param ->
-            let
-                value =
-                    Maybe.withDefault "" param.default
+maybeBuildToModel :
+    Context
+    -> ProjectTask.Task
+    -> Maybe AuthToken
+    -> Maybe Tab
+    -> Maybe Build
+    -> Task PageLoadError Model
+maybeBuildToModel context task maybeAuthToken selectedTab maybeBuild =
+    let
+        init =
+            initialModel task selectedTab
+    in
+        case maybeBuild of
+            Just b ->
+                BuildOutput.init context task maybeAuthToken b
+                    |> Task.map (LoadedBuild b.id >> BuildFrame >> init)
+                    |> Task.mapError handleLoadError
 
-                dirty =
-                    String.length value > 0
-            in
-                InputFormField value dirty param.name
-                    |> Input
-                    |> Just
+            Nothing ->
+                Task.succeed (init BlankFrame)
 
-        ChoiceParam param ->
-            let
-                options =
-                    param.default
-                        :: (List.map Just param.options)
-                        |> List.filterMap identity
 
-                value =
-                    case param.default of
-                        Nothing ->
-                            List.head options
+initialModel : ProjectTask.Task -> Maybe Tab -> Frame -> Model
+initialModel task selectedTab frame =
+    { task = task
+    , toggledStep = Nothing
+    , form = BuildForm.init task
+    , formModalVisibility = Modal.hidden
+    , selectedTab = selectedTab
+    , frame = frame
+    , buildDropdownState = DropdownFilter.initialDropdownState
+    , buildFilterTerm = ""
+    }
 
-                        default ->
-                            default
-            in
-                ChoiceFormField value True param.name options
-                    |> Choice
-                    |> Just
 
-        DerivedParam _ ->
-            Nothing
+handleLoadError : a -> PageLoadError
+handleLoadError _ =
+    pageLoadError Page.Project "Project unavailable."
+
+
+
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions { formModalVisibility } =
+    Modal.subscriptions formModalVisibility AnimateFormModal
 
 
 
@@ -244,6 +218,17 @@ mapEvents fromMsg events =
 
 
 
+--buildDropdownFilterConfig : DropdownFilter.Config Msg ProjectTask.Task
+--buildDropdownFilterConfig =
+--    { dropdownMsg = BuildFilterDropdownMsg
+--    , termMsg = BuildFilterTermMsg
+--    , noOpMsg = NoOp_
+--    , selectItemMsg = FilterTask
+--    , labelFn = (.name >> ProjectTask.nameToString)
+--    , icon = (strong [] [ text "Task: " ])
+--    , showFilter = False
+--    , showAllItemsItem = False
+--    }
 -- VIEW --
 
 
@@ -260,25 +245,50 @@ view project commit model builds =
             if List.isEmpty builds then
                 text ""
             else
-                viewTabs project commit task builds model.selectedTab
+                model.selectedTab
+                    |> Maybe.map (viewTabs project commit task builds)
+                    |> Maybe.withDefault (text "")
     in
         div [ class "row" ]
-            [ div [ class "col-sm-12 col-md-12 col-lg-12 default-margin-bottom" ]
-                [ viewTaskDescriptor task
+            [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
+                [ viewToolbar
                 , navigation
-                , Lazy.lazy (viewTabFrame model) builds
+                , viewTabFrame model builds commit
+                , viewFormModal model.task model.form model.formModalVisibility
                 ]
             ]
 
 
-viewTaskDescriptor : ProjectTask.Task -> Html Msg
-viewTaskDescriptor task =
-    div [ class "card mb-3" ]
-        [ div [ class "card-body" ]
-            [ h3 [] [ text (ProjectTask.nameToString task.name) ]
-            , p [ class "mb-0" ] [ text task.description ]
-            ]
-        ]
+viewFormModal : ProjectTask.Task -> BuildForm.Context -> Modal.Visibility -> Html Msg
+viewFormModal task form visibility =
+    let
+        hasFields =
+            not (List.isEmpty form.fields)
+
+        basicModal =
+            Modal.config CloseFormModal
+                |> Modal.withAnimation AnimateFormModal
+                |> Modal.large
+                |> Modal.hideOnBackdropClick True
+                |> Modal.h5 []
+                    [ text "Start "
+                    , strong [] [ text <| ProjectTask.nameToString task.name ]
+                    ]
+                |> Modal.footer [] [ BuildForm.viewSubmitButton buildFormConfig form ]
+
+        noParametersAlert =
+            div [ class "alert alert-info m-0" ]
+                [ i [ class "fa fa-info-circle" ] []
+                , text " No parameters required"
+                ]
+
+        modal =
+            if hasFields then
+                Modal.body [] (BuildForm.view buildFormConfig form) basicModal
+            else
+                Modal.body [] [ noParametersAlert ] basicModal
+    in
+        Modal.view visibility modal
 
 
 viewTabs : Project -> Commit -> ProjectTask.Task -> List Build -> Tab -> Html Msg
@@ -289,39 +299,21 @@ viewTabs project commit task builds selectedTab =
                 ( BuildTab c, BuildTab d ) ->
                     c == d
 
-                ( NewFormTab, NewFormTab ) ->
-                    True
-
-                _ ->
-                    False
-
         buildTab t =
             let
                 build =
                     case t of
-                        NewFormTab ->
-                            Nothing
-
                         BuildTab b ->
                             Array.fromList builds
                                 |> Array.get (b - 1)
 
                 tabContent =
                     case t of
-                        NewFormTab ->
-                            i [ class "fa fa-plus-circle text-secondary" ] []
-
                         BuildTab b ->
-                            if List.length builds == 1 then
-                                text "Build output "
-                            else
-                                text ("Build output #" ++ (toString b) ++ " ")
+                            text ("Build #" ++ (toString b) ++ " ")
 
                 tabQueryParam =
                     case t of
-                        NewFormTab ->
-                            "new"
-
                         BuildTab b ->
                             "build-" ++ (toString b)
 
@@ -363,90 +355,74 @@ viewTabs project commit task builds selectedTab =
             builds
                 |> List.indexedMap (\i -> (\_ -> buildTab (BuildTab (i + 1))))
     in
-        List.append buildTabs [ buildTab NewFormTab ]
-            |> ul [ class "nav nav-tabs nav-fill" ]
+        ul [ class "nav nav-tabs nav-fill" ] buildTabs
 
 
-viewTabFrame : Model -> List Build -> Html Msg
-viewTabFrame model builds =
+viewToolbar : Html Msg
+viewToolbar =
+    div [ class "btn-toolbar d-flex flex-row-reverse" ]
+        [ button
+            [ class "btn btn-primary btn-lg"
+            , style [ "border-radius" => "25px" ]
+            , onClick ShowOrSubmitTaskForm
+            ]
+            [ i [ class "fa fa-plus" ] [] ]
+        ]
+
+
+viewTabFrame : Model -> List Build -> Commit -> Html Msg
+viewTabFrame model builds commit =
     let
-        buildForm =
-            div [] <|
-                viewBuildForm (ProjectTask.nameToString model.task.name) model.form model.errors
-
         findBuild id =
             builds
                 |> List.filter (\a -> a.id == id)
                 |> List.head
     in
-        case model.frame of
-            NewFormFrame ->
-                buildForm
+        if List.isEmpty builds then
+            viewNoBuildsAlert model.task commit
+        else
+            case model.frame of
+                BlankFrame ->
+                    text ""
 
-            BuildFrame (LoadedBuild buildId buildOutputModel) ->
-                case findBuild buildId of
-                    Just build ->
-                        BuildOutput.view build buildOutputModel
-                            |> Html.map BuildOutputMsg
+                BuildFrame (LoadedBuild buildId buildOutputModel) ->
+                    case findBuild buildId of
+                        Just build ->
+                            BuildOutput.view build buildOutputModel
+                                |> Html.map BuildOutputMsg
 
-                    Nothing ->
-                        text ""
+                        Nothing ->
+                            text ""
 
-            _ ->
-                text ""
+                BuildFrame (LoadingBuild _ _) ->
+                    text ""
 
 
-viewBuildForm : String -> List Field -> List Error -> List (Html Msg)
-viewBuildForm taskName fields errors =
+viewNoBuildsAlert : ProjectTask.Task -> Commit -> Html Msg
+viewNoBuildsAlert task commit =
     let
-        fieldInput f =
-            case f of
-                Choice field ->
-                    let
-                        value =
-                            Maybe.withDefault "" field.value
+        icon =
+            i [ class "fa fa-info-circle" ] []
 
-                        option o =
-                            Html.option
-                                [ selected (o == value) ]
-                                [ text o ]
-                    in
-                        Form.select
-                            { name = field.field
-                            , label = field.field
-                            , help = Nothing
-                            , errors = []
-                            }
-                            [ attribute "required" ""
-                            , classList (validClasses errors field)
-                            , on "change" <| Decode.map (OnChange field) targetSelectedIndex
-                            ]
-                            (List.map option field.options)
+        preTaskNameText =
+            text " Task "
 
-                Input field ->
-                    Form.input
-                        { name = field.field
-                        , label = field.field
-                        , help = Nothing
-                        , errors = []
-                        }
-                        [ attribute "required" ""
-                        , value field.value
-                        , onInput (OnInput field)
-                        , classList (validClasses errors field)
-                        ]
-                        []
+        taskNameText =
+            strong [] [ text (ProjectTask.nameToString task.name) ]
+
+        postTaskNameText =
+            text " has not run yet for commit "
+
+        commitShaText =
+            strong [] [ text (Commit.truncateHash commit.hash) ]
     in
-        [ Html.form [ class "mt-3", attribute "novalidate" "", onSubmit SubmitForm ] <|
-            List.map fieldInput fields
-                ++ [ button
-                        [ class "btn btn-lg btn-block btn-primary"
-                        , type_ "submit"
-                        , disabled <| not (List.isEmpty errors)
-                        ]
-                        [ text "Start task" ]
-                   ]
-        ]
+        div [ class "alert alert-info mt-4" ]
+            [ icon
+            , preTaskNameText
+            , taskNameText
+            , postTaskNameText
+            , commitShaText
+            ]
 
 
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )
@@ -463,19 +439,34 @@ breadcrumb project commit task =
 
 type Msg
     = ToggleStep (Maybe Step)
-    | OnInput InputFormField String
-    | OnChange ChoiceFormField (Maybe Int)
+    | OnInput BuildForm.InputFormField String
+    | OnChange BuildForm.ChoiceFormField (Maybe Int)
     | SubmitForm
     | BuildCreated (Result Request.Errors.HttpError Build)
     | SelectTab Tab String
+    | SelectBuild (Maybe Build)
     | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
     | BuildOutputMsg BuildOutput.Msg
+    | CloseFormModal
+    | AnimateFormModal Modal.Visibility
+    | ShowOrSubmitTaskForm
+    | BuildFilterDropdownMsg DropdownFilter.DropdownState
+    | BuildFilterTermMsg String
+    | NoOp_
 
 
 type ExternalMsg
     = NoOp
     | AddBuild Build
     | UpdateBuild Build
+
+
+buildFormConfig : BuildForm.Config Msg
+buildFormConfig =
+    { submitMsg = SubmitForm
+    , onChangeMsg = OnChange
+    , onInputMsg = OnInput
+    }
 
 
 update : Context -> Project -> Commit -> List Build -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
@@ -494,105 +485,57 @@ update context project commit builds session msg model =
             Maybe.map .token session.user
     in
         case msg of
+            ShowOrSubmitTaskForm ->
+                let
+                    form =
+                        BuildForm.init model.task
+                in
+                    { model
+                        | formModalVisibility = Modal.shown
+                        , form = form
+                    }
+                        => Cmd.none
+                        => NoOp
+
+            CloseFormModal ->
+                { model
+                    | formModalVisibility = Modal.hidden
+                    , form = BuildForm.init model.task
+                }
+                    => Cmd.none
+                    => NoOp
+
+            AnimateFormModal visibility ->
+                { model | formModalVisibility = visibility }
+                    => Cmd.none
+                    => NoOp
+
             ToggleStep maybeStep ->
                 { model | toggledStep = maybeStep }
                     => Cmd.none
                     => NoOp
 
             OnInput field value ->
-                let
-                    updateField fieldType =
-                        case fieldType of
-                            Input f ->
-                                if f == field then
-                                    Input
-                                        { field
-                                            | value = value
-                                            , dirty = True
-                                        }
-                                else
-                                    fieldType
-
-                            _ ->
-                                fieldType
-
-                    form =
-                        List.map updateField model.form
-
-                    errors =
-                        List.concatMap validator form
-                in
-                    { model
-                        | form = form
-                        , errors = errors
-                    }
-                        => Cmd.none
-                        => NoOp
+                { model | form = BuildForm.updateInput field value model.form }
+                    => Cmd.none
+                    => NoOp
 
             OnChange field maybeIndex ->
-                let
-                    updateField fieldType =
-                        case ( fieldType, maybeIndex ) of
-                            ( Choice f, Just index ) ->
-                                if f == field then
-                                    let
-                                        value =
-                                            f.options
-                                                |> List.indexedMap (,)
-                                                |> List.filter (\( i, _ ) -> i == index)
-                                                |> List.head
-                                                |> Maybe.map Tuple.second
-                                    in
-                                        Choice
-                                            { field
-                                                | value = value
-                                                , dirty = True
-                                            }
-                                else
-                                    fieldType
-
-                            _ ->
-                                fieldType
-
-                    form =
-                        List.map updateField model.form
-
-                    errors =
-                        List.concatMap validator form
-                in
-                    { model
-                        | form = form
-                        , errors = errors
-                    }
-                        => Cmd.none
-                        => NoOp
+                { model | form = BuildForm.updateSelect field maybeIndex model.form }
+                    => Cmd.none
+                    => NoOp
 
             SubmitForm ->
                 let
-                    stringParam { value, field } =
-                        field => value
-
                     cmdFromAuth authToken =
                         authToken
-                            |> Request.Commit.createBuild context projectSlug commitHash taskName params
+                            |> Request.Commit.createBuild context projectSlug commitHash taskName (BuildForm.submitParams model.form)
                             |> Task.attempt BuildCreated
 
                     cmd =
                         session
                             |> Session.attempt "create build" cmdFromAuth
                             |> Tuple.second
-
-                    mapFieldToParam field =
-                        case field of
-                            Input input ->
-                                Just (stringParam input)
-
-                            Choice choice ->
-                                choice.value
-                                    |> Maybe.map (\value -> stringParam { value = value, field = choice.field })
-
-                    params =
-                        List.filterMap mapFieldToParam model.form
                 in
                     model
                         => cmd
@@ -654,12 +597,9 @@ update context project commit builds session msg model =
                                                 Nothing
                                 in
                                     BuildFrame (LoadingBuild fromBuild toBuild)
-
-                            NewFormTab ->
-                                NewFormFrame
                 in
                     { model
-                        | selectedTab = tab
+                        | selectedTab = Just tab
                         , frame = frame
                     }
                         => Navigation.newUrl url
@@ -681,32 +621,28 @@ update context project commit builds session msg model =
                             => Cmd.none
                             => NoOp
 
+            BuildFilterDropdownMsg state ->
+                { model | buildDropdownState = state }
+                    => Cmd.none
+                    => NoOp
 
+            BuildFilterTermMsg term ->
+                { model | buildFilterTerm = term }
+                    => Cmd.none
+                    => NoOp
 
--- VALIDATION --
+            SelectBuild maybeBuild ->
+                let
+                    route =
+                        CommitRoute.Task model.task.name Nothing
+                            |> ProjectRoute.Commit commitHash
+                            |> Route.Project project.slug
+                in
+                    model
+                        => Route.modifyUrl route
+                        => NoOp
 
-
-type alias Error =
-    ( String, String )
-
-
-validator : Validator Error Field
-validator =
-    [ \f ->
-        let
-            notBlank { field, value } =
-                ifBlank (field => "Field cannot be blank") value
-        in
-            case f of
-                Input fieldType ->
-                    notBlank fieldType
-
-                Choice fieldType ->
-                    (\{ field, value } ->
-                        value
-                            |> Maybe.withDefault ""
-                            |> ifBlank (field => "Field cannot be blank")
-                    )
-                        fieldType
-    ]
-        |> Validate.all
+            NoOp_ ->
+                model
+                    => Cmd.none
+                    => NoOp

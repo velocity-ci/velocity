@@ -28,6 +28,8 @@ import Json.Decode as Decode
 import Dict exposing (Dict)
 import Data.Build as Build exposing (Build, addBuild)
 import Page.Helpers exposing (sortByDatetime)
+import Bootstrap.Popover as Popover
+import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
 
 
 -- SUB PAGES --
@@ -56,6 +58,7 @@ type alias Model =
     , branches : List Branch
     , subPageState : SubPageState
     , builds : List Build
+    , sidebar : Sidebar.State
     }
 
 
@@ -84,6 +87,11 @@ init context session slug maybeRoute =
             , branches = branches.results
             , subPageState = Loaded initialSubPage
             , builds = builds.results
+            , sidebar =
+                { commitIconPopover = Popover.initialState
+                , settingsIconPopover = Popover.initialState
+                , projectBadgePopover = Popover.initialState
+                }
             }
 
         handleLoadError e =
@@ -213,6 +221,10 @@ subscriptions model =
             Commits.subscriptions model.branches subModel
                 |> Sub.map CommitsMsg
 
+        Commit subModel ->
+            Commit.subscriptions subModel
+                |> Sub.map CommitMsg
+
         _ ->
             Sub.none
 
@@ -221,53 +233,123 @@ subscriptions model =
 -- VIEW --
 
 
-type ActiveSubPage
-    = OtherPage
-    | OverviewPage
-    | CommitsPage
-    | SettingsPage
-
-
 view : Session msg -> Model -> Html Msg
 view session model =
+    viewSubPage session model
+
+
+sidebarConfig : Sidebar.Config Msg
+sidebarConfig =
+    { newUrlMsg = NewUrl
+    , commitPopMsg = CommitsIconPopMsg
+    , settingsPopMsg = SettingsIconPopMsg
+    , projectBadgePopMsg = ProjectBadgePopMsg
+    }
+
+
+viewSidebar : Session msg -> Model -> Html Msg
+viewSidebar session model =
     let
-        ( subPageFrame, breadcrumb ) =
-            viewSubPage session model
+        page =
+            getSubPage model.subPageState
+
+        sidebar =
+            Sidebar.view model.sidebar sidebarConfig model.project
     in
-        div []
-            [ breadcrumb
-            , div [ class "container-fluid" ] [ subPageFrame ]
-            ]
+        case page of
+            Overview _ ->
+                sidebar OverviewPage
+
+            Commits _ ->
+                sidebar CommitsPage
+
+            Commit _ ->
+                sidebar CommitsPage
+
+            Settings _ ->
+                sidebar SettingsPage
+
+            _ ->
+                sidebar OtherPage
 
 
-viewSidebar : Project -> ActiveSubPage -> Html Msg
-viewSidebar project subPage =
-    nav [ class "col-sm-3 col-md-2 d-none d-sm-block bg-light sidebar" ]
-        [ ul [ class "nav nav-pills flex-column" ]
-            [ sidebarLink (subPage == OverviewPage)
-                (Route.Project project.slug ProjectRoute.Overview)
-                [ i [ attribute "aria-hidden" "true", class "fa fa-home" ] [], text " Overview" ]
-            , sidebarLink (subPage == CommitsPage)
-                (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
-                [ i [ attribute "aria-hidden" "true", class "fa fa-list" ] [], text " Commits" ]
-            , sidebarLink (subPage == SettingsPage)
-                (Route.Project project.slug ProjectRoute.Settings)
-                [ i [ attribute "aria-hidden" "true", class "fa fa-cog" ] [], text " Settings" ]
-            ]
+viewSubPage : Session msg -> Model -> Html Msg
+viewSubPage session model =
+    let
+        page =
+            getSubPage model.subPageState
+
+        project =
+            model.project
+
+        branches =
+            model.branches
+
+        breadcrumb =
+            viewBreadcrumb project
+
+        pageFrame =
+            frame project
+    in
+        case page of
+            Blank ->
+                Html.text ""
+                    |> pageFrame (breadcrumb (text "") [])
+
+            Errored subModel ->
+                Html.text "Errored"
+                    |> pageFrame (breadcrumb (text "") [])
+
+            Overview _ ->
+                Overview.view project model.builds
+                    |> Html.map OverviewMsg
+                    |> pageFrame (breadcrumb (text "") [])
+
+            Commits subModel ->
+                let
+                    crumb =
+                        Commits.breadcrumb project
+                            |> breadcrumb crumbExtraItems
+
+                    crumbExtraItems =
+                        Commits.viewBreadcrumbExtraItems project subModel
+                            |> Html.map CommitsMsg
+                in
+                    Commits.view project branches subModel
+                        |> Html.map CommitsMsg
+                        |> pageFrame crumb
+
+            Commit subModel ->
+                let
+                    crumb =
+                        Commit.breadcrumb project subModel.commit subModel.subPageState
+                            |> breadcrumb (text "")
+                in
+                    Commit.view project subModel
+                        |> Html.map CommitMsg
+                        |> pageFrame crumb
+
+            Settings subModel ->
+                let
+                    crumb =
+                        Settings.breadcrumb project
+                            |> breadcrumb (text "")
+                in
+                    Settings.view project subModel
+                        |> Html.map SettingsMsg
+                        |> pageFrame crumb
+
+
+frame : Project -> Html msg -> Html msg -> Html msg
+frame project breadcrumb content =
+    div []
+        [ breadcrumb
+        , content
         ]
 
 
-sidebarLink : Bool -> Route -> List (Html Msg) -> Html Msg
-sidebarLink isActive route linkContent =
-    li [ class "nav-item" ]
-        [ a
-            [ class "nav-link"
-            , Route.href route
-            , classList [ ( "active", isActive ) ]
-            , onClickPage NewUrl route
-            ]
-            (linkContent ++ [ Util.viewIf isActive (span [ class "sr-only" ] [ text "(current)" ]) ])
-        ]
+
+-- BREADCRUMB
 
 
 viewBreadcrumb : Project -> Html Msg -> List ( Route, String ) -> Html Msg
@@ -288,11 +370,11 @@ viewBreadcrumb project additionalElements items =
             item |> viewBreadcrumbItem (i == (allItemLength - 1))
 
         itemElements =
-            List.indexedMap breadcrumbItem allItems
+            allItems
+                |> List.indexedMap breadcrumbItem
     in
-        div [ class "d-flex justify-content-start align-items-center bg-dark breadcrumb-container" ]
-            [ div [ class "p-2" ]
-                [ ol [ class "breadcrumb bg-dark", style [ ( "margin", "0" ) ] ] itemElements ]
+        div [ class "row" ]
+            [ ol [ class "breadcrumb bg-white mb-2 pb-0" ] itemElements
             , additionalElements
             ]
 
@@ -304,7 +386,7 @@ viewBreadcrumbItem active ( route, name ) =
             if active then
                 text name
             else
-                a [ Route.href route ] [ text name ]
+                a [ Route.href route, class "text-secondary" ] [ text name ]
     in
         li
             [ Route.href route
@@ -313,108 +395,6 @@ viewBreadcrumbItem active ( route, name ) =
             , classList [ ( "active", active ) ]
             ]
             [ children ]
-
-
-viewSubPage : Session msg -> Model -> ( Html Msg, Html Msg )
-viewSubPage session model =
-    let
-        page =
-            getSubPage model.subPageState
-
-        project =
-            model.project
-
-        branches =
-            model.branches
-
-        breadcrumb =
-            viewBreadcrumb project
-
-        sidebar =
-            viewSidebar project
-
-        pageFrame =
-            frame project
-    in
-        case page of
-            Blank ->
-                let
-                    content =
-                        Html.text ""
-                            |> pageFrame (sidebar OtherPage)
-                in
-                    ( content, breadcrumb (text "") [] )
-
-            Errored subModel ->
-                let
-                    content =
-                        Html.text "Errored"
-                            |> pageFrame (sidebar OtherPage)
-                in
-                    ( content, breadcrumb (text "") [] )
-
-            Overview _ ->
-                let
-                    content =
-                        Overview.view project model.builds
-                            |> Html.map OverviewMsg
-                            |> pageFrame (sidebar OverviewPage)
-                in
-                    ( content, breadcrumb (text "") [] )
-
-            Commits subModel ->
-                let
-                    content =
-                        Commits.view project branches subModel
-                            |> Html.map CommitsMsg
-                            |> pageFrame (sidebar CommitsPage)
-
-                    crumbExtraItems =
-                        Commits.viewBreadcrumbExtraItems project subModel
-                            |> Html.map CommitsMsg
-
-                    crumb =
-                        Commits.breadcrumb project
-                            |> breadcrumb crumbExtraItems
-                in
-                    ( content, crumb )
-
-            Commit subModel ->
-                let
-                    content =
-                        Commit.view project subModel
-                            |> Html.map CommitMsg
-                            |> pageFrame (sidebar CommitsPage)
-
-                    crumb =
-                        Commit.breadcrumb project subModel.commit subModel.subPageState
-                            |> breadcrumb (text "")
-                in
-                    ( content, crumb )
-
-            Settings subModel ->
-                let
-                    content =
-                        Settings.view project subModel
-                            |> Html.map SettingsMsg
-                            |> pageFrame (sidebar SettingsPage)
-
-                    crumb =
-                        Settings.breadcrumb project
-                            |> breadcrumb (text "")
-                in
-                    ( content, crumb )
-
-
-frame : Project -> Html msg -> Html msg -> Html msg
-frame project sidebar content =
-    div [ class "row" ]
-        [ sidebar
-        , div [ class "col-sm-9 ml-sm-auto col-md-10 pt-3 project-content-container " ]
-            [ h1 [ class "display-6" ] [ text project.name ]
-            , content
-            ]
-        ]
 
 
 
@@ -438,6 +418,10 @@ type Msg
     | AddBuildEvent Encode.Value
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
+    | CommitsIconPopMsg Popover.State
+    | SettingsIconPopMsg Popover.State
+    | ProjectBadgePopMsg Popover.State
+    | NoOp
 
 
 getSubPage : SubPageState -> SubPage
@@ -550,13 +534,43 @@ updateSubPage context session subPage msg model =
             in
                 ( { model | subPageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
 
+        sidebar =
+            model.sidebar
+
         errored =
             pageErrored model
     in
         case ( msg, subPage ) of
+            ( NoOp, _ ) ->
+                model => Cmd.none
+
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
+
+            ( CommitsIconPopMsg state, _ ) ->
+                let
+                    updatedSidebar =
+                        { sidebar | commitIconPopover = state }
+                in
+                    { model | sidebar = updatedSidebar }
+                        => Cmd.none
+
+            ( SettingsIconPopMsg state, _ ) ->
+                let
+                    updatedSidebar =
+                        { sidebar | settingsIconPopover = state }
+                in
+                    { model | sidebar = updatedSidebar }
+                        => Cmd.none
+
+            ( ProjectBadgePopMsg state, _ ) ->
+                let
+                    updatedSidebar =
+                        { sidebar | projectBadgePopover = state }
+                in
+                    { model | sidebar = updatedSidebar }
+                        => Cmd.none
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model

@@ -26,8 +26,9 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime, formatDateTime)
-import Views.Helpers exposing (onClickPage)
 import Views.Spinner exposing (spinner)
+import Component.DropdownFilter as DropdownFilter
+import Dom
 
 
 -- SUB PAGES --
@@ -54,6 +55,8 @@ type alias Model =
     , tasks : List ProjectTask.Task
     , builds : List Build
     , subPageState : SubPageState
+    , dropdownState : DropdownFilter.DropdownState
+    , taskFilterTerm : String
     }
 
 
@@ -85,6 +88,8 @@ init context session project hash maybeRoute =
             , tasks = tasks.results
             , builds = sortByDatetime .createdAt builds.results |> List.reverse
             , subPageState = Loaded initialSubPage
+            , dropdownState = DropdownFilter.initialDropdownState
+            , taskFilterTerm = ""
             }
 
         handleLoadError _ =
@@ -101,6 +106,29 @@ init context session project hash maybeRoute =
                             ( successModel, Cmd.none )
                 )
             |> Task.mapError handleLoadError
+
+
+
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    let
+        pageSubs =
+            case (getSubPage model.subPageState) of
+                CommitTask subModel ->
+                    CommitTask.subscriptions subModel
+                        |> Sub.map CommitTaskMsg
+
+                _ ->
+                    Sub.none
+
+        dropdownSubs =
+            taskFilterContext model
+                |> DropdownFilter.subscriptions taskDropdownFilterConfig
+    in
+        Sub.batch [ pageSubs, dropdownSubs ]
 
 
 
@@ -174,12 +202,12 @@ view project model =
     case getSubPage model.subPageState of
         Overview _ ->
             Overview.view project model.commit model.tasks model.builds
-                |> frame project model.commit OverviewMsg
+                |> frame project model OverviewMsg
 
         CommitTask subModel ->
             taskBuilds model.builds (Just subModel.task)
                 |> CommitTask.view project model.commit subModel
-                |> frame project model.commit CommitTaskMsg
+                |> frame project model CommitTaskMsg
 
         _ ->
             div [ class "d-flex justify-content-center" ] [ spinner ]
@@ -187,51 +215,41 @@ view project model =
 
 frame :
     { b | slug : Project.Slug }
-    -> Commit
+    -> Model
     -> (a -> Msg)
     -> Html a
     -> Html Msg
-frame project commit toMsg content =
+frame project model toMsg content =
     let
-        commitTitle =
-            commit.hash
-                |> Commit.truncateHash
-                |> String.append "Commit "
-                |> text
-
-        route =
-            Route.Project project.slug <| ProjectRoute.Commit commit.hash CommitRoute.Overview
-
-        link =
-            a [ Route.href route, onClickPage NewUrl route ] [ commitTitle ]
-
         viewCommitDetails =
             let
                 viewCommitDetailsIcon_ =
-                    viewCommitDetailsIcon commit
+                    viewCommitDetailsIcon model.commit
             in
-                div [ class "card mt-3 mb-3 bg-light" ]
-                    [ div [ class "card-body d-flex justify-content-between" ]
+                div [ class "card my-4" ]
+                    [ div [ class "d-flex justify-content-between card-body" ]
                         [ ul [ class "list-unstyled mb-0" ]
                             [ viewCommitDetailsIcon_ "fa-comment-o" .message
-                            , viewCommitDetailsIcon_ "fa-file-code-o" (.hash >> Commit.hashToString)
                             , viewCommitDetailsIcon_ "fa-user" .author
-                            , viewCommitDetailsIcon_ "fa-calendar" (.date >> formatDateTime)
                             ]
                         ]
                     ]
-
-        commitTitleStyle =
-            [ ( "position", "absolute" )
-            , ( "top", "2rem" )
-            , ( "right", "1rem" )
-            ]
     in
         div []
-            [ h2 [ style commitTitleStyle, class "display-7" ] [ link ]
-            , viewCommitDetails
+            [ viewBtnToolbar model
             , Html.map toMsg content
             ]
+
+
+viewBtnToolbar : Model -> Html Msg
+viewBtnToolbar model =
+    let
+        taskFilter =
+            taskFilterContext model
+                |> DropdownFilter.view taskDropdownFilterConfig
+    in
+        div [ class "btn-toolbar mb-2" ]
+            [ taskFilter ]
 
 
 viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
@@ -245,7 +263,8 @@ viewCommitDetailsIcon commit iconClass fn =
                 ]
             ]
             []
-        , " " ++ fn commit |> text
+        , text " "
+        , fn commit |> text
         ]
 
 
@@ -273,6 +292,40 @@ breadcrumb project commit subPageState =
             ]
 
 
+taskDropdownFilterConfig : DropdownFilter.Config Msg ProjectTask.Task
+taskDropdownFilterConfig =
+    { dropdownMsg = TaskFilterDropdownMsg
+    , termMsg = TaskFilterTermMsg
+    , noOpMsg = NoOp
+    , selectItemMsg = FilterTask
+    , labelFn = (.name >> ProjectTask.nameToString)
+    , icon = (strong [] [ text "Task: " ])
+    , showFilter = False
+    , showAllItemsItem = False
+    }
+
+
+taskFilterContext : Model -> DropdownFilter.Context ProjectTask.Task
+taskFilterContext { dropdownState, taskFilterTerm, tasks, subPageState } =
+    let
+        items =
+            List.sortBy (taskDropdownFilterConfig.labelFn) tasks
+
+        selectedItem =
+            case getSubPage subPageState of
+                CommitTask subModel ->
+                    Just subModel.task
+
+                _ ->
+                    Nothing
+    in
+        { items = items
+        , dropdownState = dropdownState
+        , filterTerm = taskFilterTerm
+        , selectedItem = selectedItem
+        }
+
+
 
 -- UPDATE --
 
@@ -286,6 +339,10 @@ type Msg
     | AddBuildEvent Encode.Value
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
+    | TaskFilterDropdownMsg DropdownFilter.DropdownState
+    | TaskFilterTermMsg String
+    | FilterTask (Maybe ProjectTask.Task)
+    | NoOp
 
 
 getSubPage : SubPageState -> SubPage
@@ -484,6 +541,32 @@ update context project session msg model =
                 in
                     { model | builds = builds }
                         => Cmd.none
+
+            ( TaskFilterTermMsg term, _ ) ->
+                { model | taskFilterTerm = term }
+                    => Cmd.none
+
+            ( TaskFilterDropdownMsg state, _ ) ->
+                { model | dropdownState = state }
+                    => Task.attempt (always NoOp) (Dom.focus "filter-item-input")
+
+            ( FilterTask maybeTask, _ ) ->
+                let
+                    commitRoute =
+                        case maybeTask of
+                            Just task ->
+                                CommitRoute.Task task.name Nothing
+
+                            Nothing ->
+                                CommitRoute.Overview
+
+                    route =
+                        commitRoute
+                            |> ProjectRoute.Commit model.commit.hash
+                            |> Route.Project project.slug
+                in
+                    { model | dropdownState = DropdownFilter.initialDropdownState }
+                        => Route.modifyUrl route
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page

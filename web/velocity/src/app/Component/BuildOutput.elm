@@ -14,8 +14,8 @@ import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
 import Request.Build
 import Request.Errors
 import Util exposing ((=>))
-import Page.Helpers exposing (validClasses, formatDateTime, formatTimeSeconds)
-import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
+import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
+import Views.Build exposing (..)
 
 
 -- EXTERNAL
@@ -166,26 +166,21 @@ streamChannelName stream =
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
 events model =
     let
-        streams =
-            model.outputStreams
-                |> Dict.foldl (\buildStepId val acc -> ( buildStepId, List.map .buildStream val.streams ) :: acc) []
-
-        foldStreamEvents ( buildStepId, streams_ ) dict =
-            streams_
+        foldStreamEvents ( buildStepId, streams ) dict =
+            streams
                 |> List.foldl
                     (\stream acc ->
                         let
-                            channelName =
-                                streamChannelName stream
-
                             events =
                                 [ ( "streamLine:new", AddStreamOutput buildStepId stream ) ]
                         in
-                            Dict.insert channelName events acc
+                            Dict.insert (streamChannelName stream) events acc
                     )
                     dict
     in
-        List.foldl foldStreamEvents Dict.empty streams
+        model.outputStreams
+            |> Dict.foldl (\buildStepId val acc -> ( buildStepId, List.map .buildStream val.streams ) :: acc) []
+            |> List.foldl foldStreamEvents Dict.empty
 
 
 leaveChannels : Model -> List String
@@ -264,9 +259,6 @@ view build { outputStreams } =
 
 viewStepContainer : Build -> ( a, { b | buildStep : BuildStep, streams : List OutputStream, taskStep : Step } ) -> Html Msg
 viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
-    --    if buildStep.status == BuildStep.Waiting then
-    --        text ""
-    --    else
     let
         buildStep_ =
             build.steps
@@ -276,7 +268,7 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
         case buildStep_ of
             Just step ->
                 div
-                    [ class "card mt-3"
+                    [ class "card mt-3 b-0"
                     , classList (buildStepBorderColourClassList step)
                     ]
                     [ h5
@@ -287,7 +279,7 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
                         , text " "
                         , viewBuildStepStatusIcon step
                         ]
-                    , div [ class "card-body p-0 small" ] [ viewStepLog streams ]
+                    , div [ class "card-body p-0 small b-0" ] [ viewStepLog streams ]
                     ]
 
             Nothing ->
@@ -313,12 +305,12 @@ viewStepLog streams =
                     )
                 |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
     in
-        table [ class "table table-hover table-sm mb-0" ] (List.map viewLine lines)
+        table [ class "table-sm mb-0" ] (List.map viewLine lines)
 
 
 viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg
 viewLine ( timestamp, streamName, line, streamIndex ) =
-    tr []
+    tr [ class "b-0" ]
         [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
         , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
         , td [] [ Ansi.Log.viewLine line ]
@@ -349,108 +341,3 @@ viewBuildInformation build =
                     ]
                 ]
             ]
-
-
-streamBadgeClass : Int -> String
-streamBadgeClass index =
-    case index of
-        0 ->
-            "badge-primary"
-
-        1 ->
-            "badge-secondary"
-
-        2 ->
-            "badge-success"
-
-        3 ->
-            "badge-danger"
-
-        4 ->
-            "badge-warning"
-
-        5 ->
-            "badge-info"
-
-        _ ->
-            "badge-dark"
-
-
-headerBackgroundColourClassList : BuildStep -> List ( String, Bool )
-headerBackgroundColourClassList { status } =
-    case status of
-        BuildStep.Waiting ->
-            []
-
-        BuildStep.Running ->
-            []
-
-        BuildStep.Success ->
-            [ "text-success" => True
-            , "bg-transparent" => True
-            ]
-
-        BuildStep.Failed ->
-            [ "bg-transparent" => True
-            , "text-danger" => True
-            ]
-
-
-buildStepBorderColourClassList : BuildStep -> List ( String, Bool )
-buildStepBorderColourClassList { status } =
-    case status of
-        BuildStep.Waiting ->
-            [ "border" => True
-            , "border-light" => True
-            ]
-
-        BuildStep.Running ->
-            [ "border" => True
-            , "border-primary" => True
-            ]
-
-        BuildStep.Success ->
-            [ "border" => True
-            , "border-success" => True
-            ]
-
-        BuildStep.Failed ->
-            [ "border" => True
-            , "border-danger" => True
-            ]
-
-
-buildCardClassList : Build -> List ( String, Bool )
-buildCardClassList { status } =
-    case status of
-        Build.Success ->
-            [ "border-success" => True
-            , "text-success" => True
-            ]
-
-        Build.Failed ->
-            [ "border-danger" => True
-            , "text-danger" => True
-            ]
-
-        _ ->
-            []
-
-
-viewCardTitle : ProjectTask.Step -> String
-viewCardTitle taskStep =
-    case taskStep of
-        Build _ ->
-            "Build"
-
-        Run _ ->
-            "Run"
-
-        Clone _ ->
-            "Clone"
-
-        Compose _ ->
-            "Compose"
-
-        Push _ ->
-            "Push"

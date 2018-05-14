@@ -84,8 +84,9 @@ func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 		} else {
 			sl.ReportError(p.Config.Address, "repository", "repository", "gitRepository", "")
 		}
+	} else {
+		os.RemoveAll(repo.Directory)
 	}
-	os.RemoveAll(repo.Directory)
 }
 
 func registerFuncRepository(ut ut.Translator) error {

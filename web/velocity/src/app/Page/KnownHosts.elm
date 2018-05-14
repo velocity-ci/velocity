@@ -14,51 +14,20 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Util exposing ((=>))
-import Views.Form as Form
-import Validate exposing (..)
-import Page.Helpers exposing (ifBelowLength, ifAboveLength, validClasses, formatDateTime, sortByDatetime, getFieldErrors)
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
-import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
+import Component.KnownHostForm as KnownHostForm
+import Bootstrap.Modal as Modal
+import Util exposing ((=>), onClickStopPropagation, viewIf)
+import Component.Form as Form
 
 
 -- MODEL --
 
 
-type Field
-    = Form
-    | ScannedKey
-
-
-type alias FormField =
-    { value : String
-    , dirty : Bool
-    , field : Field
-    }
-
-
-type alias KnownHostForm =
-    { scannedKey : FormField
-    }
-
-
 type alias Model =
-    { formCollapsed : Bool
-    , form : KnownHostForm
-    , errors : List Error
-    , serverErrors : List Error
-    , submitting : Bool
+    { formModalVisibility : Modal.Visibility
+    , form : KnownHostForm.Context
     , knownHosts : List KnownHost
-    }
-
-
-newField : Field -> FormField
-newField field =
-    FormField "" False field
-
-
-initialForm : KnownHostForm
-initialForm =
-    { scannedKey = newField ScannedKey
     }
 
 
@@ -75,11 +44,8 @@ init context session =
             pageLoadError Page.KnownHosts "Known hosts are currently unavailable."
 
         initialModel (Paginated { total, results }) =
-            { formCollapsed = True
-            , form = initialForm
-            , errors = validate initialForm
-            , serverErrors = []
-            , submitting = False
+            { formModalVisibility = Modal.hidden
+            , form = KnownHostForm.init
             , knownHosts = results
             }
     in
@@ -88,126 +54,81 @@ init context session =
 
 
 
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions { formModalVisibility } =
+    Modal.subscriptions formModalVisibility AnimateFormModal
+
+
+
 -- VIEW --
 
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    div [ class "container-fluid" ]
-        [ viewKnownHostFormContainer model
-        , viewKnownHostList model.knownHosts
+    let
+        hasKnownHosts =
+            not (List.isEmpty model.knownHosts)
+
+        knownHostList =
+            viewKnownHostList model.knownHosts
+    in
+        div [ class "py-2 my-4" ]
+            [ viewToolbar
+            , viewIf hasKnownHosts knownHostList
+            , viewFormModal model.form model.formModalVisibility
+            ]
+
+
+viewToolbar : Html Msg
+viewToolbar =
+    div [ class "btn-toolbar d-flex flex-row-reverse" ]
+        [ button
+            [ class "btn btn-primary btn-lg"
+            , style [ "border-radius" => "25px" ]
+            , onClick ShowFormModal
+            ]
+            [ i [ class "fa fa-plus" ] [] ]
         ]
-
-
-viewKnownHostFormContainer : Model -> Html Msg
-viewKnownHostFormContainer model =
-    let
-        toggleClassList =
-            [ ( "fa-plus", model.formCollapsed )
-            , ( "fa-minus", not model.formCollapsed )
-            ]
-    in
-        div [ class "row default-margin-top" ]
-            [ div [ class "col-12" ]
-                [ div [ class "card" ]
-                    [ h4 [ class "card-header" ]
-                        [ text "Add Known Host"
-                        , button
-                            [ type_ "button"
-                            , class "btn btn-primary btn-sm float-right"
-                            , onClick (SetFormCollapsed <| not model.formCollapsed)
-                            , disabled model.submitting
-                            ]
-                            [ i [ class "fa", classList toggleClassList ] [] ]
-                        ]
-                    , Util.viewIf (not model.formCollapsed) <| viewKnownHostForm model
-                    ]
-                ]
-            ]
-
-
-viewGlobalError : Error -> Html Msg
-viewGlobalError error =
-    div [ class "alert alert-danger" ] [ text (Tuple.second error) ]
-
-
-viewKnownHostForm : Model -> Html Msg
-viewKnownHostForm model =
-    let
-        form =
-            model.form
-
-        combinedErrors =
-            model.errors ++ model.serverErrors
-
-        inputClassList =
-            validClasses combinedErrors
-
-        errors field =
-            if field.dirty then
-                getFieldErrors combinedErrors field
-            else
-                []
-
-        globalErrors =
-            List.filter (\e -> (Tuple.first e) == Form) combinedErrors
-    in
-        div [ class "card-body" ]
-            (List.map viewGlobalError globalErrors
-                ++ [ Html.form [ attribute "novalidate" "", onSubmit SubmitForm ]
-                        [ Form.textarea
-                            { name = "scanned_key"
-                            , label = "Scanned key"
-                            , help = Nothing
-                            , errors = errors form.scannedKey
-                            }
-                            [ placeholder "Scanned key (ssh-keyscan <host>)"
-                            , attribute "required" ""
-                            , rows 3
-                            , value form.scannedKey.value
-                            , onInput SetScannedKey
-                            , classList <| inputClassList form.scannedKey
-                            , disabled model.submitting
-                            ]
-                            []
-                        , button
-                            [ class "btn btn-primary"
-                            , type_ "submit"
-                            , disabled ((not <| List.isEmpty combinedErrors) || model.submitting)
-                            ]
-                            [ text "Submit" ]
-                        , Util.viewIf model.submitting Form.viewSpinner
-                        ]
-                   ]
-            )
 
 
 viewKnownHostList : List KnownHost -> Html Msg
 viewKnownHostList knownHosts =
-    let
-        knownHostAmount =
-            knownHosts
-                |> List.length
-                |> toString
-    in
-        div [ class "row default-margin-top" ]
-            [ div [ class "col-12" ]
-                [ div [ class "card" ]
-                    [ h4 [ class "card-header" ] [ text ("Known hosts (" ++ knownHostAmount ++ ")") ]
-                    , ul [ class "list-group" ] (List.map viewKnownHostListItem knownHosts)
-                    ]
-                ]
-            ]
+    div []
+        [ h6 [] [ text "Known hosts" ]
+        , ul [ class "list-group list-group-flush" ] (List.map viewKnownHostListItem knownHosts)
+        ]
+
+
+viewFormModal : KnownHostForm.Context -> Modal.Visibility -> Html Msg
+viewFormModal knownHostForm visibility =
+    Modal.config CloseFormModal
+        |> Modal.withAnimation AnimateFormModal
+        |> Modal.large
+        |> Modal.hideOnBackdropClick True
+        |> Modal.h3 [] [ text "Add known host" ]
+        |> Modal.body [] [ KnownHostForm.view knownHostFormConfig knownHostForm ]
+        |> Modal.footer [] [ KnownHostForm.viewSubmitButton knownHostFormConfig knownHostForm ]
+        |> Modal.view visibility
 
 
 viewKnownHostListItem : KnownHost -> Html Msg
 viewKnownHostListItem knownHost =
-    li [ class "list-group-item list-group-item-action flex-column align-items-start" ]
+    li [ class "list-group-item align-items-start px-0" ]
         [ div [ class "d-flex w-100 justify-content-between" ]
-            [ h5 [ class "mb-1" ] [ text (String.join "," knownHost.hosts) ] ]
-        , small []
-            [ text knownHost.sha256 ]
+            [ h6 [ class "mb-1" ] [ text (String.join "," knownHost.hosts) ]
+            , small [] [ text knownHost.sha256 ]
+            ]
         ]
+
+
+knownHostFormConfig : KnownHostForm.Config Msg
+knownHostFormConfig =
+    { setScannedKeyMsg = SetScannedKey
+    , submitMsg = SubmitForm
+    }
 
 
 
@@ -216,9 +137,11 @@ viewKnownHostListItem knownHost =
 
 type Msg
     = SubmitForm
-    | SetFormCollapsed Bool
     | SetScannedKey String
     | KnownHostCreated (Result Request.Errors.HttpError KnownHost)
+    | CloseFormModal
+    | ShowFormModal
+    | AnimateFormModal Modal.Visibility
 
 
 type ExternalMsg
@@ -226,158 +149,81 @@ type ExternalMsg
     | HandleRequestError Request.Errors.HandledError
 
 
-updateInput : Field -> String -> FormField
-updateInput field value =
-    FormField value True field
-
-
-resetServerErrors : List Error -> Field -> List Error
-resetServerErrors errors field =
-    let
-        shouldInclude error =
-            let
-                errorField =
-                    Tuple.first error
-            in
-                errorField /= field && errorField /= Form
-    in
-        List.filter shouldInclude errors
-
-
-serverErrorToFormError : ( String, String ) -> Error
-serverErrorToFormError ( fieldNameString, errorString ) =
-    let
-        field =
-            case fieldNameString of
-                "entry" ->
-                    ScannedKey
-
-                _ ->
-                    Form
-    in
-        field => errorString
-
-
 update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update context session msg model =
-    let
-        form =
-            model.form
+    case msg of
+        CloseFormModal ->
+            { model
+                | formModalVisibility = Modal.hidden
+                , form = KnownHostForm.init
+            }
+                => Cmd.none
+                => NoOp
 
-        resetServerErrorsForField =
-            resetServerErrors model.serverErrors
-    in
-        case msg of
-            SubmitForm ->
-                case validate form of
-                    [] ->
-                        let
-                            submitValues =
-                                { scannedKey = form.scannedKey.value
-                                }
+        AnimateFormModal visibility ->
+            { model | formModalVisibility = visibility }
+                => Cmd.none
+                => NoOp
 
-                            cmdFromAuth authToken =
-                                authToken
-                                    |> Request.KnownHost.create context submitValues
-                                    |> Task.attempt KnownHostCreated
+        ShowFormModal ->
+            { model | formModalVisibility = Modal.shown }
+                => Cmd.none
+                => NoOp
 
-                            cmd =
-                                session
-                                    |> Session.attempt "create known host" cmdFromAuth
-                                    |> Tuple.second
-                        in
-                            { model
-                                | submitting = True
-                                , serverErrors = []
-                                , errors = []
-                            }
-                                => cmd
-                                => NoOp
+        SubmitForm ->
+            let
+                cmdFromAuth authToken =
+                    authToken
+                        |> Request.KnownHost.create context (KnownHostForm.submitValues model.form)
+                        |> Task.attempt KnownHostCreated
 
-                    errors ->
-                        { model | errors = errors }
-                            => Cmd.none
-                            => NoOp
-
-            SetFormCollapsed state ->
-                { model | formCollapsed = state }
-                    => Cmd.none
+                cmd =
+                    session
+                        |> Session.attempt "create knownHost" cmdFromAuth
+                        |> Tuple.second
+            in
+                { model | form = Form.submit model.form }
+                    => cmd
                     => NoOp
 
-            SetScannedKey scannedKey ->
-                let
-                    newForm =
-                        { form | scannedKey = scannedKey |> (updateInput ScannedKey) }
-                in
-                    { model
-                        | errors = validate newForm
-                        , form = newForm
-                        , serverErrors = resetServerErrorsForField ScannedKey
-                    }
-                        => Cmd.none
-                        => NoOp
+        SetScannedKey name ->
+            { model | form = KnownHostForm.update model.form KnownHostForm.ScannedKey name }
+                => Cmd.none
+                => NoOp
 
-            KnownHostCreated (Err err) ->
-                let
-                    newState =
-                        { model | submitting = False }
-
-                    stateWithErrorMessages errorMessages =
-                        { newState
-                            | serverErrors = List.map serverErrorToFormError errorMessages
-                        }
-                            => Cmd.none
-                            => NoOp
-                in
+        KnownHostCreated (Err err) ->
+            let
+                ( updatedForm, externalMsg ) =
                     case err of
                         Request.Errors.HandledError handledError ->
-                            newState => Cmd.none => HandleRequestError handledError
+                            model.form
+                                => HandleRequestError handledError
 
                         Request.Errors.UnhandledError (Http.BadStatus response) ->
-                            response.body
-                                |> decodeString errorsDecoder
-                                |> Result.withDefault []
-                                |> stateWithErrorMessages
+                            let
+                                errors =
+                                    response.body
+                                        |> decodeString KnownHostForm.errorsDecoder
+                                        |> Result.withDefault []
+                            in
+                                model.form
+                                    |> Form.updateServerErrors errors KnownHostForm.serverErrorToFormError
+                                    => NoOp
 
                         _ ->
-                            stateWithErrorMessages [ ( "", "Unable to process knownHost." ) ]
-
-            KnownHostCreated (Ok knownHost) ->
-                { model
-                    | knownHosts = knownHost :: model.knownHosts
-                    , submitting = False
-                    , formCollapsed = True
-                    , form = initialForm
-                }
+                            model.form
+                                |> Form.updateServerErrors [ "" => "Unable to process known hosts." ] KnownHostForm.serverErrorToFormError
+                                => NoOp
+            in
+                { model | form = Form.submitting False updatedForm }
                     => Cmd.none
-                    => NoOp
+                    => externalMsg
 
-
-
--- VALIDATION --
-
-
-type alias Error =
-    ( Field, String )
-
-
-validate : Validator ( Field, String ) KnownHostForm
-validate =
-    Validate.all
-        [ (.scannedKey >> .value) >> (ifBelowLength 8) (ScannedKey => "Private key must be over 7 characters.")
-        ]
-
-
-errorsDecoder : Decoder (List ( String, String ))
-errorsDecoder =
-    decode (\scannedKey -> List.concat [ scannedKey ])
-        |> optionalError "entry"
-
-
-optionalError : String -> Decoder (List ( String, String ) -> a) -> Decoder a
-optionalError fieldName =
-    let
-        errorToTuple errorMessage =
-            ( fieldName, errorMessage )
-    in
-        optional fieldName (Decode.list (Decode.map errorToTuple string)) []
+        KnownHostCreated (Ok knownHost) ->
+            { model
+                | knownHosts = knownHost :: model.knownHosts
+                , formModalVisibility = Modal.hidden
+                , form = KnownHostForm.init
+            }
+                => Cmd.none
+                => NoOp

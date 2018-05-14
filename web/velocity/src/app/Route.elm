@@ -14,6 +14,7 @@ type Route
     | Login
     | Logout
     | Projects
+    | Users
     | Project Project.Slug ProjectRoute.Route
     | KnownHosts
 
@@ -26,6 +27,7 @@ route =
         , Url.map Logout (s "logout")
         , Url.map Projects (s "projects")
         , Url.map KnownHosts (s "known-hosts")
+        , Url.map Users (s "users")
         , Url.map (\slug -> Project slug ProjectRoute.default) (s "projects" </> Project.slugParser)
         , Url.map Project (s "projects" </> Project.slugParser </> ProjectRoute.route)
         ]
@@ -35,32 +37,40 @@ route =
 -- INTERNAL --
 
 
+routePieces : Route -> ( List String, List ( String, String ) )
+routePieces page =
+    case page of
+        Home ->
+            [] => []
+
+        Login ->
+            [ "sign-in" ] => []
+
+        Logout ->
+            [ "logout" ] => []
+
+        Projects ->
+            [ "projects" ] => []
+
+        Users ->
+            [ "users" ] => []
+
+        Project slug child ->
+            let
+                ( subPath, subQuery ) =
+                    ProjectRoute.routeToPieces child
+            in
+                ( [ "projects", Project.slugToString slug ] ++ subPath, subQuery )
+
+        KnownHosts ->
+            [ "known-hosts" ] => []
+
+
 routeToString : Route -> String
 routeToString page =
     let
         pieces =
-            case page of
-                Home ->
-                    [] => []
-
-                Login ->
-                    [ "sign-in" ] => []
-
-                Logout ->
-                    [ "logout" ] => []
-
-                Projects ->
-                    [ "projects" ] => []
-
-                Project slug child ->
-                    let
-                        ( subPath, subQuery ) =
-                            ProjectRoute.routeToPieces child
-                    in
-                        ( [ "projects", Project.slugToString slug ] ++ subPath, subQuery )
-
-                KnownHosts ->
-                    [ "known-hosts" ] => []
+            routePieces page
 
         path =
             Tuple.first pieces

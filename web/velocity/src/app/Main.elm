@@ -5,23 +5,26 @@ import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
 import Navigation exposing (Location)
 import Views.Page as Page exposing (ActivePage)
+import Bootstrap.Dropdown as Dropdown
 import Page.Errored as Errored exposing (PageLoadError)
 import Page.Home as Home
 import Page.Login as Login
 import Page.NotFound as NotFound
-import Page.Projects as Projects
 import Page.Project as Project
 import Page.KnownHosts as KnownHosts
+import Page.Users as Users
+import Page.Users as User
 import Request.Errors
 import Request.Channel
 import Route exposing (Route)
 import Util exposing ((=>))
-import Page.Header as Header
+import Component.Header as Header
 import Phoenix.Socket as Socket exposing (Socket)
-import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
 import Task
 import Ports
+import Component.UserSidebar as UserSidebar
+import Html exposing (Html, text, div)
 
 
 type Page
@@ -29,10 +32,10 @@ type Page
     | NotFound
     | Errored PageLoadError
     | Home Home.Model
-    | Projects Projects.Model
     | Project Project.Model
     | Login Login.Model
     | KnownHosts KnownHosts.Model
+    | Users Users.Model
 
 
 type PageState
@@ -49,6 +52,7 @@ type alias Model =
     , context : Context
     , pageState : PageState
     , headerState : Header.Model
+    , userSidebar : UserSidebar.State
     }
 
 
@@ -81,6 +85,7 @@ init flags location =
                 , context = context
                 , session = session
                 , headerState = headerState
+                , userSidebar = UserSidebar.init
                 }
     in
         initialModel
@@ -107,6 +112,13 @@ initialSocket { wsUrl } =
     Socket.init wsUrl
 
 
+userSidebarConfig : UserSidebar.Config Msg
+userSidebarConfig =
+    { userDropdownMsg = UserDropdownToggleMsg
+    , newUrlMsg = NewUrl
+    }
+
+
 
 -- VIEW --
 
@@ -117,19 +129,22 @@ view model =
         page =
             viewPage model.session
 
+        sidebar =
+            viewSidebar model
+
         header =
             viewHeader model
     in
         case model.pageState of
             Loaded activePage ->
                 div []
-                    [ header False activePage
+                    [ sidebar False activePage
                     , page False activePage
                     ]
 
             TransitioningFrom activePage ->
                 div []
-                    [ header True activePage
+                    [ sidebar True activePage
                     , page True activePage
                     ]
 
@@ -139,9 +154,6 @@ pageToActivePage page =
     case page of
         Home _ ->
             Page.Home
-
-        Projects _ ->
-            Page.Projects
 
         Project _ ->
             Page.Project
@@ -159,6 +171,30 @@ viewHeader { session, headerState } isLoading page =
         |> pageToActivePage
         |> Header.view headerState session.user isLoading
         |> Html.map HeaderMsg
+
+
+viewSidebar : Model -> Bool -> Page -> Html Msg
+viewSidebar model isLoading page =
+    let
+        pageSidebar =
+            case page of
+                Project subModel ->
+                    Project.viewSidebar model.session subModel
+                        |> Html.map ProjectMsg
+
+                _ ->
+                    text ""
+
+        userSidebar =
+            case model.session.user of
+                Just user ->
+                    UserSidebar.view model.userSidebar userSidebarConfig
+
+                Nothing ->
+                    text ""
+    in
+        div [] [ pageSidebar, userSidebar ]
+            |> Page.sidebarFrame NewUrl
 
 
 viewPage : Session Msg -> Bool -> Page -> Html Msg
@@ -187,11 +223,6 @@ viewPage session isLoading page =
                     |> Html.map HomeMsg
                     |> frame Page.Home
 
-            Projects subModel ->
-                Projects.view session subModel
-                    |> Html.map ProjectsMsg
-                    |> frame Page.Projects
-
             Project subModel ->
                 Project.view session subModel
                     |> Html.map ProjectMsg
@@ -206,6 +237,11 @@ viewPage session isLoading page =
                 KnownHosts.view session subModel
                     |> Html.map KnownHostsMsg
                     |> frame Page.KnownHosts
+
+            Users subModel ->
+                Users.view session subModel
+                    |> Html.map (always NoOp)
+                    |> frame Page.Users
 
 
 
@@ -226,12 +262,15 @@ subscriptions model =
         socket =
             Socket.listen model.session.socket SocketMsg
 
+        userSidebar =
+            UserSidebar.subscriptions userSidebarConfig model.userSidebar
+
         page =
             model.pageState
                 |> getPage
                 |> pageSubscriptions
     in
-        Sub.batch [ header, session, socket, page ]
+        Sub.batch [ header, session, socket, page, userSidebar ]
 
 
 pageSubscriptions : Page -> Sub Msg
@@ -240,6 +279,14 @@ pageSubscriptions page =
         Project subModel ->
             Project.subscriptions subModel
                 |> Sub.map ProjectMsg
+
+        Home subModel ->
+            Home.subscriptions subModel
+                |> Sub.map HomeMsg
+
+        KnownHosts subModel ->
+            KnownHosts.subscriptions subModel
+                |> Sub.map KnownHostsMsg
 
         _ ->
             Sub.none
@@ -265,21 +312,23 @@ getPage pageState =
 
 
 type Msg
-    = SetRoute (Maybe Route)
+    = NewUrl String
+    | SetRoute (Maybe Route)
     | HomeMsg Home.Msg
     | HomeLoaded Home.Model
     | SetUser (Maybe User)
     | SessionExpired
     | LoadFailed PageLoadError
     | LoginMsg Login.Msg
-    | ProjectsLoaded Projects.Model
-    | ProjectsMsg Projects.Msg
     | ProjectLoaded ( Project.Model, Cmd Project.Msg )
     | ProjectMsg Project.Msg
     | KnownHostsLoaded KnownHosts.Model
     | KnownHostsMsg KnownHosts.Msg
+    | UsersLoaded Users.Model
+    | UsersMsg Users.Msg
     | SocketMsg (Socket.Msg Msg)
     | HeaderMsg Header.Msg
+    | UserDropdownToggleMsg Dropdown.State
     | NoOp
 
 
@@ -291,12 +340,6 @@ leavePageChannels session page route =
 
         ( newSocket, leaveCmd ) =
             case page of
-                Projects _ ->
-                    if route == Just Route.Projects then
-                        session.socket => Cmd.none
-                    else
-                        leaveChannels [ Projects.channelName ] session.socket
-
                 Home _ ->
                     if route == Just Route.Home then
                         session.socket => Cmd.none
@@ -394,6 +437,14 @@ setRoute maybeRoute model =
             Just (Route.Login) ->
                 { model | pageState = Loaded (Login Login.initialModel) } => Cmd.none
 
+            Just (Route.Users) ->
+                case model.session.user of
+                    Just user ->
+                        transition UsersLoaded (Users.init model.context model.session)
+
+                    Nothing ->
+                        model => Route.modifyUrl Route.Login
+
             Just (Route.Logout) ->
                 let
                     session =
@@ -405,20 +456,7 @@ setRoute maybeRoute model =
                           ]
 
             Just (Route.Projects) ->
-                case model.session.user of
-                    Just user ->
-                        let
-                            ( newModel, pageCmd ) =
-                                transition ProjectsLoaded (Projects.init model.context model.session)
-
-                            ( listeningSocket, socketCmd ) =
-                                joinChannels ProjectsMsg Projects.initialEvents
-                        in
-                            { newModel | session = { session | socket = listeningSocket } }
-                                ! [ pageCmd, Cmd.map SocketMsg socketCmd ]
-
-                    Nothing ->
-                        model => Route.modifyUrl Route.Login
+                setRoute (Just Route.Home) model
 
             Just (Route.KnownHosts) ->
                 case model.session.user of
@@ -522,6 +560,10 @@ updatePage page msg model =
             Request.Channel.joinChannels session.socket maybeToken handledChannelErrorToMsg
     in
         case ( msg, page ) of
+            ( NewUrl url, _ ) ->
+                model
+                    => Navigation.newUrl url
+
             ( SocketMsg msg, _ ) ->
                 let
                     ( newSocket, socketCmd ) =
@@ -544,6 +586,14 @@ updatePage page msg model =
 
             ( SessionExpired, _ ) ->
                 setRouteUpdate (Just Route.Logout) model
+
+            ( UserDropdownToggleMsg state, _ ) ->
+                let
+                    sidebar =
+                        model.userSidebar
+                in
+                    { model | userSidebar = { sidebar | userDropdown = state } }
+                        => Cmd.none
 
             ( SetUser user, _ ) ->
                 let
@@ -597,28 +647,44 @@ updatePage page msg model =
                 { model | pageState = Loaded (Home subModel) } => Cmd.none
 
             ( HomeMsg subMsg, Home subModel ) ->
-                toPage Home HomeMsg (Home.update session) subMsg subModel
-
-            ( ProjectsLoaded subModel, _ ) ->
-                { model | pageState = Loaded (Projects subModel) } => Cmd.none
-
-            ( ProjectsMsg subMsg, Projects subModel ) ->
                 let
                     ( ( newSubModel, newSubCmd ), externalMsg ) =
-                        Projects.update model.context session subMsg subModel
+                        Home.update model.context session subMsg subModel
 
                     model_ =
-                        { model | pageState = Loaded (Projects newSubModel) }
+                        { model | pageState = Loaded (Home newSubModel) }
 
                     ( modelAfterExternalMsg, cmdAfterExternalMsg ) =
                         case externalMsg of
-                            Projects.NoOp ->
+                            Home.NoOp ->
                                 model_ => Cmd.none
 
-                            Projects.HandleRequestError err ->
+                            Home.HandleRequestError err ->
                                 update (handledErrorToMsg err) model_
                 in
-                    modelAfterExternalMsg ! [ Cmd.map ProjectsMsg newSubCmd, cmdAfterExternalMsg ]
+                    modelAfterExternalMsg ! [ Cmd.map HomeMsg newSubCmd, cmdAfterExternalMsg ]
+
+            ( UsersLoaded subModel, _ ) ->
+                { model | pageState = Loaded (Users subModel) }
+                    => Cmd.none
+
+            ( UsersMsg subMsg, Users subModel ) ->
+                let
+                    ( ( newSubModel, newSubCmd ), externalMsg ) =
+                        Users.update model.context session subMsg subModel
+
+                    model_ =
+                        { model | pageState = Loaded (Users newSubModel) }
+
+                    ( modelAfterExternalMsg, cmdAfterExternalMsg ) =
+                        case externalMsg of
+                            Users.NoOp ->
+                                model_ => Cmd.none
+
+                            Users.HandleRequestError err ->
+                                update (handledErrorToMsg err) model_
+                in
+                    modelAfterExternalMsg ! [ Cmd.map UsersMsg newSubCmd, cmdAfterExternalMsg ]
 
             ( KnownHostsLoaded subModel, _ ) ->
                 { model | pageState = Loaded (KnownHosts subModel) } => Cmd.none

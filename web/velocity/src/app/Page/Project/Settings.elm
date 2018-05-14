@@ -39,7 +39,9 @@ initialModel =
 view : Project -> Model -> Html Msg
 view project model =
     div []
-        [ viewDangerArea project model ]
+        [ h4 [ class "mb-2" ] [ text "Settings" ]
+        , viewDangerArea project model
+        ]
 
 
 viewDangerArea : Project -> Model -> Html Msg

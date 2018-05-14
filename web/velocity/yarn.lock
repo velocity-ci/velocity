@@ -385,9 +385,17 @@ boom@5.x.x:
   dependencies:
     hoek "4.x.x"
 
-bootstrap@4.0.0:
+bootstrap@4.0.0, bootstrap@^4.0.0:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/bootstrap/-/bootstrap-4.0.0.tgz#ceb03842c145fcc1b9b4e15da2a05656ba68469a"
+
+bootswatch@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/bootswatch/-/bootswatch-4.0.0.tgz#dfcab028c03c09a58888d37d7ce9f6c8c33498cc"
+  dependencies:
+    bootstrap "^4.0.0"
+    jquery ">=1.9.1"
+    popper.js "^1.12.9"
 
 brace-expansion@^1.1.7:
   version "1.1.8"
@@ -2426,6 +2434,10 @@ isstream@~0.1.2:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/isstream/-/isstream-0.1.2.tgz#47e63f7af55afa6f92e1500e690eb8b8529c099a"
 
+jquery@>=1.9.1:
+  version "3.3.1"
+  resolved "https://registry.yarnpkg.com/jquery/-/jquery-3.3.1.tgz#958ce29e81c9790f31be7792df5d4d95fc57fbca"
+
 js-base64@^2.1.8, js-base64@^2.1.9:
   version "2.3.2"
   resolved "https://registry.yarnpkg.com/js-base64/-/js-base64-2.3.2.tgz#a79a923666372b580f8e27f51845c6f7e8fbfbaf"
@@ -3318,6 +3330,10 @@ pinkie-promise@^2.0.0:
 pinkie@^2.0.0:
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/pinkie/-/pinkie-2.0.4.tgz#72556b80cfa0d48a974e80e77248e80ed4f7f870"
+
+popper.js@^1.12.9:
+  version "1.14.3"
+  resolved "https://registry.yarnpkg.com/popper.js/-/popper.js-1.14.3.tgz#1438f98d046acf7b4d78cd502bf418ac64d4f095"
 
 portfinder@^1.0.9:
   version "1.0.13"
