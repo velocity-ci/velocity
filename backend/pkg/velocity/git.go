@@ -29,16 +29,6 @@ type GitRepository struct {
 	PrivateKey string `json:"privateKey"`
 }
 
-// TODO:
-// Clone
-// x Clone Depth (1)
-// - SSH authentication with just private key
-// x Recurse submodules (delay support)
-// Sync
-// x Get remote branches
-// x Get commits at HEAD of each branch
-// x Checkout commit by sha
-
 func Clone(
 	r *GitRepository,
 	bare,
@@ -78,7 +68,7 @@ func Clone(
 	if r.Address[:3] == "git" {
 		key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
 		if err != nil {
-			return nil, err
+			return nil, err.(SSHKeyError)
 		}
 		if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
 			a := agent.NewClient(sshAgent)
@@ -193,7 +183,7 @@ func (r *RawRepository) done() {
 func (r *RawRepository) GetCommitInfo(sha string) *RawCommit {
 	r.init()
 	defer r.done()
-	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%G?%n%s`, sha}
+	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%GK%n%s`, sha}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 

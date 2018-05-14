@@ -41,6 +41,7 @@ func (m *CommitManager) Create(
 	message string,
 	author string,
 	date time.Time,
+	signed string,
 ) *Commit {
 	c := &Commit{
 		ID:        uuid.NewV3(uuid.NewV1(), p.ID).String(),
@@ -48,6 +49,7 @@ func (m *CommitManager) Create(
 		Hash:      hash,
 		Message:   message,
 		Author:    author,
+		Signed:    signed,
 		CreatedAt: date.UTC(),
 	}
 	m.db.saveCommitToBranch(c, b)
