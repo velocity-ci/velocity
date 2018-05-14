@@ -1,7 +1,6 @@
 package build_test
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -55,9 +54,6 @@ func (s *StepSuite) SetupTest() {
 	}
 
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
 	s.commitManager = githistory.NewCommitManager(s.storm)
 	s.branchManager = githistory.NewBranchManager(s.storm)

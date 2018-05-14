@@ -2,7 +2,6 @@ package project
 
 import (
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/asdine/storm"
@@ -24,7 +23,7 @@ const (
 type Manager struct {
 	validator *validator
 	db        *stormDB
-	clone     func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*velocity.RawRepository, error)
+	validate  func(r *velocity.GitRepository) bool
 	brokers   []domain.Broker
 }
 
@@ -32,12 +31,12 @@ func NewManager(
 	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
-	cloneFunc func(r *velocity.GitRepository, bare bool, full bool, submodule bool, writer io.Writer) (*velocity.RawRepository, error),
+	validateFunc func(r *velocity.GitRepository) bool,
 ) *Manager {
 	m := &Manager{
-		db:      newStormDB(db),
-		clone:   cloneFunc,
-		brokers: []domain.Broker{},
+		db:       newStormDB(db),
+		validate: validateFunc,
+		brokers:  []domain.Broker{},
 	}
 	m.validator = newValidator(validator, translator, m)
 	return m

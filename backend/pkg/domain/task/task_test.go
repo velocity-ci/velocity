@@ -1,7 +1,6 @@
 package task_test
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -45,8 +44,8 @@ func (s *CommitSuite) SetupTest() {
 	}
 
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
+	syncMock := func(*velocity.GitRepository) bool {
+		return true
 	}
 	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
 	s.commitManager = githistory.NewCommitManager(s.storm)

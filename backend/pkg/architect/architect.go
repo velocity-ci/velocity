@@ -76,7 +76,7 @@ func (a *Architect) Init() {
 	userManager := user.NewManager(a.DB, validator, trans)
 	userManager.EnsureAdminUser()
 	knownHostManager := knownhost.NewManager(a.DB, validator, trans, "")
-	projectManager := project.NewManager(a.DB, validator, trans, velocity.Clone)
+	projectManager := project.NewManager(a.DB, validator, trans, velocity.Validate)
 	commitManager := githistory.NewCommitManager(a.DB)
 	branchManager := githistory.NewBranchManager(a.DB)
 	taskManager := task.NewManager(a.DB, projectManager, branchManager, commitManager)
