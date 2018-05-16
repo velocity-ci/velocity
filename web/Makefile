@@ -38,7 +38,7 @@ serve_dist: build
 	docker run --rm -p 4200:80 -e ARCHITECT_ENDPOINT='http://localhost/v1' \
 	civelocity/web:latest
 
-publish:
+publish: install build
 	@docker push civelocity/web:${GIT_VERSION}
 
 test: install
