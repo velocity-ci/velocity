@@ -3,7 +3,7 @@ AWS_DEFAULT_REGION ?= eu-west-1
 
 .PHONY: test dep-install build-architect build-builder build-cli build-all
 
-dep-install:
+install:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
@@ -25,9 +25,9 @@ build-cli:
 	golang:1.10 \
 	scripts/build-cli.sh
 
-build-all: build-architect build-builder build-cli
+build: build-architect build-builder build-cli
 
-publish-all:
+publish: install build
 	docker push civelocity/architect:${GIT_VERSION}
 	docker push civelocity/builder:${GIT_VERSION}
 	# TODO: CLI publishing
