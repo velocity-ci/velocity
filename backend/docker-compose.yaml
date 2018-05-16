@@ -12,7 +12,7 @@ services:
 
   architect:
     image: golang:1.10
-    command: /bin/sh -c "eval `ssh-agent` && go run cmd/vci-architect/main.go"
+    command: /bin/sh -c "eval `ssh-agent` && exec go run cmd/vci-architect/main.go"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/
     environment:
       # LOG_LEVEL: debug
@@ -28,7 +28,7 @@ services:
 
   builder:
     image: golang:1.10
-    command: /bin/sh -c "eval `ssh-agent` && go run cmd/vci-builder/main.go"
+    command: /bin/sh -c "eval `ssh-agent` && exec go run cmd/vci-builder/main.go"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/
     environment:
       LOG_LEVEL: debug

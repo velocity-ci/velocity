@@ -128,7 +128,7 @@ func Clone(
 	if r.Address[:3] == "git" {
 		signer, agent, err := handleGitSSH(r.PrivateKey)
 		if err != nil {
-			return nil, err
+			return nil, err.(SSHKeyError)
 		}
 		defer agent.Remove(signer.PublicKey())
 	}
@@ -237,7 +237,7 @@ func (r *RawRepository) done() {
 func (r *RawRepository) GetCommitInfo(sha string) *RawCommit {
 	r.init()
 	defer r.done()
-	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%G?%n%s`, sha}
+	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%GK%n%s`, sha}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 

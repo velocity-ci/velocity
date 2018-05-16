@@ -84,7 +84,7 @@ func (s *BuildSuite) TestNewBuild() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
@@ -111,7 +111,7 @@ func (s *BuildSuite) TestUpdateBuild() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
@@ -132,7 +132,7 @@ func (s *BuildSuite) TestGetBuildsForProject() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
@@ -157,7 +157,7 @@ func (s *BuildSuite) TestGetBuildsForCommit() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
@@ -182,7 +182,7 @@ func (s *BuildSuite) TestGetBuildsForTask() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
@@ -207,7 +207,7 @@ func (s *BuildSuite) TestGetRunningBuilds() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
@@ -234,7 +234,7 @@ func (s *BuildSuite) TestGetWaitingBuilds() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",
@@ -259,7 +259,7 @@ func (s *BuildSuite) TestGetBuildByID() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",

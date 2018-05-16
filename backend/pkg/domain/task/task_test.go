@@ -64,7 +64,7 @@ func (s *CommitSuite) TestCreate() {
 
 	br := s.branchManager.Create(p, "testProject")
 
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	m := task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
 	setupStep := velocity.NewSetup()
@@ -85,7 +85,7 @@ func (s *CommitSuite) TestGetByCommitAndSlug() {
 	})
 
 	b := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	m := task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
 	tsk := m.Create(c, &velocity.Task{
@@ -105,7 +105,7 @@ func (s *CommitSuite) TestGetAllForCommit() {
 	})
 
 	b := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(b, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	m := task.NewManager(s.storm, s.projectManager, s.branchManager, s.commitManager)
 	tsk1 := m.Create(c, &velocity.Task{

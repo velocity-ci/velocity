@@ -81,7 +81,7 @@ func (s *StreamSuite) TestFileStreamLine() {
 	})
 
 	br := s.branchManager.Create(p, "testBranch")
-	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC())
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
 
 	tsk := s.taskManager.Create(c, &velocity.Task{
 		Name: "testTask",

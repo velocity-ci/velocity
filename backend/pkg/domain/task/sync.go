@@ -59,6 +59,7 @@ func sync(
 				rawCommit.Message,
 				rawCommit.AuthorEmail,
 				rawCommit.AuthorDate,
+				rawCommit.Signed,
 			)
 			logrus.Infof("\tcreated commit %s on %s", c.Hash, b.Name)
 

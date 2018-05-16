@@ -17,6 +17,7 @@ type StormCommit struct {
 	Author    string
 	CreatedAt time.Time
 	Message   string
+	Signed    string
 }
 
 func (s *StormCommit) ToCommit(db *storm.DB) *Commit {
@@ -31,6 +32,7 @@ func (s *StormCommit) ToCommit(db *storm.DB) *Commit {
 		Author:    s.Author,
 		CreatedAt: s.CreatedAt,
 		Message:   s.Message,
+		Signed:    s.Signed,
 	}
 }
 
@@ -42,6 +44,7 @@ func (c *Commit) ToStormCommit() *StormCommit {
 		Author:    c.Author,
 		CreatedAt: c.CreatedAt,
 		Message:   c.Message,
+		Signed:    c.Signed,
 	}
 }
 
