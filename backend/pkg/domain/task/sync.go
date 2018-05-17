@@ -32,7 +32,12 @@ func sync(
 	xd, _ := os.Getwd()
 	defer os.Chdir(xd)
 	defer finishProjectSync(p, taskManager.projectManager)
-	repo, err := velocity.Clone(&p.Config, false, true, false, velocity.NewBlankEmitter().GetStreamWriter("clone"))
+	// repo, err := velocity.Clone(&p.Config, false, true, false, velocity.NewBlankEmitter().GetStreamWriter("clone"))
+	repo, err := velocity.Clone(&p.Config, velocity.NewBlankEmitter().GetStreamWriter("clone"), &velocity.CloneOptions{
+		Bare:      false,
+		Full:      true,
+		Submodule: true,
+	})
 	if err != nil {
 		logrus.Errorf("could not clone repository %s", err)
 		return
