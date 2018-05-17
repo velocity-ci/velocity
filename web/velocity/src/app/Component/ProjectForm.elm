@@ -7,6 +7,7 @@ module Component.ProjectForm
         , view
         , viewSubmitButton
         , update
+        , updateGitUrl
         , validate
         , submitValues
         , errorsDecoder
@@ -28,6 +29,7 @@ import Regex exposing (Regex)
 
 -- INTERNAL
 
+import Data.GitUrl as GitUrl exposing (GitUrl)
 import Data.Project as Project exposing (Project)
 import Data.KnownHost as KnownHost exposing (KnownHost)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
@@ -51,6 +53,7 @@ type alias ProjectForm =
     { name : FormField Field
     , repository : FormField Field
     , privateKey : FormField Field
+    , gitUrl : Maybe GitUrl
     }
 
 
@@ -59,6 +62,7 @@ initialForm =
     { name = newField Name
     , repository = newField Repository
     , privateKey = newField PrivateKey
+    , gitUrl = Nothing
     }
 
 
@@ -85,6 +89,18 @@ init =
 
 
 -- UPDATE HELPERS --
+
+
+updateGitUrl : Maybe GitUrl -> Context -> Context
+updateGitUrl maybeGitUrl context =
+    let
+        form =
+            context.form
+
+        updatedForm =
+            { form | gitUrl = maybeGitUrl }
+    in
+        { context | form = updatedForm }
 
 
 updateForm : ProjectForm -> Field -> String -> ProjectForm
@@ -206,19 +222,28 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
                 []
 
         repositoryField =
-            Form.input
-                { name = "repository"
-                , label = "Repository address"
-                , help = Just "Use a GIT+SSH address for private repositories, otherwise use a HTTP(S) address."
-                , errors = errors form.repository
-                }
-                [ attribute "required" ""
-                , value form.repository.value
-                , onInput setRepositoryMsg
-                , classList <| inputClassList form.repository
-                , disabled context.submitting
-                ]
-                []
+            let
+                help =
+                    case context.form.gitUrl of
+                        Just { source } ->
+                            source
+
+                        Nothing ->
+                            "Use a GIT+SSH address for private repositories, otherwise use a HTTP(S) address."
+            in
+                Form.input
+                    { name = "repository"
+                    , label = "Repository address"
+                    , help = Just help
+                    , errors = errors form.repository
+                    }
+                    [ attribute "required" ""
+                    , value form.repository.value
+                    , onInput setRepositoryMsg
+                    , classList <| inputClassList form.repository
+                    , disabled context.submitting
+                    ]
+                    []
 
         privateKeyField =
             let
@@ -301,21 +326,20 @@ hostFromAddress address =
         |> List.head
 
 
+hostsFromKnownHosts : List KnownHost -> List String
+hostsFromKnownHosts knownHosts =
+    List.foldl (.hosts >> (++)) [] knownHosts
+
+
 isUnknownKnownHost : String -> List KnownHost -> Bool
 isUnknownKnownHost value knownHosts =
-    let
-        hosts =
-            List.foldl (.hosts >> (++)) [] knownHosts
+    case hostFromAddress value of
+        Just host ->
+            hostsFromKnownHosts knownHosts
+                |> List.member host
 
-        maybeHost =
-            hostFromAddress value
-    in
-        case (Debug.log "MAYBE HOST" maybeHost) of
-            Just host ->
-                List.member (Debug.log "HOST" host) hosts
-
-            Nothing ->
-                False
+        Nothing ->
+            False
 
 
 isSshAddress : String -> Bool
@@ -323,22 +347,23 @@ isSshAddress address =
     String.slice 0 3 address == "git"
 
 
+privateKeyValidator : ( { a | value : String }, { b | value : String } ) -> Bool
+privateKeyValidator ( privateKey, repository ) =
+    if isSshAddress repository.value then
+        String.length privateKey.value < 8
+    else
+        False
+
+
 validate : Validator (Error Field) ProjectForm
 validate =
-    let
-        privateKeyValidator ( privateKey, repository ) =
-            if isSshAddress repository.value then
-                String.length privateKey.value < 8
-            else
-                False
-    in
-        Validate.all
-            [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
-            , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
-            , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
-            , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
-            , (\f -> ( f.privateKey, f.repository )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
-            ]
+    Validate.all
+        [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
+        , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
+        , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
+        , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
+        , (\f -> ( f.privateKey, f.repository )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
+        ]
 
 
 errorsDecoder : Decoder (List ( String, String ))

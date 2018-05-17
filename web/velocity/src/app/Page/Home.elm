@@ -29,8 +29,9 @@ import Component.Form as Form
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project, addProject)
 import Data.KnownHost as KnownHost exposing (KnownHost, addKnownHost)
-import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Data.GitUrl as GitUrl exposing (GitUrl)
+import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, sortByDatetime)
 import Page.Project.Route as ProjectRoute
 import Views.Helpers exposing (onClickPage)
@@ -41,6 +42,7 @@ import Request.KnownHost
 import Request.Errors
 import Route
 import Dom
+import Ports
 
 
 -- MODEL --
@@ -88,7 +90,20 @@ init context session =
 
 subscriptions : Model -> Sub Msg
 subscriptions { newProjectModalVisibility } =
-    Modal.subscriptions newProjectModalVisibility AnimateNewProjectModal
+    let
+        modalSubs =
+            Modal.subscriptions newProjectModalVisibility AnimateNewProjectModal
+
+        gitUrlSub =
+            Sub.map SetGitUrl gitUrlParsed
+    in
+        Sub.batch
+            [ modalSubs, gitUrlSub ]
+
+
+gitUrlParsed : Sub (Maybe GitUrl)
+gitUrlParsed =
+    Ports.onGitUrlParsed (Decode.decodeValue GitUrl.decoder >> Result.toMaybe)
 
 
 
@@ -247,6 +262,7 @@ type Msg
     | SubmitKnownHostForm
     | ProjectCreated (Result Request.Errors.HttpError Project)
     | KnownHostCreated (Result Request.Errors.HttpError KnownHost)
+    | SetGitUrl (Maybe GitUrl)
 
 
 type ExternalMsg
@@ -272,6 +288,11 @@ update context session msg model =
                 => newUrl url
                 => NoOp
 
+        SetGitUrl maybeGitUrl ->
+            { model | newProjectForm = ProjectForm.updateGitUrl maybeGitUrl model.newProjectForm }
+                => Cmd.none
+                => NoOp
+
         CloseNewProjectModal ->
             { model
                 | newProjectModalVisibility = Modal.hidden
@@ -292,7 +313,7 @@ update context session msg model =
 
         SetProjectFormRepository repository ->
             { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.Repository repository }
-                => Cmd.none
+                => Ports.parseGitUrl repository
                 => NoOp
 
         SetProjectFormPrivateKey privateKey ->
