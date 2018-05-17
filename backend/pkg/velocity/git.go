@@ -29,7 +29,7 @@ type GitRepository struct {
 	PrivateKey string `json:"privateKey"`
 }
 
-const workspace = "/opt/velocity"
+const workspace = "/opt/velocityci"
 
 func getUniqueWorkspace(r *GitRepository) (string, error) {
 	psuedoRandom := rand.NewSource(time.Now().UnixNano())
