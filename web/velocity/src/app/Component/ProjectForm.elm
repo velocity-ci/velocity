@@ -11,6 +11,7 @@ module Component.ProjectForm
         , submitValues
         , errorsDecoder
         , serverErrorToFormError
+        , isUnknownKnownHost
         )
 
 -- EXTERNAL
@@ -22,11 +23,13 @@ import Validate exposing (..)
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
 import Bootstrap.Button as Button
+import Regex exposing (Regex)
 
 
 -- INTERNAL
 
 import Data.Project as Project exposing (Project)
+import Data.KnownHost as KnownHost exposing (KnownHost)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
 import Util exposing ((=>))
 import Views.Form as Form
@@ -206,7 +209,7 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
             Form.input
                 { name = "repository"
                 , label = "Repository address"
-                , help = Just "Use a GIT+SSH address for authenticated repositories, otherwise use a HTTP(S) address."
+                , help = Just "Use a GIT+SSH address for private repositories, otherwise use a HTTP(S) address."
                 , errors = errors form.repository
                 }
                 [ attribute "required" ""
@@ -280,6 +283,39 @@ viewGlobalError error =
 
 
 -- VALIDATION --
+
+
+hostRegex : Regex
+hostRegex =
+    Regex.regex "git|ssh|http(s)?|git@[\\w\\.]+:(//)?[\\w\\.@\\:/\\-~]+\\.git/?"
+
+
+splitAddress : String -> List String
+splitAddress address =
+    Regex.split Regex.All hostRegex address
+
+
+hostFromAddress : String -> Maybe String
+hostFromAddress address =
+    Debug.log "FUCK" (splitAddress address)
+        |> List.head
+
+
+isUnknownKnownHost : String -> List KnownHost -> Bool
+isUnknownKnownHost value knownHosts =
+    let
+        hosts =
+            List.foldl (.hosts >> (++)) [] knownHosts
+
+        maybeHost =
+            hostFromAddress value
+    in
+        case (Debug.log "MAYBE HOST" maybeHost) of
+            Just host ->
+                List.member (Debug.log "HOST" host) hosts
+
+            Nothing ->
+                False
 
 
 isSshAddress : String -> Bool

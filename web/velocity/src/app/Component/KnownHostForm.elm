@@ -148,7 +148,7 @@ view { setScannedKeyMsg, submitMsg } context =
             Form.textarea
                 { name = "scanned_key"
                 , label = "Scanned key"
-                , help = Nothing
+                , help = Just "Because this is the first project from the host <host>, we require you to scan a key. <reason>"
                 , errors = errors form.scannedKey
                 }
                 [ placeholder "ssh-keyscan <host>"

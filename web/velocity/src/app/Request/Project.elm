@@ -41,7 +41,7 @@ list context maybeToken =
                 |> PaginatedList.decoder
                 |> Http.expectJson
     in
-        apiUrl context baseUrl
+        apiUrl context (baseUrl ++ "?amount=-1")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
             |> withAuthorization maybeToken
