@@ -12,7 +12,7 @@ module Component.ProjectForm
         , submitValues
         , errorsDecoder
         , serverErrorToFormError
-        , isUnknownKnownHost
+        , isUnknownHost
         )
 
 -- EXTERNAL
@@ -167,7 +167,7 @@ submitValues : Context -> { name : String, repository : String, privateKey : May
 submitValues { form } =
     let
         privateKey =
-            if isSshAddress form.repository.value then
+            if isSshAddress form.gitUrl then
                 Just form.privateKey.value
             else
                 Nothing
@@ -189,7 +189,7 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
             context.form
 
         publicRepository =
-            not (isSshAddress form.repository.value)
+            not (isSshAddress form.gitUrl)
 
         combinedErrors =
             context.errors ++ context.serverErrors
@@ -222,28 +222,19 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
                 []
 
         repositoryField =
-            let
-                help =
-                    case context.form.gitUrl of
-                        Just { source } ->
-                            source
-
-                        Nothing ->
-                            "Use a GIT+SSH address for private repositories, otherwise use a HTTP(S) address."
-            in
-                Form.input
-                    { name = "repository"
-                    , label = "Repository address"
-                    , help = Just help
-                    , errors = errors form.repository
-                    }
-                    [ attribute "required" ""
-                    , value form.repository.value
-                    , onInput setRepositoryMsg
-                    , classList <| inputClassList form.repository
-                    , disabled context.submitting
-                    ]
-                    []
+            Form.input
+                { name = "repository"
+                , label = "Repository address"
+                , help = Just "Use a GIT+SSH address for private repositories, otherwise use a HTTP(S) address."
+                , errors = errors form.repository
+                }
+                [ attribute "required" ""
+                , value form.repository.value
+                , onInput setRepositoryMsg
+                , classList <| inputClassList form.repository
+                , disabled context.submitting
+                ]
+                []
 
         privateKeyField =
             let
@@ -310,46 +301,37 @@ viewGlobalError error =
 -- VALIDATION --
 
 
-hostRegex : Regex
-hostRegex =
-    Regex.regex "git|ssh|http(s)?|git@[\\w\\.]+:(//)?[\\w\\.@\\:/\\-~]+\\.git/?"
-
-
-splitAddress : String -> List String
-splitAddress address =
-    Regex.split Regex.All hostRegex address
-
-
-hostFromAddress : String -> Maybe String
-hostFromAddress address =
-    Debug.log "FUCK" (splitAddress address)
-        |> List.head
-
-
 hostsFromKnownHosts : List KnownHost -> List String
 hostsFromKnownHosts knownHosts =
     List.foldl (.hosts >> (++)) [] knownHosts
 
 
-isUnknownKnownHost : String -> List KnownHost -> Bool
-isUnknownKnownHost value knownHosts =
-    case hostFromAddress value of
-        Just host ->
-            hostsFromKnownHosts knownHosts
-                |> List.member host
+isUnknownHost : List KnownHost -> Maybe GitUrl -> Bool
+isUnknownHost knownHosts maybeGitUrl =
+    case maybeGitUrl of
+        Just { source } ->
+            knownHosts
+                |> hostsFromKnownHosts
+                |> List.member source
+                |> not
 
         Nothing ->
             False
 
 
-isSshAddress : String -> Bool
-isSshAddress address =
-    String.slice 0 3 address == "git"
+isSshAddress : Maybe GitUrl -> Bool
+isSshAddress maybeGitUrl =
+    case maybeGitUrl of
+        Just { protocol } ->
+            protocol == "ssh"
+
+        Nothing ->
+            False
 
 
-privateKeyValidator : ( { a | value : String }, { b | value : String } ) -> Bool
-privateKeyValidator ( privateKey, repository ) =
-    if isSshAddress repository.value then
+privateKeyValidator : ( { a | value : String }, Maybe GitUrl ) -> Bool
+privateKeyValidator ( privateKey, maybeGitUrl ) =
+    if isSshAddress maybeGitUrl then
         String.length privateKey.value < 8
     else
         False
@@ -362,7 +344,7 @@ validate =
         , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
         , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
         , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
-        , (\f -> ( f.privateKey, f.repository )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
+        , (\f -> ( f.privateKey, f.gitUrl )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
         ]
 
 

@@ -10,7 +10,7 @@ import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, req
 
 
 type alias GitUrl =
-    { protocols : List String
+    { protocol : String
     , port_ : Maybe Int
     , resource : String
     , source : String
@@ -24,7 +24,7 @@ type alias GitUrl =
 decoder : Decoder GitUrl
 decoder =
     decode GitUrl
-        |> required "protocols" (Decode.list Decode.string)
+        |> required "protocol" Decode.string
         |> required "port" (Decode.nullable Decode.int)
         |> required "resource" Decode.string
         |> required "source" Decode.string

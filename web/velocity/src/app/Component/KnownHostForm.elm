@@ -26,6 +26,7 @@ import Bootstrap.Button as Button
 -- INTERNAL
 
 import Data.Project as Project exposing (Project)
+import Data.GitUrl as GitUrl exposing (GitUrl)
 import Util exposing ((=>))
 import Views.Form as Form
 import Component.Form as BaseForm exposing (..)
@@ -50,6 +51,13 @@ type alias Context =
 
 type alias Error =
     BaseForm.Error Field
+
+
+type alias Config msg =
+    { gitUrl : Maybe GitUrl
+    , setScannedKeyMsg : String -> msg
+    , submitMsg : msg
+    }
 
 
 initialForm : KnownHostForm
@@ -107,12 +115,6 @@ serverErrorToFormError ( fieldNameString, errorString ) =
         ( field, errorString )
 
 
-type alias Config msg =
-    { setScannedKeyMsg : String -> msg
-    , submitMsg : msg
-    }
-
-
 init : Context
 init =
     { form = initialForm
@@ -127,7 +129,7 @@ init =
 
 
 view : Config msg -> Context -> Html msg
-view { setScannedKeyMsg, submitMsg } context =
+view { setScannedKeyMsg, submitMsg, gitUrl } context =
     let
         form =
             context.form
@@ -144,14 +146,30 @@ view { setScannedKeyMsg, submitMsg } context =
         inputClassList =
             validClasses combinedErrors
 
+        help =
+            case gitUrl of
+                Just { source } ->
+                    "Because this is the first project from host " ++ source ++ ", we require you to scan a key. <reason>"
+
+                Nothing ->
+                    ""
+
+        placeholderText =
+            case gitUrl of
+                Just { source } ->
+                    "ssh-keyscan " ++ source
+
+                Nothing ->
+                    ""
+
         scannedKeyField =
             Form.textarea
                 { name = "scanned_key"
                 , label = "Scanned key"
-                , help = Just "Because this is the first project from the host <host>, we require you to scan a key. <reason>"
+                , help = Just help
                 , errors = errors form.scannedKey
                 }
-                [ placeholder "ssh-keyscan <host>"
+                [ placeholder placeholderText
                 , attribute "required" ""
                 , rows 3
                 , value form.scannedKey.value
@@ -208,7 +226,7 @@ viewSubmitButton { submitMsg } context =
 validate : Validator ( Field, String ) KnownHostForm
 validate =
     Validate.all
-        [ (.scannedKey >> .value) >> (ifBelowLength 8) (ScannedKey => "Private key must be over 7 characters.")
+        [ (.scannedKey >> .value) >> (ifBelowLength 8) (ScannedKey => "Scanned key must be over 7 characters.")
         ]
 
 

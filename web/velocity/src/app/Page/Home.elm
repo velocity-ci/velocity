@@ -177,10 +177,11 @@ projectFormConfig =
     }
 
 
-knownHostFormConfig : KnownHostForm.Config Msg
-knownHostFormConfig =
+knownHostFormConfig : Maybe GitUrl -> KnownHostForm.Config Msg
+knownHostFormConfig maybeGitUrl =
     { setScannedKeyMsg = SetKnownHostFormScannedKey
     , submitMsg = SubmitKnownHostForm
+    , gitUrl = maybeGitUrl
     }
 
 
@@ -203,8 +204,8 @@ viewCombinedForm knownHosts projectForm knownHostForm =
             ProjectForm.view projectFormConfig projectForm
 
         knownHostFormView =
-            if ProjectForm.isUnknownKnownHost projectForm.form.repository.value knownHosts then
-                KnownHostForm.view knownHostFormConfig knownHostForm
+            if ProjectForm.isUnknownHost knownHosts projectForm.form.gitUrl then
+                KnownHostForm.view (knownHostFormConfig projectForm.form.gitUrl) knownHostForm
             else
                 text ""
     in
@@ -255,6 +256,7 @@ type Msg
     | AnimateNewProjectModal Modal.Visibility
     | ShowNewProjectModal
     | SubmitProjectForm
+    | SubmitBothForms
     | SetProjectFormName String
     | SetProjectFormRepository String
     | SetProjectFormPrivateKey String
@@ -320,6 +322,32 @@ update context session msg model =
             { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.PrivateKey privateKey }
                 => Cmd.none
                 => NoOp
+
+        SubmitBothForms ->
+            let
+                projectFormSubmitCmdAuth authToken =
+                    authToken
+                        |> Request.Project.create context (ProjectForm.submitValues model.newProjectForm)
+                        |> Task.attempt ProjectCreated
+
+                projectFormSubmit =
+                    session
+                        |> Session.attempt "create project" projectFormSubmitCmdAuth
+                        |> Tuple.second
+
+                knownHostFormSubmitCmdAuth authToken =
+                    authToken
+                        |> Request.KnownHost.create context (KnownHostForm.submitValues model.newKnownHostForm)
+                        |> Task.attempt KnownHostCreated
+
+                knownHostFormSubmit =
+                    session
+                        |> Session.attempt "create known host" knownHostFormSubmitCmdAuth
+                        |> Tuple.second
+            in
+                model
+                    => Cmd.none
+                    => NoOp
 
         SubmitProjectForm ->
             let
