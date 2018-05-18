@@ -109,6 +109,9 @@ serverErrorToFormError ( fieldNameString, errorString ) =
                 "scanned_key" ->
                     ScannedKey
 
+                "entry" ->
+                    ScannedKey
+
                 _ ->
                     Form
     in
