@@ -5,7 +5,6 @@ module Component.ProjectSidebar exposing (State, Config, ActiveSubPage(..), view
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Bootstrap.Popover as Popover
-import Bootstrap.Button as Button
 
 
 -- INTERNAL --
@@ -25,11 +24,13 @@ type ActiveSubPage
     | OverviewPage
     | CommitsPage
     | SettingsPage
+    | BuildsPage
 
 
 type alias Config msg =
     { newUrlMsg : String -> msg
     , commitPopMsg : Popover.State -> msg
+    , buildsPopMsg : Popover.State -> msg
     , settingsPopMsg : Popover.State -> msg
     , projectBadgePopMsg : Popover.State -> msg
     }
@@ -37,6 +38,7 @@ type alias Config msg =
 
 type alias State =
     { commitIconPopover : Popover.State
+    , buildsIconPopover : Popover.State
     , settingsIconPopover : Popover.State
     , projectBadgePopover : Popover.State
     }
@@ -59,9 +61,16 @@ sidebarProjectNavigation state config project subPage =
             config
             CommitsPage
             (subPage == CommitsPage)
-            (Route.Project project.slug (ProjectRoute.Commits Nothing Nothing))
+            (Route.Project project.slug <| ProjectRoute.Commits Nothing Nothing)
             "Project commits"
             [ i [ attribute "aria-hidden" "true", class "fa fa-code-fork" ] [] ]
+        , sidebarLink state
+            config
+            BuildsPage
+            (subPage == BuildsPage)
+            (Route.Project project.slug <| ProjectRoute.Builds Nothing)
+            "Project builds"
+            [ i [ attribute "aria-hidden" "true", class "fa fa-list-alt" ] [] ]
         , sidebarLink state
             config
             SettingsPage
@@ -125,6 +134,9 @@ tooltipConfig config state activeSubPage =
     case activeSubPage of
         CommitsPage ->
             Just ( config.commitPopMsg, state.commitIconPopover )
+
+        BuildsPage ->
+            Just ( config.buildsPopMsg, state.buildsIconPopover )
 
         SettingsPage ->
             Just ( config.settingsPopMsg, state.settingsIconPopover )

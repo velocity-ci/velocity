@@ -15,11 +15,6 @@ import Util exposing ((=>), viewIf)
 import Http
 import Route exposing (Route)
 import Views.Page as Page exposing (ActivePage)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commits as Commits
-import Page.Project.Settings as Settings
-import Page.Project.Commit as Commit
-import Page.Project.Overview as Overview
 import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
@@ -27,6 +22,12 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
 import Data.Build as Build exposing (Build, addBuild)
+import Page.Project.Route as ProjectRoute
+import Page.Project.Commits as Commits
+import Page.Project.Settings as Settings
+import Page.Project.Commit as Commit
+import Page.Project.Overview as Overview
+import Page.Project.Builds as Builds
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
 import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
@@ -41,6 +42,7 @@ type SubPage
     | Commits Commits.Model
     | Commit Commit.Model
     | Settings Settings.Model
+    | Builds Builds.Model
     | Errored PageLoadError
 
 
@@ -89,6 +91,7 @@ init context session slug maybeRoute =
             , builds = builds.results
             , sidebar =
                 { commitIconPopover = Popover.initialState
+                , buildsIconPopover = Popover.initialState
                 , settingsIconPopover = Popover.initialState
                 , projectBadgePopover = Popover.initialState
                 }
@@ -242,6 +245,7 @@ sidebarConfig : Sidebar.Config Msg
 sidebarConfig =
     { newUrlMsg = NewUrl
     , commitPopMsg = CommitsIconPopMsg
+    , buildsPopMsg = BuildsIconPopMsg
     , settingsPopMsg = SettingsIconPopMsg
     , projectBadgePopMsg = ProjectBadgePopMsg
     }
@@ -303,6 +307,11 @@ viewSubPage session model =
             Overview _ ->
                 Overview.view project model.builds
                     |> Html.map OverviewMsg
+                    |> pageFrame (breadcrumb (text "") [])
+
+            Builds subModel ->
+                Builds.view subModel
+                    |> Html.map BuildsMsg
                     |> pageFrame (breadcrumb (text "") [])
 
             Commits subModel ->
@@ -404,9 +413,11 @@ viewBreadcrumbItem active ( route, name ) =
 type Msg
     = NewUrl String
     | SetRoute (Maybe ProjectRoute.Route)
-    | CommitsMsg Commits.Msg
     | OverviewMsg Overview.Msg
+    | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
+    | BuildsMsg Builds.Msg
+    | BuildsLoaded (Result PageLoadError Builds.Model)
     | CommitMsg Commit.Msg
     | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
     | SettingsMsg Settings.Msg
@@ -419,6 +430,7 @@ type Msg
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
     | CommitsIconPopMsg Popover.State
+    | BuildsIconPopMsg Popover.State
     | SettingsIconPopMsg Popover.State
     | ProjectBadgePopMsg Popover.State
     | NoOp
@@ -501,6 +513,16 @@ setRoute context session maybeRoute model =
                         ( Nothing, _ ) ->
                             errored Page.Project "Error loading commit"
 
+            Just (ProjectRoute.Builds maybePage) ->
+                case session.user of
+                    Just user ->
+                        maybePage
+                            |> Builds.init context session model.project.slug
+                            |> transition BuildsLoaded
+
+                    Nothing ->
+                        errored Page.Project "Uhoh"
+
             Just (ProjectRoute.Settings) ->
                 case session.user of
                     Just user ->
@@ -521,7 +543,30 @@ pageErrored model activePage errorMessage =
 
 update : Context -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update context session msg model =
-    updateSubPage context session (getSubPage model.subPageState) msg model
+    let
+        updatedSidebarModel =
+            { model | sidebar = updateSidebar model.sidebar msg }
+    in
+        updateSubPage context session (getSubPage model.subPageState) msg updatedSidebarModel
+
+
+updateSidebar : Sidebar.State -> Msg -> Sidebar.State
+updateSidebar sidebar msg =
+    case msg of
+        CommitsIconPopMsg state ->
+            { sidebar | commitIconPopover = state }
+
+        SettingsIconPopMsg state ->
+            { sidebar | settingsIconPopover = state }
+
+        BuildsIconPopMsg state ->
+            { sidebar | buildsIconPopover = state }
+
+        ProjectBadgePopMsg state ->
+            { sidebar | projectBadgePopover = state }
+
+        _ ->
+            sidebar
 
 
 updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
@@ -547,30 +592,6 @@ updateSubPage context session subPage msg model =
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
-
-            ( CommitsIconPopMsg state, _ ) ->
-                let
-                    updatedSidebar =
-                        { sidebar | commitIconPopover = state }
-                in
-                    { model | sidebar = updatedSidebar }
-                        => Cmd.none
-
-            ( SettingsIconPopMsg state, _ ) ->
-                let
-                    updatedSidebar =
-                        { sidebar | settingsIconPopover = state }
-                in
-                    { model | sidebar = updatedSidebar }
-                        => Cmd.none
-
-            ( ProjectBadgePopMsg state, _ ) ->
-                let
-                    updatedSidebar =
-                        { sidebar | projectBadgePopover = state }
-                in
-                    { model | sidebar = updatedSidebar }
-                        => Cmd.none
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model
@@ -608,6 +629,17 @@ updateSubPage context session subPage msg model =
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
 
+            ( BuildsMsg subMsg, Builds subModel ) ->
+                toPage Builds BuildsMsg (Builds.update context model.project session) subMsg subModel
+
+            ( BuildsLoaded (Ok subModel), _ ) ->
+                { model | subPageState = Loaded (Builds subModel) }
+                    => Cmd.none
+
+            ( BuildsLoaded (Err error), _ ) ->
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
+
             ( UpdateProject updateJson, _ ) ->
                 let
                     newProject =
@@ -631,8 +663,12 @@ updateSubPage context session subPage msg model =
                         => Cmd.none
 
             ( RefreshBranches _, _ ) ->
-                model
-                    => Task.attempt RefreshBranchesComplete (Request.Project.branches context model.project.slug (Maybe.map .token session.user))
+                let
+                    cmd =
+                        Request.Project.branches context model.project.slug (Maybe.map .token session.user)
+                            |> Task.attempt RefreshBranchesComplete
+                in
+                    model => cmd
 
             ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
                 { model | branches = results }
