@@ -7,7 +7,7 @@ module Page.Home exposing (view, update, Model, Msg, ExternalMsg(..), init, chan
 
 import Http
 import Html exposing (..)
-import Html.Attributes exposing (class, href, id, placeholder, attribute, classList, style)
+import Html.Attributes exposing (class, href, id, placeholder, attribute, classList, style, disabled)
 import Html.Events exposing (onClick)
 import Task exposing (Task)
 import Navigation exposing (newUrl)
@@ -24,19 +24,25 @@ import Json.Decode as Decode exposing (decodeString)
 
 import Context exposing (Context)
 import Component.ProjectForm as ProjectForm
+import Component.KnownHostForm as KnownHostForm
 import Component.Form as Form
 import Data.Session as Session exposing (Session)
-import Data.Project as Project exposing (Project)
-import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
+import Data.Project as Project exposing (Project, addProject)
+import Data.KnownHost as KnownHost exposing (KnownHost, addKnownHost)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
+import Data.GitUrl as GitUrl exposing (GitUrl)
+import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, sortByDatetime)
 import Page.Project.Route as ProjectRoute
 import Views.Helpers exposing (onClickPage)
 import Views.Page as Page
 import Util exposing ((=>), onClickStopPropagation, viewIf)
 import Request.Project
+import Request.KnownHost
 import Request.Errors
 import Route
+import Dom
+import Ports
 
 
 -- MODEL --
@@ -44,7 +50,9 @@ import Route
 
 type alias Model =
     { projects : List Project
+    , knownHosts : List KnownHost
     , newProjectForm : ProjectForm.Context
+    , newKnownHostForm : KnownHostForm.Context
     , newProjectModalVisibility : Modal.Visibility
     }
 
@@ -58,16 +66,21 @@ init context session =
         loadProjects =
             Request.Project.list context maybeAuthToken
 
+        loadKnownHosts =
+            Request.KnownHost.list context maybeAuthToken
+
         errorPage =
             pageLoadError Page.Home "Homepage is currently unavailable."
 
-        initialModel projects =
-            { projects = projects
+        initialModel (Paginated projects) (Paginated knownHosts) =
+            { projects = projects.results
+            , knownHosts = knownHosts.results
             , newProjectForm = ProjectForm.init
+            , newKnownHostForm = KnownHostForm.init
             , newProjectModalVisibility = Modal.hidden
             }
     in
-        Task.map (\(Paginated { results }) -> initialModel results) loadProjects
+        Task.map2 initialModel loadProjects loadKnownHosts
             |> Task.mapError (Request.Errors.withDefaultError errorPage)
 
 
@@ -77,7 +90,20 @@ init context session =
 
 subscriptions : Model -> Sub Msg
 subscriptions { newProjectModalVisibility } =
-    Modal.subscriptions newProjectModalVisibility AnimateNewProjectModal
+    let
+        modalSubs =
+            Modal.subscriptions newProjectModalVisibility AnimateNewProjectModal
+
+        gitUrlSub =
+            Sub.map SetGitUrl gitUrlParsed
+    in
+        Sub.batch
+            [ modalSubs, gitUrlSub ]
+
+
+gitUrlParsed : Sub (Maybe GitUrl)
+gitUrlParsed =
+    Ports.onGitUrlParsed (Decode.decodeValue GitUrl.decoder >> Result.toMaybe)
 
 
 
@@ -114,7 +140,7 @@ view session model =
         div [ class "py-2 my-4" ]
             [ viewToolbar
             , viewIf hasProjects projectList
-            , viewNewProjectModal model.newProjectForm model.newProjectModalVisibility
+            , viewNewProjectModal model
             ]
 
 
@@ -151,16 +177,57 @@ projectFormConfig =
     }
 
 
-viewNewProjectModal : ProjectForm.Context -> Modal.Visibility -> Html Msg
-viewNewProjectModal projectForm visibility =
+knownHostFormConfig : Maybe GitUrl -> KnownHostForm.Config Msg
+knownHostFormConfig maybeGitUrl =
+    { setScannedKeyMsg = SetKnownHostFormScannedKey
+    , submitMsg = SubmitKnownHostForm
+    , gitUrl = maybeGitUrl
+    }
+
+
+viewNewProjectModal : Model -> Html Msg
+viewNewProjectModal { newProjectForm, newKnownHostForm, newProjectModalVisibility, knownHosts } =
     Modal.config CloseNewProjectModal
         |> Modal.withAnimation AnimateNewProjectModal
         |> Modal.large
-        |> Modal.hideOnBackdropClick True
+        |> Modal.hideOnBackdropClick (not newProjectForm.submitting)
         |> Modal.h3 [] [ text "Create project" ]
-        |> Modal.body [] [ ProjectForm.view projectFormConfig projectForm ]
-        |> Modal.footer [] [ ProjectForm.viewSubmitButton projectFormConfig projectForm ]
-        |> Modal.view visibility
+        |> Modal.body [] [ viewCombinedForm knownHosts newProjectForm newKnownHostForm ]
+        |> Modal.footer [] [ viewCombinedFormSubmit knownHosts newProjectForm ]
+        |> Modal.view newProjectModalVisibility
+
+
+viewCombinedForm : List KnownHost -> ProjectForm.Context -> KnownHostForm.Context -> Html Msg
+viewCombinedForm knownHosts projectForm knownHostForm =
+    let
+        projectFormView =
+            ProjectForm.view projectFormConfig projectForm
+
+        knownHostFormView =
+            if ProjectForm.isUnknownHost knownHosts projectForm.form.gitUrl then
+                KnownHostForm.view (knownHostFormConfig projectForm.form.gitUrl) knownHostForm
+            else
+                text ""
+    in
+        div []
+            [ projectFormView
+            , knownHostFormView
+            ]
+
+
+viewCombinedFormSubmit : List KnownHost -> ProjectForm.Context -> Html Msg
+viewCombinedFormSubmit knownHosts projectForm =
+    if not <| ProjectForm.isUnknownHost knownHosts projectForm.form.gitUrl then
+        ProjectForm.viewSubmitButton projectFormConfig projectForm
+    else
+        Button.button
+            [ Button.outlinePrimary
+            , Button.attrs
+                [ onClick SubmitBothForms
+                  --            , disabled (hasErrors || submitting || untouched)
+                ]
+            ]
+            [ text "Create" ]
 
 
 viewProjectListItem : Project -> Html Msg
@@ -196,16 +263,24 @@ viewProjectListItem project =
 
 
 type Msg
-    = NewUrl String
+    = NoOp_
+    | NewUrl String
     | AddProject Encode.Value
+    | AddKnownHost Encode.Value
     | CloseNewProjectModal
     | AnimateNewProjectModal Modal.Visibility
     | ShowNewProjectModal
     | SubmitProjectForm
+    | SubmitBothForms
     | SetProjectFormName String
     | SetProjectFormRepository String
     | SetProjectFormPrivateKey String
+    | SetKnownHostFormScannedKey String
+    | SubmitKnownHostForm
     | ProjectCreated (Result Request.Errors.HttpError Project)
+    | KnownHostCreated (Result Request.Errors.HttpError KnownHost)
+    | KnownHostAndProjectCreated (Result Request.Errors.HttpError ( KnownHost, Project ))
+    | SetGitUrl (Maybe GitUrl)
 
 
 type ExternalMsg
@@ -213,28 +288,73 @@ type ExternalMsg
     | HandleRequestError Request.Errors.HandledError
 
 
-findProject : List Project -> Project -> Maybe Project
-findProject projects project =
-    List.filter (\a -> a.id == project.id) projects
-        |> List.head
+formError : String -> List ( String, String )
+formError errorMsg =
+    [ "" => errorMsg ]
 
 
-addProject : List Project -> Project -> List Project
-addProject projects project =
-    case findProject projects project of
-        Just _ ->
-            projects
+formErrors :
+    Form.Context ProjectForm.Field projectForm
+    -> Form.Context ProjectForm.Field projectForm
+formErrors =
+    ProjectForm.serverErrorToFormError
+        |> Form.updateServerErrors (formError "Unable to process project.")
 
-        Nothing ->
-            project :: projects
+
+handleFormError :
+    { a
+        | newKnownHostForm : Form.Context KnownHostForm.Field knownHostForm
+        , newProjectForm : Form.Context ProjectForm.Field projectForm
+    }
+    -> Request.Errors.Error Http.Error
+    -> ( Form.Context ProjectForm.Field projectForm, Form.Context KnownHostForm.Field knownHostForm, ExternalMsg )
+handleFormError model err =
+    case err of
+        Request.Errors.HandledError handledError ->
+            ( model.newProjectForm, model.newKnownHostForm, HandleRequestError handledError )
+
+        Request.Errors.UnhandledError (Http.BadStatus response) ->
+            let
+                projectErrors =
+                    response.body
+                        |> decodeString ProjectForm.errorsDecoder
+                        |> Result.withDefault []
+
+                projectForm =
+                    model.newProjectForm
+                        |> Form.updateServerErrors projectErrors ProjectForm.serverErrorToFormError
+
+                knownHostErrors =
+                    response.body
+                        |> decodeString KnownHostForm.errorsDecoder
+                        |> Result.withDefault []
+
+                knownHostForm =
+                    model.newKnownHostForm
+                        |> Form.updateServerErrors knownHostErrors KnownHostForm.serverErrorToFormError
+            in
+                ( projectForm, knownHostForm, NoOp )
+
+        _ ->
+            ( formErrors model.newProjectForm, model.newKnownHostForm, NoOp )
 
 
 update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update context session msg model =
     case msg of
+        NoOp_ ->
+            model
+                => Cmd.none
+                => NoOp
+
         NewUrl url ->
             model
                 => newUrl url
+                => NoOp
+
+        SetGitUrl maybeGitUrl ->
+            { model | newProjectForm = ProjectForm.updateGitUrl maybeGitUrl model.newProjectForm }
+                => Cmd.none
                 => NoOp
 
         CloseNewProjectModal ->
@@ -257,13 +377,57 @@ update context session msg model =
 
         SetProjectFormRepository repository ->
             { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.Repository repository }
-                => Cmd.none
+                => Ports.parseGitUrl repository
                 => NoOp
 
         SetProjectFormPrivateKey privateKey ->
             { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.PrivateKey privateKey }
                 => Cmd.none
                 => NoOp
+
+        SubmitBothForms ->
+            let
+                submitBothForms authToken =
+                    authToken
+                        |> Request.KnownHost.create context (KnownHostForm.submitValues model.newKnownHostForm)
+                        |> Task.andThen
+                            (\knownHostResult ->
+                                Request.Project.create context (ProjectForm.submitValues model.newProjectForm) authToken
+                                    |> Task.andThen (\projectResult -> Task.succeed ( knownHostResult, projectResult ))
+                            )
+            in
+                case Maybe.map .token session.user of
+                    Just authToken ->
+                        model
+                            => Task.attempt KnownHostAndProjectCreated (submitBothForms authToken)
+                            => NoOp
+
+                    Nothing ->
+                        model
+                            => Cmd.none
+                            => NoOp
+
+        KnownHostAndProjectCreated (Ok ( knownHost, project )) ->
+            { model
+                | newProjectForm = ProjectForm.init
+                , newProjectModalVisibility = Modal.hidden
+                , projects = addProject model.projects project
+                , knownHosts = addKnownHost model.knownHosts knownHost
+            }
+                => Cmd.none
+                => NoOp
+
+        KnownHostAndProjectCreated (Err err) ->
+            let
+                ( updatedProjectForm, updatedKnownHostForm, externalMsg ) =
+                    handleFormError model err
+            in
+                { model
+                    | newProjectForm = Form.submitting False updatedProjectForm
+                    , newKnownHostForm = Form.submitting False updatedKnownHostForm
+                }
+                    => Cmd.none
+                    => externalMsg
 
         SubmitProjectForm ->
             let
@@ -281,29 +445,31 @@ update context session msg model =
                     => cmd
                     => NoOp
 
+        SubmitKnownHostForm ->
+            let
+                cmdFromAuth authToken =
+                    authToken
+                        |> Request.KnownHost.create context (KnownHostForm.submitValues model.newKnownHostForm)
+                        |> Task.attempt KnownHostCreated
+
+                cmd =
+                    session
+                        |> Session.attempt "create known host" cmdFromAuth
+                        |> Tuple.second
+            in
+                { model | newKnownHostForm = Form.submit model.newKnownHostForm }
+                    => cmd
+                    => NoOp
+
+        SetKnownHostFormScannedKey key ->
+            { model | newKnownHostForm = KnownHostForm.update model.newKnownHostForm KnownHostForm.ScannedKey key }
+                => Cmd.none
+                => NoOp
+
         ProjectCreated (Err err) ->
             let
-                ( updatedProjectForm, externalMsg ) =
-                    case err of
-                        Request.Errors.HandledError handledError ->
-                            model.newProjectForm
-                                => HandleRequestError handledError
-
-                        Request.Errors.UnhandledError (Http.BadStatus response) ->
-                            let
-                                errors =
-                                    response.body
-                                        |> decodeString ProjectForm.errorsDecoder
-                                        |> Result.withDefault []
-                            in
-                                model.newProjectForm
-                                    |> Form.updateServerErrors errors ProjectForm.serverErrorToFormError
-                                    => NoOp
-
-                        _ ->
-                            model.newProjectForm
-                                |> Form.updateServerErrors [ "" => "Unable to process project." ] ProjectForm.serverErrorToFormError
-                                => NoOp
+                ( updatedProjectForm, _, externalMsg ) =
+                    handleFormError model err
             in
                 { model | newProjectForm = Form.submitting False updatedProjectForm }
                     => Cmd.none
@@ -318,9 +484,30 @@ update context session msg model =
                 => Cmd.none
                 => NoOp
 
+        KnownHostCreated (Err err) ->
+            let
+                ( _, updatedKnownHostForm, externalMsg ) =
+                    handleFormError model err
+            in
+                { model | newKnownHostForm = Form.submitting False updatedKnownHostForm }
+                    => Cmd.none
+                    => externalMsg
+
+        KnownHostCreated (Ok knownHost) ->
+            let
+                updatedModel =
+                    { model
+                        | newKnownHostForm = KnownHostForm.init
+                        , knownHosts = addKnownHost model.knownHosts knownHost
+                    }
+            in
+                updatedModel
+                    => Cmd.none
+                    => NoOp
+
         ShowNewProjectModal ->
             { model | newProjectModalVisibility = Modal.shown }
-                => Cmd.none
+                => Task.attempt (always NoOp_) (Dom.focus "name")
                 => NoOp
 
         AddProject projectJson ->
@@ -334,5 +521,19 @@ update context session msg model =
                             model.projects
             in
                 { model | projects = projects }
+                    => Cmd.none
+                    => NoOp
+
+        AddKnownHost knownHostJson ->
+            let
+                knownHosts =
+                    case Decode.decodeValue KnownHost.decoder knownHostJson of
+                        Ok knownHost ->
+                            addKnownHost model.knownHosts knownHost
+
+                        Err _ ->
+                            model.knownHosts
+            in
+                { model | knownHosts = knownHosts }
                     => Cmd.none
                     => NoOp

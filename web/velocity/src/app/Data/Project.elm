@@ -1,4 +1,4 @@
-module Data.Project exposing (Project, decoder, idParser, slugParser, idToString, slugToString, decodeId, Id(..), Slug(..))
+module Data.Project exposing (Project, decoder, idParser, slugParser, idToString, slugToString, decodeId, Id(..), Slug(..), addProject)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
@@ -32,6 +32,26 @@ decoder =
         |> required "createdAt" stringToDateTime
         |> required "updatedAt" stringToDateTime
         |> required "synchronising" Decode.bool
+
+
+
+-- HELPERS --
+
+
+findProject : List Project -> Project -> Maybe Project
+findProject projects project =
+    List.filter (\a -> a.id == project.id) projects
+        |> List.head
+
+
+addProject : List Project -> Project -> List Project
+addProject projects project =
+    case findProject projects project of
+        Just _ ->
+            projects
+
+        Nothing ->
+            project :: projects
 
 
 

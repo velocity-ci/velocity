@@ -18,7 +18,6 @@ import Request.Errors
 import Request.Channel
 import Route exposing (Route)
 import Util exposing ((=>))
-import Component.Header as Header
 import Phoenix.Socket as Socket exposing (Socket)
 import Json.Decode as Decode exposing (Value)
 import Task
@@ -51,7 +50,6 @@ type alias Model =
     { session : Session Msg
     , context : Context
     , pageState : PageState
-    , headerState : Header.Model
     , userSidebar : UserSidebar.State
     }
 
@@ -76,21 +74,16 @@ init flags location =
             , socket = initialSocket context
             }
 
-        ( headerState, headerCmd ) =
-            Header.init
-
         ( initialModel, initialCmd ) =
             setRoute (Route.fromLocation location)
                 { pageState = Loaded initialPage
                 , context = context
                 , session = session
-                , headerState = headerState
                 , userSidebar = UserSidebar.init
                 }
     in
         initialModel
-            ! [ Cmd.map HeaderMsg headerCmd
-              , initialCmd
+            ! [ initialCmd
               ]
 
 
@@ -131,9 +124,6 @@ view model =
 
         sidebar =
             viewSidebar model
-
-        header =
-            viewHeader model
     in
         case model.pageState of
             Loaded activePage ->
@@ -163,14 +153,6 @@ pageToActivePage page =
 
         _ ->
             Page.Other
-
-
-viewHeader : Model -> Bool -> Page -> Html Msg
-viewHeader { session, headerState } isLoading page =
-    page
-        |> pageToActivePage
-        |> Header.view headerState session.user isLoading
-        |> Html.map HeaderMsg
 
 
 viewSidebar : Model -> Bool -> Page -> Html Msg
@@ -254,11 +236,6 @@ subscriptions model =
         session =
             Sub.map SetUser sessionChange
 
-        header =
-            model.headerState
-                |> Header.subscriptions
-                |> Sub.map HeaderMsg
-
         socket =
             Socket.listen model.session.socket SocketMsg
 
@@ -270,7 +247,7 @@ subscriptions model =
                 |> getPage
                 |> pageSubscriptions
     in
-        Sub.batch [ header, session, socket, page, userSidebar ]
+        Sub.batch [ session, socket, page, userSidebar ]
 
 
 pageSubscriptions : Page -> Sub Msg
@@ -327,7 +304,6 @@ type Msg
     | UsersLoaded Users.Model
     | UsersMsg Users.Msg
     | SocketMsg (Socket.Msg Msg)
-    | HeaderMsg Header.Msg
     | UserDropdownToggleMsg Dropdown.State
     | NoOp
 
@@ -572,14 +548,6 @@ updatePage page msg model =
                     ( { model | session = { session | socket = newSocket } }
                     , Cmd.map SocketMsg socketCmd
                     )
-
-            ( HeaderMsg subMsg, _ ) ->
-                let
-                    ( headerState, headerCmd ) =
-                        Header.update subMsg model.headerState
-                in
-                    { model | headerState = headerState }
-                        => Cmd.map HeaderMsg headerCmd
 
             ( SetRoute route, _ ) ->
                 setRouteUpdate route model
