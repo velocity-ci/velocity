@@ -82,7 +82,7 @@ init context session slug maybeRoute =
             Request.Project.branches context slug maybeAuthToken
 
         loadBuilds =
-            Request.Project.builds context slug maybeAuthToken
+            Request.Project.builds context slug maybeAuthToken -1 Nothing
 
         initialModel project (Paginated branches) (Paginated builds) =
             { project = project
@@ -273,6 +273,9 @@ viewSidebar session model =
             Settings _ ->
                 sidebar SettingsPage
 
+            Builds _ ->
+                sidebar BuildsPage
+
             _ ->
                 sidebar OtherPage
 
@@ -310,7 +313,7 @@ viewSubPage session model =
                     |> pageFrame (breadcrumb (text "") [])
 
             Builds subModel ->
-                Builds.view subModel
+                Builds.view project subModel
                     |> Html.map BuildsMsg
                     |> pageFrame (breadcrumb (text "") [])
 

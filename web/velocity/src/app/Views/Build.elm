@@ -3,19 +3,84 @@ module Views.Build exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Data.Build as Build exposing (Build)
+import Data.Project as Project exposing (Project)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (BuildStreamOutput)
+import Data.Commit as Commit exposing (Commit)
 import Data.Task as ProjectTask
+import Route exposing (Route)
+import Page.Project.Route as ProjectRoute
+import Page.Project.Commit.Route as CommitRoute
+import Page.Helpers exposing (formatDateTime)
 import Ansi.Log
 import Util exposing ((=>))
+import Views.Helpers exposing (onClickPage)
 
 
-viewBuildContainer : Build -> List BuildStep -> Ansi.Log.Model -> Html msg
-viewBuildContainer build steps output =
-    div []
-        [ h3 [] [ text ("build container " ++ Build.idToString build.id) ]
-        , Ansi.Log.view output
+viewBuildHistoryTable : Project -> List Build -> (String -> msg) -> Html msg
+viewBuildHistoryTable project builds newUrlMsg =
+    div [ class "col-md-12 px-0 mx-0" ]
+        [ div []
+            [ table [ class "table mb-0 " ]
+                [ thead [] [ viewBuildHistoryTableHeaderRow ]
+                , tbody [] (List.map (viewBuildHistoryTableRow project newUrlMsg) builds)
+                ]
+            ]
         ]
+
+
+viewBuildHistoryTableHeaderRow : Html msg
+viewBuildHistoryTableHeaderRow =
+    tr []
+        [ th [ class "pl-0 border-0" ] [ text "Task" ]
+        , th [ class "pl-0 border-0" ] [ text "Commit" ]
+        , th [ class "pl-0 border-0" ] [ text "Created" ]
+        , th [ class "pl-0 border-0" ] []
+        ]
+
+
+viewBuildHistoryTableRow : Project -> (String -> msg) -> Build -> Html msg
+viewBuildHistoryTableRow project newUrlMsg build =
+    let
+        colourClassList =
+            [ viewBuildTextClass build => True ]
+
+        commitTaskRoute =
+            CommitRoute.Task build.task.name Nothing
+                |> ProjectRoute.Commit build.task.commit.hash
+                |> Route.Project project.slug
+
+        commitRoute =
+            CommitRoute.Overview
+                |> ProjectRoute.Commit build.task.commit.hash
+                |> Route.Project project.slug
+
+        task =
+            build.task
+
+        taskName =
+            ProjectTask.nameToString task.name
+
+        createdAt =
+            formatDateTime build.createdAt
+
+        truncatedHash =
+            Commit.truncateHash task.commit.hash
+
+        buildLink content route =
+            a
+                [ Route.href route
+                , onClickPage newUrlMsg route
+                , classList colourClassList
+                ]
+                [ text content ]
+    in
+        tr [ classList colourClassList ]
+            [ td [ class "px-0" ] [ buildLink taskName commitTaskRoute ]
+            , td [ class "px-0" ] [ buildLink truncatedHash commitRoute ]
+            , td [ class "px-0" ] [ buildLink createdAt commitTaskRoute ]
+            , td [ class "px-0 text-right" ] [ viewBuildStatusIcon build ]
+            ]
 
 
 viewBuildStatusIcon : Build -> Html msg
