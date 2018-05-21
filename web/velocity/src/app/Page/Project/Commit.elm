@@ -23,7 +23,6 @@ import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
 import Data.PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
-import Json.Decode as Decode
 import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime, formatDateTime)
 import Views.Spinner exposing (spinner)
@@ -161,10 +160,7 @@ initialEvents projectSlug route =
                     Dict.empty
 
         pageEvents =
-            [ ( "build:new", AddBuildEvent )
-            , ( "build:delete", DeleteBuildEvent )
-            , ( "build:update", UpdateBuildEvent )
-            ]
+            []
     in
         Dict.singleton (channelName projectSlug) (pageEvents)
 
@@ -336,12 +332,11 @@ type Msg
     | OverviewMsg Overview.Msg
     | CommitTaskMsg CommitTask.Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
-    | AddBuildEvent Encode.Value
-    | UpdateBuildEvent Encode.Value
-    | DeleteBuildEvent Encode.Value
     | TaskFilterDropdownMsg DropdownFilter.DropdownState
     | TaskFilterTermMsg String
     | FilterTask (Maybe ProjectTask.Task)
+    | AddBuild Build
+    | UpdateBuild Build
     | NoOp
 
 
@@ -496,48 +491,30 @@ update context project session msg model =
                     { model_ | subPageState = Loaded (CommitTask newModel) }
                         ! [ Cmd.map CommitTaskMsg newCmd ]
 
-            ( AddBuildEvent buildJson, _ ) ->
+            ( AddBuild build, _ ) ->
                 let
                     builds =
-                        buildJson
-                            |> Decode.decodeValue Build.decoder
-                            |> Result.toMaybe
-                            |> Maybe.map (addBuild model.builds)
-                            |> Maybe.withDefault model.builds
-                            |> sortByDatetime .createdAt
-                            |> List.reverse
+                        if Commit.compare model.commit build.task.commit then
+                            addBuild model.builds build
+                                |> sortByDatetime .createdAt
+                                |> List.reverse
+                        else
+                            model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none
 
-            ( DeleteBuildEvent buildJson, _ ) ->
+            ( UpdateBuild build, _ ) ->
                 let
                     builds =
-                        Decode.decodeValue Build.decoder buildJson
-                            |> Result.toMaybe
-                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
-                            |> Maybe.withDefault model.builds
-                in
-                    { model | builds = builds }
-                        => Cmd.none
-
-            ( UpdateBuildEvent buildJson, _ ) ->
-                let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
-                            |> Result.toMaybe
-                            |> Maybe.map
-                                (\b ->
-                                    List.map
-                                        (\a ->
-                                            if b.id == a.id then
-                                                b
-                                            else
-                                                a
-                                        )
-                                        model.builds
+                        model.builds
+                            |> List.map
+                                (\a ->
+                                    if build.id == a.id then
+                                        build
+                                    else
+                                        a
                                 )
-                            |> Maybe.withDefault model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none

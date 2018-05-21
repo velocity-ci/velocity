@@ -1,6 +1,5 @@
 //@import "~bootswatch/dist/yeti/_variables.scss";
 
-
 $popover-bg: #000;
 $popover-body-color: #fff;
 
@@ -8,7 +7,6 @@ $popover-body-color: #fff;
 //@import "~bootswatch/dist/yeti/_bootswatch.scss";
 $fa-font-path: "~font-awesome/fonts";
 @import "~font-awesome/scss/font-awesome.scss";
-
 
 .sk-three-bounce {
   margin-right: 10px;
@@ -61,7 +59,6 @@ $fa-font-path: "~font-awesome/fonts";
   }
 }
 
-
 /*
  * Base structure
  */
@@ -83,7 +80,6 @@ h1 {
   border-bottom: 1px solid #eee;
 }
 
-
 /*
 Branch filter
  */
@@ -103,7 +99,7 @@ Branch filter
 Content container
  */
 .content-container {
-  position:relative;
+  position: relative;
   margin-left: 75px;
 }
 
@@ -118,7 +114,7 @@ Content container
   bottom: 0;
   left: 0;
   z-index: 1;
-  padding-top:1rem;
+  padding-top: 1rem;
   background-color: rgb(244, 245, 247);
   color: rgb(66, 82, 110);
 
@@ -171,7 +167,7 @@ Content container
   }
 
   .dropdown-toggle::after {
-    display:none;
+    display: none;
   }
 
   .fa {
@@ -185,6 +181,7 @@ Content container
 .project-badge {
   padding: 10px;
 }
+
 /* Sidebar navigation */
 .sidebar {
   padding-left: 0;
@@ -221,7 +218,6 @@ Content container
   padding-bottom: 1.5rem;
 }
 
-
 .btn-cancel-delete {
   padding: 0;
   line-height: inherit;
@@ -238,83 +234,260 @@ Content container
   cursor: pointer;
 }
 
-
 .display-5 {
   font-size: 3.5rem;
   font-weight: 300;
   line-height: 1.1;
 }
+
 .display-6 {
   font-size: 2.5rem;
   font-weight: 300;
   line-height: 1.1;
 }
+
 .display-7 {
   font-size: 1.5rem;
   font-weight: 300;
   line-height: 1.1;
 }
 
-.ansi-bold{font-weight:700}
-.ansi-black-fg{color:#5D6D7E}
-.ansi-red-fg{color:#E74C3C}
-.ansi-green-fg{color:#2ECC71}
-.ansi-yellow-fg{color:#F1C40F}
-.ansi-blue-fg{color:#3498DB}
-.ansi-magenta-fg{color:#9B59B6}
-.ansi-cyan-fg{color:#1ABC9C}
-.ansi-white-fg{color:#ECF0F1}
-.ansi-bright-black-fg{color:#5D6D7E;font-weight:700}
-.ansi-bright-red-fg{color:#E74C3C;font-weight:700}
-.ansi-bright-green-fg{color:#2ECC71;font-weight:700}
-.ansi-bright-yellow-fg{color:#F1C40F;font-weight:700}
-.ansi-bright-blue-fg{color:#3498DB;font-weight:700}
-.ansi-bright-magenta-fg{color:#9B59B6;font-weight:700}
-.ansi-bright-cyan-fg{color:#1ABC9C;font-weight:700}
-.ansi-bright-white-fg{color:#ECF0F1;font-weight:700}
-.ansi-black-bg{background-color:#5D6D7E}
-.ansi-red-bg{background-color:#E74C3C}
-.ansi-green-bg{background-color:#2ECC71}
-.ansi-yellow-bg{background-color:#F1C40F}
-.ansi-blue-bg{background-color:#3498DB}
-.ansi-magenta-bg{background-color:#9B59B6}
-.ansi-cyan-bg{background-color:#1ABC9C}
-.ansi-white-bg{background-color:#ECF0F1}
+.ansi-bold {
+  font-weight: 700
+}
+
+.ansi-black-fg {
+  color: #5D6D7E
+}
+
+.ansi-red-fg {
+  color: #E74C3C
+}
+
+.ansi-green-fg {
+  color: #2ECC71
+}
+
+.ansi-yellow-fg {
+  color: #F1C40F
+}
+
+.ansi-blue-fg {
+  color: #3498DB
+}
+
+.ansi-magenta-fg {
+  color: #9B59B6
+}
+
+.ansi-cyan-fg {
+  color: #1ABC9C
+}
+
+.ansi-white-fg {
+  color: #ECF0F1
+}
+
+.ansi-bright-black-fg {
+  color: #5D6D7E;
+  font-weight: 700
+}
+
+.ansi-bright-red-fg {
+  color: #E74C3C;
+  font-weight: 700
+}
+
+.ansi-bright-green-fg {
+  color: #2ECC71;
+  font-weight: 700
+}
+
+.ansi-bright-yellow-fg {
+  color: #F1C40F;
+  font-weight: 700
+}
+
+.ansi-bright-blue-fg {
+  color: #3498DB;
+  font-weight: 700
+}
+
+.ansi-bright-magenta-fg {
+  color: #9B59B6;
+  font-weight: 700
+}
+
+.ansi-bright-cyan-fg {
+  color: #1ABC9C;
+  font-weight: 700
+}
+
+.ansi-bright-white-fg {
+  color: #ECF0F1;
+  font-weight: 700
+}
+
+.ansi-black-bg {
+  background-color: #5D6D7E
+}
+
+.ansi-red-bg {
+  background-color: #E74C3C
+}
+
+.ansi-green-bg {
+  background-color: #2ECC71
+}
+
+.ansi-yellow-bg {
+  background-color: #F1C40F
+}
+
+.ansi-blue-bg {
+  background-color: #3498DB
+}
+
+.ansi-magenta-bg {
+  background-color: #9B59B6
+}
+
+.ansi-cyan-bg {
+  background-color: #1ABC9C
+}
+
+.ansi-white-bg {
+  background-color: #ECF0F1
+}
 
 .ansi-bright-black-bg {
-  background-color:#5D6D7E;
-  font-weight:700
+  background-color: #5D6D7E;
+  font-weight: 700
 }
 
 .ansi-bright-red-bg {
-  background-color:#E74C3C;
-  font-weight:700
-}
-.ansi-bright-green-bg{
-  background-color:#2ECC71;
-  font-weight:700
-}
-.ansi-bright-yellow-bg{
-  background-color:#F1C40F;
-  font-weight:700
-}
-.ansi-bright-blue-bg{
-  background-color:#3498DB;
-  font-weight:700
-}
-.ansi-bright-magenta-bg{
-  background-color:#9B59B6;
-  font-weight:700
-}
-.ansi-bright-cyan-bg{
-  background-color:#1ABC9C;
-  font-weight:700
-}
-.ansi-bright-white-bg{
-  background-color:#ECF0F1;
-  font-weight:700
-}
-.ansi-blink{
-  animation:1s blinker step-end infinite
+  background-color: #E74C3C;
+  font-weight: 700
 }
 
+.ansi-bright-green-bg {
+  background-color: #2ECC71;
+  font-weight: 700
+}
+
+.ansi-bright-yellow-bg {
+  background-color: #F1C40F;
+  font-weight: 700
+}
+
+.ansi-bright-blue-bg {
+  background-color: #3498DB;
+  font-weight: 700
+}
+
+.ansi-bright-magenta-bg {
+  background-color: #9B59B6;
+  font-weight: 700
+}
+
+.ansi-bright-cyan-bg {
+  background-color: #1ABC9C;
+  font-weight: 700
+}
+
+.ansi-bright-white-bg {
+  background-color: #ECF0F1;
+  font-weight: 700
+}
+
+.ansi-blink {
+  animation: 1s blinker step-end infinite
+}
+
+/**
+Toasts
+ */
+
+.toasty-container {
+  padding: 1em;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 5px 5px -5px rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 13px;
+}
+
+.toasty-title {
+  font-size: 1em;
+  margin: 0;
+}
+
+.toasty-message {
+  font-size: 0.9em;
+  margin-top: 0.5em;
+  margin-bottom: 0;
+}
+
+.toasty-success {
+  background-color: #2ECC40;
+}
+
+.toasty-warning {
+  background-color: #FF851B;
+}
+
+.toasty-error {
+  background-color: #FF4136;
+}
+
+.animated {
+  animation-duration: 1s;
+  animation-fill-mode: both;
+}
+
+@keyframes bounceInRight {
+  from, 60%, 75%, 90%, to {
+    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+  }
+
+  from {
+    opacity: 0;
+    transform: translate3d(3000px, 0, 0);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translate3d(-25px, 0, 0);
+  }
+
+  75% {
+    transform: translate3d(10px, 0, 0);
+  }
+
+  90% {
+    transform: translate3d(-5px, 0, 0);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+.bounceInRight {
+  animation-name: bounceInRight;
+}
+
+@keyframes fadeOutRightBig {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(2000px, 0, 0);
+  }
+}
+
+.fadeOutRightBig {
+  animation-name: fadeOutRightBig;
+}

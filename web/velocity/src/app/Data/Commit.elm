@@ -58,6 +58,11 @@ decodeHash =
 -- PUBLIC HELPERS --
 
 
+compare : Commit -> Commit -> Bool
+compare a b =
+    hashToString a.hash == hashToString b.hash
+
+
 truncateHash : Hash -> String
 truncateHash hash =
     hash

@@ -8,6 +8,8 @@ import Task exposing (Task)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
+import Data.Event as Event exposing (Event)
+import Data.Task as ProjectTask
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Views.Page as Page
@@ -31,6 +33,8 @@ import Page.Project.Builds as Builds
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
 import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
+import Toasty
+import Views.Toast as ToastTheme
 
 
 -- SUB PAGES --
@@ -61,6 +65,7 @@ type alias Model =
     , subPageState : SubPageState
     , builds : List Build
     , sidebar : Sidebar.State
+    , toasties : Toasty.Stack (Event Build)
     }
 
 
@@ -95,6 +100,7 @@ init context session slug maybeRoute =
                 , settingsIconPopover = Popover.initialState
                 , projectBadgePopover = Popover.initialState
                 }
+            , toasties = Toasty.initialState
             }
 
         handleLoadError e =
@@ -238,7 +244,39 @@ subscriptions model =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    viewSubPage session model
+    div []
+        [ viewSubPage session model
+        , Toasty.view ToastTheme.config renderToast ToastyMsg model.toasties
+        ]
+
+
+renderToast : Event Build -> Html Msg
+renderToast event =
+    case event of
+        Event.Created build ->
+            genericToast "toasty-success" build
+
+        Event.Updated build ->
+            genericToast "toasty-success" build
+
+
+genericToast : String -> Build -> Html msg
+genericToast variantClass build =
+    let
+        title =
+            ProjectTask.nameToString build.task.name
+
+        message =
+            "Hi"
+    in
+        div
+            [ class "toasty-container", class variantClass ]
+            [ h1 [ class "toasty-title" ] [ text title ]
+            , if (String.isEmpty message) then
+                text ""
+              else
+                p [ class "toasty-message" ] [ text message ]
+            ]
 
 
 sidebarConfig : Sidebar.Config Msg
@@ -436,6 +474,7 @@ type Msg
     | BuildsIconPopMsg Popover.State
     | SettingsIconPopMsg Popover.State
     | ProjectBadgePopMsg Popover.State
+    | ToastyMsg (Toasty.Msg (Event Build))
     | NoOp
 
 
@@ -681,33 +720,52 @@ updateSubPage context session subPage msg model =
                 model
                     => Route.modifyUrl Route.Projects
 
-            ( AddBuildEvent buildJson, _ ) ->
+            ( AddBuildEvent buildJson, page ) ->
                 let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
+                    maybeBuild =
+                        buildJson
+                            |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
+
+                    builds =
+                        maybeBuild
                             |> Maybe.map (addBuild model.builds)
                             |> Maybe.withDefault model.builds
-                in
-                    { model | builds = sortByDatetime .createdAt builds }
-                        => Cmd.none
 
-            ( DeleteBuildEvent buildJson, _ ) ->
-                let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
-                            |> Result.toMaybe
-                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
-                            |> Maybe.withDefault model.builds
-                in
-                    { model | builds = builds }
-                        => Cmd.none
+                    ( subPageState, subCmd ) =
+                        case ( page, maybeBuild ) of
+                            ( Commit subModel, Just build ) ->
+                                subModel
+                                    |> Commit.update context model.project session (Commit.AddBuild build)
+                                    |> Tuple.mapFirst (Commit >> Loaded)
+                                    |> Tuple.mapSecond (Cmd.map CommitMsg)
 
-            ( UpdateBuildEvent buildJson, _ ) ->
+                            ( _, _ ) ->
+                                model.subPageState => Cmd.none
+
+                    modelCmd =
+                        { model
+                            | builds = sortByDatetime .createdAt builds
+                            , subPageState = subPageState
+                        }
+                            ! [ subCmd ]
+                in
+                    case maybeBuild of
+                        Just build ->
+                            Toasty.addToast ToastTheme.config ToastyMsg (Event.Created build) modelCmd
+
+                        Nothing ->
+                            modelCmd
+
+            ( UpdateBuildEvent buildJson, page ) ->
                 let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
+                    maybeBuild =
+                        buildJson
+                            |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
+
+                    builds =
+                        maybeBuild
                             |> Maybe.map
                                 (\b ->
                                     List.map
@@ -720,9 +778,40 @@ updateSubPage context session subPage msg model =
                                         model.builds
                                 )
                             |> Maybe.withDefault model.builds
+
+                    ( subPageState, subCmd ) =
+                        case ( page, maybeBuild ) of
+                            ( Commit subModel, Just build ) ->
+                                subModel
+                                    |> Commit.update context model.project session (Commit.UpdateBuild build)
+                                    |> Tuple.mapFirst (Commit >> Loaded)
+                                    |> Tuple.mapSecond (Cmd.map CommitMsg)
+
+                            ( _, _ ) ->
+                                model.subPageState => Cmd.none
+
+                    modelCmd =
+                        { model
+                            | builds = sortByDatetime .createdAt builds
+                            , subPageState = subPageState
+                        }
+                            ! [ subCmd ]
+                in
+                    modelCmd
+
+            ( DeleteBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
+                            |> Maybe.withDefault model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none
+
+            ( ToastyMsg subMsg, _ ) ->
+                Toasty.update ToastTheme.config ToastyMsg subMsg model
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
