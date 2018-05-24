@@ -182,11 +182,6 @@ subscriptions { formModalVisibility } =
 -- CHANNELS --
 
 
-streamChannelName : BuildStream -> String
-streamChannelName stream =
-    "stream:" ++ (BuildStream.idToString stream.id)
-
-
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
 events model =
     case model.frame of
@@ -198,14 +193,43 @@ events model =
             Dict.empty
 
 
-leaveChannels : Model -> List String
-leaveChannels model =
-    case model.frame of
-        BuildFrame (LoadedBuild _ buildOutputModel) ->
-            BuildOutput.leaveChannels buildOutputModel
+leaveChannels : Model -> Maybe CommitRoute.Route -> List String
+leaveChannels model route =
+    let
+        isTask task =
+            model.task.name == task
 
-        _ ->
-            []
+        --
+        --        isTab tab =
+        --            model.selectedTab == (stringToTab tab)
+        channels =
+            case model.frame of
+                BuildFrame (LoadedBuild _ buildOutputModel) ->
+                    BuildOutput.leaveChannels buildOutputModel
+
+                _ ->
+                    []
+    in
+        case route of
+            Just (CommitRoute.Task task tab) ->
+                if not (isTask task) then
+                    channels
+                else
+                    []
+
+            _ ->
+                channels
+
+
+
+--leaveChannels : Model -> List String
+--leaveChannels model =
+--    case model.frame of
+--        BuildFrame (LoadedBuild _ buildOutputModel) ->
+--            BuildOutput.leaveChannels buildOutputModel
+--
+--        _ ->
+--            []
 
 
 mapEvents :

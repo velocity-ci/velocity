@@ -103,6 +103,7 @@ initialPage =
 initialSocket : Context -> Socket Msg
 initialSocket { wsUrl } =
     Socket.init wsUrl
+        |> Socket.withoutHeartbeat
 
 
 userSidebarConfig : UserSidebar.Config Msg
@@ -311,30 +312,27 @@ type Msg
 leavePageChannels : Session Msg -> Page -> Maybe Route -> ( Session Msg, Cmd Msg )
 leavePageChannels session page route =
     let
-        leaveChannels =
-            Request.Channel.leaveChannels SocketMsg
+        channels =
+            channelsToLeaveOnRouteChange page route
 
         ( newSocket, leaveCmd ) =
-            case page of
-                Home _ ->
-                    if route == Just Route.Home then
-                        session.socket => Cmd.none
-                    else
-                        leaveChannels [ Home.channelName ] session.socket
-
-                Project subModel ->
-                    case route of
-                        Just (Route.Project projectSlug subRoute) ->
-                            leaveChannels (Project.leaveChannels subModel (Just projectSlug) (Just subRoute)) session.socket
-
-                        _ ->
-                            leaveChannels (Project.leaveChannels subModel Nothing Nothing) session.socket
-
-                _ ->
-                    session.socket => Cmd.none
+            Request.Channel.leaveChannels SocketMsg channels session.socket
     in
         { session | socket = newSocket }
             => leaveCmd
+
+
+channelsToLeaveOnRouteChange : Page -> (Maybe Route -> List String)
+channelsToLeaveOnRouteChange page =
+    case page of
+        Home _ ->
+            Home.leaveChannels
+
+        Project subModel ->
+            Project.leaveChannels subModel
+
+        _ ->
+            always []
 
 
 handledErrorToMsg : Request.Errors.HandledError -> Msg
@@ -501,6 +499,19 @@ update msg model =
     updatePage (getPage model.pageState) msg model
 
 
+setRouteUpdate : Maybe Route -> Model -> ( Model, Cmd Msg )
+setRouteUpdate maybeRoute model =
+    let
+        ( channelLeaveSession, channelLeaveCmd ) =
+            leavePageChannels model.session (getPage model.pageState) maybeRoute
+
+        ( routeModel, routeCmd ) =
+            setRoute maybeRoute { model | session = channelLeaveSession }
+    in
+        routeModel
+            ! [ routeCmd, channelLeaveCmd ]
+
+
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
 updatePage page msg model =
     let
@@ -514,17 +525,6 @@ updatePage page msg model =
             in
                 { model | pageState = Loaded (toModel newModel) }
                     ! [ Cmd.map toMsg newCmd ]
-
-        setRouteUpdate route model =
-            let
-                ( channelLeaveSession, channelLeaveCmd ) =
-                    leavePageChannels model.session (getPage model.pageState) route
-
-                ( routeModel, routeCmd ) =
-                    setRoute route { model | session = channelLeaveSession }
-            in
-                routeModel
-                    ! [ routeCmd, channelLeaveCmd ]
 
         errored =
             pageErrored model

@@ -146,7 +146,7 @@ initialEvents slug route =
                     mapEvents CommitsMsg (Commits.events slug)
 
                 ProjectRoute.Commit _ subRoute ->
-                    mapEvents CommitMsg (Commit.initialEvents slug subRoute)
+                    mapEvents CommitMsg (Commit.initialEvents (channelName slug) subRoute)
 
                 _ ->
                     Dict.empty
@@ -184,39 +184,38 @@ loadedEvents msg model =
             Dict.empty
 
 
-leaveChannels : Model -> Maybe Project.Slug -> Maybe ProjectRoute.Route -> List String
-leaveChannels model maybeProjectSlug maybeProjectRoute =
+leaveChannels : Model -> Maybe Route.Route -> List String
+leaveChannels model route =
     let
-        currentProjectSlug =
-            model.project.slug
-
         projectChannel =
-            channelName currentProjectSlug
+            channelName model.project.slug
     in
-        case ( getSubPage model.subPageState, maybeProjectSlug, maybeProjectRoute ) of
-            ( Commit subModel, Just routeProjectSlug, Just (ProjectRoute.Commit _ commitRoute) ) ->
-                if routeProjectSlug == currentProjectSlug then
-                    Commit.leaveChannels subModel (Just commitRoute)
-                else
-                    projectChannel :: Commit.leaveChannels subModel Nothing
+        case route of
+            Just (Route.Project slug subRoute) ->
+                let
+                    subPageChannels =
+                        leaveSubPageChannels (getSubPage model.subPageState) subRoute
+                in
+                    if slug == model.project.slug then
+                        -- Route is for this project. Maybe different sub route.
+                        subPageChannels
+                    else
+                        -- Project route, but for a different project
+                        projectChannel :: subPageChannels
 
-            ( Commit subModel, Just routeProjectSlug, _ ) ->
-                if routeProjectSlug == currentProjectSlug then
-                    Commit.leaveChannels subModel Nothing
-                else
-                    projectChannel :: Commit.leaveChannels subModel Nothing
-
-            ( Commit subModel, _, _ ) ->
-                projectChannel :: Commit.leaveChannels subModel Nothing
-
-            ( _, Just routeProjectSlug, _ ) ->
-                if routeProjectSlug == currentProjectSlug then
-                    []
-                else
-                    [ projectChannel ]
-
+            -- Not a project route
             _ ->
                 [ projectChannel ]
+
+
+leaveSubPageChannels : SubPage -> ProjectRoute.Route -> List String
+leaveSubPageChannels subPage subRoute =
+    case subPage of
+        Commit subModel ->
+            Commit.leaveChannels subModel subRoute
+
+        _ ->
+            []
 
 
 
@@ -585,30 +584,32 @@ pageErrored model activePage errorMessage =
 
 update : Context -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update context session msg model =
-    let
-        updatedSidebarModel =
-            { model | sidebar = updateSidebar model.sidebar msg }
-    in
-        updateSubPage context session (getSubPage model.subPageState) msg updatedSidebarModel
+    case updateSidebar model.sidebar msg of
+        Just sidebar ->
+            { model | sidebar = sidebar }
+                => Cmd.none
+
+        Nothing ->
+            updateSubPage context session (getSubPage model.subPageState) msg model
 
 
-updateSidebar : Sidebar.State -> Msg -> Sidebar.State
+updateSidebar : Sidebar.State -> Msg -> Maybe Sidebar.State
 updateSidebar sidebar msg =
     case msg of
         CommitsIconPopMsg state ->
-            { sidebar | commitIconPopover = state }
+            Just { sidebar | commitIconPopover = state }
 
         SettingsIconPopMsg state ->
-            { sidebar | settingsIconPopover = state }
+            Just { sidebar | settingsIconPopover = state }
 
         BuildsIconPopMsg state ->
-            { sidebar | buildsIconPopover = state }
+            Just { sidebar | buildsIconPopover = state }
 
         ProjectBadgePopMsg state ->
-            { sidebar | projectBadgePopover = state }
+            Just { sidebar | projectBadgePopover = state }
 
         _ ->
-            sidebar
+            Nothing
 
 
 updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
@@ -815,5 +816,5 @@ updateSubPage context session subPage msg model =
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through" model)
+                (Debug.log "Fell through (project page)" model)
                     => Cmd.none

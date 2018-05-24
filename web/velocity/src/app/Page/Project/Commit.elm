@@ -134,11 +134,6 @@ subscriptions model =
 -- CHANNELS --
 
 
-channelName : Project.Slug -> String
-channelName projectSlug =
-    "project:" ++ (Project.slugToString projectSlug)
-
-
 mapEvents :
     (b -> c)
     -> Dict comparable (List ( a1, a -> b ))
@@ -148,8 +143,8 @@ mapEvents fromMsg events =
         |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) v)
 
 
-initialEvents : Project.Slug -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
-initialEvents projectSlug route =
+initialEvents : String -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents channelName route =
     let
         subPageEvents =
             case route of
@@ -162,7 +157,7 @@ initialEvents projectSlug route =
         pageEvents =
             []
     in
-        Dict.singleton (channelName projectSlug) (pageEvents)
+        Dict.singleton channelName pageEvents
 
 
 loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
@@ -176,20 +171,40 @@ loadedEvents msg model =
             Dict.empty
 
 
-leaveChannels : Model -> Maybe CommitRoute.Route -> List String
-leaveChannels model maybeCommitRoute =
-    case ( getSubPage model.subPageState, maybeCommitRoute ) of
-        ( CommitTask subModel, Just (CommitRoute.Task _ buildName) ) ->
-            CommitTask.leaveChannels subModel
+leaveChannels : Model -> ProjectRoute.Route -> List String
+leaveChannels model route =
+    case route of
+        ProjectRoute.Commit _ subRoute ->
+            leaveSubPageChannels (getSubPage model.subPageState) (Just subRoute)
 
-        ( CommitTask subModel, _ ) ->
-            CommitTask.leaveChannels subModel
+        -- Not a commit route
+        _ ->
+            leaveSubPageChannels (getSubPage model.subPageState) Nothing
+
+
+leaveSubPageChannels : SubPage -> Maybe CommitRoute.Route -> List String
+leaveSubPageChannels subPage subRoute =
+    case subPage of
+        CommitTask subModel ->
+            CommitTask.leaveChannels subModel subRoute
 
         _ ->
             []
 
 
 
+--
+--leaveChannels : Model -> Maybe CommitRoute.Route -> List String
+--leaveChannels model maybeCommitRoute =
+--    case ( getSubPage model.subPageState, maybeCommitRoute ) of
+--        ( CommitTask subModel, Just (CommitRoute.Task _ buildName) ) ->
+--            CommitTask.leaveChannels subModel
+--
+--        ( CommitTask subModel, _ ) ->
+--            CommitTask.leaveChannels subModel
+--
+--        _ ->
+--            []
 -- VIEW --
 
 
@@ -494,12 +509,14 @@ update context project session msg model =
             ( AddBuild build, _ ) ->
                 let
                     builds =
-                        if Commit.compare model.commit build.task.commit then
-                            addBuild model.builds build
-                                |> sortByDatetime .createdAt
-                                |> List.reverse
-                        else
-                            model.builds
+                        --                        if Commit.compare model.commit build.task.commit then
+                        build
+                            |> addBuild model.builds
+                            |> sortByDatetime .createdAt
+                            |> List.reverse
+
+                    --                        else
+                    --                            model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none
@@ -547,5 +564,5 @@ update context project session msg model =
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through" model)
+                (Debug.log "Fell through (commit page)" model)
                     => Cmd.none
