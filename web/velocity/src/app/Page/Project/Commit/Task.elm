@@ -172,9 +172,14 @@ leaveChannels model route =
         isTask task =
             model.task.name == task
 
-        --
-        --        isTab tab =
-        --            model.selectedTab == (stringToTab tab)
+        isBuild routeBuild =
+            case ( routeBuild, model.selected ) of
+                ( Just routeBuildId, Just selectedId ) ->
+                    routeBuildId == selectedId
+
+                _ ->
+                    False
+
         channels =
             case model.frame of
                 BuildFrame (LoadedBuild _ buildOutputModel) ->
@@ -184,8 +189,8 @@ leaveChannels model route =
                     []
     in
         case route of
-            Just (CommitRoute.Task task tab) ->
-                if not (isTask task) then
+            Just (CommitRoute.Task task maybeBuild) ->
+                if not (isTask task) || not (isBuild maybeBuild) then
                     channels
                 else
                     []
@@ -219,7 +224,7 @@ buildDropdownFilterConfig =
     { dropdownMsg = BuildFilterDropdownMsg
     , termMsg = BuildFilterTermMsg
     , noOpMsg = NoOp_
-    , selectItemMsg = always NoOp_
+    , selectItemMsg = SelectBuild
     , labelFn = (.createdAt >> formatDateTime)
     , icon = (strong [] [ text "Build: " ])
     , showFilter = False
@@ -561,7 +566,8 @@ update context project commit builds session msg model =
             SelectBuild maybeBuild ->
                 let
                     route =
-                        CommitRoute.Task model.task.name Nothing
+                        Maybe.map .id maybeBuild
+                            |> CommitRoute.Task model.task.name
                             |> ProjectRoute.Commit commitHash
                             |> Route.Project project.slug
                 in

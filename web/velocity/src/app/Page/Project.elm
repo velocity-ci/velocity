@@ -162,12 +162,18 @@ initialEvents slug route =
             , ( "build:update", UpdateBuildEvent )
             ]
 
-        merge e =
+        merge pageDict =
             let
+                existsInPage =
+                    Dict.insert
+
+                existsInSubPage =
+                    Dict.insert
+
                 existsInBoth key a b dict =
                     Dict.insert key (List.append a b) dict
             in
-                Dict.merge Dict.insert existsInBoth Dict.insert Dict.empty subPageEvents e
+                Dict.merge existsInPage existsInBoth existsInSubPage pageDict subPageEvents Dict.empty
     in
         Dict.singleton (channelName slug) pageEvents
             |> merge
