@@ -68,17 +68,8 @@ maybeBuildFromTask task builds =
 viewTaskListItem : Project -> Commit -> List Build -> ProjectTask.Task -> Html Msg
 viewTaskListItem project commit builds task =
     let
-        buildNum =
-            List.length (taskBuilds task builds)
-
-        routeTabParam =
-            if buildNum > 1 then
-                Just ("build-" ++ (toString buildNum))
-            else
-                Nothing
-
         route =
-            CommitRoute.Task task.name routeTabParam
+            CommitRoute.Task task.name Nothing
                 |> ProjectRoute.Commit commit.hash
                 |> Route.Project project.slug
 

@@ -173,13 +173,17 @@ loadedEvents msg model =
 
 leaveChannels : Model -> ProjectRoute.Route -> List String
 leaveChannels model route =
-    case route of
-        ProjectRoute.Commit _ subRoute ->
-            leaveSubPageChannels (getSubPage model.subPageState) (Just subRoute)
+    let
+        leave =
+            leaveSubPageChannels (getSubPage model.subPageState)
+    in
+        case route of
+            ProjectRoute.Commit _ subRoute ->
+                leave (Just subRoute)
 
-        -- Not a commit route
-        _ ->
-            leaveSubPageChannels (getSubPage model.subPageState) Nothing
+            -- Not a commit route
+            _ ->
+                leave Nothing
 
 
 leaveSubPageChannels : SubPage -> Maybe CommitRoute.Route -> List String
@@ -408,7 +412,7 @@ setRoute context session project maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (CommitRoute.Task name maybeTab) ->
+            Just (CommitRoute.Task name maybeBuildId) ->
                 case session.user of
                     Just user ->
                         let
@@ -420,7 +424,7 @@ setRoute context session project maybeRoute model =
                             case maybeTask of
                                 Just task ->
                                     taskBuilds model.builds (Just task)
-                                        |> CommitTask.init context session project.id model.commit.hash task maybeTab
+                                        |> CommitTask.init context session project.id model.commit.hash task maybeBuildId
                                         |> transition CommitTaskLoaded
 
                                 Nothing ->
