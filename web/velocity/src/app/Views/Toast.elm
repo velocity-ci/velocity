@@ -1,4 +1,4 @@
-module Views.Toast exposing (config)
+module Views.Toast exposing (config, genericToast)
 
 import Html.Attributes exposing (..)
 import Html exposing (..)
@@ -11,12 +11,12 @@ import Toasty
 config : Toasty.Config msg
 config =
     Toasty.config
-        |> Toasty.transitionOutDuration 700
+        |> Toasty.transitionOutDuration 15000
         |> Toasty.transitionOutAttrs transitionOutAttrs
         |> Toasty.transitionInAttrs transitionInAttrs
         |> Toasty.containerAttrs containerAttrs
         |> Toasty.itemAttrs itemAttrs
-        |> Toasty.delay 5000
+        |> Toasty.delay 15000
 
 
 containerAttrs : List (Html.Attribute msg)

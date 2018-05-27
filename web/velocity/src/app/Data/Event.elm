@@ -5,4 +5,4 @@ module Data.Event exposing (Event(..))
 
 type Event a
     = Created a
-    | Updated a
+    | Completed a

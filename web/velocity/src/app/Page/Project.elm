@@ -16,8 +16,6 @@ import Views.Page as Page
 import Util exposing ((=>), viewIf)
 import Http
 import Route exposing (Route)
-import Views.Page as Page exposing (ActivePage)
-import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
 import Json.Encode as Encode
@@ -34,7 +32,10 @@ import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
 import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
 import Toasty
+import Views.Build
 import Views.Toast as ToastTheme
+import Views.Page as Page exposing (ActivePage)
+import Views.Helpers exposing (onClickPage)
 
 
 -- SUB PAGES --
@@ -251,38 +252,12 @@ view : Session msg -> Model -> Html Msg
 view session model =
     div []
         [ viewSubPage session model
-        , Toasty.view ToastTheme.config renderToast ToastyMsg model.toasties
+        , toastView model
         ]
 
-
-renderToast : Event Build -> Html Msg
-renderToast event =
-    case event of
-        Event.Created build ->
-            genericToast "toasty-success" build
-
-        Event.Updated build ->
-            genericToast "toasty-success" build
-
-
-genericToast : String -> Build -> Html msg
-genericToast variantClass build =
-    let
-        title =
-            ProjectTask.nameToString build.task.name
-
-        message =
-            "Hi"
-    in
-        div
-            [ class "toasty-container", class variantClass ]
-            [ h1 [ class "toasty-title" ] [ text title ]
-            , if (String.isEmpty message) then
-                text ""
-              else
-                p [ class "toasty-message" ] [ text message ]
-            ]
-
+toastView : Model -> Html Msg
+toastView {toasties} =
+    Toasty.view ToastTheme.config Views.Build.toast ToastyMsg toasties
 
 sidebarConfig : Sidebar.Config Msg
 sidebarConfig =
@@ -803,8 +778,24 @@ updateSubPage context session subPage msg model =
                             , subPageState = subPageState
                         }
                             ! [ subCmd ]
+
+                    modelCmdWithToast =
+                        case maybeBuild of
+                            Just build ->
+                                Toasty.addToast ToastTheme.config ToastyMsg (Event.Completed build) modelCmd
+
+                            Nothing ->
+                                modelCmd
                 in
-                    modelCmd
+                    case Maybe.map .status maybeBuild of
+                        Just (Build.Success) ->
+                            modelCmdWithToast
+
+                        Just (Build.Failed) ->
+                            modelCmdWithToast
+
+                        _ ->
+                            modelCmd
 
             ( DeleteBuildEvent buildJson, _ ) ->
                 let

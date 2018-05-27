@@ -2,12 +2,13 @@ module Views.Build exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Data.Build as Build exposing (Build)
+import Data.Build as Build exposing (Build, Status(..))
 import Data.Project as Project exposing (Project)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (BuildStreamOutput)
 import Data.Commit as Commit exposing (Commit)
 import Data.Task as ProjectTask
+import Data.Event as Event exposing (Event(..))
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
@@ -15,6 +16,7 @@ import Page.Helpers exposing (formatDateTime)
 import Ansi.Log
 import Util exposing ((=>))
 import Views.Helpers exposing (onClickPage)
+import Views.Toast as Toast
 
 
 viewBuildHistoryTable : Project -> List Build -> (String -> msg) -> Html msg
@@ -81,6 +83,33 @@ viewBuildHistoryTableRow project newUrlMsg build =
             , td [ class "px-0" ] [ buildLink createdAt commitTaskRoute ]
             , td [ class "px-0 text-right" ] [ viewBuildStatusIcon build ]
             ]
+
+
+toast : Event Build -> Html msg
+toast event =
+    case event of
+        Event.Created build ->
+            genericToast "bg-light text-dark" "Build created" build
+
+        Event.Completed build ->
+            case build.status of
+                Failed ->
+                    genericToast "bg-danger text-white" "Build failed" build
+
+                Success ->
+                    genericToast "bg-success text-white" "Build complete" build
+
+                _ ->
+                    genericToast "bg-light text-dark" "" build
+
+
+genericToast : String -> String -> Build -> Html msg
+genericToast variantClass message build =
+    let
+        title =
+            ProjectTask.nameToString build.task.name
+    in
+        Toast.genericToast variantClass title message
 
 
 viewBuildStatusIcon : Build -> Html msg
