@@ -10,6 +10,7 @@ import Dict exposing (Dict)
 import Json.Encode as Encode
 import Bootstrap.Modal as Modal
 import Navigation
+import Dom
 
 
 -- INTERNAL --
@@ -32,10 +33,6 @@ import Util exposing ((=>))
 import Views.Page as Page
 import Views.Task exposing (viewStepList)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
-
-
---import Views.Build exposing (viewBuildStatusIcon, viewBuildStepStatusIcon, viewBuildTextClass)
-
 import Request.Commit
 import Request.Errors
 import Route
@@ -199,17 +196,6 @@ leaveChannels model route =
                 channels
 
 
-
---leaveChannels : Model -> List String
---leaveChannels model =
---    case model.frame of
---        BuildFrame (LoadedBuild _ buildOutputModel) ->
---            BuildOutput.leaveChannels buildOutputModel
---
---        _ ->
---            []
-
-
 mapEvents :
     (b -> c)
     -> Dict comparable (List ( a1, a -> b ))
@@ -254,14 +240,10 @@ view project commit model builds =
 
         stepList =
             viewStepList task.steps model.toggledStep
-
-        dropdownContext =
-            buildFilterContext model builds
     in
         div [ class "row" ]
             [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
-                [ DropdownFilter.view buildDropdownFilterConfig dropdownContext
-                , viewToolbar
+                [ viewToolbar model builds
                 , viewTabFrame model builds commit
                 , viewFormModal model.task model.form model.formModalVisibility
                 ]
@@ -300,16 +282,26 @@ viewFormModal task form visibility =
         Modal.view visibility modal
 
 
-viewToolbar : Html Msg
-viewToolbar =
-    div [ class "btn-toolbar d-flex flex-row-reverse" ]
-        [ button
-            [ class "btn btn-primary btn-lg"
-            , style [ "border-radius" => "25px" ]
-            , onClick ShowOrSubmitTaskForm
+viewToolbar : Model -> List Build -> Html Msg
+viewToolbar model builds =
+    let
+        buildsDropdown =
+            buildFilterContext model builds
+                |> DropdownFilter.view buildDropdownFilterConfig
+                |> Util.viewIf (List.length builds > 1)
+
+        newBuildButton =
+            button
+                [ class "btn btn-primary btn-lg"
+                , style [ "border-radius" => "25px" ]
+                , onClick OpenFormModal
+                ]
+                [ i [ class "fa fa-plus" ] [] ]
+    in
+        div [ class "btn-toolbar justify-content-between" ]
+            [ buildsDropdown
+            , newBuildButton
             ]
-            [ i [ class "fa fa-plus" ] [] ]
-        ]
 
 
 viewTabFrame : Model -> List Build -> Commit -> Html Msg
@@ -391,7 +383,7 @@ type Msg
     | BuildOutputMsg BuildOutput.Msg
     | CloseFormModal
     | AnimateFormModal Modal.Visibility
-    | ShowOrSubmitTaskForm
+    | OpenFormModal
     | BuildFilterDropdownMsg DropdownFilter.DropdownState
     | BuildFilterTermMsg String
     | NoOp_
@@ -427,16 +419,23 @@ update context project commit builds session msg model =
             Maybe.map .token session.user
     in
         case msg of
-            ShowOrSubmitTaskForm ->
+            OpenFormModal ->
                 let
                     form =
                         BuildForm.init model.task
+
+                    focusFirstField =
+                        form
+                            |> BuildForm.firstId
+                            |> Maybe.map Dom.focus
+                            |> Maybe.map (Task.attempt (always NoOp_))
+                            |> Maybe.withDefault Cmd.none
                 in
                     { model
                         | formModalVisibility = Modal.shown
                         , form = form
                     }
-                        => Cmd.none
+                        => focusFirstField
                         => NoOp
 
             CloseFormModal ->
@@ -509,34 +508,6 @@ update context project commit builds session msg model =
                     => Cmd.none
                     => NoOp
 
-            --            SelectTab tab url ->
-            --                let
-            --                    frame =
-            --                        case tab of
-            --                            BuildTab toBuildIndex ->
-            --                                let
-            --                                    toBuild =
-            --                                        builds
-            --                                            |> Array.fromList
-            --                                            |> Array.get (toBuildIndex - 1)
-            --                                            |> Maybe.map .id
-            --
-            --                                    fromBuild =
-            --                                        case model.frame of
-            --                                            BuildFrame (LoadedBuild b _) ->
-            --                                                Just b
-            --
-            --                                            _ ->
-            --                                                Nothing
-            --                                in
-            --                                    BuildFrame (LoadingBuild fromBuild toBuild)
-            --                in
-            --                    { model
-            --                        | selectedTab = Just tab
-            --                        , frame = frame
-            --                    }
-            --                        => Navigation.newUrl url
-            --                        => NoOp
             BuildOutputMsg subMsg ->
                 case model.frame of
                     BuildFrame (LoadedBuild id outputModel) ->
@@ -565,13 +536,27 @@ update context project commit builds session msg model =
 
             SelectBuild maybeBuild ->
                 let
-                    route =
+                    fromBuild =
+                        case model.frame of
+                            BuildFrame (LoadedBuild id _) ->
+                                Just id
+
+                            _ ->
+                                Nothing
+
+                    toBuild =
                         Maybe.map .id maybeBuild
+
+                    route =
+                        toBuild
                             |> CommitRoute.Task model.task.name
                             |> ProjectRoute.Commit commitHash
                             |> Route.Project project.slug
                 in
-                    model
+                    { model
+                        | frame = BuildFrame (LoadingBuild fromBuild toBuild)
+                        , selected = toBuild
+                    }
                         => Route.modifyUrl route
                         => NoOp
 

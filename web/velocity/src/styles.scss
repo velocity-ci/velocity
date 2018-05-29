@@ -479,3 +479,27 @@ Toasts
 .fadeOutRightBig {
   animation-name: fadeOutRightBig;
 }
+
+// tabs
+
+.nav-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: -webkit-box;
+  display: -moz-box;
+}
+.nav-tabs>li {
+  float: none;
+}
+
+// pills
+
+.nav-pills {
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: -webkit-box;
+  display: -moz-box;
+}
+.nav-pills>li {
+  float: none;
+}

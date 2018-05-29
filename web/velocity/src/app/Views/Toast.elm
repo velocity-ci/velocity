@@ -11,12 +11,12 @@ import Toasty
 config : Toasty.Config msg
 config =
     Toasty.config
-        |> Toasty.transitionOutDuration 15000
+        |> Toasty.transitionOutDuration 7500
         |> Toasty.transitionOutAttrs transitionOutAttrs
         |> Toasty.transitionInAttrs transitionInAttrs
         |> Toasty.containerAttrs containerAttrs
         |> Toasty.itemAttrs itemAttrs
-        |> Toasty.delay 15000
+        |> Toasty.delay 7500
 
 
 containerAttrs : List (Html.Attribute msg)
