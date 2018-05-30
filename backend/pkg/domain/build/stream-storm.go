@@ -1,9 +1,9 @@
 package build
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/golang/glog"
 )
 
 type StormStream struct {
@@ -15,7 +15,7 @@ type StormStream struct {
 func (s *StormStream) toStream(db *storm.DB) *Stream {
 	step, err := GetStepByID(db, s.StepID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	return &Stream{
 		ID:   s.ID,

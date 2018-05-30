@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/go-cmd/cmd"
+	"github.com/golang/glog"
 	"github.com/gosimple/slug"
 	"golang.org/x/crypto/ssh"
 )
@@ -41,7 +41,7 @@ func getUniqueWorkspace(r *GitRepository) (string, error) {
 	os.RemoveAll(dir)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		logrus.Fatal(err)
+		glog.Fatal(err)
 		return "", err
 	}
 
@@ -57,7 +57,7 @@ func handleGitSSH(r *GitRepository) (ssh.Signer, agent.Agent, error) {
 		a := agent.NewClient(sshAgent)
 		a.Add(agent.AddedKey{PrivateKey: key})
 		signer, _ := ssh.NewSignerFromKey(key)
-		logrus.Infof("added ssh key for %s", r.Address)
+		glog.Infof("added ssh key for %s", r.Address)
 		return signer, a, nil
 	}
 
@@ -90,7 +90,7 @@ func initWorkspace(r *GitRepository) (string, error) {
 func cleanSSHAgent(r *GitRepository) {
 	if r.Agent != nil {
 		r.Agent.Remove(r.PublicKey)
-		logrus.Infof("removed ssh key for %s", r.Address)
+		glog.Infof("removed ssh key for %s", r.Address)
 	}
 }
 
@@ -146,7 +146,7 @@ func Clone(
 	}
 
 	if !cloneOpts.Full {
-		shCmd = append(shCmd, "--depth=1")
+		// shCmd = append(shCmd, "--depth=1")
 	}
 
 	if cloneOpts.Submodule {
@@ -154,7 +154,7 @@ func Clone(
 	}
 
 	if len(cloneOpts.Commit) > 0 {
-		shCmd = append(shCmd, "origin", cloneOpts.Commit)
+		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
 
 	fmt.Println(shCmd)
@@ -203,10 +203,10 @@ func (r *RawRepository) GetBranches() (b []string) {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "origin/")
 		if strings.HasPrefix(line, "HEAD") {
-			logrus.Infof("skipped branch: %s", line)
+			glog.Infof("skipped branch: %s", line)
 			continue
 		}
-		logrus.Infof("got branch: %s", line)
+		glog.Infof("got branch: %s", line)
 		b = append(b, line)
 	}
 
@@ -250,7 +250,7 @@ func (r *RawRepository) init() {
 	r.RLock()
 	cwd, err := os.Getwd()
 	if err != nil {
-		logrus.Fatalf("could not get work dir: %v", err)
+		glog.Fatalf("could not get work dir: %v", err)
 	}
 	r.pwd = cwd
 	os.Chdir(r.Directory)
@@ -318,7 +318,7 @@ func handleStatusError(s cmd.Status) error {
 	}
 
 	if s.Exit != 0 {
-		logrus.Error(s.Stdout, s.Stderr)
+		glog.Error(s.Stdout, s.Stderr)
 		return fmt.Errorf("non-zero exit in clone: %d", s.Exit)
 	}
 

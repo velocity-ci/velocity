@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/golang/glog"
 )
 
 type Setup struct {
@@ -56,7 +56,7 @@ func makeVelocityDirs() error {
 		return err
 	}
 
-	logrus.Infof("mkdir -p %s", fmt.Sprintf("%s/.velocityci/plugins", wd))
+	glog.Infof("mkdir -p %s", fmt.Sprintf("%s/.velocityci/plugins", wd))
 
 	os.MkdirAll(fmt.Sprintf("%s/.velocityci/plugins", wd), os.ModePerm)
 
@@ -75,15 +75,15 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		// repo, err := Clone(s.repository, false, true, t.Git.Submodule, writer)
 		repo, err := Clone(s.repository, writer, &CloneOptions{Bare: false, Full: false, Submodule: true, Commit: s.commitHash})
 		if err != nil {
-			logrus.Error(err)
+			glog.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err
 		}
-		logrus.Infof("Checking out %s", s.commitHash)
+		glog.Infof("Checking out %s", s.commitHash)
 		repo.Checkout(s.commitHash)
 		if err != nil {
-			logrus.Error(err)
+			glog.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err

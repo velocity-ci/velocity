@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 
 	"github.com/asdine/storm"
 	"github.com/stretchr/testify/suite"
@@ -38,7 +38,7 @@ var syncMock = func(*velocity.GitRepository) bool {
 }
 
 func TestBuildSuite(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
+	glog.SetLevel(glog.DebugLevel)
 	suite.Run(t, new(BuildSuite))
 }
 

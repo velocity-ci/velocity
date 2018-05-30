@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
+	"github.com/golang/glog"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
@@ -93,7 +93,7 @@ func (m *StreamManager) GetStreamLines(s *Stream, q *domain.PagingQuery) ([]*Str
 func GetStreamByID(db *storm.DB, id string) (*Stream, error) {
 	var sS StormStream
 	if err := db.One("ID", id, &sS); err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return nil, err
 	}
 	return sS.toStream(db), nil

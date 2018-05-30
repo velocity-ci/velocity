@@ -1,7 +1,7 @@
 package rest
 
 import (
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/labstack/echo"
 )
 
@@ -28,7 +28,7 @@ func (h *websocketHandler) phxClient(c echo.Context) error {
 
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return nil
 	}
 

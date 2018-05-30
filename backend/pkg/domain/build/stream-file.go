@@ -10,7 +10,7 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 )
 
 type logFile struct {
@@ -35,7 +35,7 @@ func NewStreamFileManager(
 ) *StreamFileManager {
 	err := os.MkdirAll(logDirectory, os.ModePerm)
 	if err != nil {
-		logrus.Fatal(err)
+		glog.Fatal(err)
 	}
 	fM := &StreamFileManager{
 		logFiles:     map[string]*logFile{},
@@ -57,7 +57,7 @@ func (m *StreamFileManager) StartWorker() {
 				file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 				err = file.Truncate(0)
 				if err != nil {
-					logrus.Error(err)
+					glog.Error(err)
 				}
 				writer := bufio.NewWriter(file)
 				for _, s := range lF.contents {
@@ -66,13 +66,13 @@ func (m *StreamFileManager) StartWorker() {
 				}
 				writer.Flush()
 				lF.needsFlush = false
-				logrus.Infof("flushed logs for %s", id)
+				glog.Infof("flushed logs for %s", id)
 			}
 			lF.mux.Unlock()
 		}
 		time.Sleep(1 * time.Second)
 	}
-	logrus.Info("stopped file manager")
+	glog.Info("stopped file manager")
 	m.wg.Done()
 }
 
@@ -95,7 +95,7 @@ func (m *StreamFileManager) getLinesByStream(s *Stream, q *domain.PagingQuery) (
 		var sL StreamLine
 		err := json.Unmarshal(l, &sL)
 		if err != nil {
-			logrus.Error(err)
+			glog.Errorf("could not unmarshal %s: %v", string(l), err)
 		}
 
 		r = append(r, &sL)
@@ -110,7 +110,7 @@ func (m *StreamFileManager) saveStreamLine(streamLine *StreamLine) *StreamLine {
 
 	jsonSL, err := json.Marshal(&streamLine)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 
 	if streamLine.LineNumber >= logFile.totalLines {
@@ -128,7 +128,7 @@ func (m *StreamFileManager) getStreamLogFile(id string) *logFile {
 		filePath := fmt.Sprintf("%s/%s", m.logDirectory, id)
 		file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, os.ModePerm)
 		if err != nil {
-			logrus.Error(err)
+			glog.Error(err)
 			return nil
 		}
 		contents := [][]byte{}

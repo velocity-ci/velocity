@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/user"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 )
 
 type FileManager struct {
@@ -16,7 +16,7 @@ func NewFileManager(homedir string) *FileManager {
 	if homedir == "" {
 		processUser, err := user.Current()
 		if err != nil {
-			logrus.Error(err)
+			glog.Error(err)
 		}
 		homedir = processUser.HomeDir
 	}
@@ -26,7 +26,7 @@ func NewFileManager(homedir string) *FileManager {
 	}
 	f, err := os.OpenFile(fM.knownHostsPath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	defer f.Close()
 
@@ -48,7 +48,7 @@ func (m FileManager) save(e *KnownHost) error {
 		return err
 	}
 
-	logrus.Debugf("Wrote %s to %s", e.Entry, m.knownHostsPath)
+	glog.Infof("Wrote %s to %s", e.Entry, m.knownHostsPath)
 
 	return nil
 }
@@ -65,7 +65,7 @@ func (m FileManager) clear() error {
 
 func (m FileManager) WriteAll(kHs []*KnownHost) {
 	if err := m.clear(); err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	for _, k := range kHs {
 		m.save(k)

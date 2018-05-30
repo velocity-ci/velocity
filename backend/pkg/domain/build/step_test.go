@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
+	"github.com/golang/glog"
 	"github.com/stretchr/testify/suite"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
@@ -34,7 +34,7 @@ type StepSuite struct {
 }
 
 func TestStepSuite(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
+	glog.SetLevel(glog.DebugLevel)
 	suite.Run(t, new(StepSuite))
 }
 

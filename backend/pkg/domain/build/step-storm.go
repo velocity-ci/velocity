@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
@@ -26,18 +26,18 @@ func (s *StormStep) toStep(db *storm.DB) *Step {
 	var gStep map[string]interface{}
 	err := json.Unmarshal(s.VStep, &gStep)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 
 	vStep, err := velocity.DetermineStepFromInterface(gStep)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	} else {
 		json.Unmarshal(s.VStep, vStep)
 	}
 	b, err := GetBuildByID(db, s.BuildID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	return &Step{
 		ID:          s.ID,
@@ -54,7 +54,7 @@ func (s *StormStep) toStep(db *storm.DB) *Step {
 func (s *Step) toStormStep() *StormStep {
 	stepJSON, err := json.Marshal(s.VStep)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	return &StormStep{
 		ID:          s.ID,
@@ -94,7 +94,7 @@ func (db *stepStormDB) save(s *Step) error {
 func GetStepByID(db *storm.DB, id string) (*Step, error) {
 	var sS StormStep
 	if err := db.One("ID", id, &sS); err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return nil, err
 	}
 	return sS.toStep(db), nil

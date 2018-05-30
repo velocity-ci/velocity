@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 )
@@ -57,7 +57,7 @@ func (c *Client) Subscribe(s string, ref uint64, payload *PhoenixGuardianJoinPay
 				},
 			},
 		})
-		logrus.Warnf("websocket channel auth failed: %s", err)
+		glog.Errorf("websocket channel auth failed: %s", err)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
 		m.Payload = &p
 		break
 	default:
-		logrus.Debugf("no payload for %s event", m.Event)
+		glog.Infof("no payload for %s event", m.Event)
 	}
 
 	return nil

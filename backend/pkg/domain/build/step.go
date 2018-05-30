@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
@@ -47,17 +47,17 @@ func (s *Step) UnmarshalJSON(b []byte) error {
 		var m map[string]interface{}
 		err = json.Unmarshal(*rawStep, &m)
 		if err != nil {
-			logrus.Error("could not unmarshal step")
+			glog.Error("could not unmarshal step")
 			return err
 		}
 
 		step, err := velocity.DetermineStepFromInterface(m)
 		if err != nil {
-			logrus.Error(err)
+			glog.Error(err)
 		} else {
 			err := json.Unmarshal(*rawStep, step)
 			if err != nil {
-				logrus.Error(err)
+				glog.Error(err)
 			} else {
 				s.VStep = &step
 			}

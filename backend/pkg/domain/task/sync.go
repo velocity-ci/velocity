@@ -10,7 +10,7 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
@@ -21,14 +21,14 @@ func finishProjectSync(p *project.Project, projectManager *project.Manager) {
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
 	projectManager.Update(p)
-	logrus.Infof("finished synchronising project %s", p.Slug)
+	glog.Infof("finished synchronising project %s", p.Slug)
 }
 
 func sync(
 	p *project.Project,
 	taskManager *Manager,
 ) {
-	logrus.Infof("synchronising project %s", p.Slug)
+	glog.Infof("synchronising project %s", p.Slug)
 	xd, _ := os.Getwd()
 	defer os.Chdir(xd)
 	defer finishProjectSync(p, taskManager.projectManager)
@@ -39,7 +39,7 @@ func sync(
 		Submodule: true,
 	})
 	if err != nil {
-		logrus.Errorf("could not clone repository %s", err)
+		glog.Errorf("could not clone repository %s", err)
 		return
 	}
 	defer os.RemoveAll(repo.Directory) // clean up
@@ -53,7 +53,7 @@ func sync(
 		}
 
 		rawCommit := repo.GetCommitAtHeadOfBranch(branchName)
-		logrus.Infof("got commit for %s:%s - %s @ %s", branchName, rawCommit.SHA, rawCommit.Message, rawCommit.AuthorDate)
+		glog.Infof("got commit for %s:%s - %s @ %s", branchName, rawCommit.SHA, rawCommit.Message, rawCommit.AuthorDate)
 		c, err := taskManager.commitManager.GetByProjectAndHash(p, rawCommit.SHA)
 
 		if err != nil {
@@ -66,12 +66,12 @@ func sync(
 				rawCommit.AuthorDate,
 				rawCommit.Signed,
 			)
-			logrus.Infof("\tcreated commit %s on %s", c.Hash, b.Name)
+			glog.Infof("\tcreated commit %s on %s", c.Hash, b.Name)
 
 			err = repo.Checkout(rawCommit.SHA)
 
 			if err != nil {
-				logrus.Error(err)
+				glog.Error(err)
 				break
 			}
 
@@ -83,17 +83,17 @@ func sync(
 						var t velocity.Task
 						err := yaml.Unmarshal(taskYml, &t)
 						if err != nil {
-							logrus.Error(err)
+							glog.Error(err)
 						} else {
 							taskManager.Create(c, &t, velocity.NewSetup())
-							logrus.Infof("\tcreated task %s for %s", t.Name, c.Hash)
+							glog.Infof("\tcreated task %s for %s", t.Name, c.Hash)
 						}
 					}
 					return nil
 				})
 			}
 		} else if !taskManager.branchManager.HasCommit(b, c) {
-			logrus.Infof("\tadded commit %s to %s", c.Hash, b.Name)
+			glog.Infof("\tadded commit %s to %s", c.Hash, b.Name)
 			taskManager.commitManager.AddCommitToBranch(c, b)
 		}
 	}
