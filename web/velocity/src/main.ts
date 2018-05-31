@@ -2,6 +2,7 @@ import './styles.scss';
 
 import * as parseGitUrl from 'git-url-parse';
 
+
 const flags = {
   session: localStorage.session || null,
   apiUrlBase: process.env.ARCHITECT_ADDRESS
@@ -22,6 +23,18 @@ window.addEventListener('storage', event => {
     app.ports.onSessionChange.send(event.newValue);
   }
 }, false);
+
+
+/*
+ Bottom of page port.
+
+ Used to stick the build output to the bottom if scrolled to it
+ */
+window.onscroll = () => {
+  const scrolledToBottom = (window.innerHeight + window.pageYOffset) >= document.body.offsetHeight - 2;
+  app.ports.onScrolledToBottom.send(scrolledToBottom);
+};
+
 
 /*
 Git URL parse port.

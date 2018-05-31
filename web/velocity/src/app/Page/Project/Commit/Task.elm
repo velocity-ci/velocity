@@ -143,9 +143,26 @@ handleLoadError _ =
 -- SUBSCRIPTIONS --
 
 
-subscriptions : Model -> Sub Msg
-subscriptions { formModalVisibility } =
-    Modal.subscriptions formModalVisibility AnimateFormModal
+subscriptions : List Build -> Model -> Sub Msg
+subscriptions builds model =
+    let
+        buildModal =
+            Modal.subscriptions model.formModalVisibility AnimateFormModal
+
+        buildDropdown =
+            buildFilterContext model builds
+                |> DropdownFilter.subscriptions buildDropdownFilterConfig
+
+        buildOutput =
+            case model.frame of
+                BuildFrame (LoadedBuild _ buildOutputModel) ->
+                    BuildOutput.subscriptions buildOutputModel
+                        |> Sub.map BuildOutputMsg
+
+                _ ->
+                    Sub.none
+    in
+        Sub.batch [ buildModal, buildDropdown, buildOutput ]
 
 
 
@@ -213,7 +230,7 @@ buildDropdownFilterConfig =
     , selectItemMsg = SelectBuild
     , labelFn = (.createdAt >> formatDateTime)
     , icon = (strong [] [ text "Build: " ])
-    , showFilter = False
+    , showFilter = True
     , showAllItemsItem = False
     }
 

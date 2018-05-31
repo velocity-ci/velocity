@@ -114,7 +114,8 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case (getSubPage model.subPageState) of
         CommitTask subModel ->
-            CommitTask.subscriptions subModel
+            subModel
+                |> CommitTask.subscriptions model.builds
                 |> Sub.map CommitTaskMsg
 
         _ ->
@@ -220,8 +221,12 @@ viewTaskTabs project commit tasks subPage =
     let
         toRoute =
             taskRoute project commit
+
+        filter =
+            .name >> ProjectTask.nameToString >> String.length >> (\len -> len > 0)
     in
-        ul [ class "nav nav-tabs" ] <| List.map (viewTaskTab toRoute subPage) tasks
+        ul [ class "nav nav-tabs my-4" ] <|
+            List.map (viewTaskTab toRoute subPage) (List.filter filter tasks)
 
 
 taskRoute : Project -> Commit -> ProjectTask.Task -> Route

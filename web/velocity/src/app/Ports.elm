@@ -13,3 +13,6 @@ port parseGitUrl : String -> Cmd msg
 
 
 port onGitUrlParsed : (Value -> msg) -> Sub msg
+
+
+port onScrolledToBottom : (Value -> msg) -> Sub msg

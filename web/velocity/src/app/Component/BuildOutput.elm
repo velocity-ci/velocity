@@ -1,4 +1,4 @@
-module Component.BuildOutput exposing (Model, Msg, init, view, update, events, leaveChannels)
+module Component.BuildOutput exposing (Model, Msg, init, view, update, events, leaveChannels, subscriptions)
 
 {- A stateful BuildOutput component.
    I plan to convert this to a stateless component soon.
@@ -16,6 +16,7 @@ import Request.Errors
 import Util exposing ((=>))
 import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
 import Views.Build exposing (..)
+import Ports
 
 
 -- EXTERNAL
@@ -29,13 +30,16 @@ import Time.DateTime as DateTime exposing (DateTime)
 import Ansi.Log
 import Json.Encode as Encode
 import Json.Decode as Decode
+import Dom.Scroll as Scroll
 
 
 -- MODEL
 
 
 type alias Model =
-    { outputStreams : OutputStreams }
+    { outputStreams : OutputStreams
+    , autoScrollMessages : Bool
+    }
 
 
 type alias BuildStepOutput =
@@ -65,7 +69,9 @@ init :
 init context task maybeAuthToken build =
     let
         initialModel outputStreams =
-            { outputStreams = outputStreams }
+            { outputStreams = outputStreams
+            , autoScrollMessages = True
+            }
     in
         build
             |> loadBuildStreams context task maybeAuthToken
@@ -100,7 +106,7 @@ loadBuildStreams context task maybeAuthToken build =
                     )
                     buildStep.streams
             )
-        |> List.foldr (++) []
+        |> List.foldl (++) []
         |> Task.sequence
         |> Task.map
             (List.foldr
@@ -155,6 +161,24 @@ loadBuildStreams context task maybeAuthToken build =
 
 
 
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    scrolledToBottom
+
+
+scrolledToBottom : Sub Msg
+scrolledToBottom =
+    Decode.decodeValue Decode.bool
+        >> Result.toMaybe
+        >> Maybe.withDefault False
+        |> Ports.onScrolledToBottom
+        |> Sub.map ScrolledToBottom
+
+
+
 -- CHANNELS --
 
 
@@ -194,6 +218,8 @@ leaveChannels model =
 
 type Msg
     = AddStreamOutput String BuildStream Encode.Value
+    | ScrolledToBottom Bool
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -203,9 +229,22 @@ update msg model =
             let
                 outputStreams =
                     addStreamOutput ( buildStepId, buildStream, outputJson ) model.outputStreams
+
+                scrollCmd =
+                    if model.autoScrollMessages then
+                        Task.attempt (always NoOp) (Scroll.toBottom "scroll-id")
+                    else
+                        Cmd.none
             in
                 { model | outputStreams = outputStreams }
-                    => Cmd.none
+                    => scrollCmd
+
+        ScrolledToBottom isScrolled ->
+            { model | autoScrollMessages = isScrolled }
+                => Cmd.none
+
+        NoOp ->
+            model => Cmd.none
 
 
 addStreamOutput : ( String, BuildStream, Encode.Value ) -> OutputStreams -> OutputStreams
