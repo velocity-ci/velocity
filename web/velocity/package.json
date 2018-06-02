@@ -23,6 +23,7 @@
     "bootswatch": "^4.0.0",
     "file-loader": "^1.1.6",
     "font-awesome": "^4.7.0",
+    "git-url-parse": "^9.0.0",
     "global": "^4.3.2"
   }
 }

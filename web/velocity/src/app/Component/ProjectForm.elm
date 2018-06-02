@@ -7,10 +7,12 @@ module Component.ProjectForm
         , view
         , viewSubmitButton
         , update
+        , updateGitUrl
         , validate
         , submitValues
         , errorsDecoder
         , serverErrorToFormError
+        , isUnknownHost
         )
 
 -- EXTERNAL
@@ -22,11 +24,14 @@ import Validate exposing (..)
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
 import Bootstrap.Button as Button
+import Regex exposing (Regex)
 
 
 -- INTERNAL
 
+import Data.GitUrl as GitUrl exposing (GitUrl)
 import Data.Project as Project exposing (Project)
+import Data.KnownHost as KnownHost exposing (KnownHost)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
 import Util exposing ((=>))
 import Views.Form as Form
@@ -48,6 +53,7 @@ type alias ProjectForm =
     { name : FormField Field
     , repository : FormField Field
     , privateKey : FormField Field
+    , gitUrl : Maybe GitUrl
     }
 
 
@@ -56,6 +62,7 @@ initialForm =
     { name = newField Name
     , repository = newField Repository
     , privateKey = newField PrivateKey
+    , gitUrl = Nothing
     }
 
 
@@ -82,6 +89,18 @@ init =
 
 
 -- UPDATE HELPERS --
+
+
+updateGitUrl : Maybe GitUrl -> Context -> Context
+updateGitUrl maybeGitUrl context =
+    let
+        form =
+            context.form
+
+        updatedForm =
+            { form | gitUrl = maybeGitUrl }
+    in
+        { context | form = updatedForm }
 
 
 updateForm : ProjectForm -> Field -> String -> ProjectForm
@@ -148,7 +167,7 @@ submitValues : Context -> { name : String, repository : String, privateKey : May
 submitValues { form } =
     let
         privateKey =
-            if isSshAddress form.repository.value then
+            if isSshAddress form.gitUrl then
                 Just form.privateKey.value
             else
                 Nothing
@@ -170,7 +189,7 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
             context.form
 
         publicRepository =
-            not (isSshAddress form.repository.value)
+            not (isSshAddress form.gitUrl)
 
         combinedErrors =
             context.errors ++ context.serverErrors
@@ -206,7 +225,7 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
             Form.input
                 { name = "repository"
                 , label = "Repository address"
-                , help = Just "Use a GIT+SSH address for authenticated repositories, otherwise use a HTTP(S) address."
+                , help = Just "Use a GIT+SSH address for private repositories, otherwise use a HTTP(S) address."
                 , errors = errors form.repository
                 }
                 [ attribute "required" ""
@@ -282,27 +301,51 @@ viewGlobalError error =
 -- VALIDATION --
 
 
-isSshAddress : String -> Bool
-isSshAddress address =
-    String.slice 0 3 address == "git"
+hostsFromKnownHosts : List KnownHost -> List String
+hostsFromKnownHosts knownHosts =
+    List.foldl (.hosts >> (++)) [] knownHosts
+
+
+isUnknownHost : List KnownHost -> Maybe GitUrl -> Bool
+isUnknownHost knownHosts maybeGitUrl =
+    case maybeGitUrl of
+        Just { source } ->
+            knownHosts
+                |> hostsFromKnownHosts
+                |> List.member source
+                |> not
+
+        Nothing ->
+            False
+
+
+isSshAddress : Maybe GitUrl -> Bool
+isSshAddress maybeGitUrl =
+    case maybeGitUrl of
+        Just { protocol } ->
+            protocol == "ssh"
+
+        Nothing ->
+            False
+
+
+privateKeyValidator : ( { a | value : String }, Maybe GitUrl ) -> Bool
+privateKeyValidator ( privateKey, maybeGitUrl ) =
+    if isSshAddress maybeGitUrl then
+        String.length privateKey.value < 8
+    else
+        False
 
 
 validate : Validator (Error Field) ProjectForm
 validate =
-    let
-        privateKeyValidator ( privateKey, repository ) =
-            if isSshAddress repository.value then
-                String.length privateKey.value < 8
-            else
-                False
-    in
-        Validate.all
-            [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
-            , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
-            , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
-            , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
-            , (\f -> ( f.privateKey, f.repository )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
-            ]
+    Validate.all
+        [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
+        , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
+        , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
+        , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
+        , (\f -> ( f.privateKey, f.gitUrl )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
+        ]
 
 
 errorsDecoder : Decoder (List ( String, String ))

@@ -128,6 +128,7 @@ knownHostFormConfig : KnownHostForm.Config Msg
 knownHostFormConfig =
     { setScannedKeyMsg = SetScannedKey
     , submitMsg = SubmitForm
+    , gitUrl = Nothing
     }
 
 
