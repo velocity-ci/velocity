@@ -32,7 +32,7 @@ publish: install build
 	docker push civelocity/builder:${GIT_VERSION}
 	# TODO: CLI publishing
 
-test: install
+test:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
