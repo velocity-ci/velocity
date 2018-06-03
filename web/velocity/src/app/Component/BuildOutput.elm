@@ -16,6 +16,7 @@ import Request.Errors
 import Util exposing ((=>))
 import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
 import Views.Build exposing (..)
+import Views.Task exposing (..)
 import Ports
 
 
@@ -230,14 +231,19 @@ update msg model =
                 outputStreams =
                     addStreamOutput ( buildStepId, buildStream, outputJson ) model.outputStreams
 
-                scrollCmd =
+                scrollCmds =
                     if model.autoScrollMessages then
-                        Task.attempt (always NoOp) (Scroll.toBottom "scroll-id")
+                        {- The reason we try to scroll to both is because apparently some browsers like scrolling on
+                           <html> tags and some like scrolling on <body> tags. Bit weird but seems to work
+                        -}
+                        [ Task.attempt (always NoOp) (Scroll.toBottom "scroll-html-id")
+                        , Task.attempt (always NoOp) (Scroll.toBottom "scroll-body-id")
+                        ]
                     else
-                        Cmd.none
+                        []
             in
                 { model | outputStreams = outputStreams }
-                    => scrollCmd
+                    ! scrollCmds
 
         ScrolledToBottom isScrolled ->
             { model | autoScrollMessages = isScrolled }
@@ -286,17 +292,22 @@ addStreamOutput ( buildStepId, targetBuildStream, outputJson ) outputStreams =
 
 view : Build -> Model -> Html Msg
 view build { outputStreams } =
-    let
-        ansiOutput =
-            outputStreams
-                |> Dict.toList
-                |> List.sortBy (\( _, outputStream ) -> outputStream.buildStep.number)
-                |> List.map (viewStepContainer build)
-    in
-        div [] (viewBuildInformation build :: ansiOutput)
+    div []
+        [ viewBuildInformation build
+        , viewAnsiOutput build outputStreams
+        ]
 
 
-viewStepContainer : Build -> ( a, { b | buildStep : BuildStep, streams : List OutputStream, taskStep : Step } ) -> Html Msg
+viewAnsiOutput : Build -> OutputStreams -> Html Msg
+viewAnsiOutput build outputStreams =
+    outputStreams
+        |> Dict.toList
+        |> List.sortBy (\( _, outputStream ) -> outputStream.buildStep.number)
+        |> List.map (viewStepContainer build)
+        |> div []
+
+
+viewStepContainer : Build -> ( String, BuildStepOutput ) -> Html Msg
 viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
     let
         buildStep_ =
@@ -307,18 +318,18 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
         case buildStep_ of
             Just step ->
                 div
-                    [ class "card mt-3 b-0"
+                    [ class "mt-3 build-info-container border-secondary"
                     , classList (buildStepBorderColourClassList step)
                     ]
                     [ h5
-                        [ class "card-header d-flex justify-content-between"
+                        [ class "d-flex justify-content-between"
                         , classList (headerBackgroundColourClassList step)
                         ]
                         [ text (viewCardTitle taskStep)
                         , text " "
                         , viewBuildStepStatusIcon step
                         ]
-                    , div [ class "card-body p-0 small b-0" ] [ viewStepLog streams ]
+                    , div [ class "p-0 small" ] [ viewStepLog streams ]
                     ]
 
             Nothing ->
@@ -344,15 +355,17 @@ viewStepLog streams =
                     )
                 |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
     in
-        table [ class "table-sm mb-0" ] (List.map viewLine lines)
+        div [ class "table-responsive" ]
+            [ table [ class "table table-sm table-hover mb-0" ] (List.map viewLine lines)
+            ]
 
 
 viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg
 viewLine ( timestamp, streamName, line, streamIndex ) =
-    tr [ class "b-0" ]
-        [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
-        , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
-        , td [] [ Ansi.Log.viewLine line ]
+    tr [ class "d-flex" ]
+        [ td [ class "col-1" ] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
+        , td [ class "col-1" ] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
+        , td [ class "col-10" ] [ Ansi.Log.viewLine line ]
         ]
 
 
@@ -364,7 +377,7 @@ viewBuildInformation build =
                 |> Maybe.map formatDateTime
                 |> Maybe.withDefault "-"
     in
-        div [ class "card mt-3", classList (buildCardClassList build) ]
+        div [ class "mt-3 build-info-container border-success" ]
             [ div [ class "card-body" ]
                 [ dl [ class "row mb-0" ]
                     [ dt [ class "col-sm-3" ] [ text "Created" ]
@@ -373,8 +386,6 @@ viewBuildInformation build =
                     , dd [ class "col-sm-9" ] [ text (dateText build.startedAt) ]
                     , dt [ class "col-sm-3" ] [ text "Completed" ]
                     , dd [ class "col-sm-9" ] [ text (dateText build.completedAt) ]
-                    , dt [ class "col-sm-3" ] [ text "Status" ]
-                    , dd [ class "col-sm-9" ] [ text (Build.statusToString build.status) ]
                     ]
                 ]
             ]

@@ -6,98 +6,41 @@ import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, ComposeStep, PushStep, Step(..), Parameter(..))
 
 
-viewStepList : List Step -> Maybe Step -> List (Html msg)
-viewStepList steps toggledStep =
-    let
-        stepView i step =
-            let
-                stepNum =
-                    i + 1
-
-                runStep =
-                    viewRunStep stepNum
-
-                buildStep =
-                    viewBuildStep stepNum
-
-                cloneStep =
-                    viewCloneStep stepNum
-
-                composeStep =
-                    viewComposeStep stepNum
-
-                pushStep =
-                    viewPushStep stepNum
-            in
-                case ( step, toggledStep ) of
-                    ( Run run, Just (Run toggled) ) ->
-                        runStep run (run == toggled)
-
-                    ( Build build, Just (Build toggled) ) ->
-                        buildStep build (build == toggled)
-
-                    ( Clone clone, Just (Clone toggled) ) ->
-                        cloneStep clone (clone == toggled)
-
-                    ( Compose compose, Just (Compose toggled) ) ->
-                        composeStep compose (compose == toggled)
-
-                    ( Push push, Just (Push toggled) ) ->
-                        pushStep push (push == toggled)
-
-                    ( Run run, _ ) ->
-                        runStep run False
-
-                    ( Build build, _ ) ->
-                        buildStep build False
-
-                    ( Clone clone, _ ) ->
-                        cloneStep clone False
-
-                    ( Compose compose, _ ) ->
-                        composeStep compose False
-
-                    ( Push push, _ ) ->
-                        pushStep push False
-    in
-        List.indexedMap stepView steps
-
-
-viewComposeStep : Int -> ComposeStep -> Bool -> Html msg
-viewComposeStep i composeStep toggled =
+viewComposeStep : ComposeStep -> Bool -> Html msg
+viewComposeStep step toggled =
     let
         title =
-            toString i ++ ". Compose" ++ composeStep.description
+            "Compose" ++ step.description
     in
-        viewStepCollapse (Compose composeStep) title toggled <|
+        viewStepCollapse (Compose step) title toggled <|
             []
 
 
-viewPushStep : Int -> PushStep -> Bool -> Html msg
-viewPushStep i composeStep toggled =
+viewPushStep : PushStep -> Bool -> Html msg
+viewPushStep step toggled =
     let
         title =
-            toString i ++ ". Push" ++ composeStep.description
+            "Push" ++ step.description
     in
-        viewStepCollapse (Push composeStep) title toggled <|
+        viewStepCollapse (Push step) title toggled <|
             []
 
 
-viewCloneStep : Int -> CloneStep -> Bool -> Html msg
-viewCloneStep i cloneStep toggled =
+viewCloneStep : CloneStep -> Bool -> Html msg
+viewCloneStep step toggled =
     let
         title =
-            toString i ++ ". Clone" ++ cloneStep.description
+            "Clone" ++ step.description
     in
-        viewStepCollapse (Clone cloneStep) title toggled <|
+        viewStepCollapse (Clone step) title toggled <|
             []
 
 
-viewBuildStep : Int -> BuildStep -> Bool -> Html msg
-viewBuildStep i buildStep toggled =
+viewBuildStep : BuildStep -> Bool -> Html msg
+viewBuildStep step toggled =
     let
         tagList =
-            List.map (\t -> li [] [ text t ]) buildStep.tags
+            List.map (\t -> li [] [ text t ]) step.tags
                 |> ul []
 
         rightDl =
@@ -109,15 +52,15 @@ viewBuildStep i buildStep toggled =
         leftDl =
             dl []
                 [ dt [] [ text "Context" ]
-                , dd [] [ text buildStep.context ]
+                , dd [] [ text step.context ]
                 , dt [] [ text "Dockerfile" ]
-                , dd [] [ text buildStep.dockerfile ]
+                , dd [] [ text step.dockerfile ]
                 ]
 
         title =
-            toString i ++ ". " ++ buildStep.description
+            "Build" ++ step.description
     in
-        viewStepCollapse (ProjectTask.Build buildStep) title toggled <|
+        viewStepCollapse (ProjectTask.Build step) title toggled <|
             [ div [ class "row" ]
                 [ div [ class "col-md-6" ] [ leftDl ]
                 , div [ class "col-md-6" ] [ rightDl ]

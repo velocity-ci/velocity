@@ -209,21 +209,16 @@ buildStepBorderColourClassList : BuildStep -> List ( String, Bool )
 buildStepBorderColourClassList { status } =
     case status of
         BuildStep.Waiting ->
-            [ "border" => True
-            ]
+            []
 
         BuildStep.Running ->
-            [ "border" => True
-            , "border-primary" => True
-            ]
+            []
 
         BuildStep.Success ->
-            [ "border" => True
-            ]
+            []
 
         BuildStep.Failed ->
-            [ "border" => True
-            ]
+            []
 
 
 buildCardClassList : Build -> List ( String, Bool )
