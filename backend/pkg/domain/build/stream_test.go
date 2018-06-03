@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/asdine/storm"
-	"github.com/golang/glog"
 	"github.com/stretchr/testify/suite"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
@@ -34,7 +33,6 @@ type StreamSuite struct {
 }
 
 func TestStreamSuite(t *testing.T) {
-	glog.SetLevel(glog.DebugLevel)
 	suite.Run(t, new(StreamSuite))
 }
 
