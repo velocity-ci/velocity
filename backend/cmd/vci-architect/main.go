@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"os/signal"
 
@@ -8,6 +9,7 @@ import (
 )
 
 func main() {
+	flag.Parse()
 	a := architect.New()
 
 	go a.Start()

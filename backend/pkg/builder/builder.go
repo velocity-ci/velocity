@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 
 	"github.com/velocity-ci/velocity/backend/pkg/architect"
@@ -28,12 +28,12 @@ func (b *Builder) Start() {
 
 	for b.run {
 		if !waitForService(client, address) {
-			logrus.Fatalf("Could not connect to: %s", address)
+			glog.Fatalf("Could not connect to: %s", address)
 		}
 
 		ws := connectToArchitect(address, secret)
 
-		logrus.Infof("connected to %s", address)
+		glog.Infof("connected to %s", address)
 
 		monitorCommands(ws)
 	}
@@ -52,11 +52,11 @@ func New() architect.App {
 func getArchitectAddress() string {
 	address := os.Getenv("ARCHITECT_ADDRESS") // http://architect || https://architect
 	if address == "" {
-		logrus.Fatal("Missing ARCHITECT_ADDRESS environment variable")
+		glog.Fatal("Missing ARCHITECT_ADDRESS environment variable")
 	}
 
 	if address[:5] != "https" {
-		logrus.Info("WARNING: Builds are not protected by TLS.")
+		glog.Info("WARNING: Builds are not protected by TLS.")
 	}
 
 	return address
@@ -65,7 +65,7 @@ func getArchitectAddress() string {
 func getBuilderSecret() string {
 	secret := os.Getenv("BUILDER_SECRET")
 	if secret == "" {
-		logrus.Fatal("Missing BUILDER_SECRET environment variable")
+		glog.Fatal("Missing BUILDER_SECRET environment variable")
 	}
 
 	return secret
@@ -74,12 +74,12 @@ func getBuilderSecret() string {
 func waitForService(client *http.Client, address string) bool {
 
 	for i := 0; i < 6; i++ {
-		logrus.Infof("attempting connection to %s", address)
+		glog.Infof("attempting connection to %s", address)
 		_, err := client.Get(address)
 		if err != nil {
-			logrus.Debugf("connection error: %v", err)
+			glog.Infof("connection error: %v", err)
 		} else {
-			logrus.Infof("%s is alive!", address)
+			glog.Infof("%s is alive!", address)
 			return true
 		}
 		time.Sleep(5 * time.Second)
@@ -99,7 +99,7 @@ func connectToArchitect(address string, secret string) *websocket.Conn {
 	)
 
 	if err != nil {
-		logrus.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	return conn
@@ -110,17 +110,17 @@ func monitorCommands(ws *websocket.Conn) {
 		command := &builder.BuilderCtrlMessage{}
 		err := ws.ReadJSON(command)
 		if err != nil {
-			logrus.Error(err)
-			logrus.Info("Closing WebSocket")
+			glog.Error(err)
+			glog.Info("Closing WebSocket")
 			ws.Close()
 			return
 		}
 
 		if command.Command == builder.CommandBuild {
-			logrus.Infof("Got Build: %v", command.Payload)
+			glog.Infof("Got Build: %v", command.Payload)
 			runBuild(command.Payload.(*builder.BuildCtrl), ws)
 		} else if command.Command == builder.CommandKnownHosts {
-			logrus.Infof("Got known hosts: %v", command.Payload)
+			glog.Infof("Got known hosts: %v", command.Payload)
 			updateKnownHosts(command.Payload.(*builder.KnownHostCtrl))
 		}
 	}

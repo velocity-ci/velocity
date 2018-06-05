@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
+	"github.com/golang/glog"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
@@ -15,20 +15,17 @@ const (
 )
 
 type StreamManager struct {
-	db          *streamStormDB
-	fileManager *StreamFileManager
+	db *streamStormDB
 
 	brokers []domain.Broker
 }
 
 func NewStreamManager(
 	db *storm.DB,
-	fileManager *StreamFileManager,
 ) *StreamManager {
 	m := &StreamManager{
-		db:          newStreamStormDB(db),
-		fileManager: fileManager,
-		brokers:     []domain.Broker{},
+		db:      newStreamStormDB(db),
+		brokers: []domain.Broker{},
 	}
 	return m
 }
@@ -71,7 +68,7 @@ func (m *StreamManager) CreateStreamLine(
 		Timestamp:  timestamp,
 		Output:     fmt.Sprintf("%s", output),
 	}
-	m.fileManager.saveStreamLine(sL)
+	m.db.saveStreamLine(sL)
 	for _, b := range m.brokers {
 		b.EmitAll(&domain.Emit{
 			Topic:   fmt.Sprintf("stream:%s", stream.ID),
@@ -87,13 +84,13 @@ func (m *StreamManager) GetStreamsForStep(s *Step) []*Stream {
 }
 
 func (m *StreamManager) GetStreamLines(s *Stream, q *domain.PagingQuery) ([]*StreamLine, int) {
-	return m.fileManager.getLinesByStream(s, q)
+	return m.db.getLinesByStream(s, q)
 }
 
 func GetStreamByID(db *storm.DB, id string) (*Stream, error) {
 	var sS StormStream
 	if err := db.One("ID", id, &sS); err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return nil, err
 	}
 	return sS.toStream(db), nil

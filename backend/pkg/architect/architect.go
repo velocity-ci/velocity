@@ -27,7 +27,6 @@ type Architect struct {
 	workerWg sync.WaitGroup
 	Workers  []domain.Worker
 	DB       *storm.DB
-	LogsPath string
 }
 
 func (a *Architect) Start() {
@@ -61,8 +60,7 @@ type App interface {
 func New() *Architect {
 	velocity.SetLogLevel()
 	a := &Architect{
-		Server:   echo.New(),
-		LogsPath: "/opt/velocityci/logs",
+		Server: echo.New(),
 	}
 
 	return a
@@ -76,13 +74,12 @@ func (a *Architect) Init() {
 	userManager := user.NewManager(a.DB, validator, trans)
 	userManager.EnsureAdminUser()
 	knownHostManager := knownhost.NewManager(a.DB, validator, trans, "")
-	projectManager := project.NewManager(a.DB, validator, trans, velocity.Clone)
+	projectManager := project.NewManager(a.DB, validator, trans, velocity.Validate)
 	commitManager := githistory.NewCommitManager(a.DB)
 	branchManager := githistory.NewBranchManager(a.DB)
 	taskManager := task.NewManager(a.DB, projectManager, branchManager, commitManager)
 	buildStepManager := build.NewStepManager(a.DB)
-	buildStreamFileManager := build.NewStreamFileManager(&a.workerWg, a.LogsPath)
-	buildStreamManager := build.NewStreamManager(a.DB, buildStreamFileManager)
+	buildStreamManager := build.NewStreamManager(a.DB)
 	buildManager := build.NewBuildManager(a.DB, buildStepManager, buildStreamManager)
 	builderManager := builder.NewManager(buildManager, knownHostManager, buildStepManager, buildStreamManager)
 
@@ -103,6 +100,5 @@ func (a *Architect) Init() {
 
 	a.Workers = []domain.Worker{
 		builder.NewScheduler(builderManager, buildManager, &a.workerWg),
-		buildStreamFileManager,
 	}
 }

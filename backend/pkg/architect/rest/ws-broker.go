@@ -10,7 +10,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
@@ -56,8 +56,8 @@ func (m *broker) monitor(c *Client) {
 		err := c.ws.ReadJSON(message)
 		if err != nil {
 			c.alive = false
-			logrus.Error(err)
-			logrus.Infof("Closing Client WebSocket: %s", c.ID)
+			glog.Error(err)
+			glog.Infof("Closing Client WebSocket: %s", c.ID)
 			c.ws.Close()
 			m.remove(c)
 			return
@@ -80,7 +80,7 @@ func (m *broker) EmitAll(message *domain.Emit) {
 				err := c.WriteJSON(mess)
 				clientCount++
 				if err != nil {
-					logrus.Println(err)
+					glog.Infoln(err)
 				}
 			}
 		}
@@ -133,7 +133,7 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 		payload = newStreamLineResponse(v)
 		break
 	default:
-		logrus.Errorf("could not resolve websocket payload %+v", v)
+		glog.Errorf("could not resolve websocket payload %+v", v)
 	}
 
 	// determine event
@@ -141,7 +141,7 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 	if val, ok := wsEventMapping[em.Event]; ok {
 		wsEvent = val
 	} else {
-		logrus.Errorf("could not resolve event in websocket: %s", em.Event)
+		glog.Errorf("could not resolve event in websocket: %s", em.Event)
 	}
 
 	return &PhoenixMessage{

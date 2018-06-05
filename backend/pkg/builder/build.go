@@ -2,6 +2,7 @@ package builder
 
 import (
 	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
@@ -34,6 +35,8 @@ func runBuild(build *builder.BuildCtrl, ws *websocket.Conn) {
 		}
 	}
 	wd, _ := os.Getwd()
-	os.RemoveAll(wd)
+	if strings.Contains(wd, velocity.WorkspaceDir) {
+		os.RemoveAll(wd)
+	}
 	os.Chdir("/opt/velocityci")
 }

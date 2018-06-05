@@ -10,10 +10,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/golang/glog"
 )
 
 type DockerRun struct {
@@ -152,7 +152,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 
 	sR := newServiceRunner(
@@ -180,7 +180,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
+		glog.Errorf("network %s remove err: %s", networkResp.ID, err)
 	}
 
 	exitCode := sR.exitCode

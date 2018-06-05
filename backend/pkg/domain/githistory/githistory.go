@@ -13,6 +13,7 @@ type Commit struct {
 	Author    string           `json:"author"`
 	CreatedAt time.Time        `json:"createdAt"`
 	Message   string           `json:"message"`
+	Signed    string           `json:"signed"`
 }
 
 type CommitQuery struct {

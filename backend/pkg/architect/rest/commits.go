@@ -17,6 +17,7 @@ type commitResponse struct {
 	Author    string    `json:"author"`
 	CreatedAt time.Time `json:"createdAt"`
 	Message   string    `json:"message"`
+	Signed    string    `json:"signed"`
 	Branches  []string  `json:"branches"`
 }
 
@@ -36,6 +37,7 @@ func newCommitResponse(c *githistory.Commit, bs []*githistory.Branch) *commitRes
 		Author:    c.Author,
 		CreatedAt: c.CreatedAt,
 		Message:   c.Message,
+		Signed:    c.Signed,
 		Branches:  branches,
 	}
 }

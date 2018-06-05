@@ -72,3 +72,8 @@ ignored = ["github.com/velocity-ci/velocity"]
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
+
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golang/glog"

@@ -5,7 +5,7 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 )
 
 func (m *Manager) monitor(b *Builder) {
@@ -13,8 +13,8 @@ func (m *Manager) monitor(b *Builder) {
 		message := BuilderRespMessage{}
 		err := b.ws.ReadJSON(&message)
 		if err != nil {
-			logrus.Error(err)
-			logrus.Infof("closing builder websocket: %s", b.ID)
+			glog.Error(err)
+			glog.Infof("closing builder websocket: %s", b.ID)
 			m.Delete(b)
 			b.ws.Close()
 			return
@@ -25,7 +25,7 @@ func (m *Manager) monitor(b *Builder) {
 			m.builderLogMessage(message.Data.(*BuilderStreamLineMessage), b)
 			break
 		default:
-			logrus.Errorf("invalid message type from builder: %s", message.Type)
+			glog.Errorf("invalid message type from builder: %s", message.Type)
 		}
 
 	}
@@ -34,13 +34,13 @@ func (m *Manager) monitor(b *Builder) {
 func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Builder) {
 	stream, err := m.streamManager.GetByID(sL.StreamID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return
 	}
 
 	step, err := m.stepManager.GetByID(sL.StepID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 
 	b, err := m.buildManager.GetBuildByID(sL.BuildID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return
 	}
 	steps := m.stepManager.GetStepsForBuild(b)

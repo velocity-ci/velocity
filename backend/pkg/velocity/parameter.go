@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/gosimple/slug"
 )
 
@@ -120,7 +120,7 @@ func getBinary(u string) (binaryLocation string, _ error) {
 	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", wd, slug.Make(parsedURL.Path))
 
 	if _, err := os.Stat(binaryLocation); os.IsNotExist(err) {
-		logrus.Infof("downloading %s to %s", u, binaryLocation)
+		glog.Infof("downloading %s to %s", u, binaryLocation)
 		outFile, err := os.Create(binaryLocation)
 		if err != nil {
 			return "", err
@@ -136,7 +136,7 @@ func getBinary(u string) (binaryLocation string, _ error) {
 		if err != nil {
 			return "", err
 		}
-		logrus.Infof("downloaded %d bytes for %s to %s", size, u, binaryLocation)
+		glog.Infof("downloaded %d bytes for %s to %s", size, u, binaryLocation)
 		outFile.Chmod(os.ModePerm)
 	}
 

@@ -83,7 +83,6 @@ func FeatureContext(s *godog.Suite) {
 	s.BeforeSuite(func() {
 		valid, trans = domain.NewValidator()
 		app = architect.New()
-		app.LogsPath = "logs/"
 		app.DB = domain.NewStormDB("test.db")
 		testServer = httptest.NewUnstartedServer(app.Server.Server.Handler)
 		app.Init()
