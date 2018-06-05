@@ -14,4 +14,6 @@ type Project struct {
 	CreatedAt     time.Time              `json:"createdAt"`
 	UpdatedAt     time.Time              `json:"updatedAt"`
 	Synchronising bool                   `json:"synchronising"`
+
+	velocity.ProjectConfig
 }
