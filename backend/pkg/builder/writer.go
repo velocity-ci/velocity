@@ -88,12 +88,15 @@ func NewEmitter(ws *websocket.Conn, b *build.Build) *Emitter {
 }
 
 func (w *StreamWriter) Write(p []byte) (n int, err error) {
-	o := string(p)
-	if !strings.HasSuffix(string(p), "\r") {
+	o := strings.TrimSpace(string(p))
+	if !strings.Contains(string(p), "\r") {
 		w.LineNumber++
-		o = strings.TrimSpace(o)
 		o += "\n"
+	} else {
+		parts := strings.Split(o, "\r")
+		o = parts[len(parts)-1] + "\n"
 	}
+
 	lM := builder.BuilderStreamLineMessage{
 		BuildID:    w.BuildID,
 		StepID:     w.StepID,

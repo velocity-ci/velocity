@@ -25,6 +25,12 @@ func (s SSHKeyError) Error() string {
 	return string(s)
 }
 
+type HostKeyError string
+
+func (s HostKeyError) Error() string {
+	return string(s)
+}
+
 type GitRepository struct {
 	Address    string        `json:"address"`
 	PrivateKey string        `json:"privateKey"`
@@ -94,13 +100,13 @@ func cleanSSHAgent(r *GitRepository) {
 	}
 }
 
-func Validate(r *GitRepository) bool {
+func Validate(r *GitRepository) (bool, error) {
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
 
 	dir, err := initWorkspace(r)
 	if err != nil {
-		return false
+		return false, err
 	}
 	defer cleanSSHAgent(r)
 	os.Chdir(dir)
@@ -109,11 +115,15 @@ func Validate(r *GitRepository) bool {
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
-	if s.Exit == 0 {
-		return true
+	if s.Exit != 0 {
+		err := fmt.Errorf(strings.Join(s.Stderr, " "))
+		if strings.Contains(err.Error(), "Host key verification failed") {
+			err = HostKeyError(err.Error())
+		}
+		return false, err
 	}
 
-	return false
+	return true, nil
 }
 
 type CloneOptions struct {

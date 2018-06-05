@@ -1,6 +1,10 @@
 package project
 
 import (
+	"github.com/golang/glog"
+
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+
 	ut "github.com/go-playground/universal-translator"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	govalidator "gopkg.in/go-playground/validator.v9"
@@ -27,8 +31,8 @@ func newValidator(
 	v.validate.RegisterTranslation("projectUnique", trans, registerFuncUnique, translationFuncUnique)
 
 	v.validate.RegisterStructValidation(v.validateProjectRepository, Project{})
-	v.validate.RegisterTranslation("gitRepository", trans, registerFuncRepository, translationFuncRepository)
-	v.validate.RegisterTranslation("sshPrivateKey", trans, registerFuncKey, translationFuncKey)
+	v.validate.RegisterTranslation("hostKeyError", trans, registerFuncRepository, translationFuncRepository)
+	v.validate.RegisterTranslation("privateKeyError", trans, registerFuncKey, translationFuncKey)
 
 	return v
 }
@@ -73,37 +77,38 @@ func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 		return
 	}
 
-	if !v.projectManager.validate(&p.Config) {
-		sl.ReportError(p.Config.PrivateKey, "key", "key", "sshPrivateKey", "")
+	valid, err := v.projectManager.validate(&p.Config)
+	if !valid {
+		switch err.(type) {
+		case velocity.HostKeyError:
+			sl.ReportError(p.Config.Address, "repository", "repository", "hostKeyError", "")
+			break
+		case velocity.SSHKeyError:
+			sl.ReportError(p.Config.PrivateKey, "key", "key", "privateKeyError", "")
+			break
+		default:
+			glog.Error(err)
+			// sl.ReportError(p.Config.Address, "repository", "repository", "", "")
+		}
 	}
-
-	// if err != nil {
-	// 	if _, ok := err.(velocity.SSHKeyError); ok {
-	// 		sl.ReportError(p.Config.PrivateKey, "key", "key", "sshPrivateKey", err.Error())
-	// 	} else {
-	// 		sl.ReportError(p.Config.Address, "repository", "repository", "gitRepository", "")
-	// 	}
-	// } else {
-	// 	os.RemoveAll(repo.Directory)
-	// }
 }
 
 func registerFuncRepository(ut ut.Translator) error {
-	return ut.Add("gitRepository", "Could not clone repository! Have you added the host to known hosts?", true)
+	return ut.Add("hostKeyError", "Could not clone repository! Have you added the host to known hosts?", true)
 }
 
 func translationFuncRepository(ut ut.Translator, fe govalidator.FieldError) string {
-	t, _ := ut.T("gitRepository", fe.Field())
+	t, _ := ut.T("hostKeyError", fe.Field())
 
 	return t
 }
 
 func registerFuncKey(ut ut.Translator) error {
-	return ut.Add("sshPrivateKey", "Invalid SSH Key: {0}", true)
+	return ut.Add("privateKeyError", "Invalid SSH Key: {0}", true)
 }
 
 func translationFuncKey(ut ut.Translator, fe govalidator.FieldError) string {
-	t, _ := ut.T("sshPrivateKey", fe.Field())
+	t, _ := ut.T("privateKeyError", fe.Field())
 
 	return t
 }
