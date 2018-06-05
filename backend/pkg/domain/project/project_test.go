@@ -19,8 +19,8 @@ type ProjectSuite struct {
 	dbPath string
 }
 
-var syncMock = func(*velocity.GitRepository) bool {
-	return true
+var syncMock = func(*velocity.GitRepository) (bool, error) {
+	return true, nil
 }
 
 func TestProjectSuite(t *testing.T) {
@@ -66,8 +66,8 @@ func (s *ProjectSuite) TestValidNew() {
 
 func (s *ProjectSuite) TestSSHInvalidCreate() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository) bool {
-		return false
+	syncMock := func(*velocity.GitRepository) (bool, error) {
+		return false, velocity.SSHKeyError("")
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 

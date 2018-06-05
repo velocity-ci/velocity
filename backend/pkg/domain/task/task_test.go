@@ -44,8 +44,8 @@ func (s *CommitSuite) SetupTest() {
 	}
 
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository) bool {
-		return true
+	syncMock := func(*velocity.GitRepository) (bool, error) {
+		return true, nil
 	}
 	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
 	s.commitManager = githistory.NewCommitManager(s.storm)
