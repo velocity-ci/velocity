@@ -75,21 +75,17 @@ details commit =
 -}
 taskNav : Config msg -> Context -> Html msg
 taskNav config context =
-    let
-        tasks =
-            context
-                |> .tasks
-                |> filterTasks
-                |> sortTasks
+    ul [ class "nav nav-pills flex-column project-navigation p-0" ] <|
+        taskNavItems config context
 
-        taskItem =
-            taskNavItem config.newUrlMsg
 
-        toProperties =
-            taskNavProperties context
-    in
-        ul [ class "nav nav-pills flex-column project-navigation p-0" ] <|
-            List.map (toProperties >> taskItem) tasks
+taskNavItems : Config msg -> Context -> List (Html msg)
+taskNavItems { newUrlMsg } context =
+    context
+        |> .tasks
+        |> filterTasks
+        |> sortTasks
+        |> List.map (taskNavProperties context >> taskNavItem newUrlMsg)
 
 
 {-| Single nav item for a task
