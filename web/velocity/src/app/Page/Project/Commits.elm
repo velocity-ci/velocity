@@ -28,6 +28,7 @@ import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Navigation
 import Views.Helpers exposing (onClickPage)
+import Views.Commit exposing (commitTimeInformation, branchList)
 import Json.Encode as Encode
 import Component.DropdownFilter as DropdownFilter
 import Dom
@@ -255,21 +256,19 @@ viewCommitListItem slug commit =
 
         route =
             Route.Project slug <| ProjectRoute.Commit commit.hash CommitRoute.Overview
-
-        branchList =
-            commit.branches
-                |> List.map (\b -> span [ class "badge badge-secondary" ] [ i [ class "fa fa-code-fork" ] [], text (" " ++ (Branch.nameToString (Just b))) ])
-                |> List.map (\b -> li [ class "list-inline-item" ] [ b ])
-                |> (ul [ class "mb-0 list-inline" ])
     in
-        a [ class "list-group-item list-group-item-action flex-column align-items-start", Route.href route, onClickPage NewUrl route ]
+        a
+            [ class "list-group-item list-group-item-action flex-column align-items-start"
+            , Route.href route
+            , onClickPage NewUrl route
+            ]
             [ div [ class "d-flex w-100 justify-content-between" ]
                 [ h6 [ class "mb-1 text-overflow" ] [ text commit.message ]
                 , small [] [ text truncatedHash ]
                 ]
             , div [ class "d-flex w-100 justify-content-between" ]
-                [ small [] [ strong [] [ text commit.author ], text (" commited at " ++ formatTime commit.date) ]
-                , branchList
+                [ commitTimeInformation commit
+                , branchList commit
                 ]
             ]
 

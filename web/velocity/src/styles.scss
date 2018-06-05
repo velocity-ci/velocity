@@ -107,20 +107,25 @@ Content container
  * Sidebar
  */
 
+.brand {
+  color: white;
+}
+
 .sidebar {
   width: 75px;
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
-  z-index: 1;
+  z-index: 2;
   padding-top: 1rem;
-  background-color: rgb(244, 245, 247);
-  color: rgb(66, 82, 110);
+
+  background-color: rgb(7, 71, 166);
+  color: white;
 
   .nav-link.active {
-    background-color: rgba(9, 30, 66, 0.04);
-    color: rgb(0, 82, 204);
+    //background-color: rgba(9, 30, 66, 0.04);
+    //color: rgb(0, 82, 204);
     fill: rgba(9, 30, 66, 0.04);
   }
 
@@ -131,6 +136,38 @@ Content container
   .project-navigation {
     //margin-top: 80px;
   }
+
+}
+
+.commit-container {
+  padding-left: 240px;
+}
+
+.sub-sidebar {
+  width: 220px;
+  position: fixed;
+  top: 0;
+  left: 75px;
+  bottom: 0;
+
+  z-index:1;
+
+  background-color: rgb(244, 245, 247);
+  color: rgb(66, 82, 110);
+
+  .nav-link {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav-link.active {
+    background-color: #e2e3e5;
+    border-color: #d6d8db;
+    color: #383d41;
+
+  }
+
 
 }
 
@@ -200,7 +237,7 @@ Content container
   margin-left: 0;
 }
 
-.sidebar .nav-link {
+.sidebar .nav-link, .sub-sidebar .nav-link {
   border-radius: 0;
 }
 

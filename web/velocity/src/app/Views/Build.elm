@@ -33,11 +33,11 @@ viewBuildHistoryTable project builds newUrlMsg =
 
 viewBuildHistoryTableHeaderRow : Html msg
 viewBuildHistoryTableHeaderRow =
-    tr []
-        [ th [ class "pl-0 border-0" ] [ text "Task" ]
-        , th [ class "pl-0 border-0" ] [ text "Commit" ]
-        , th [ class "pl-0 border-0" ] [ text "Created" ]
-        , th [ class "pl-0 border-0" ] []
+    tr [ class "d-flex" ]
+        [ th [ class "pl-0 border-0 col-6" ] [ text "Task" ]
+        , th [ class "pl-0 border-0 col-2" ] [ text "Commit" ]
+        , th [ class "pl-0 border-0 col-3" ] [ text "Created" ]
+        , th [ class "pl-0 border-0 col-1" ] []
         ]
 
 
@@ -77,11 +77,11 @@ viewBuildHistoryTableRow project newUrlMsg build =
                 ]
                 [ text content ]
     in
-        tr [ classList colourClassList ]
-            [ td [ class "px-0" ] [ buildLink taskName commitTaskRoute ]
-            , td [ class "px-0" ] [ buildLink truncatedHash commitRoute ]
-            , td [ class "px-0" ] [ buildLink createdAt commitTaskRoute ]
-            , td [ class "px-0 text-right" ] [ viewBuildStatusIcon build ]
+        tr [ classList colourClassList, class "d-flex" ]
+            [ td [ class "px-0 col-6" ] [ buildLink taskName commitTaskRoute ]
+            , td [ class "px-0 col-2" ] [ buildLink truncatedHash commitRoute ]
+            , td [ class "px-0 col-3" ] [ buildLink createdAt commitTaskRoute ]
+            , td [ class "px-0 col-1 text-right" ] [ viewBuildStatusIcon build ]
             ]
 
 

@@ -28,6 +28,7 @@ import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime, formatDateTime)
 import Views.Spinner exposing (spinner)
 import Component.DropdownFilter as DropdownFilter
+import Component.CommitSidebar as CommitSidebar
 import Dom
 
 
@@ -195,9 +196,33 @@ leaveSubPageChannels subPage subRoute =
 view : Project -> Model -> Html Msg
 view project model =
     div []
-        [ viewTaskTabs project model.commit model.tasks model.subPageState
+        [ CommitSidebar.view sidebarConfig (sidebarContext project model)
         , viewSubPage project model
         ]
+
+
+sidebarContext : Project -> Model -> CommitSidebar.Context
+sidebarContext project model =
+    { project = project
+    , commit = model.commit
+    , tasks = model.tasks
+    , selected = selectedTask model
+    }
+
+
+selectedTask : Model -> Maybe ProjectTask.Task
+selectedTask model =
+    case (model.subPageState) of
+        Loaded (CommitTask subModel) ->
+            Just subModel.task
+
+        _ ->
+            Nothing
+
+
+sidebarConfig : CommitSidebar.Config Msg
+sidebarConfig =
+    { newUrlMsg = NewUrl }
 
 
 viewSubPage : Project -> Model -> Html Msg
@@ -216,54 +241,6 @@ viewSubPage project model =
             div [ class "d-flex justify-content-center" ] [ spinner ]
 
 
-viewTaskTabs : Project -> Commit -> List ProjectTask.Task -> SubPageState -> Html Msg
-viewTaskTabs project commit tasks subPage =
-    let
-        toRoute =
-            taskRoute project commit
-
-        filter =
-            .name >> ProjectTask.nameToString >> String.length >> (\len -> len > 0)
-    in
-        ul [ class "nav nav-tabs my-4" ] <|
-            List.map (viewTaskTab toRoute subPage) (List.filter filter tasks)
-
-
-taskRoute : Project -> Commit -> ProjectTask.Task -> Route
-taskRoute project commit task =
-    CommitRoute.Task task.name Nothing
-        |> ProjectRoute.Commit commit.hash
-        |> Route.Project project.slug
-
-
-viewTaskTab : (ProjectTask.Task -> Route) -> SubPageState -> ProjectTask.Task -> Html Msg
-viewTaskTab toRoute subPage task =
-    let
-        route =
-            toRoute task
-
-        active =
-            case subPage of
-                Loaded (CommitTask subModel) ->
-                    subModel.task.id == task.id
-
-                _ ->
-                    False
-
-        classes =
-            [ "active" => active ]
-    in
-        li [ class "nav-item" ]
-            [ a
-                [ class "nav-link"
-                , classList classes
-                , Route.href route
-                , onClickPage NewUrl route
-                ]
-                [ text <| ProjectTask.nameToString task.name ]
-            ]
-
-
 frame :
     Project
     -> Model
@@ -271,7 +248,7 @@ frame :
     -> Html a
     -> Html Msg
 frame project { commit, tasks } toMsg content =
-    Html.map toMsg content
+    div [ class "commit-container" ] [ Html.map toMsg content ]
 
 
 viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg

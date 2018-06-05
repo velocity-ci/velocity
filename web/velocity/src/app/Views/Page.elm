@@ -62,7 +62,8 @@ sidebarLogo : (String -> msg) -> Html msg
 sidebarLogo newUrlMsg =
     div [ class "d-flex justify-content-center" ]
         [ a
-            [ Route.href Route.Home
+            [ class "brand"
+            , Route.href Route.Home
             , onClickPage newUrlMsg Route.Home
             ]
             [ h1 []
