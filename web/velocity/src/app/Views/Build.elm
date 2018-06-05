@@ -114,18 +114,23 @@ genericToast variantClass message build =
 
 viewBuildStatusIcon : Build -> Html msg
 viewBuildStatusIcon build =
-    case build.status of
+    i [ class (viewBuildStatusIconClasses build) ] []
+
+
+viewBuildStatusIconClasses : Build -> String
+viewBuildStatusIconClasses { status } =
+    case status of
         Build.Waiting ->
-            i [ class "fa fa-clock-o" ] []
+            "fa fa-clock-o"
 
         Build.Running ->
-            i [ class "fa fa-cog fa-spin" ] []
+            "fa fa-cog fa-spin"
 
         Build.Success ->
-            i [ class "fa fa-check" ] []
+            "fa fa-check"
 
         Build.Failed ->
-            i [ class "fa fa-times" ] []
+            "fa fa-times"
 
 
 viewBuildTextClass : Build -> String

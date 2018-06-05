@@ -207,6 +207,7 @@ sidebarContext project model =
     , commit = model.commit
     , tasks = model.tasks
     , selected = selectedTask model
+    , builds = model.builds
     }
 
 
