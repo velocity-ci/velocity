@@ -6,9 +6,10 @@ import (
 )
 
 type Stream struct {
-	ID   string `json:"id"`
-	Step *Step  `json:"step"`
-	Name string `json:"name"`
+	ID     string `json:"id"`
+	Step   *Step  `json:"step"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 func (s Stream) String() string {

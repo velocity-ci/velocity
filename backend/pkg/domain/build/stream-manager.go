@@ -87,6 +87,20 @@ func (m *StreamManager) GetStreamLines(s *Stream, q *domain.PagingQuery) ([]*Str
 	return m.db.getLinesByStream(s, q)
 }
 
+func (m *StreamManager) Update(stream *Stream) error {
+	if err := m.db.save(stream); err != nil {
+		return err
+	}
+	// for _, b := range m.brokers {
+	// 	b.EmitAll(&domain.Emit{
+	// 		Event:   ,
+	// 		Payload: s,
+	// 	})
+	// }
+
+	return nil
+}
+
 func GetStreamByID(db *storm.DB, id string) (*Stream, error) {
 	var sS StormStream
 	if err := db.One("ID", id, &sS); err != nil {

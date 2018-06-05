@@ -15,6 +15,7 @@ type StormStream struct {
 	ID     string `storm:"id"`
 	StepID string `storm:"index"`
 	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 func (s *StormStream) toStream(db *storm.DB) *Stream {
@@ -23,9 +24,10 @@ func (s *StormStream) toStream(db *storm.DB) *Stream {
 		glog.Error(err)
 	}
 	return &Stream{
-		ID:   s.ID,
-		Step: step,
-		Name: s.Name,
+		ID:     s.ID,
+		Step:   step,
+		Name:   s.Name,
+		Status: s.Status,
 	}
 }
 
@@ -34,6 +36,7 @@ func (s *Stream) toStormStream() *StormStream {
 		ID:     s.ID,
 		StepID: s.Step.ID,
 		Name:   s.Name,
+		Status: s.Status,
 	}
 }
 
