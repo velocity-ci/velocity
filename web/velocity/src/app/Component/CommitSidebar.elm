@@ -63,7 +63,9 @@ details commit =
     div [ class "p-2" ]
         [ div [ class "card" ]
             [ div [ class "card-body" ]
-                [ infoPanel commit
+                [ small [] [ text commit.message ]
+                , hr [] []
+                , infoPanel commit
                 , hr [] []
                 , branchList commit
                 ]
@@ -91,10 +93,10 @@ taskNavItems { newUrlMsg } context =
 {-| Single nav item for a task
 -}
 taskNavItem : (String -> msg) -> NavTaskProperties -> Html msg
-taskNavItem newUrlMsg { isSelected, route, itemText, textClass } =
+taskNavItem newUrlMsg { isSelected, route, itemText, textClass, iconClass } =
     li [ class "nav-item" ]
         [ a
-            [ class "nav-link"
+            [ class "nav-link align-middle"
             , class textClass
             , classList [ "active" => isSelected ]
             , Route.href route
@@ -147,7 +149,7 @@ taskIconClass context task =
     task
         |> latestTaskBuild context
         |> Maybe.map viewBuildStatusIconClasses
-        |> Maybe.withDefault ""
+        |> Maybe.withDefault "fa-minus"
 
 
 taskTextClass : Context -> Task -> String
@@ -164,6 +166,7 @@ latestTaskBuild : Context -> Task -> Maybe Build
 latestTaskBuild { builds } task =
     builds
         |> taskBuilds task
+        |> List.reverse
         |> List.head
 
 
