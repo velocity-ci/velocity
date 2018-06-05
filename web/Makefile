@@ -38,10 +38,10 @@ serve_dist: build
 	docker run --rm -p 4200:80 -e ARCHITECT_ENDPOINT='http://localhost/v1' \
 	civelocity/web:latest
 
-publish:
+publish: install build
 	@docker push civelocity/web:${GIT_VERSION}
 
-test: install
+test:
 	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --compiler ./node_modules/.bin/elm-make'
 
 test_watch:

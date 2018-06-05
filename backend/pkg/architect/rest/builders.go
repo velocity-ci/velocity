@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
@@ -92,7 +92,7 @@ var upgrader = websocket.Upgrader{
 
 func (h *builderHandler) connect(c echo.Context) error {
 	auth := c.Request().Header.Get("Authorization")
-	logrus.Debugf("builder authorization attempt with: %s", auth)
+	glog.Infof("builder authorization attempt with: %s", auth)
 	if auth == "" {
 		c.JSON(http.StatusUnauthorized, "")
 		return nil
@@ -104,7 +104,7 @@ func (h *builderHandler) connect(c echo.Context) error {
 
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return nil
 	}
 

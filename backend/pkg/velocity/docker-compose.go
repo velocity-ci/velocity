@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types/network"
+	"github.com/golang/glog"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -99,7 +99,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 
 	writers := map[string]StreamWriter{}
@@ -158,7 +158,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		logrus.Errorf("network %s remove err: %s", networkResp.ID, err)
+		glog.Errorf("network %s remove err: %s", networkResp.ID, err)
 	}
 	success := true
 	for _, serviceRunner := range services {
@@ -320,7 +320,7 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 	var serviceMap map[string]interface{}
 	err := unmarshal(&serviceMap)
 	if err != nil {
-		logrus.Errorf("unable to unmarshal service: %s", err)
+		glog.Errorf("unable to unmarshal service: %s", err)
 		return err
 	}
 

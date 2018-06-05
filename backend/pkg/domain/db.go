@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
+	"github.com/golang/glog"
 )
 
 func NewStormDB(path string) *storm.DB {
@@ -13,7 +13,7 @@ func NewStormDB(path string) *storm.DB {
 	os.MkdirAll(dir, os.ModePerm)
 	db, err := storm.Open(path)
 	if err != nil {
-		logrus.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	return db

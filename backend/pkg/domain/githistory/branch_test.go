@@ -1,7 +1,6 @@
 package githistory_test
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -43,8 +42,8 @@ func (s *BranchSuite) SetupTest() {
 	}
 
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
+	syncMock := func(*velocity.GitRepository) (bool, error) {
+		return true, nil
 	}
 	s.projectManager = project.NewManager(s.storm, validator, translator, syncMock)
 	s.commitManager = githistory.NewCommitManager(s.storm)
@@ -130,7 +129,7 @@ func (s *BranchSuite) TestGetAllForCommit() {
 	b1 := m.Create(p, "testBranch")
 	b2 := m.Create(p, "2estBranch")
 
-	c := s.commitManager.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now())
+	c := s.commitManager.Create(b1, p, "abcdef", "test commit", "me@velocityci.io", time.Now(), "")
 	s.commitManager.AddCommitToBranch(c, b2)
 
 	bs, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})

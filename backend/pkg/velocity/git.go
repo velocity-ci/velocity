@@ -3,6 +3,7 @@ package velocity
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -12,8 +13,8 @@ import (
 
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/go-cmd/cmd"
+	"github.com/golang/glog"
 	"github.com/gosimple/slug"
 	"golang.org/x/crypto/ssh"
 )
@@ -24,70 +25,151 @@ func (s SSHKeyError) Error() string {
 	return string(s)
 }
 
-type GitRepository struct {
-	Address    string `json:"address"`
-	PrivateKey string `json:"privateKey"`
+type HostKeyError string
+
+func (s HostKeyError) Error() string {
+	return string(s)
 }
 
-// TODO:
-// Clone
-// x Clone Depth (1)
-// - SSH authentication with just private key
-// x Recurse submodules (delay support)
-// Sync
-// x Get remote branches
-// x Get commits at HEAD of each branch
-// x Checkout commit by sha
+type GitRepository struct {
+	Address    string        `json:"address"`
+	PrivateKey string        `json:"privateKey"`
+	PublicKey  ssh.PublicKey `json:"-"`
+	Agent      agent.Agent   `json:"-"`
+}
 
-func Clone(
-	r *GitRepository,
-	bare,
-	full,
-	submodule bool,
-	writer io.Writer,
-) (*RawRepository, error) {
+const WorkspaceDir = "/opt/velocityci/workspaces"
+
+func getUniqueWorkspace(r *GitRepository) (string, error) {
 	psuedoRandom := rand.NewSource(time.Now().UnixNano())
 	randNumber := rand.New(psuedoRandom)
-	wd, _ := os.Getwd()
-	defer os.Chdir(wd)
-	dir := fmt.Sprintf("%s/workspaces/_%s-%d", wd, slug.Make(r.Address), randNumber.Int63())
+	dir := fmt.Sprintf("%s/_%s-%d", WorkspaceDir, slug.Make(r.Address), randNumber.Int63())
 	os.RemoveAll(dir)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		logrus.Fatal(err)
-		return nil, err
+		glog.Fatal(err)
+		return "", err
 	}
 
-	shCmd := []string{"git", "clone", "--progress"}
+	return dir, nil
+}
 
-	if bare {
+func handleGitSSH(r *GitRepository) (ssh.Signer, agent.Agent, error) {
+	key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
+	if err != nil {
+		return nil, nil, err.(SSHKeyError)
+	}
+	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+		a := agent.NewClient(sshAgent)
+		a.Add(agent.AddedKey{PrivateKey: key})
+		signer, _ := ssh.NewSignerFromKey(key)
+		glog.Infof("added ssh key for %s", r.Address)
+		return signer, a, nil
+	}
+
+	return nil, nil, fmt.Errorf("ssh-agent not found")
+}
+
+func initWorkspace(r *GitRepository) (string, error) {
+	dir, _ := getUniqueWorkspace(r)
+	os.Chdir(dir)
+	shCmd := []string{"git", "init"}
+	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	<-c.Start()
+
+	shCmd = []string{"git", "remote", "add", "origin", r.Address}
+	c = cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	<-c.Start()
+
+	if r.Address[:3] == "git" {
+		signer, agent, err := handleGitSSH(r)
+		if err != nil {
+			return "", err
+		}
+		r.Agent = agent
+		r.PublicKey = signer.PublicKey()
+	}
+
+	return dir, nil
+}
+
+func cleanSSHAgent(r *GitRepository) {
+	if r.Agent != nil {
+		r.Agent.Remove(r.PublicKey)
+		glog.Infof("removed ssh key for %s", r.Address)
+	}
+}
+
+func Validate(r *GitRepository) (bool, error) {
+	wd, _ := os.Getwd()
+	defer os.Chdir(wd)
+
+	dir, err := initWorkspace(r)
+	if err != nil {
+		return false, err
+	}
+	defer cleanSSHAgent(r)
+	os.Chdir(dir)
+
+	shCmd := []string{"git", "ls-remote"}
+	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	s := <-c.Start()
+
+	if s.Exit != 0 {
+		err := fmt.Errorf(strings.Join(s.Stderr, " "))
+		if strings.Contains(err.Error(), "Host key verification failed") {
+			err = HostKeyError(err.Error())
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
+type CloneOptions struct {
+	Bare      bool
+	Full      bool
+	Submodule bool
+	Commit    string
+}
+
+func Clone(
+	r *GitRepository,
+	writer io.Writer,
+	cloneOpts *CloneOptions,
+) (*RawRepository, error) {
+	wd, _ := os.Getwd()
+	defer os.Chdir(wd)
+
+	dir, err := initWorkspace(r)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanSSHAgent(r)
+	os.Chdir(dir)
+	fmt.Println(dir)
+
+	shCmd := []string{"git", "fetch", "--progress"}
+
+	if cloneOpts.Bare {
 		shCmd = append(shCmd, "--bare")
 	}
 
-	if !full {
-		shCmd = append(shCmd, "--depth=1")
+	if !cloneOpts.Full {
+		// shCmd = append(shCmd, "--depth=1")
 	}
 
-	if submodule {
+	if cloneOpts.Submodule {
 		shCmd = append(shCmd, "--recurse-submodules")
 	}
 
-	shCmd = append(shCmd, r.Address)
-	shCmd = append(shCmd, dir)
-
-	if r.Address[:3] == "git" {
-		key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
-		if err != nil {
-			return nil, err
-		}
-		if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-			a := agent.NewClient(sshAgent)
-			a.Add(agent.AddedKey{PrivateKey: key})
-			signer, _ := ssh.NewSignerFromKey(key)
-
-			defer a.Remove(signer.PublicKey())
-		}
+	if len(cloneOpts.Commit) > 0 {
+		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
+
+	fmt.Println(shCmd)
+	Hf, _ := ioutil.ReadFile("/root/.ssh/known_hosts")
+	fmt.Println(string(Hf))
 
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
@@ -131,10 +213,10 @@ func (r *RawRepository) GetBranches() (b []string) {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "origin/")
 		if strings.HasPrefix(line, "HEAD") {
-			logrus.Infof("skipped branch: %s", line)
+			glog.Infof("skipped branch: %s", line)
 			continue
 		}
-		logrus.Infof("got branch: %s", line)
+		glog.Infof("got branch: %s", line)
 		b = append(b, line)
 	}
 
@@ -178,7 +260,7 @@ func (r *RawRepository) init() {
 	r.RLock()
 	cwd, err := os.Getwd()
 	if err != nil {
-		logrus.Fatalf("could not get work dir: %v", err)
+		glog.Fatalf("could not get work dir: %v", err)
 	}
 	r.pwd = cwd
 	os.Chdir(r.Directory)
@@ -193,7 +275,7 @@ func (r *RawRepository) done() {
 func (r *RawRepository) GetCommitInfo(sha string) *RawCommit {
 	r.init()
 	defer r.done()
-	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%G?%n%s`, sha}
+	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%GK%n%s`, sha}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
@@ -246,7 +328,7 @@ func handleStatusError(s cmd.Status) error {
 	}
 
 	if s.Exit != 0 {
-		logrus.Error(s.Stdout, s.Stderr)
+		glog.Error(s.Stdout, s.Stderr)
 		return fmt.Errorf("non-zero exit in clone: %d", s.Exit)
 	}
 

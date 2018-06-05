@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/golang/glog"
 )
 
 type DockerPush struct {
@@ -60,7 +60,7 @@ func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 			RegistryAuth: authToken,
 		})
 		if err != nil {
-			logrus.Error(err)
+			glog.Error(err)
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("\nPush failed: %s", err)))
 			return err

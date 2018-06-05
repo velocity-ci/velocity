@@ -3,9 +3,9 @@ package project
 import (
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
@@ -102,7 +102,7 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*Project, t int) {
 	t = 0
 	t, err := db.Count(&StormProject{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 

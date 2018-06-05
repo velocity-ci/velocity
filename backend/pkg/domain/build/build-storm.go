@@ -10,8 +10,8 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
@@ -34,11 +34,11 @@ func (s *StormBuild) toBuild(db *storm.DB) *Build {
 	params := map[string]string{}
 	err := json.Unmarshal(s.Parameters, &params)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	t, err := task.GetByID(db, s.TaskID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 
 	return &Build{
@@ -56,7 +56,7 @@ func (s *StormBuild) toBuild(db *storm.DB) *Build {
 func (b *Build) toStormBuild() *StormBuild {
 	paramsJson, err := json.Marshal(b.Parameters)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	return &StormBuild{
 		ID:          b.ID,
@@ -100,7 +100,7 @@ func (db *buildStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQu
 	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 
@@ -120,7 +120,7 @@ func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *domain.PagingQ
 	query := db.Select(q.Eq("CommitID", c.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 
@@ -140,7 +140,7 @@ func (db *buildStormDB) getAllForTask(tsk *task.Task, pQ *domain.PagingQuery) (r
 	query := db.Select(q.Eq("TaskID", tsk.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 
@@ -160,7 +160,7 @@ func (db *buildStormDB) getRunningBuilds() (r []*Build, t int) {
 	query := db.Select(q.Eq("Status", velocity.StateRunning)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 
@@ -179,7 +179,7 @@ func (db *buildStormDB) getWaitingBuilds() (r []*Build, t int) {
 	query := db.Select(q.Eq("Status", velocity.StateWaiting)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 
@@ -196,7 +196,7 @@ func (db *buildStormDB) getWaitingBuilds() (r []*Build, t int) {
 func GetBuildByID(db *storm.DB, id string) (*Build, error) {
 	var sB StormBuild
 	if err := db.One("ID", id, &sB); err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return nil, err
 	}
 	return sB.toBuild(db), nil

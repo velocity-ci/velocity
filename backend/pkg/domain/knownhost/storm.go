@@ -1,9 +1,9 @@
 package knownhost
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
@@ -86,7 +86,7 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*KnownHost, t int) {
 	t = 0
 	t, err := db.Count(&StormKnownHost{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 

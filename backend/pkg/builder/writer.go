@@ -4,7 +4,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 
@@ -54,7 +54,7 @@ func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 		}
 	}
 	if streamID == "" {
-		logrus.Errorf("could not find streamID for %s", streamName)
+		glog.Errorf("could not find streamID for %s", streamName)
 	}
 	return &StreamWriter{
 		ws:         e.ws,
@@ -88,12 +88,15 @@ func NewEmitter(ws *websocket.Conn, b *build.Build) *Emitter {
 }
 
 func (w *StreamWriter) Write(p []byte) (n int, err error) {
-	o := string(p)
-	if !strings.ContainsRune(string(p), '\r') {
+	o := strings.TrimSpace(string(p))
+	if !strings.Contains(string(p), "\r") {
 		w.LineNumber++
-		o = strings.TrimSpace(o)
 		o += "\n"
+	} else {
+		parts := strings.Split(o, "\r")
+		o = parts[len(parts)-1] + "\n"
 	}
+
 	lM := builder.BuilderStreamLineMessage{
 		BuildID:    w.BuildID,
 		StepID:     w.StepID,

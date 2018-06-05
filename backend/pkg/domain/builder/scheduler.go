@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
@@ -34,25 +34,25 @@ func (bS *buildScheduler) StartWorker() {
 		runningBuild.Status = "waiting"
 		bS.buildManager.Update(runningBuild)
 	}
-	logrus.Info("Started Build scheduler")
+	glog.Info("Started Build scheduler")
 	for bS.stop == false {
 		waitingBuilds, _ := bS.buildManager.GetWaitingBuilds()
-		// logrus.Debugf("Got %d waiting builds", total)
+		// glog.Infof("Got %d waiting builds", total)
 
 		for _, waitingBuild := range waitingBuilds {
 			// Queue on any idle worker
 			activeBuilders, count := bS.builderManager.GetReady(domain.NewPagingQuery())
-			logrus.Debugf("Got %d ready slaves", count)
+			glog.Infof("Got %d ready slaves", count)
 			for _, builder := range activeBuilders {
 				bS.builderManager.StartBuild(builder, waitingBuild)
-				logrus.Infof("Starting build %s on %s", waitingBuild.ID, builder.ID)
+				glog.Infof("Starting build %s on %s", waitingBuild.ID, builder.ID)
 				break
 			}
 		}
 
 		time.Sleep(1 * time.Second)
 	}
-	logrus.Info("Stopped Build scheduler")
+	glog.Info("Stopped Build scheduler")
 	bS.wg.Done()
 }
 

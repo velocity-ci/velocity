@@ -1,7 +1,6 @@
 package project_test
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -18,6 +17,10 @@ type ProjectSuite struct {
 	suite.Suite
 	storm  *storm.DB
 	dbPath string
+}
+
+var syncMock = func(*velocity.GitRepository) (bool, error) {
+	return true, nil
 }
 
 func TestProjectSuite(t *testing.T) {
@@ -47,9 +50,6 @@ func (s *ProjectSuite) TearDownTest() {
 
 func (s *ProjectSuite) TestValidNew() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, errs := m.Create("Test Project", velocity.GitRepository{
@@ -66,8 +66,8 @@ func (s *ProjectSuite) TestValidNew() {
 
 func (s *ProjectSuite) TestSSHInvalidCreate() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return nil, velocity.SSHKeyError("")
+	syncMock := func(*velocity.GitRepository) (bool, error) {
+		return false, velocity.SSHKeyError("")
 	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
@@ -84,9 +84,6 @@ func (s *ProjectSuite) TestSSHInvalidCreate() {
 
 func (s *ProjectSuite) TestDuplicateCreate() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.Create("Test Project", velocity.GitRepository{
@@ -104,9 +101,6 @@ func (s *ProjectSuite) TestDuplicateCreate() {
 
 func (s *ProjectSuite) TestUpdate() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	eP, _ := m.Create("Test Project", velocity.GitRepository{
@@ -123,9 +117,6 @@ func (s *ProjectSuite) TestUpdate() {
 
 func (s *ProjectSuite) TestExists() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	m.Create("Test Project", velocity.GitRepository{
@@ -137,9 +128,6 @@ func (s *ProjectSuite) TestExists() {
 
 func (s *ProjectSuite) TestDelete() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.Create("Test Project", velocity.GitRepository{
@@ -154,9 +142,6 @@ func (s *ProjectSuite) TestDelete() {
 
 func (s *ProjectSuite) TestList() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.Create("Test Project", velocity.GitRepository{
@@ -175,9 +160,6 @@ func (s *ProjectSuite) TestList() {
 
 func (s *ProjectSuite) TestGetByName() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.Create("Test Project", velocity.GitRepository{
@@ -191,9 +173,6 @@ func (s *ProjectSuite) TestGetByName() {
 
 func (s *ProjectSuite) TestGetBySlug() {
 	validator, translator := domain.NewValidator()
-	syncMock := func(*velocity.GitRepository, bool, bool, bool, io.Writer) (*velocity.RawRepository, error) {
-		return &velocity.RawRepository{Directory: "/testDir"}, nil
-	}
 	m := project.NewManager(s.storm, validator, translator, syncMock)
 
 	p, _ := m.Create("Test Project", velocity.GitRepository{
