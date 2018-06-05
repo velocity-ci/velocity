@@ -3,9 +3,9 @@ package githistory
 import (
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
@@ -23,7 +23,7 @@ type StormCommit struct {
 func (s *StormCommit) ToCommit(db *storm.DB) *Commit {
 	p, err := project.GetByID(db, s.ProjectID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	return &Commit{
 		ID:        s.ID,
@@ -96,7 +96,7 @@ func (db *commitStormDB) getAllForProject(p *project.Project, pQ *CommitQuery) (
 	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
 	t, err := query.Count(&StormCommit{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
@@ -160,7 +160,7 @@ func (db *commitStormDB) getAllForBranch(b *Branch, pQ *domain.PagingQuery) (r [
 	query := db.Select(q.Eq("BranchID", b.ID))
 	t, err := query.Count(&branchCommitStorm{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 	branchCommits := []branchCommitStorm{}

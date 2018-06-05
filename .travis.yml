@@ -9,4 +9,4 @@ env:
     - COMPONENT=web
 
 script:
-  - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make test
+  - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make install && make test

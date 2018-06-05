@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types/network"
+	"github.com/golang/glog"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -97,7 +97,7 @@ func getAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthC
 	for _, r := range dockerRegistries {
 		jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
 		if err != nil {
-			logrus.Error(err)
+			glog.Error(err)
 		}
 		var authConfig types.AuthConfig
 		err = json.Unmarshal(jsonAuthConfig, &authConfig)
@@ -141,7 +141,7 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 			authConfigs,
 		)
 		if err != nil {
-			logrus.Errorf("build image err: %s", err)
+			glog.Errorf("build image err: %s", err)
 		}
 		sR.image = getImageName(sR.name)
 		sR.containerConfig.Image = getImageName(sR.name)
@@ -159,7 +159,7 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 				},
 			)
 			if err != nil {
-				logrus.Errorf("pull image err: %s", err)
+				glog.Errorf("pull image err: %s", err)
 			}
 			defer pullResp.Close()
 			handleOutput(pullResp, sR.params, sR.writer)
@@ -175,7 +175,7 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 func findImageLocally(imageName string, cli *client.Client, ctx context.Context) error {
 	images, err := cli.ImageList(ctx, types.ImageListOptions{})
 	if err != nil {
-		logrus.Errorf("image find err: %s", err)
+		glog.Errorf("image find err: %s", err)
 		return err
 	}
 	for _, i := range images {
@@ -198,7 +198,7 @@ func (sR *serviceRunner) Create() {
 		getContainerName(sR.name),
 	)
 	if err != nil {
-		logrus.Errorf("container create err: %s", err)
+		glog.Errorf("container create err: %s", err)
 	}
 	sR.containerID = createResp.ID
 }
@@ -211,7 +211,7 @@ func (sR *serviceRunner) Run(stop chan string) {
 		types.ContainerStartOptions{},
 	)
 	if err != nil {
-		logrus.Errorf("container %s start err: %s", sR.containerID, err)
+		glog.Errorf("container %s start err: %s", sR.containerID, err)
 	}
 	logsResp, err := sR.dockerCli.ContainerLogs(
 		sR.context,
@@ -219,7 +219,7 @@ func (sR *serviceRunner) Run(stop chan string) {
 		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true},
 	)
 	if err != nil {
-		logrus.Errorf("container %s logs err: %s", sR.containerID, err)
+		glog.Errorf("container %s logs err: %s", sR.containerID, err)
 	}
 	defer logsResp.Close()
 	handleOutput(logsResp, sR.params, sR.writer)
@@ -237,12 +237,12 @@ func (sR *serviceRunner) Stop() {
 		&stopTimeout,
 	)
 	if err != nil {
-		logrus.Errorf("container %s stop err: %s", sR.containerID, err)
+		glog.Errorf("container %s stop err: %s", sR.containerID, err)
 	}
 
 	container, err := sR.dockerCli.ContainerInspect(sR.context, sR.containerID)
 	if err != nil {
-		logrus.Errorf("container %s inspect err: %s", sR.containerID, err)
+		glog.Errorf("container %s inspect err: %s", sR.containerID, err)
 	}
 
 	sR.exitCode = container.State.ExitCode
@@ -257,7 +257,7 @@ func (sR *serviceRunner) Stop() {
 			types.ContainerRemoveOptions{RemoveVolumes: true},
 		)
 		if err != nil {
-			logrus.Errorf("container %s remove err: %s", sR.containerID, err)
+			glog.Errorf("container %s remove err: %s", sR.containerID, err)
 		}
 		sR.writer.Write([]byte(fmt.Sprintf("Removed container: %s (%s)", getContainerName(sR.name), sR.containerID)))
 	}
@@ -327,7 +327,7 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io
 		}
 
 		if o != "*" {
-			logrus.Debugf(o)
+			glog.Infof(o)
 			for _, p := range parameters {
 				if p.IsSecret {
 					o = strings.Replace(o, p.Value, "***", -1)

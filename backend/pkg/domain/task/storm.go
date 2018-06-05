@@ -1,10 +1,10 @@
 package task
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
 	"github.com/docker/go/canonical/json"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
@@ -21,11 +21,11 @@ type StormTask struct {
 func (g *StormTask) ToTask(db *storm.DB) *Task {
 	vTask := velocity.Task{}
 	if err := json.Unmarshal(g.VTask, &vTask); err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	c, err := githistory.GetCommitByID(db, g.CommitID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	return &Task{
 		ID:     g.ID,
@@ -38,7 +38,7 @@ func (g *StormTask) ToTask(db *storm.DB) *Task {
 func (t *Task) ToStormTask() *StormTask {
 	jsonTask, err := json.Marshal(t.VTask)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 
 	return &StormTask{
@@ -87,7 +87,7 @@ func (db *stormDB) getAllForCommit(commit *githistory.Commit, pQ *domain.PagingQ
 	query := db.Select(q.Eq("CommitID", commit.ID))
 	t, err := query.Count(&StormTask{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 	var StormTasks []StormTask

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 )
@@ -22,7 +22,7 @@ type StormBranch struct {
 func (s *StormBranch) ToBranch(db *storm.DB) *Branch {
 	p, err := project.GetByID(db, s.ProjectID)
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 	}
 	return &Branch{
 		ID:          s.ID,
@@ -86,7 +86,7 @@ func (db *branchStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQ
 	query := db.Select(q.Eq("ProjectID", p.ID))
 	t, err := query.Count(&StormBranch{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 	query.Limit(pQ.Limit).Skip((pQ.Page - 1) * pQ.Limit)
@@ -104,7 +104,7 @@ func (db *branchStormDB) getAllForCommit(c *Commit, pQ *domain.PagingQuery) (r [
 	query := db.Select(q.Eq("CommitID", c.ID))
 	t, err := query.Count(&branchCommitStorm{})
 	if err != nil {
-		logrus.Error(err)
+		glog.Error(err)
 		return r, t
 	}
 	branchCommits := []branchCommitStorm{}

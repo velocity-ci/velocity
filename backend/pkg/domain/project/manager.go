@@ -23,7 +23,7 @@ const (
 type Manager struct {
 	validator *validator
 	db        *stormDB
-	validate  func(r *velocity.GitRepository) bool
+	validate  func(r *velocity.GitRepository) (bool, error)
 	brokers   []domain.Broker
 }
 
@@ -31,7 +31,7 @@ func NewManager(
 	db *storm.DB,
 	validator *govalidator.Validate,
 	translator ut.Translator,
-	validateFunc func(r *velocity.GitRepository) bool,
+	validateFunc func(r *velocity.GitRepository) (bool, error),
 ) *Manager {
 	m := &Manager{
 		db:       newStormDB(db),
