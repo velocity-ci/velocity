@@ -247,37 +247,64 @@ update msg model =
             model => Cmd.none
 
 
+
+-- THERE MUST BE AN ERROR HERE... WITH THE BUILD STEP ID?
+
+
 addStreamOutput : ( String, BuildStream, Encode.Value ) -> OutputStreams -> OutputStreams
 addStreamOutput ( buildStepId, targetBuildStream, outputJson ) outputStreams =
     let
         updateOutputStream newBuildOutput =
-            outputStreams
-                |> Dict.update buildStepId
-                    (Maybe.map
-                        (\value ->
-                            let
-                                streams =
-                                    value.streams
-                                        |> List.map
-                                            (\stream ->
-                                                if stream.buildStream.id == targetBuildStream.id then
-                                                    { stream
-                                                        | ansi = Ansi.Log.update newBuildOutput.output stream.ansi
-                                                        , raw = Dict.insert newBuildOutput.line newBuildOutput stream.raw
-                                                    }
-                                                else
-                                                    stream
-                                            )
-                            in
-                                { value | streams = streams }
+            let
+                debugBuildStepId =
+                    Debug.log "DEBUG - BUILD STEP ID" buildStepId
+
+                debugAllBuildStepIds =
+                    Debug.log "DEBUG - BUILD ALL BUILD STEP IDS" (Dict.keys outputStreams)
+            in
+                outputStreams
+                    |> Dict.update buildStepId
+                        (Maybe.map
+                            (\value ->
+                                let
+                                    debugSuccess =
+                                        Debug.log "DEBUG - BUILD SUCCESLLY FOUND" buildStepId
+
+                                    streams =
+                                        value.streams
+                                            |> List.map
+                                                (\stream ->
+                                                    if stream.buildStream.id == targetBuildStream.id then
+                                                        { stream
+                                                            | ansi = Ansi.Log.update newBuildOutput.output stream.ansi
+                                                            , raw = Dict.insert newBuildOutput.line newBuildOutput stream.raw
+                                                        }
+                                                    else
+                                                        stream
+                                                )
+                                in
+                                    { value | streams = streams }
+                            )
                         )
-                    )
     in
         outputJson
             |> Decode.decodeValue BuildStream.outputDecoder
             |> Result.toMaybe
-            |> Maybe.map updateOutputStream
-            |> Maybe.withDefault outputStreams
+            |> Maybe.map
+                (\s ->
+                    let
+                        debugSuccess =
+                            Debug.log "DEBUG -" s
+                    in
+                        updateOutputStream s
+                )
+            |> Maybe.withDefault
+                (let
+                    debugErr =
+                        Debug.log "DEBUG - BUILD FAIL" outputJson
+                 in
+                    outputStreams
+                )
 
 
 
@@ -325,34 +352,67 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
                 text ""
 
 
+type alias AnsiOutputLine =
+    { timestamp : DateTime
+    , streamName : String
+    , ansiLine : Ansi.Log.Line
+    , streamIndex : Int
+    }
+
+
 viewStepLog : List OutputStream -> Html Msg
 viewStepLog streams =
+    streams
+        |> flattenStreams
+        |> List.map viewLine
+        |> table [ class "table-sm mb-0" ]
+
+
+flattenStreams : List OutputStream -> List AnsiOutputLine
+flattenStreams streams =
+    streams
+        |> List.indexedMap mapStream
+        |> List.foldl (++) []
+        |> List.sortWith sortAnsiLogLines
+
+
+mapStream : Int -> OutputStream -> List AnsiOutputLine
+mapStream streamIndex { ansi, buildStream, raw } =
     let
-        mapStream streamIndex { ansi, buildStream, raw } =
-            ansi.lines
-                |> Array.indexedMap (\i ansiLine -> ( Dict.get i raw, buildStream.name, ansiLine, streamIndex ))
+        toAnsiOutputLine i ansiLine =
+            case Dict.get i raw of
+                Just { timestamp } ->
+                    Just <|
+                        { timestamp = timestamp
+                        , streamName = buildStream.name
+                        , ansiLine = ansiLine
+                        , streamIndex = streamIndex
+                        }
 
-        lines =
-            streams
-                |> List.indexedMap mapStream
-                |> List.foldl (Array.append) Array.empty
-                |> Array.toList
-                |> List.filterMap
-                    (\( maybeBuildOutput, streamName, ansiLine, streamIndex ) ->
-                        maybeBuildOutput
-                            |> Maybe.map (\{ timestamp } -> ( timestamp, streamName, ansiLine, streamIndex ))
-                    )
-                |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
+                Nothing ->
+                    let
+                        rawLog =
+                            Debug.log "COULD NOT FIND IN : " (Dict.keys raw)
+                    in
+                        (Debug.log ("COULD NOT FIND: " ++ (toString i)) Nothing)
     in
-        table [ class "table-sm mb-0" ] (List.map viewLine lines)
+        ansi.lines
+            |> Array.indexedMap toAnsiOutputLine
+            |> Array.toList
+            |> List.filterMap identity
 
 
-viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg
-viewLine ( timestamp, streamName, line, streamIndex ) =
+sortAnsiLogLines : AnsiOutputLine -> AnsiOutputLine -> Order
+sortAnsiLogLines a b =
+    DateTime.compare a.timestamp b.timestamp
+
+
+viewLine : AnsiOutputLine -> Html Msg
+viewLine { timestamp, streamName, ansiLine, streamIndex } =
     tr [ class "b-0" ]
         [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
         , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
-        , td [] [ Ansi.Log.viewLine line ]
+        , td [] [ Ansi.Log.viewLine ansiLine ]
         ]
 
 

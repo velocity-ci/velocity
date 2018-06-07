@@ -255,9 +255,11 @@ view session model =
         , toastView model
         ]
 
+
 toastView : Model -> Html Msg
-toastView {toasties} =
+toastView { toasties } =
     Toasty.view ToastTheme.config Views.Build.toast ToastyMsg toasties
+
 
 sidebarConfig : Sidebar.Config Msg
 sidebarConfig =
