@@ -378,28 +378,22 @@ flattenStreams streams =
 
 mapStream : Int -> OutputStream -> List AnsiOutputLine
 mapStream streamIndex { ansi, buildStream, raw } =
-    let
-        toAnsiOutputLine i ansiLine =
-            case Dict.get i raw of
-                Just { timestamp } ->
-                    Just <|
-                        { timestamp = timestamp
-                        , streamName = buildStream.name
-                        , ansiLine = ansiLine
-                        , streamIndex = streamIndex
-                        }
-
-                Nothing ->
-                    let
-                        rawLog =
-                            Debug.log "COULD NOT FIND IN : " (Dict.keys raw)
-                    in
-                        (Debug.log ("COULD NOT FIND: " ++ (toString i)) Nothing)
-    in
-        ansi.lines
-            |> Array.indexedMap toAnsiOutputLine
-            |> Array.toList
-            |> List.filterMap identity
+    raw
+        |> Dict.toList
+        |> List.filterMap
+            (\( lineNumber, { timestamp } ) ->
+                ansi
+                    |> .lines
+                    |> Array.get (lineNumber - 1)
+                    |> Maybe.map
+                        (\ansiLine ->
+                            { timestamp = timestamp
+                            , streamName = buildStream.name
+                            , ansiLine = ansiLine
+                            , streamIndex = streamIndex
+                            }
+                        )
+            )
 
 
 sortAnsiLogLines : AnsiOutputLine -> AnsiOutputLine -> Order
