@@ -20,7 +20,7 @@ type Parameter struct {
 	IsSecret bool   `json:"isSecret"`
 }
 
-type ConfigParameter interface {
+type ParameterConfig interface {
 	GetInfo() string
 	GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) ([]Parameter, error)
 }
@@ -235,4 +235,34 @@ type derivedOutput struct {
 	Expires time.Time         `json:"expires"`
 	Error   string            `json:"error"`
 	State   string            `json:"state"`
+}
+
+func unmarshalConfigParameters(y interface{}) []ParameterConfig {
+	configParams := []ParameterConfig{}
+	switch x := y.(type) {
+	case []interface{}:
+		for _, p := range x {
+			configParams = append(configParams, unmarshalConfigParameter(p))
+		}
+		break
+	}
+	return configParams
+}
+
+func unmarshalConfigParameter(y interface{}) ParameterConfig {
+	var parameterConfig ParameterConfig
+	switch x := y.(type) {
+	case map[interface{}]interface{}:
+		if _, ok := x["use"]; ok { // derivedParam
+			var p DerivedParameter
+			p.UnmarshalYamlInterface(x)
+			parameterConfig = p
+		} else if _, ok := x["name"]; ok { // basicParam
+			var p BasicParameter
+			p.UnmarshalYamlInterface(x)
+			parameterConfig = p
+		}
+	}
+
+	return parameterConfig
 }

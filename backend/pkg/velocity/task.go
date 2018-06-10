@@ -11,7 +11,7 @@ type Task struct {
 	Description string            `json:"description" yaml:"description"`
 	Git         TaskGit           `json:"git" yaml:"git"`
 	Docker      TaskDocker        `json:"docker" yaml:"docker"`
-	Parameters  []ConfigParameter `json:"parameters" yaml:"parameters"`
+	Parameters  []ParameterConfig `json:"parameters" yaml:"parameters"`
 	Steps       []Step            `json:"steps" yaml:"steps"`
 
 	RunID              string               `json:"-" yaml:"-"`
@@ -61,7 +61,7 @@ func NewTask() Task {
 	return Task{
 		Name:        "",
 		Description: "",
-		Parameters:  []ConfigParameter{},
+		Parameters:  []ParameterConfig{},
 		Steps:       []Step{},
 	}
 }
@@ -85,7 +85,7 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		var rawParameters []*json.RawMessage
 		err = json.Unmarshal(*val, &rawParameters)
 		if err == nil {
-			t.Parameters = []ConfigParameter{}
+			t.Parameters = []ParameterConfig{}
 			for _, rawMessage := range rawParameters {
 				var m map[string]interface{}
 				err = json.Unmarshal(*rawMessage, &m)
@@ -201,26 +201,7 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		break
 	}
 
-	t.Parameters = []ConfigParameter{}
-	switch x := taskMap["parameters"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			switch y := p.(type) {
-			case map[interface{}]interface{}:
-				if _, ok := y["use"]; ok { // derivedParam
-					var dP DerivedParameter
-					dP.UnmarshalYamlInterface(y)
-					t.Parameters = append(t.Parameters, dP)
-				} else if _, ok := y["name"]; ok { // basicParam
-					var bP BasicParameter
-					bP.UnmarshalYamlInterface(y)
-					t.Parameters = append(t.Parameters, bP)
-				}
-				break
-			}
-		}
-		break
-	}
+	t.Parameters = unmarshalConfigParameters(taskMap["parameters"])
 
 	t.Steps = []Step{}
 	switch x := taskMap["steps"].(type) {
