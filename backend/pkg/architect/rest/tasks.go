@@ -111,15 +111,3 @@ func getTaskByCommitAndSlug(
 
 	return t
 }
-
-func (h *taskHandler) sync(c echo.Context) error {
-	p := getProjectBySlug(c, h.projectManager)
-	if p == nil {
-		return nil
-	}
-
-	p, _ = h.taskManager.Sync(p)
-
-	c.JSON(http.StatusOK, newProjectResponse(p))
-	return nil
-}

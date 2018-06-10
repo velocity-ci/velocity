@@ -3,7 +3,6 @@ package velocity
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -156,7 +155,7 @@ func Clone(
 	}
 
 	if !cloneOpts.Full {
-		// shCmd = append(shCmd, "--depth=1")
+		shCmd = append(shCmd, "--depth=1")
 	}
 
 	if cloneOpts.Submodule {
@@ -167,9 +166,7 @@ func Clone(
 		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
 
-	fmt.Println(shCmd)
-	Hf, _ := ioutil.ReadFile("/root/.ssh/known_hosts")
-	fmt.Println(string(Hf))
+	glog.Info(shCmd)
 
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
@@ -347,9 +344,22 @@ func (r *RawRepository) Checkout(sha string) error {
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
+	glog.Info(shCmd)
 	if err := handleStatusError(s); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (r *RawRepository) GetDefaultBranch() string {
+	r.init()
+	defer r.done()
+	shCmd := []string{"git", "remote", "show", "origin"}
+	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	s := <-c.Start()
+
+	defaultBranch := strings.TrimSpace(strings.Split(s.Stdout[3], ":")[1])
+
+	return defaultBranch
 }

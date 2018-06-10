@@ -8,6 +8,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/sync"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 
@@ -27,6 +28,7 @@ func AddRoutes(
 	buildStreamManager *build.StreamManager,
 	buildManager *build.BuildManager,
 	builderManager *builder.Manager,
+	syncManager *sync.Manager,
 ) {
 	// Unauthenticated routes
 	authHandler := newAuthHandler(userManager)
@@ -35,7 +37,7 @@ func AddRoutes(
 	// Authenticated routes
 	userHandler := newUserHandler(userManager)
 	knownHostHandler := newKnownHostHandler(knownHostManager)
-	projectHandler := newProjectHandler(projectManager)
+	projectHandler := newProjectHandler(projectManager, syncManager)
 	commitHandler := newCommitHandler(projectManager, commitManager, branchManager)
 	branchHandler := newBranchHandler(projectManager, branchManager, commitManager)
 	taskHandler := newTaskHandler(projectManager, commitManager, branchManager, taskManager)
@@ -84,7 +86,7 @@ func AddRoutes(
 	r.POST("", projectHandler.create)
 	r.GET("", projectHandler.getAll)
 	r.GET("/:slug", projectHandler.get)
-	r.POST("/:slug/sync", taskHandler.sync)
+	r.POST("/:slug/sync", projectHandler.sync)
 
 	r.GET("/:slug/branches", branchHandler.getAllForProject)
 	r.GET("/:slug/branches/:name", branchHandler.getByProjectAndName)

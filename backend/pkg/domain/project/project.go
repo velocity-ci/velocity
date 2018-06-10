@@ -15,5 +15,5 @@ type Project struct {
 	UpdatedAt     time.Time              `json:"updatedAt"`
 	Synchronising bool                   `json:"synchronising"`
 
-	velocity.ProjectConfig
+	velocity.RepositoryConfig
 }

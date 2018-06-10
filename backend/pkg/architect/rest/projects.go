@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/sync"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
@@ -46,11 +47,13 @@ func newProjectResponse(p *project.Project) *projectResponse {
 
 type projectHandler struct {
 	projectManager *project.Manager
+	syncManager    *sync.Manager
 }
 
-func newProjectHandler(projectManager *project.Manager) *projectHandler {
+func newProjectHandler(projectManager *project.Manager, syncManager *sync.Manager) *projectHandler {
 	return &projectHandler{
 		projectManager: projectManager,
+		syncManager:    syncManager,
 	}
 }
 
@@ -98,6 +101,18 @@ func (h *projectHandler) get(c echo.Context) error {
 		c.JSON(http.StatusOK, newProjectResponse(p))
 	}
 
+	return nil
+}
+
+func (h *projectHandler) sync(c echo.Context) error {
+	p := getProjectBySlug(c, h.projectManager)
+	if p == nil {
+		return nil
+	}
+
+	p, _ = h.syncManager.Sync(p)
+
+	c.JSON(http.StatusOK, newProjectResponse(p))
 	return nil
 }
 
