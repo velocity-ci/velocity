@@ -26,6 +26,29 @@ type projectResponse struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 
 	Synchronising bool `json:"synchronising"`
+
+	Logo      string `json:"logo"`
+	TasksPath string `json:"tasksPath"`
+	GitDepth  int    `json:"gitDepth"`
+
+	Parameters []parameterResp `json:"parameters"`
+	Plugins    []pluginResp    `json:"plugins"`
+	Stages     []stageResp     `json:"stages"`
+}
+
+type parameterResp struct {
+	Info string `json:"info"`
+}
+
+type pluginResp struct {
+	Use       string            `json:"use"`
+	Arguments map[string]string `json:"arguments"`
+	Events    []string          `json:"events"`
+}
+
+type stageResp struct {
+	Name  string   `json:"name"`
+	Tasks []string `json:"tasks"`
 }
 
 type projectList struct {
@@ -34,6 +57,27 @@ type projectList struct {
 }
 
 func newProjectResponse(p *project.Project) *projectResponse {
+	params := []parameterResp{}
+	for _, p := range p.Parameters {
+		params = append(params, parameterResp{Info: p.GetInfo()})
+	}
+
+	plugins := []pluginResp{}
+	for _, p := range p.Plugins {
+		plugins = append(plugins, pluginResp{
+			Use:       p.Use,
+			Arguments: p.Arguments,
+			Events:    p.Events,
+		})
+	}
+
+	stages := []stageResp{}
+	for _, s := range p.Stages {
+		stages = append(stages, stageResp{
+			Name:  s.Name,
+			Tasks: s.Tasks,
+		})
+	}
 	return &projectResponse{
 		ID:            p.ID,
 		Slug:          p.Slug,
@@ -42,6 +86,12 @@ func newProjectResponse(p *project.Project) *projectResponse {
 		CreatedAt:     p.CreatedAt,
 		UpdatedAt:     p.UpdatedAt,
 		Synchronising: p.Synchronising,
+		Logo:          p.Project.Logo,
+		TasksPath:     p.Project.TasksPath,
+		GitDepth:      p.Git.Depth,
+		Parameters:    params,
+		Plugins:       plugins,
+		Stages:        stages,
 	}
 }
 
