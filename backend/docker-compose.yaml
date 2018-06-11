@@ -15,7 +15,7 @@ services:
     command: /bin/sh -c "eval `ssh-agent` && exec go run cmd/vci-architect/main.go"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/
     environment:
-      # LOG_LEVEL: debug
+      DEBUG: "true"
       ADMIN_PASSWORD: admin
       JWT_SECRET: local
       BUILDER_SECRET: local
@@ -31,7 +31,7 @@ services:
     command: /bin/sh -c "eval `ssh-agent` && exec go run cmd/vci-builder/main.go"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/
     environment:
-      LOG_LEVEL: debug
+      DEBUG: "true"
       BUILDER_SECRET: local
       ARCHITECT_ADDRESS: http://architect
     volumes:

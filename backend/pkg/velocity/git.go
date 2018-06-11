@@ -147,7 +147,6 @@ func Clone(
 	}
 	defer cleanSSHAgent(r)
 	os.Chdir(dir)
-	fmt.Println(dir)
 
 	shCmd := []string{"git", "fetch", "--progress"}
 
@@ -166,6 +165,8 @@ func Clone(
 	if len(cloneOpts.Commit) > 0 {
 		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
+
+	GetLogger().Info("cloning repository", zap.String("cmd", strings.Join(shCmd, " ")))
 
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
@@ -194,6 +195,8 @@ func Clone(
 		os.RemoveAll(dir)
 		return nil, err
 	}
+
+	GetLogger().Info("cloned repository", zap.String("address", r.Address))
 
 	return &RawRepository{Directory: dir}, nil
 }
@@ -318,6 +321,7 @@ func (r *RawRepository) Clean() error {
 
 func handleStatusError(s cmd.Status) error {
 	if s.Error != nil {
+		GetLogger().Error("unknown cmd error", zap.Error(s.Error))
 		return s.Error
 	}
 
@@ -328,7 +332,7 @@ func handleStatusError(s cmd.Status) error {
 	return nil
 }
 
-func (r *RawRepository) Checkout(sha string) error {
+func (r *RawRepository) Checkout(ref string) error {
 	r.init()
 	defer r.done()
 
@@ -336,13 +340,15 @@ func (r *RawRepository) Checkout(sha string) error {
 		return err
 	}
 
-	shCmd := []string{"git", "checkout", "--force", sha}
+	shCmd := []string{"git", "checkout", "--force", ref}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
 	if err := handleStatusError(s); err != nil {
 		return err
 	}
+
+	GetLogger().Debug("checked out", zap.String("reference", ref), zap.String("repository", r.Directory))
 
 	return nil
 }

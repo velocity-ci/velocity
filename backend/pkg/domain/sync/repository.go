@@ -13,16 +13,14 @@ import (
 )
 
 func syncRepository(p *project.Project, repo *velocity.RawRepository) (*project.Project, error) {
-
-	// err := repo.Checkout(repo.GetDefaultBranch())
-	err := repo.Checkout("feature/config-yaml")
+	err := repo.Checkout(repo.GetDefaultBranch())
 	if err != nil {
 		return p, err
 	}
 
 	repoConfigPath := fmt.Sprintf("%s/.velocity.yaml", repo.Directory)
 	if _, err := os.Stat(repoConfigPath); err != nil {
-		velocity.GetLogger().Debug("could not find repository config .velocity.yaml", zap.Error(err))
+		velocity.GetLogger().Warn("could not find repository config .velocity.yaml", zap.Error(err))
 		return p, nil
 	}
 

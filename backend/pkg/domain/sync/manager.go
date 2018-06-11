@@ -66,6 +66,10 @@ func sync(p *project.Project, m *Manager) {
 	defer os.RemoveAll(repo.Directory) // clean up
 	// sync repository
 	p, err = syncRepository(p, repo)
+	if err != nil {
+		velocity.GetLogger().Error("error synchronising repository", zap.Error(err))
+		return
+	}
 	m.projectManager.Update(p)
 
 	// clone further
