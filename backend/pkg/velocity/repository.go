@@ -1,6 +1,8 @@
 package velocity
 
-import "github.com/golang/glog"
+import (
+	"go.uber.org/zap"
+)
 
 type RepositoryConfig struct {
 	Project ProjectConfig `json:"project" yaml:"project"`
@@ -36,7 +38,7 @@ func (t *RepositoryConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	var repoConfigMap map[string]interface{}
 	err := unmarshal(&repoConfigMap)
 	if err != nil {
-		glog.Error("unable to marshal repository config")
+		GetLogger().Error("unable to marshal repository configuration", zap.Error(err))
 		return err
 	}
 

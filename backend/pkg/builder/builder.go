@@ -1,14 +1,15 @@
 package builder
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 
 	"github.com/velocity-ci/velocity/backend/pkg/architect"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
@@ -28,12 +29,12 @@ func (b *Builder) Start() {
 
 	for b.run {
 		if !waitForService(client, address) {
-			glog.Fatalf("Could not connect to: %s", address)
+			velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", address))
 		}
 
 		ws := connectToArchitect(address, secret)
 
-		glog.Infof("connected to %s", address)
+		velocity.GetLogger().Info("connected to architect", zap.String("address", address))
 
 		monitorCommands(ws)
 	}
@@ -52,11 +53,12 @@ func New() architect.App {
 func getArchitectAddress() string {
 	address := os.Getenv("ARCHITECT_ADDRESS") // http://architect || https://architect
 	if address == "" {
-		glog.Fatal("Missing ARCHITECT_ADDRESS environment variable")
+		velocity.GetLogger().Fatal("missing environment variable", zap.String("environment variable", "ARCHITECT_ADDRESS"))
 	}
 
 	if address[:5] != "https" {
-		glog.Info("WARNING: Builds are not protected by TLS.")
+		velocity.GetLogger().Warn("builds are not protected by TLS")
+
 	}
 
 	return address
@@ -65,7 +67,7 @@ func getArchitectAddress() string {
 func getBuilderSecret() string {
 	secret := os.Getenv("BUILDER_SECRET")
 	if secret == "" {
-		glog.Fatal("Missing BUILDER_SECRET environment variable")
+		velocity.GetLogger().Fatal("missing environment variable", zap.String("environment variable", "ARCHITECT_ADDRESS"))
 	}
 
 	return secret
@@ -74,12 +76,12 @@ func getBuilderSecret() string {
 func waitForService(client *http.Client, address string) bool {
 
 	for i := 0; i < 6; i++ {
-		glog.Infof("attempting connection to %s", address)
+		velocity.GetLogger().Debug("attempting connection to", zap.String("address", address))
 		_, err := client.Get(address)
 		if err != nil {
-			glog.Infof("connection error: %v", err)
+			velocity.GetLogger().Debug("connection error", zap.Error(err))
 		} else {
-			glog.Infof("%s is alive!", address)
+			velocity.GetLogger().Debug("connection success")
 			return true
 		}
 		time.Sleep(5 * time.Second)
@@ -99,7 +101,9 @@ func connectToArchitect(address string, secret string) *websocket.Conn {
 	)
 
 	if err != nil {
-		glog.Fatal(err)
+		h := sha256.New()
+		h.Write([]byte(secret))
+		velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", address), zap.String("secretSHA256", string(h.Sum(nil))))
 	}
 
 	return conn
@@ -110,17 +114,16 @@ func monitorCommands(ws *websocket.Conn) {
 		command := &builder.BuilderCtrlMessage{}
 		err := ws.ReadJSON(command)
 		if err != nil {
-			glog.Error(err)
-			glog.Info("Closing WebSocket")
+			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
 			ws.Close()
 			return
 		}
 
 		if command.Command == builder.CommandBuild {
-			glog.Infof("Got Build: %v", command.Payload)
+			velocity.GetLogger().Info("got build", zap.Any("payload", command.Payload))
 			runBuild(command.Payload.(*builder.BuildCtrl), ws)
 		} else if command.Command == builder.CommandKnownHosts {
-			glog.Infof("Got known hosts: %v", command.Payload)
+			velocity.GetLogger().Info("got known hosts", zap.Any("payload", command.Payload))
 			updateKnownHosts(command.Payload.(*builder.KnownHostCtrl))
 		}
 	}

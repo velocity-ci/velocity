@@ -10,10 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/go-cmd/cmd"
-	"github.com/golang/glog"
 	"github.com/gosimple/slug"
 	"golang.org/x/crypto/ssh"
 )
@@ -46,7 +47,7 @@ func getUniqueWorkspace(r *GitRepository) (string, error) {
 	os.RemoveAll(dir)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		glog.Fatal(err)
+		GetLogger().Fatal("could not create unique workspace", zap.Error(err))
 		return "", err
 	}
 
@@ -62,7 +63,7 @@ func handleGitSSH(r *GitRepository) (ssh.Signer, agent.Agent, error) {
 		a := agent.NewClient(sshAgent)
 		a.Add(agent.AddedKey{PrivateKey: key})
 		signer, _ := ssh.NewSignerFromKey(key)
-		glog.Infof("added ssh key for %s", r.Address)
+		GetLogger().Debug("added ssh key to ssh-agent", zap.String("address", r.Address))
 		return signer, a, nil
 	}
 
@@ -95,7 +96,7 @@ func initWorkspace(r *GitRepository) (string, error) {
 func cleanSSHAgent(r *GitRepository) {
 	if r.Agent != nil {
 		r.Agent.Remove(r.PublicKey)
-		glog.Infof("removed ssh key for %s", r.Address)
+		GetLogger().Debug("removed ssh key from ssh-agent", zap.String("address", r.Address))
 	}
 }
 
@@ -166,8 +167,6 @@ func Clone(
 		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
 
-	glog.Info(shCmd)
-
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
 	stdOut := []string{}
@@ -210,10 +209,8 @@ func (r *RawRepository) GetBranches() (b []string) {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "origin/")
 		if strings.HasPrefix(line, "HEAD") {
-			glog.Infof("skipped branch: %s", line)
 			continue
 		}
-		glog.Infof("got branch: %s", line)
 		b = append(b, line)
 	}
 
@@ -257,7 +254,7 @@ func (r *RawRepository) init() {
 	r.RLock()
 	cwd, err := os.Getwd()
 	if err != nil {
-		glog.Fatalf("could not get work dir: %v", err)
+		GetLogger().Fatal("could not get working directory", zap.Error(err))
 	}
 	r.pwd = cwd
 	os.Chdir(r.Directory)
@@ -325,8 +322,7 @@ func handleStatusError(s cmd.Status) error {
 	}
 
 	if s.Exit != 0 {
-		glog.Error(s.Stdout, s.Stderr)
-		return fmt.Errorf("non-zero exit in clone: %d", s.Exit)
+		GetLogger().Error("non-zero exit in git", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
 	}
 
 	return nil
@@ -344,7 +340,6 @@ func (r *RawRepository) Checkout(sha string) error {
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
-	glog.Info(shCmd)
 	if err := handleStatusError(s); err != nil {
 		return err
 	}

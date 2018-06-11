@@ -10,7 +10,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/golang/glog"
+	"go.uber.org/zap"
+
 	"github.com/gosimple/slug"
 )
 
@@ -120,7 +121,7 @@ func getBinary(u string) (binaryLocation string, _ error) {
 	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", wd, slug.Make(parsedURL.Path))
 
 	if _, err := os.Stat(binaryLocation); os.IsNotExist(err) {
-		glog.Infof("downloading %s to %s", u, binaryLocation)
+		GetLogger().Debug("downloading binary", zap.String("from", u), zap.String("to", binaryLocation))
 		outFile, err := os.Create(binaryLocation)
 		if err != nil {
 			return "", err
@@ -136,7 +137,7 @@ func getBinary(u string) (binaryLocation string, _ error) {
 		if err != nil {
 			return "", err
 		}
-		glog.Infof("downloaded %d bytes for %s to %s", size, u, binaryLocation)
+		GetLogger().Debug("downloaded binary", zap.String("from", u), zap.String("to", binaryLocation), zap.Int64("bytes", size))
 		outFile.Chmod(os.ModePerm)
 	}
 

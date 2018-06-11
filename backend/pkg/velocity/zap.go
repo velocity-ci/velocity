@@ -2,6 +2,9 @@ package velocity
 
 import (
 	"os"
+	"sync"
+
+	"go.uber.org/zap"
 )
 
 func SetLogLevel() {
@@ -21,4 +24,14 @@ func SetLogLevel() {
 	default:
 		// glog.SetLevel(glog.InfoLevel)
 	}
+}
+
+var logger *zap.Logger
+var once sync.Once
+
+func GetLogger() *zap.Logger {
+	once.Do(func() {
+		logger, _ = zap.NewProduction()
+	})
+	return logger
 }

@@ -4,8 +4,7 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
-
-	"github.com/golang/glog"
+	"go.uber.org/zap"
 )
 
 func (m *Manager) monitor(b *Builder) {
@@ -13,8 +12,7 @@ func (m *Manager) monitor(b *Builder) {
 		message := BuilderRespMessage{}
 		err := b.ws.ReadJSON(&message)
 		if err != nil {
-			glog.Error(err)
-			glog.Infof("closing builder websocket: %s", b.ID)
+			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
 			m.Delete(b)
 			b.ws.Close()
 			return
@@ -25,7 +23,7 @@ func (m *Manager) monitor(b *Builder) {
 			m.builderLogMessage(message.Data.(*BuilderStreamLineMessage), b)
 			break
 		default:
-			glog.Errorf("invalid message type from builder: %s", message.Type)
+			velocity.GetLogger().Error("got invalid message type from builder", zap.String("message type", message.Type))
 		}
 
 	}
@@ -34,13 +32,13 @@ func (m *Manager) monitor(b *Builder) {
 func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Builder) {
 	stream, err := m.streamManager.GetByID(sL.StreamID)
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("could not get stream", zap.String("streamID", sL.StreamID), zap.Error(err))
 		return
 	}
 
 	step, err := m.stepManager.GetByID(sL.StepID)
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("could not get step", zap.String("streamID", sL.StepID), zap.Error(err))
 		return
 	}
 
@@ -64,7 +62,7 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 
 	b, err := m.buildManager.GetBuildByID(sL.BuildID)
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("could not get build", zap.String("buildID", sL.BuildID), zap.Error(err))
 		return
 	}
 	steps := m.stepManager.GetStepsForBuild(b)

@@ -4,8 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 )
@@ -34,25 +35,25 @@ func (bS *buildScheduler) StartWorker() {
 		runningBuild.Status = "waiting"
 		bS.buildManager.Update(runningBuild)
 	}
-	glog.Info("Started Build scheduler")
+	velocity.GetLogger().Info("==> started build scheduler")
 	for bS.stop == false {
 		waitingBuilds, _ := bS.buildManager.GetWaitingBuilds()
-		// glog.Infof("Got %d waiting builds", total)
 
 		for _, waitingBuild := range waitingBuilds {
 			// Queue on any idle worker
 			activeBuilders, count := bS.builderManager.GetReady(domain.NewPagingQuery())
-			glog.Infof("Got %d ready slaves", count)
+			velocity.GetLogger().Debug("got slaves", zap.Int("amount", count))
 			for _, builder := range activeBuilders {
 				bS.builderManager.StartBuild(builder, waitingBuild)
-				glog.Infof("Starting build %s on %s", waitingBuild.ID, builder.ID)
+				velocity.GetLogger().Info("starting build", zap.String("buildID", waitingBuild.ID), zap.String("builderID", builder.ID))
 				break
 			}
 		}
 
 		time.Sleep(1 * time.Second)
 	}
-	glog.Info("Stopped Build scheduler")
+
+	velocity.GetLogger().Info("==> stopped build scheduler")
 	bS.wg.Done()
 }
 

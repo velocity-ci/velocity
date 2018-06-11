@@ -5,9 +5,9 @@ import (
 
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 type StormProject struct {
@@ -105,7 +105,7 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*Project, t int) {
 	t = 0
 	t, err := db.Count(&StormProject{})
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("error", zap.Error(err))
 		return r, t
 	}
 

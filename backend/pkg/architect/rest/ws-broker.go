@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
+
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 )
 
@@ -56,8 +58,7 @@ func (m *broker) monitor(c *Client) {
 		err := c.ws.ReadJSON(message)
 		if err != nil {
 			c.alive = false
-			glog.Error(err)
-			glog.Infof("Closing Client WebSocket: %s", c.ID)
+			velocity.GetLogger().Error("could not read web client websocket message", zap.Error(err), zap.String("clientID", c.ID))
 			c.ws.Close()
 			m.remove(c)
 			return
@@ -80,7 +81,7 @@ func (m *broker) EmitAll(message *domain.Emit) {
 				err := c.WriteJSON(mess)
 				clientCount++
 				if err != nil {
-					glog.Infoln(err)
+					velocity.GetLogger().Error("could not write message to client websocket", zap.Error(err), zap.String("clientID", c.ID))
 				}
 			}
 		}
@@ -133,7 +134,7 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 		payload = newStreamLineResponse(v)
 		break
 	default:
-		glog.Errorf("could not resolve websocket payload %+v", v)
+		velocity.GetLogger().Error("could not resolve websocket payload for client", zap.Any("payload", v))
 	}
 
 	// determine event
@@ -141,7 +142,7 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 	if val, ok := wsEventMapping[em.Event]; ok {
 		wsEvent = val
 	} else {
-		glog.Errorf("could not resolve event in websocket: %s", em.Event)
+		velocity.GetLogger().Error("could not resolve websocket event for client", zap.Any("event", em.Event))
 	}
 
 	return &PhoenixMessage{

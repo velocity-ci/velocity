@@ -5,7 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/golang/glog"
+	"go.uber.org/zap"
+
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	yaml "gopkg.in/yaml.v2"
@@ -13,14 +14,15 @@ import (
 
 func syncRepository(p *project.Project, repo *velocity.RawRepository) (*project.Project, error) {
 
-	err := repo.Checkout(repo.GetDefaultBranch())
+	// err := repo.Checkout(repo.GetDefaultBranch())
+	err := repo.Checkout("feature/config-yaml")
 	if err != nil {
 		return p, err
 	}
 
 	repoConfigPath := fmt.Sprintf("%s/.velocity.yaml", repo.Directory)
 	if _, err := os.Stat(repoConfigPath); err != nil {
-		glog.Infof("No repository config found (.velocity.yaml)")
+		velocity.GetLogger().Debug("could not find repository config .velocity.yaml", zap.Error(err))
 		return p, nil
 	}
 

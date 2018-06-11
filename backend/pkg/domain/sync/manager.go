@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 type Manager struct {
@@ -49,7 +49,7 @@ func (m *Manager) Sync(p *project.Project) (*project.Project, error) {
 }
 
 func sync(p *project.Project, m *Manager) {
-	glog.Infof("synchronising project %s", p.Slug)
+	velocity.GetLogger().Info("synchronising project", zap.String("slug", p.Slug))
 	xd, _ := os.Getwd()
 	defer os.Chdir(xd)
 	defer finishSync(p, m)
@@ -60,12 +60,13 @@ func sync(p *project.Project, m *Manager) {
 		Submodule: true,
 	})
 	if err != nil {
-		glog.Errorf("could not clone repository %s", err)
+		velocity.GetLogger().Info("could not clone repository", zap.Error(err))
 		return
 	}
 	defer os.RemoveAll(repo.Directory) // clean up
 	// sync repository
 	p, err = syncRepository(p, repo)
+	m.projectManager.Update(p)
 
 	// clone further
 	if p.RepositoryConfig.Git.Depth > 1 {
@@ -80,5 +81,5 @@ func finishSync(p *project.Project, m *Manager) {
 	p.UpdatedAt = time.Now()
 	p.Synchronising = false
 	m.projectManager.Update(p)
-	glog.Infof("finished synchronising project %s", p.Slug)
+	velocity.GetLogger().Info("finished synchronising project", zap.String("slug", p.Slug))
 }

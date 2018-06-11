@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -32,7 +32,12 @@ func syncTasks(
 		}
 
 		rawCommit := repo.GetCommitAtHeadOfBranch(branchName)
-		glog.Infof("got commit for %s:%s - %s @ %s", branchName, rawCommit.SHA, rawCommit.Message, rawCommit.AuthorDate)
+		velocity.GetLogger().Info("found commit",
+			zap.String("project", p.Slug),
+			zap.String("branch", branchName),
+			zap.String("message", rawCommit.Message),
+			zap.Time("at", rawCommit.AuthorDate),
+		)
 		c, err := commitManager.GetByProjectAndHash(p, rawCommit.SHA)
 
 		if err != nil {
@@ -45,12 +50,16 @@ func syncTasks(
 				rawCommit.AuthorDate,
 				rawCommit.Signed,
 			)
-			glog.Infof("\tcreated commit %s on %s", c.Hash, b.Name)
+			velocity.GetLogger().Info("created commit",
+				zap.String("project", p.Slug),
+				zap.String("sha", c.Hash),
+				zap.String("branch", branchName),
+			)
 
 			err = repo.Checkout(rawCommit.SHA)
 
 			if err != nil {
-				glog.Error(err)
+				velocity.GetLogger().Error("error", zap.Error(err))
 				break
 			}
 
@@ -62,17 +71,25 @@ func syncTasks(
 						var t velocity.Task
 						err := yaml.Unmarshal(taskYml, &t)
 						if err != nil {
-							glog.Error(err)
+							velocity.GetLogger().Error("error", zap.Error(err))
 						} else {
 							taskManager.Create(c, &t, velocity.NewSetup())
-							glog.Infof("\tcreated task %s for %s", t.Name, c.Hash)
+							velocity.GetLogger().Info("created task",
+								zap.String("project", p.Slug),
+								zap.String("sha", c.Hash),
+								zap.String("task", t.Name),
+							)
 						}
 					}
 					return nil
 				})
 			}
 		} else if !branchManager.HasCommit(b, c) {
-			glog.Infof("\tadded commit %s to %s", c.Hash, b.Name)
+			velocity.GetLogger().Info("added commit to branch",
+				zap.String("project", p.Slug),
+				zap.String("sha", c.Hash),
+				zap.String("branch", b.Name),
+			)
 			commitManager.AddCommitToBranch(c, b)
 		}
 	}

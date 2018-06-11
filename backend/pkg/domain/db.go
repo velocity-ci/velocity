@@ -4,8 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
+
 	"github.com/asdine/storm"
-	"github.com/golang/glog"
 )
 
 func NewStormDB(path string) *storm.DB {
@@ -13,7 +15,7 @@ func NewStormDB(path string) *storm.DB {
 	os.MkdirAll(dir, os.ModePerm)
 	db, err := storm.Open(path)
 	if err != nil {
-		glog.Fatal(err)
+		velocity.GetLogger().Fatal("could not create storm DB", zap.Error(err))
 	}
 
 	return db

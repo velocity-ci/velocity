@@ -1,8 +1,9 @@
 package rest
 
 import (
-	"github.com/golang/glog"
 	"github.com/labstack/echo"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 type websocketHandler struct {
@@ -28,7 +29,7 @@ func (h *websocketHandler) phxClient(c echo.Context) error {
 
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("could not upgrade client websocket", zap.Error(err))
 		return nil
 	}
 
