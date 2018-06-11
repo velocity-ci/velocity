@@ -59,7 +59,6 @@ type App interface {
 }
 
 func New() *Architect {
-	velocity.SetLogLevel()
 	a := &Architect{
 		Server: echo.New(),
 	}

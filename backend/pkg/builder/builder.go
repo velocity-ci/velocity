@@ -46,7 +46,6 @@ func (b *Builder) Stop() error {
 }
 
 func New() architect.App {
-	velocity.SetLogLevel()
 	return &Builder{run: true}
 }
 
