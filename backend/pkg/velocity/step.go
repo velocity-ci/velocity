@@ -30,6 +30,26 @@ const (
 	StateFailed  = "failed"
 )
 
+//
+// Event constants
+// for Task_* we can add a modifier to specify *which* task e.g. TASK_COMPLETE-<task_name>
+// for Step_* we can add a modifier to specify *which* step (in the currently running task) e.g. STEP_COMPLETE-<step_name>
+const (
+	EventBuildQueued   = "BUILD_QUEUED"
+	EventBuildStart    = "BUILD_START"
+	EventTaskStart     = "TASK_START"
+	EventStepStart     = "STEP_START"
+	EventStepComplete  = "STEP_COMPLETE" // fires regardless of sucess/fail
+	EventStepSuccess   = "STEP_SUCCESS"
+	EventStepFail      = "STEP_FAIL"
+	EventTaskComplete  = "TASK_COMPLETE" // fires regardless of success/fail
+	EventTaskSuccess   = "TASK_SUCCESS"
+	EventTaskFail      = "TASK_FAIL"
+	EventBuildComplete = "BUILD_COMPLETE" // fires regardless of success/fail
+	EventBuildSuccess  = "BUILD_SUCCESS"
+	EventBuildFail     = "BUILD_FAIL"
+)
+
 type BaseStep struct {
 	Type          string               `json:"type" yaml:"type"`
 	Description   string               `json:"description" yaml:"description"`
