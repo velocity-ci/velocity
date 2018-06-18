@@ -42,6 +42,10 @@ type alias Model =
     }
 
 
+type alias OutputStreams =
+    Dict String BuildStepOutput
+
+
 type alias BuildStepOutput =
     { taskStep : ProjectTask.Step
     , buildStep : BuildStep
@@ -54,10 +58,6 @@ type alias OutputStream =
     , ansi : Ansi.Log.Model
     , raw : Dict Int BuildStreamOutput
     }
-
-
-type alias OutputStreams =
-    Dict String BuildStepOutput
 
 
 init :
@@ -354,9 +354,11 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
 
 type alias AnsiOutputLine =
     { timestamp : DateTime
+    , rawTimestamp : String
     , streamName : String
     , ansiLine : Ansi.Log.Line
     , streamIndex : Int
+    , lineNumber : Int
     }
 
 
@@ -381,16 +383,18 @@ mapStream streamIndex { ansi, buildStream, raw } =
     raw
         |> Dict.toList
         |> List.filterMap
-            (\( lineNumber, { timestamp } ) ->
+            (\( lineNumber, { timestamp, rawTimestamp } ) ->
                 ansi
                     |> .lines
                     |> Array.get (lineNumber - 1)
                     |> Maybe.map
                         (\ansiLine ->
                             { timestamp = timestamp
+                            , rawTimestamp = rawTimestamp
                             , streamName = buildStream.name
                             , ansiLine = ansiLine
                             , streamIndex = streamIndex
+                            , lineNumber = lineNumber
                             }
                         )
             )
@@ -398,14 +402,17 @@ mapStream streamIndex { ansi, buildStream, raw } =
 
 sortAnsiLogLines : AnsiOutputLine -> AnsiOutputLine -> Order
 sortAnsiLogLines a b =
-    DateTime.compare a.timestamp b.timestamp
+    if a.streamName == b.streamName then
+        Basics.compare a.lineNumber b.lineNumber
+    else
+        DateTime.compare a.timestamp b.timestamp
 
 
 viewLine : AnsiOutputLine -> Html Msg
-viewLine { timestamp, streamName, ansiLine, streamIndex } =
+viewLine { timestamp, rawTimestamp, streamName, ansiLine, streamIndex } =
     tr [ class "b-0" ]
         [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
-        , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
+        , td [] [ span [ class "badge badge-light" ] [ text rawTimestamp ] ]
         , td [] [ Ansi.Log.viewLine ansiLine ]
         ]
 
