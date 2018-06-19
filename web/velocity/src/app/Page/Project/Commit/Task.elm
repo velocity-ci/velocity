@@ -17,6 +17,7 @@ import Dom
 
 import Context exposing (Context)
 import Component.BuildOutput as BuildOutput
+import Component.BuildLog as BuildLog
 import Component.BuildForm as BuildForm
 import Component.DropdownFilter as DropdownFilter
 import Data.AuthToken as AuthToken exposing (AuthToken)
