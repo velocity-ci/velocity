@@ -31,6 +31,7 @@ import Ansi.Log
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dom.Scroll as Scroll
+import Html.Lazy exposing (lazy)
 
 
 -- MODEL
@@ -330,6 +331,7 @@ type alias ViewStepLine =
     , lineNumber : LineNumber
     , streamIndex : BuildStreamIndex
     , streamId : BuildStreamId
+    , streamName : String
     , timestamp : DateTime
     }
 
@@ -371,7 +373,8 @@ viewStepContainer build ( stepId, logStep ) =
                         , text " "
                         , viewBuildStepStatusIcon step
                         ]
-                    , div [ class "card-body p-0 small b-0" ] [ viewStepLog logStep ]
+                    , div [ class "card-body p-0 small b-0" ]
+                        [ lazy viewStepLog logStep ]
                     ]
 
             Nothing ->
@@ -387,12 +390,20 @@ viewStepLog step =
 
 
 viewLine : ViewStepLine -> Html Msg
-viewLine { timestamp, streamId, ansi, streamIndex } =
+viewLine { timestamp, streamName, ansi, streamIndex } =
     tr [ class "b-0" ]
-        [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamId ] ]
-        , td [] [ span [ class "badge badge-light" ] [ text (formatDateTime timestamp) ] ]
-        , td [] (List.map Ansi.Log.viewLine (Array.toList ansi.lines))
+        [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
+        , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
+        , td [] [ viewLineAnsi ansi.lines ]
         ]
+
+
+viewLineAnsi : Array Ansi.Log.Line -> Html Msg
+viewLineAnsi lines =
+    lines
+        |> Array.get ((Array.length lines) - 2)
+        |> Maybe.map Ansi.Log.viewLine
+        |> Maybe.withDefault (text "")
 
 
 
@@ -424,6 +435,7 @@ mapStream streamIndex ( streamId, stream ) =
                             , lineNumber = lastUpdate.line
                             , streamIndex = streamIndex
                             , streamId = streamId
+                            , streamName = stream.buildStream.name
                             , timestamp = lastUpdate.timestamp
                             }
                         )
