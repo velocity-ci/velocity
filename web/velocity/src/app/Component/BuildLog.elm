@@ -54,6 +54,14 @@ type alias BuildStepId =
     String
 
 
+type alias BuildStreamId =
+    String
+
+
+type alias BuildStreamIndex =
+    Int
+
+
 type alias LineNumber =
     Int
 
@@ -64,7 +72,7 @@ type alias Log =
 
 type alias LogStep =
     { step : Step
-    , streams : List LogStepStream
+    , streams : Dict BuildStreamId LogStepStream
     }
 
 
@@ -75,7 +83,9 @@ type alias LogStepStream =
 
 
 type alias LogStepStreamLine =
-    { updates : List BuildStreamOutput }
+    { updates : List BuildStreamOutput
+    , ansi : Ansi.Log.Model
+    }
 
 
 init : Context -> ProjectTask.Task -> Maybe AuthToken -> Build -> Task Request.Errors.HttpError Model
@@ -115,23 +125,21 @@ insertStream ( { buildStream, lines }, step ) dict =
             , lines = lines
             }
 
-        key =
+        logStepDictKey =
             logStepKey buildStep
 
+        streamDictKey =
+            streamKey buildStream
+
         insert =
-            case Dict.get key dict of
+            case Dict.get logStepDictKey dict of
                 Just exists ->
-                    { exists | streams = exists.streams ++ [ outputStream ] }
+                    { exists | streams = Dict.insert streamDictKey outputStream exists.streams }
 
                 Nothing ->
-                    { step = step, streams = [ outputStream ] }
+                    { step = step, streams = Dict.singleton streamDictKey outputStream }
     in
-        Dict.insert key insert dict
-
-
-logStepKey : BuildStep -> BuildStepId
-logStepKey buildStep =
-    BuildStep.idToString buildStep.id
+        Dict.insert logStepDictKey insert dict
 
 
 linesArrayToDict : Array BuildStreamOutput -> Dict LineNumber LogStepStreamLine
@@ -140,8 +148,15 @@ linesArrayToDict lines =
 
 
 outputToLogLine : BuildStreamOutput -> LogStepStreamLine
-outputToLogLine output =
-    { updates = [ output ] }
+outputToLogLine buildStreamOutput =
+    let
+        ansi =
+            Ansi.Log.init Ansi.Log.Cooked
+                |> Ansi.Log.update buildStreamOutput.output
+    in
+        { updates = [ buildStreamOutput ]
+        , ansi = ansi
+        }
 
 
 joinSteps : ProjectTask.Task -> BuildStep -> Maybe Step
@@ -170,6 +185,58 @@ resolveLogStepStream context maybeAuthToken step =
 
 
 
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    scrolledToBottom
+
+
+scrolledToBottom : Sub Msg
+scrolledToBottom =
+    Decode.decodeValue Decode.bool
+        >> Result.toMaybe
+        >> Maybe.withDefault False
+        |> Ports.onScrolledToBottom
+        |> Sub.map ScrolledToBottom
+
+
+
+-- CHANNELS --
+
+
+streamChannelName : BuildStream -> String
+streamChannelName stream =
+    "stream:" ++ (BuildStream.idToString stream.id)
+
+
+events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
+events model =
+    let
+        foldStreamEvents ( buildStepId, streams ) dict =
+            streams
+                |> List.foldl
+                    (\stream acc ->
+                        let
+                            events =
+                                [ ( "streamLine:new", AddStreamOutput buildStepId stream ) ]
+                        in
+                            Dict.insert (streamChannelName stream) events acc
+                    )
+                    dict
+    in
+        model.log
+            |> Dict.foldl (\buildStepId val acc -> ( buildStepId, List.map .buildStream (Dict.values val.streams) ) :: acc) []
+            |> List.foldl foldStreamEvents Dict.empty
+
+
+leaveChannels : Model -> List String
+leaveChannels model =
+    Dict.keys (events model)
+
+
+
 -- UPDATE --
 
 
@@ -179,44 +246,55 @@ type Msg
     | NoOp
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        AddStreamOutput buildStepId buildStream outputJson ->
+            let
+                log =
+                    case decodeBuildStreamOutput outputJson of
+                        Just buildStreamOutput ->
+                            updateLog ( buildStepId, streamKey buildStream, buildStreamOutput ) model.log
 
---update : Msg -> Model -> ( Model, Cmd Msg )
---update msg model =
---    case msg of
---        AddStreamOutput buildStepId buildStream outputJson ->
---            let
---                outputStreams =
---                    addStreamOutput ( buildStepId, buildStream, outputJson ) model.outputStreams
---
---                scrollCmd =
---                    if model.autoScrollMessages then
---                        Task.attempt (always NoOp) (Scroll.toBottom "scroll-id")
---                    else
---                        Cmd.none
---            in
---                { model | outputStreams = outputStreams }
---                    => scrollCmd
---
---        ScrolledToBottom isScrolled ->
---            { model | autoScrollMessages = isScrolled }
---                => Cmd.none
---
---        NoOp ->
---            model => Cmd.none
+                        Nothing ->
+                            model.log
+
+                scrollCmd =
+                    if model.autoScrollMessages then
+                        Task.attempt (always NoOp) (Scroll.toBottom "scroll-id")
+                    else
+                        Cmd.none
+            in
+                { model | log = log }
+                    => scrollCmd
+
+        ScrolledToBottom isScrolled ->
+            { model | autoScrollMessages = isScrolled }
+                => Cmd.none
+
+        NoOp ->
+            model => Cmd.none
 
 
-updateLogStep : ( BuildStream.Id, BuildStreamOutput ) -> LogStep -> LogStep
-updateLogStep ( buildStreamId, buildStreamOutput ) logStep =
+decodeBuildStreamOutput : Encode.Value -> Maybe BuildStreamOutput
+decodeBuildStreamOutput outputValue =
+    outputValue
+        |> Decode.decodeValue BuildStream.outputDecoder
+        |> Result.toMaybe
+
+
+updateLog : ( BuildStepId, BuildStreamId, BuildStreamOutput ) -> Log -> Log
+updateLog ( logStepKey, buildStreamId, buildStreamOutput ) log =
+    Dict.update logStepKey (Maybe.map <| updateLogStep ( buildStreamId, buildStreamOutput )) log
+
+
+updateLogStep : ( BuildStreamId, BuildStreamOutput ) -> LogStep -> LogStep
+updateLogStep ( streamDictKey, buildStreamOutput ) logStep =
     let
         streams =
-            List.map
-                (\stream ->
-                    if stream.buildStream.id == buildStreamId then
-                        updateLogStepStream buildStreamOutput stream
-                    else
-                        stream
-                )
-                logStep.streams
+            logStep
+                |> .streams
+                |> Dict.update streamDictKey (Maybe.map <| updateLogStepStream buildStreamOutput)
     in
         { logStep | streams = streams }
 
@@ -234,7 +312,137 @@ updateLogStepStreamLine : BuildStreamOutput -> LogStepStream -> LogStepStreamLin
 updateLogStepStreamLine buildStreamOutput logStepStream =
     case Dict.get buildStreamOutput.line logStepStream.lines of
         Just existingLine ->
-            { existingLine | updates = buildStreamOutput :: existingLine.updates }
+            { existingLine
+                | updates = buildStreamOutput :: existingLine.updates
+                , ansi = Ansi.Log.update buildStreamOutput.output existingLine.ansi
+            }
 
         Nothing ->
             outputToLogLine buildStreamOutput
+
+
+
+-- VIEW --
+
+
+type alias ViewStepLine =
+    { ansi : Ansi.Log.Model
+    , lineNumber : LineNumber
+    , streamIndex : BuildStreamIndex
+    , streamId : BuildStreamId
+    , timestamp : DateTime
+    }
+
+
+view : Build -> Model -> Html Msg
+view build { log } =
+    let
+        ansiOutput =
+            log
+                |> Dict.toList
+                |> List.sortBy (\( _, { step } ) -> step |> Tuple.second |> .number)
+                |> List.map (viewStepContainer build)
+    in
+        div [] ansiOutput
+
+
+viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Html Msg
+viewStepContainer build ( stepId, logStep ) =
+    let
+        ( taskStep, buildStep ) =
+            logStep.step
+
+        buildStep_ =
+            build.steps
+                |> List.filter (\s -> s.id == buildStep.id)
+                |> List.head
+    in
+        case buildStep_ of
+            Just step ->
+                div
+                    [ class "card mt-3 b-0"
+                    , classList (buildStepBorderColourClassList step)
+                    ]
+                    [ h5
+                        [ class "card-header d-flex justify-content-between"
+                        , classList (headerBackgroundColourClassList step)
+                        ]
+                        [ text (viewCardTitle taskStep)
+                        , text " "
+                        , viewBuildStepStatusIcon step
+                        ]
+                    , div [ class "card-body p-0 small b-0" ] [ viewStepLog logStep ]
+                    ]
+
+            Nothing ->
+                text ""
+
+
+viewStepLog : LogStep -> Html Msg
+viewStepLog step =
+    step
+        |> flattenStepLines
+        |> List.map viewLine
+        |> table [ class "table-sm mb-0" ]
+
+
+viewLine : ViewStepLine -> Html Msg
+viewLine { timestamp, streamId, ansi, streamIndex } =
+    tr [ class "b-0" ]
+        [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamId ] ]
+        , td [] [ span [ class "badge badge-light" ] [ text (formatDateTime timestamp) ] ]
+        , td [] (List.map Ansi.Log.viewLine (Array.toList ansi.lines))
+        ]
+
+
+
+-- HELPERS --
+
+
+flattenStepLines : LogStep -> List ViewStepLine
+flattenStepLines logStep =
+    logStep
+        |> .streams
+        |> Dict.toList
+        |> List.indexedMap mapStream
+        |> List.foldl (++) []
+        |> List.sortWith sortLines
+
+
+mapStream : BuildStreamIndex -> ( BuildStreamId, LogStepStream ) -> List ViewStepLine
+mapStream streamIndex ( streamId, stream ) =
+    stream
+        |> .lines
+        |> Dict.values
+        |> List.filterMap
+            (\line ->
+                line.updates
+                    |> List.head
+                    |> Maybe.map
+                        (\lastUpdate ->
+                            { ansi = line.ansi
+                            , lineNumber = lastUpdate.line
+                            , streamIndex = streamIndex
+                            , streamId = streamId
+                            , timestamp = lastUpdate.timestamp
+                            }
+                        )
+            )
+
+
+sortLines : ViewStepLine -> ViewStepLine -> Order
+sortLines a b =
+    if a.streamId == b.streamId then
+        Basics.compare a.lineNumber b.lineNumber
+    else
+        DateTime.compare a.timestamp b.timestamp
+
+
+logStepKey : BuildStep -> BuildStepId
+logStepKey buildStep =
+    BuildStep.idToString buildStep.id
+
+
+streamKey : BuildStream -> BuildStreamId
+streamKey buildStream =
+    BuildStream.idToString buildStream.id
