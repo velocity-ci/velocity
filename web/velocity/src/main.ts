@@ -1,6 +1,6 @@
 import './styles.scss';
 
-import * as parseGitUrl from 'git-url-parse';
+import { parseGitUrl } from 'git-url-parse';
 
 
 const flags = {
@@ -41,8 +41,7 @@ Git URL parse port.
 
 Parses and sends git parsed git urls
  */
-
 app.ports.parseGitUrl.subscribe(gitUrl => {
   const parsed = parseGitUrl(gitUrl);
-  app.ports.onGitUrlParsed.send(parsed)
+  app.ports.onGitUrlParsed.send(parsed);
 });

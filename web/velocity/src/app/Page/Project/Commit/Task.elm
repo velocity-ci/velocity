@@ -16,7 +16,7 @@ import Dom
 -- INTERNAL --
 
 import Context exposing (Context)
-import Component.BuildOutput as BuildOutput
+import Component.BuildLog as BuildLog
 import Component.BuildForm as BuildForm
 import Component.DropdownFilter as DropdownFilter
 import Data.AuthToken as AuthToken exposing (AuthToken)
@@ -70,7 +70,7 @@ type Frame
 
 
 type BuildType
-    = LoadedBuild Build.Id BuildOutput.Model
+    = LoadedBuild Build.Id BuildLog.Model
     | LoadingBuild (Maybe FromBuild) (Maybe ToBuild)
 
 
@@ -112,7 +112,7 @@ maybeBuildToModel context task maybeAuthToken maybeBuild =
     in
         case maybeBuild of
             Just b ->
-                BuildOutput.init context task maybeAuthToken b
+                BuildLog.init context task maybeAuthToken b
                     |> Task.map (LoadedBuild b.id >> BuildFrame >> init)
                     |> Task.mapError handleLoadError
 
@@ -155,8 +155,8 @@ subscriptions builds model =
         buildOutput =
             case model.frame of
                 BuildFrame (LoadedBuild _ buildOutputModel) ->
-                    BuildOutput.subscriptions buildOutputModel
-                        |> Sub.map BuildOutputMsg
+                    BuildLog.subscriptions buildOutputModel
+                        |> Sub.map BuildLogMsg
 
                 _ ->
                     Sub.none
@@ -172,8 +172,8 @@ events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
 events model =
     case model.frame of
         BuildFrame (LoadedBuild _ buildOutputModel) ->
-            BuildOutput.events buildOutputModel
-                |> mapEvents BuildOutputMsg
+            BuildLog.events buildOutputModel
+                |> mapEvents BuildLogMsg
 
         _ ->
             Dict.empty
@@ -196,7 +196,7 @@ leaveChannels model route =
         channels =
             case model.frame of
                 BuildFrame (LoadedBuild _ buildOutputModel) ->
-                    BuildOutput.leaveChannels buildOutputModel
+                    BuildLog.leaveChannels buildOutputModel
 
                 _ ->
                     []
@@ -333,8 +333,8 @@ viewTabFrame model builds commit =
                 BuildFrame (LoadedBuild buildId buildOutputModel) ->
                     case findBuild buildId of
                         Just build ->
-                            BuildOutput.view build buildOutputModel
-                                |> Html.map BuildOutputMsg
+                            BuildLog.view build buildOutputModel
+                                |> Html.map BuildLogMsg
 
                         Nothing ->
                             text ""
@@ -391,7 +391,7 @@ type Msg
       --    | SelectTab Tab String
     | SelectBuild (Maybe Build)
     | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
-    | BuildOutputMsg BuildOutput.Msg
+    | BuildLogMsg BuildLog.Msg
     | CloseFormModal
     | AnimateFormModal Modal.Visibility
     | OpenFormModal
@@ -519,15 +519,15 @@ update context project commit builds session msg model =
                     => Cmd.none
                     => NoOp
 
-            BuildOutputMsg subMsg ->
+            BuildLogMsg subMsg ->
                 case model.frame of
                     BuildFrame (LoadedBuild id outputModel) ->
                         let
                             ( newOutputModel, newOutputCmd ) =
-                                BuildOutput.update subMsg outputModel
+                                BuildLog.update subMsg outputModel
                         in
                             { model | frame = BuildFrame (LoadedBuild id newOutputModel) }
-                                => Cmd.map BuildOutputMsg newOutputCmd
+                                => Cmd.map BuildLogMsg newOutputCmd
                                 => NoOp
 
                     _ ->
