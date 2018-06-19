@@ -19,11 +19,11 @@ import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Navigation
 import Views.Page as Page exposing (ActivePage)
+import Views.Helpers exposing (onClickPage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
 import Data.PaginatedList exposing (Paginated(..))
 import Json.Encode as Encode
-import Json.Decode as Decode
 import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime, formatDateTime)
 import Views.Spinner exposing (spinner)
@@ -55,7 +55,6 @@ type alias Model =
     , tasks : List ProjectTask.Task
     , builds : List Build
     , subPageState : SubPageState
-    , dropdownState : DropdownFilter.DropdownState
     , taskFilterTerm : String
     }
 
@@ -88,7 +87,6 @@ init context session project hash maybeRoute =
             , tasks = tasks.results
             , builds = sortByDatetime .createdAt builds.results |> List.reverse
             , subPageState = Loaded initialSubPage
-            , dropdownState = DropdownFilter.initialDropdownState
             , taskFilterTerm = ""
             }
 
@@ -114,30 +112,18 @@ init context session project hash maybeRoute =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    let
-        pageSubs =
-            case (getSubPage model.subPageState) of
-                CommitTask subModel ->
-                    CommitTask.subscriptions subModel
-                        |> Sub.map CommitTaskMsg
+    case (getSubPage model.subPageState) of
+        CommitTask subModel ->
+            subModel
+                |> CommitTask.subscriptions model.builds
+                |> Sub.map CommitTaskMsg
 
-                _ ->
-                    Sub.none
-
-        dropdownSubs =
-            taskFilterContext model
-                |> DropdownFilter.subscriptions taskDropdownFilterConfig
-    in
-        Sub.batch [ pageSubs, dropdownSubs ]
+        _ ->
+            Sub.none
 
 
 
 -- CHANNELS --
-
-
-channelName : Project.Slug -> String
-channelName projectSlug =
-    "project:" ++ (Project.slugToString projectSlug)
 
 
 mapEvents :
@@ -149,8 +135,8 @@ mapEvents fromMsg events =
         |> Dict.map (\_ v -> List.map (Tuple.mapSecond (\msg -> msg >> fromMsg)) v)
 
 
-initialEvents : Project.Slug -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
-initialEvents projectSlug route =
+initialEvents : String -> CommitRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
+initialEvents channelName route =
     let
         subPageEvents =
             case route of
@@ -161,12 +147,9 @@ initialEvents projectSlug route =
                     Dict.empty
 
         pageEvents =
-            [ ( "build:new", AddBuildEvent )
-            , ( "build:delete", DeleteBuildEvent )
-            , ( "build:update", UpdateBuildEvent )
-            ]
+            []
     in
-        Dict.singleton (channelName projectSlug) (pageEvents)
+        Dict.singleton channelName pageEvents
 
 
 loadedEvents : Msg -> Model -> Dict String (List ( String, Encode.Value -> Msg ))
@@ -180,14 +163,26 @@ loadedEvents msg model =
             Dict.empty
 
 
-leaveChannels : Model -> Maybe CommitRoute.Route -> List String
-leaveChannels model maybeCommitRoute =
-    case ( getSubPage model.subPageState, maybeCommitRoute ) of
-        ( CommitTask subModel, Just (CommitRoute.Task _ buildName) ) ->
-            CommitTask.leaveChannels subModel
+leaveChannels : Model -> ProjectRoute.Route -> List String
+leaveChannels model route =
+    let
+        leave =
+            leaveSubPageChannels (getSubPage model.subPageState)
+    in
+        case route of
+            ProjectRoute.Commit _ subRoute ->
+                leave (Just subRoute)
 
-        ( CommitTask subModel, _ ) ->
-            CommitTask.leaveChannels subModel
+            -- Not a commit route
+            _ ->
+                leave Nothing
+
+
+leaveSubPageChannels : SubPage -> Maybe CommitRoute.Route -> List String
+leaveSubPageChannels subPage subRoute =
+    case subPage of
+        CommitTask subModel ->
+            CommitTask.leaveChannels subModel subRoute
 
         _ ->
             []
@@ -199,6 +194,14 @@ leaveChannels model maybeCommitRoute =
 
 view : Project -> Model -> Html Msg
 view project model =
+    div []
+        [ viewTaskTabs project model.commit model.tasks model.subPageState
+        , viewSubPage project model
+        ]
+
+
+viewSubPage : Project -> Model -> Html Msg
+viewSubPage project model =
     case getSubPage model.subPageState of
         Overview _ ->
             Overview.view project model.commit model.tasks model.builds
@@ -213,43 +216,62 @@ view project model =
             div [ class "d-flex justify-content-center" ] [ spinner ]
 
 
+viewTaskTabs : Project -> Commit -> List ProjectTask.Task -> SubPageState -> Html Msg
+viewTaskTabs project commit tasks subPage =
+    let
+        toRoute =
+            taskRoute project commit
+
+        filter =
+            .name >> ProjectTask.nameToString >> String.length >> (\len -> len > 0)
+    in
+        ul [ class "nav nav-tabs my-4" ] <|
+            List.map (viewTaskTab toRoute subPage) (List.filter filter tasks)
+
+
+taskRoute : Project -> Commit -> ProjectTask.Task -> Route
+taskRoute project commit task =
+    CommitRoute.Task task.name Nothing
+        |> ProjectRoute.Commit commit.hash
+        |> Route.Project project.slug
+
+
+viewTaskTab : (ProjectTask.Task -> Route) -> SubPageState -> ProjectTask.Task -> Html Msg
+viewTaskTab toRoute subPage task =
+    let
+        route =
+            toRoute task
+
+        active =
+            case subPage of
+                Loaded (CommitTask subModel) ->
+                    subModel.task.id == task.id
+
+                _ ->
+                    False
+
+        classes =
+            [ "active" => active ]
+    in
+        li [ class "nav-item" ]
+            [ a
+                [ class "nav-link"
+                , classList classes
+                , Route.href route
+                , onClickPage NewUrl route
+                ]
+                [ text <| ProjectTask.nameToString task.name ]
+            ]
+
+
 frame :
-    { b | slug : Project.Slug }
+    Project
     -> Model
     -> (a -> Msg)
     -> Html a
     -> Html Msg
-frame project model toMsg content =
-    let
-        viewCommitDetails =
-            let
-                viewCommitDetailsIcon_ =
-                    viewCommitDetailsIcon model.commit
-            in
-                div [ class "card my-4" ]
-                    [ div [ class "d-flex justify-content-between card-body" ]
-                        [ ul [ class "list-unstyled mb-0" ]
-                            [ viewCommitDetailsIcon_ "fa-comment-o" .message
-                            , viewCommitDetailsIcon_ "fa-user" .author
-                            ]
-                        ]
-                    ]
-    in
-        div []
-            [ viewBtnToolbar model
-            , Html.map toMsg content
-            ]
-
-
-viewBtnToolbar : Model -> Html Msg
-viewBtnToolbar model =
-    let
-        taskFilter =
-            taskFilterContext model
-                |> DropdownFilter.view taskDropdownFilterConfig
-    in
-        div [ class "btn-toolbar mb-2" ]
-            [ taskFilter ]
+frame project { commit, tasks } toMsg content =
+    Html.map toMsg content
 
 
 viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
@@ -292,40 +314,6 @@ breadcrumb project commit subPageState =
             ]
 
 
-taskDropdownFilterConfig : DropdownFilter.Config Msg ProjectTask.Task
-taskDropdownFilterConfig =
-    { dropdownMsg = TaskFilterDropdownMsg
-    , termMsg = TaskFilterTermMsg
-    , noOpMsg = NoOp
-    , selectItemMsg = FilterTask
-    , labelFn = (.name >> ProjectTask.nameToString)
-    , icon = (strong [] [ text "Task: " ])
-    , showFilter = False
-    , showAllItemsItem = False
-    }
-
-
-taskFilterContext : Model -> DropdownFilter.Context ProjectTask.Task
-taskFilterContext { dropdownState, taskFilterTerm, tasks, subPageState } =
-    let
-        items =
-            List.sortBy (taskDropdownFilterConfig.labelFn) tasks
-
-        selectedItem =
-            case getSubPage subPageState of
-                CommitTask subModel ->
-                    Just subModel.task
-
-                _ ->
-                    Nothing
-    in
-        { items = items
-        , dropdownState = dropdownState
-        , filterTerm = taskFilterTerm
-        , selectedItem = selectedItem
-        }
-
-
 
 -- UPDATE --
 
@@ -336,12 +324,8 @@ type Msg
     | OverviewMsg Overview.Msg
     | CommitTaskMsg CommitTask.Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
-    | AddBuildEvent Encode.Value
-    | UpdateBuildEvent Encode.Value
-    | DeleteBuildEvent Encode.Value
-    | TaskFilterDropdownMsg DropdownFilter.DropdownState
-    | TaskFilterTermMsg String
-    | FilterTask (Maybe ProjectTask.Task)
+    | AddBuild Build
+    | UpdateBuild Build
     | NoOp
 
 
@@ -398,7 +382,7 @@ setRoute context session project maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (CommitRoute.Task name maybeTab) ->
+            Just (CommitRoute.Task name maybeBuildId) ->
                 case session.user of
                     Just user ->
                         let
@@ -410,7 +394,7 @@ setRoute context session project maybeRoute model =
                             case maybeTask of
                                 Just task ->
                                     taskBuilds model.builds (Just task)
-                                        |> CommitTask.init context session project.id model.commit.hash task maybeTab
+                                        |> CommitTask.init context session project.id model.commit.hash task maybeBuildId
                                         |> transition CommitTaskLoaded
 
                                 Nothing ->
@@ -496,79 +480,37 @@ update context project session msg model =
                     { model_ | subPageState = Loaded (CommitTask newModel) }
                         ! [ Cmd.map CommitTaskMsg newCmd ]
 
-            ( AddBuildEvent buildJson, _ ) ->
+            ( AddBuild build, _ ) ->
                 let
                     builds =
-                        buildJson
-                            |> Decode.decodeValue Build.decoder
-                            |> Result.toMaybe
-                            |> Maybe.map (addBuild model.builds)
-                            |> Maybe.withDefault model.builds
+                        --                        if Commit.compare model.commit build.task.commit then
+                        build
+                            |> addBuild model.builds
                             |> sortByDatetime .createdAt
                             |> List.reverse
+
+                    --                        else
+                    --                            model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none
 
-            ( DeleteBuildEvent buildJson, _ ) ->
+            ( UpdateBuild build, _ ) ->
                 let
                     builds =
-                        Decode.decodeValue Build.decoder buildJson
-                            |> Result.toMaybe
-                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
-                            |> Maybe.withDefault model.builds
-                in
-                    { model | builds = builds }
-                        => Cmd.none
-
-            ( UpdateBuildEvent buildJson, _ ) ->
-                let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
-                            |> Result.toMaybe
-                            |> Maybe.map
-                                (\b ->
-                                    List.map
-                                        (\a ->
-                                            if b.id == a.id then
-                                                b
-                                            else
-                                                a
-                                        )
-                                        model.builds
+                        model.builds
+                            |> List.map
+                                (\a ->
+                                    if build.id == a.id then
+                                        build
+                                    else
+                                        a
                                 )
-                            |> Maybe.withDefault model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none
-
-            ( TaskFilterTermMsg term, _ ) ->
-                { model | taskFilterTerm = term }
-                    => Cmd.none
-
-            ( TaskFilterDropdownMsg state, _ ) ->
-                { model | dropdownState = state }
-                    => Task.attempt (always NoOp) (Dom.focus "filter-item-input")
-
-            ( FilterTask maybeTask, _ ) ->
-                let
-                    commitRoute =
-                        case maybeTask of
-                            Just task ->
-                                CommitRoute.Task task.name Nothing
-
-                            Nothing ->
-                                CommitRoute.Overview
-
-                    route =
-                        commitRoute
-                            |> ProjectRoute.Commit model.commit.hash
-                            |> Route.Project project.slug
-                in
-                    { model | dropdownState = DropdownFilter.initialDropdownState }
-                        => Route.modifyUrl route
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through" model)
+                (Debug.log "Fell through (commit page)" model)
                     => Cmd.none

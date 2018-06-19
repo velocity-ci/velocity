@@ -8,28 +8,34 @@ import Task exposing (Task)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
+import Data.Event as Event exposing (Event)
+import Data.Task as ProjectTask
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Views.Page as Page
 import Util exposing ((=>), viewIf)
 import Http
 import Route exposing (Route)
-import Views.Page as Page exposing (ActivePage)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commits as Commits
-import Page.Project.Settings as Settings
-import Page.Project.Commit as Commit
-import Page.Project.Overview as Overview
-import Views.Helpers exposing (onClickPage)
 import Navigation exposing (newUrl)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
 import Data.Build as Build exposing (Build, addBuild)
+import Page.Project.Route as ProjectRoute
+import Page.Project.Commits as Commits
+import Page.Project.Settings as Settings
+import Page.Project.Commit as Commit
+import Page.Project.Overview as Overview
+import Page.Project.Builds as Builds
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
 import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
+import Toasty
+import Views.Build
+import Views.Toast as ToastTheme
+import Views.Page as Page exposing (ActivePage)
+import Views.Helpers exposing (onClickPage)
 
 
 -- SUB PAGES --
@@ -41,6 +47,7 @@ type SubPage
     | Commits Commits.Model
     | Commit Commit.Model
     | Settings Settings.Model
+    | Builds Builds.Model
     | Errored PageLoadError
 
 
@@ -59,6 +66,7 @@ type alias Model =
     , subPageState : SubPageState
     , builds : List Build
     , sidebar : Sidebar.State
+    , toasties : Toasty.Stack (Event Build)
     }
 
 
@@ -80,7 +88,7 @@ init context session slug maybeRoute =
             Request.Project.branches context slug maybeAuthToken
 
         loadBuilds =
-            Request.Project.builds context slug maybeAuthToken
+            Request.Project.builds context slug maybeAuthToken -1 Nothing
 
         initialModel project (Paginated branches) (Paginated builds) =
             { project = project
@@ -89,9 +97,11 @@ init context session slug maybeRoute =
             , builds = builds.results
             , sidebar =
                 { commitIconPopover = Popover.initialState
+                , buildsIconPopover = Popover.initialState
                 , settingsIconPopover = Popover.initialState
                 , projectBadgePopover = Popover.initialState
                 }
+            , toasties = Toasty.initialState
             }
 
         handleLoadError e =
@@ -137,7 +147,7 @@ initialEvents slug route =
                     mapEvents CommitsMsg (Commits.events slug)
 
                 ProjectRoute.Commit _ subRoute ->
-                    mapEvents CommitMsg (Commit.initialEvents slug subRoute)
+                    mapEvents CommitMsg (Commit.initialEvents (channelName slug) subRoute)
 
                 _ ->
                     Dict.empty
@@ -153,12 +163,18 @@ initialEvents slug route =
             , ( "build:update", UpdateBuildEvent )
             ]
 
-        merge e =
+        merge pageDict =
             let
+                existsInPage =
+                    Dict.insert
+
+                existsInSubPage =
+                    Dict.insert
+
                 existsInBoth key a b dict =
                     Dict.insert key (List.append a b) dict
             in
-                Dict.merge Dict.insert existsInBoth Dict.insert Dict.empty subPageEvents e
+                Dict.merge existsInPage existsInBoth existsInSubPage pageDict subPageEvents Dict.empty
     in
         Dict.singleton (channelName slug) pageEvents
             |> merge
@@ -175,39 +191,38 @@ loadedEvents msg model =
             Dict.empty
 
 
-leaveChannels : Model -> Maybe Project.Slug -> Maybe ProjectRoute.Route -> List String
-leaveChannels model maybeProjectSlug maybeProjectRoute =
+leaveChannels : Model -> Maybe Route.Route -> List String
+leaveChannels model route =
     let
-        currentProjectSlug =
-            model.project.slug
-
         projectChannel =
-            channelName currentProjectSlug
+            channelName model.project.slug
     in
-        case ( getSubPage model.subPageState, maybeProjectSlug, maybeProjectRoute ) of
-            ( Commit subModel, Just routeProjectSlug, Just (ProjectRoute.Commit _ commitRoute) ) ->
-                if routeProjectSlug == currentProjectSlug then
-                    Commit.leaveChannels subModel (Just commitRoute)
-                else
-                    projectChannel :: Commit.leaveChannels subModel Nothing
+        case route of
+            Just (Route.Project slug subRoute) ->
+                let
+                    subPageChannels =
+                        leaveSubPageChannels (getSubPage model.subPageState) subRoute
+                in
+                    if slug == model.project.slug then
+                        -- Route is for this project. Maybe different sub route.
+                        subPageChannels
+                    else
+                        -- Project route, but for a different project
+                        projectChannel :: subPageChannels
 
-            ( Commit subModel, Just routeProjectSlug, _ ) ->
-                if routeProjectSlug == currentProjectSlug then
-                    Commit.leaveChannels subModel Nothing
-                else
-                    projectChannel :: Commit.leaveChannels subModel Nothing
-
-            ( Commit subModel, _, _ ) ->
-                projectChannel :: Commit.leaveChannels subModel Nothing
-
-            ( _, Just routeProjectSlug, _ ) ->
-                if routeProjectSlug == currentProjectSlug then
-                    []
-                else
-                    [ projectChannel ]
-
+            -- Not a project route
             _ ->
                 [ projectChannel ]
+
+
+leaveSubPageChannels : SubPage -> ProjectRoute.Route -> List String
+leaveSubPageChannels subPage subRoute =
+    case subPage of
+        Commit subModel ->
+            Commit.leaveChannels subModel subRoute
+
+        _ ->
+            []
 
 
 
@@ -235,13 +250,22 @@ subscriptions model =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    viewSubPage session model
+    div []
+        [ viewSubPage session model
+        , toastView model
+        ]
+
+
+toastView : Model -> Html Msg
+toastView { toasties } =
+    Toasty.view ToastTheme.config Views.Build.toast ToastyMsg toasties
 
 
 sidebarConfig : Sidebar.Config Msg
 sidebarConfig =
     { newUrlMsg = NewUrl
     , commitPopMsg = CommitsIconPopMsg
+    , buildsPopMsg = BuildsIconPopMsg
     , settingsPopMsg = SettingsIconPopMsg
     , projectBadgePopMsg = ProjectBadgePopMsg
     }
@@ -268,6 +292,9 @@ viewSidebar session model =
 
             Settings _ ->
                 sidebar SettingsPage
+
+            Builds _ ->
+                sidebar BuildsPage
 
             _ ->
                 sidebar OtherPage
@@ -303,6 +330,11 @@ viewSubPage session model =
             Overview _ ->
                 Overview.view project model.builds
                     |> Html.map OverviewMsg
+                    |> pageFrame (breadcrumb (text "") [])
+
+            Builds subModel ->
+                Builds.view project subModel
+                    |> Html.map BuildsMsg
                     |> pageFrame (breadcrumb (text "") [])
 
             Commits subModel ->
@@ -404,9 +436,11 @@ viewBreadcrumbItem active ( route, name ) =
 type Msg
     = NewUrl String
     | SetRoute (Maybe ProjectRoute.Route)
-    | CommitsMsg Commits.Msg
     | OverviewMsg Overview.Msg
+    | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
+    | BuildsMsg Builds.Msg
+    | BuildsLoaded (Result PageLoadError Builds.Model)
     | CommitMsg Commit.Msg
     | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
     | SettingsMsg Settings.Msg
@@ -419,8 +453,10 @@ type Msg
     | UpdateBuildEvent Encode.Value
     | DeleteBuildEvent Encode.Value
     | CommitsIconPopMsg Popover.State
+    | BuildsIconPopMsg Popover.State
     | SettingsIconPopMsg Popover.State
     | ProjectBadgePopMsg Popover.State
+    | ToastyMsg (Toasty.Msg (Event Build))
     | NoOp
 
 
@@ -501,6 +537,16 @@ setRoute context session maybeRoute model =
                         ( Nothing, _ ) ->
                             errored Page.Project "Error loading commit"
 
+            Just (ProjectRoute.Builds maybePage) ->
+                case session.user of
+                    Just user ->
+                        maybePage
+                            |> Builds.init context session model.project.slug
+                            |> transition BuildsLoaded
+
+                    Nothing ->
+                        errored Page.Project "Uhoh"
+
             Just (ProjectRoute.Settings) ->
                 case session.user of
                     Just user ->
@@ -521,7 +567,32 @@ pageErrored model activePage errorMessage =
 
 update : Context -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update context session msg model =
-    updateSubPage context session (getSubPage model.subPageState) msg model
+    case updateSidebar model.sidebar msg of
+        Just sidebar ->
+            { model | sidebar = sidebar }
+                => Cmd.none
+
+        Nothing ->
+            updateSubPage context session (getSubPage model.subPageState) msg model
+
+
+updateSidebar : Sidebar.State -> Msg -> Maybe Sidebar.State
+updateSidebar sidebar msg =
+    case msg of
+        CommitsIconPopMsg state ->
+            Just { sidebar | commitIconPopover = state }
+
+        SettingsIconPopMsg state ->
+            Just { sidebar | settingsIconPopover = state }
+
+        BuildsIconPopMsg state ->
+            Just { sidebar | buildsIconPopover = state }
+
+        ProjectBadgePopMsg state ->
+            Just { sidebar | projectBadgePopover = state }
+
+        _ ->
+            Nothing
 
 
 updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
@@ -547,30 +618,6 @@ updateSubPage context session subPage msg model =
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
-
-            ( CommitsIconPopMsg state, _ ) ->
-                let
-                    updatedSidebar =
-                        { sidebar | commitIconPopover = state }
-                in
-                    { model | sidebar = updatedSidebar }
-                        => Cmd.none
-
-            ( SettingsIconPopMsg state, _ ) ->
-                let
-                    updatedSidebar =
-                        { sidebar | settingsIconPopover = state }
-                in
-                    { model | sidebar = updatedSidebar }
-                        => Cmd.none
-
-            ( ProjectBadgePopMsg state, _ ) ->
-                let
-                    updatedSidebar =
-                        { sidebar | projectBadgePopover = state }
-                in
-                    { model | sidebar = updatedSidebar }
-                        => Cmd.none
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model
@@ -608,6 +655,17 @@ updateSubPage context session subPage msg model =
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
 
+            ( BuildsMsg subMsg, Builds subModel ) ->
+                toPage Builds BuildsMsg (Builds.update context model.project session) subMsg subModel
+
+            ( BuildsLoaded (Ok subModel), _ ) ->
+                { model | subPageState = Loaded (Builds subModel) }
+                    => Cmd.none
+
+            ( BuildsLoaded (Err error), _ ) ->
+                { model | subPageState = Loaded (Errored error) }
+                    => Cmd.none
+
             ( UpdateProject updateJson, _ ) ->
                 let
                     newProject =
@@ -631,8 +689,12 @@ updateSubPage context session subPage msg model =
                         => Cmd.none
 
             ( RefreshBranches _, _ ) ->
-                model
-                    => Task.attempt RefreshBranchesComplete (Request.Project.branches context model.project.slug (Maybe.map .token session.user))
+                let
+                    cmd =
+                        Request.Project.branches context model.project.slug (Maybe.map .token session.user)
+                            |> Task.attempt RefreshBranchesComplete
+                in
+                    model => cmd
 
             ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
                 { model | branches = results }
@@ -642,33 +704,52 @@ updateSubPage context session subPage msg model =
                 model
                     => Route.modifyUrl Route.Projects
 
-            ( AddBuildEvent buildJson, _ ) ->
+            ( AddBuildEvent buildJson, page ) ->
                 let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
+                    maybeBuild =
+                        buildJson
+                            |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
+
+                    builds =
+                        maybeBuild
                             |> Maybe.map (addBuild model.builds)
                             |> Maybe.withDefault model.builds
-                in
-                    { model | builds = sortByDatetime .createdAt builds }
-                        => Cmd.none
 
-            ( DeleteBuildEvent buildJson, _ ) ->
-                let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
-                            |> Result.toMaybe
-                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
-                            |> Maybe.withDefault model.builds
-                in
-                    { model | builds = builds }
-                        => Cmd.none
+                    ( subPageState, subCmd ) =
+                        case ( page, maybeBuild ) of
+                            ( Commit subModel, Just build ) ->
+                                subModel
+                                    |> Commit.update context model.project session (Commit.AddBuild build)
+                                    |> Tuple.mapFirst (Commit >> Loaded)
+                                    |> Tuple.mapSecond (Cmd.map CommitMsg)
 
-            ( UpdateBuildEvent buildJson, _ ) ->
+                            ( _, _ ) ->
+                                model.subPageState => Cmd.none
+
+                    modelCmd =
+                        { model
+                            | builds = sortByDatetime .createdAt builds
+                            , subPageState = subPageState
+                        }
+                            ! [ subCmd ]
+                in
+                    case maybeBuild of
+                        Just build ->
+                            Toasty.addToast ToastTheme.config ToastyMsg (Event.Created build) modelCmd
+
+                        Nothing ->
+                            modelCmd
+
+            ( UpdateBuildEvent buildJson, page ) ->
                 let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
+                    maybeBuild =
+                        buildJson
+                            |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
+
+                    builds =
+                        maybeBuild
                             |> Maybe.map
                                 (\b ->
                                     List.map
@@ -681,11 +762,58 @@ updateSubPage context session subPage msg model =
                                         model.builds
                                 )
                             |> Maybe.withDefault model.builds
+
+                    ( subPageState, subCmd ) =
+                        case ( page, maybeBuild ) of
+                            ( Commit subModel, Just build ) ->
+                                subModel
+                                    |> Commit.update context model.project session (Commit.UpdateBuild build)
+                                    |> Tuple.mapFirst (Commit >> Loaded)
+                                    |> Tuple.mapSecond (Cmd.map CommitMsg)
+
+                            ( _, _ ) ->
+                                model.subPageState => Cmd.none
+
+                    modelCmd =
+                        { model
+                            | builds = sortByDatetime .createdAt builds
+                            , subPageState = subPageState
+                        }
+                            ! [ subCmd ]
+
+                    modelCmdWithToast =
+                        case maybeBuild of
+                            Just build ->
+                                Toasty.addToast ToastTheme.config ToastyMsg (Event.Completed build) modelCmd
+
+                            Nothing ->
+                                modelCmd
+                in
+                    case Maybe.map .status maybeBuild of
+                        Just (Build.Success) ->
+                            modelCmdWithToast
+
+                        Just (Build.Failed) ->
+                            modelCmdWithToast
+
+                        _ ->
+                            modelCmd
+
+            ( DeleteBuildEvent buildJson, _ ) ->
+                let
+                    builds =
+                        Decode.decodeValue Build.decoder buildJson
+                            |> Result.toMaybe
+                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
+                            |> Maybe.withDefault model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none
 
+            ( ToastyMsg subMsg, _ ) ->
+                Toasty.update ToastTheme.config ToastyMsg subMsg model
+
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through" model)
+                (Debug.log "Fell through (project page)" model)
                     => Cmd.none

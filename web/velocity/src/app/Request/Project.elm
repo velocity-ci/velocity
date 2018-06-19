@@ -92,17 +92,35 @@ branches context slug maybeToken =
 -- BUILDS --
 
 
-builds : Context -> Project.Slug -> Maybe AuthToken -> Task Request.Errors.HttpError (PaginatedList Build)
-builds context slug maybeToken =
+builds :
+    Context
+    -> Project.Slug
+    -> Maybe AuthToken
+    -> Int
+    -> Maybe Int
+    -> Task Request.Errors.HttpError (PaginatedList Build)
+builds context slug maybeToken amount maybePage =
     let
         expect =
             Build.decoder
                 |> PaginatedList.decoder
                 |> Http.expectJson
+
+        amountParam =
+            "amount" => toString amount
+
+        page =
+            maybePage
+                |> Maybe.withDefault 1
+                |> toString
+
+        pageParam =
+            "page" => page
     in
-        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/builds?amount=-1")
+        apiUrl context (baseUrl ++ "/" ++ Project.slugToString slug ++ "/builds")
             |> HttpBuilder.get
             |> HttpBuilder.withExpect expect
+            |> HttpBuilder.withQueryParams [ amountParam, pageParam ]
             |> withAuthorization maybeToken
             |> HttpBuilder.toTask
             |> Task.mapError Request.Errors.handleHttpError

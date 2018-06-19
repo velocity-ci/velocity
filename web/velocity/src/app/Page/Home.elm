@@ -1,4 +1,16 @@
-module Page.Home exposing (view, update, Model, Msg, ExternalMsg(..), init, channelName, initialEvents, subscriptions)
+module Page.Home
+    exposing
+        ( view
+        , update
+        , Model
+        , Msg
+        , ExternalMsg(..)
+        , init
+        , channelName
+        , leaveChannels
+        , initialEvents
+        , subscriptions
+        )
 
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
@@ -103,7 +115,9 @@ subscriptions { newProjectModalVisibility } =
 
 gitUrlParsed : Sub (Maybe GitUrl)
 gitUrlParsed =
-    Ports.onGitUrlParsed (Decode.decodeValue GitUrl.decoder >> Result.toMaybe)
+    Decode.decodeValue GitUrl.decoder
+        >> Result.toMaybe
+        |> Ports.onGitUrlParsed
 
 
 
@@ -113,6 +127,16 @@ gitUrlParsed =
 channelName : String
 channelName =
     "projects"
+
+
+leaveChannels : Maybe Route.Route -> List String
+leaveChannels route =
+    case route of
+        Just (Route.Home) ->
+            []
+
+        _ ->
+            [ channelName ]
 
 
 initialEvents : Dict String (List ( String, Encode.Value -> Msg ))

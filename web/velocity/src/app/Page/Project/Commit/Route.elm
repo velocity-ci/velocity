@@ -9,14 +9,14 @@ import Util exposing ((=>))
 
 type Route
     = Overview
-    | Task Task.Name (Maybe String)
+    | Task Task.Name (Maybe Build.Id)
 
 
 route : Parser (Route -> b) b
 route =
     oneOf
         [ Url.map Overview (s "overview")
-        , Url.map Task (s "tasks" </> Task.nameParser <?> (Build.idQueryParser "tab"))
+        , Url.map Task (s "tasks" </> Task.nameParser <?> (Build.idQueryParser "build"))
         ]
 
 
@@ -34,7 +34,7 @@ routeToPieces page =
             let
                 queryParams =
                     maybeBuildId
-                        |> Maybe.map (\id -> [ "tab" => id ])
+                        |> Maybe.map (\id -> [ "build" => Build.idToString id ])
                         |> Maybe.withDefault []
             in
                 [ "tasks", Task.nameToString name ] => queryParams

@@ -66,7 +66,7 @@ sidebarLogo newUrlMsg =
             , onClickPage newUrlMsg Route.Home
             ]
             [ h1 []
-                [ i [ class "fa fa-rocket" ] [] ]
+                [ i [ class "fa fa-arrow-circle-o-right" ] [] ]
             ]
         ]
 
