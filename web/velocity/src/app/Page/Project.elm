@@ -759,3 +759,17 @@ updateSubPage context session subPage msg model =
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through (project page)" model)
                     => Cmd.none
+
+
+
+-- HELPERS --
+
+
+hasExtraWideSidebar : Model -> Bool
+hasExtraWideSidebar { subPageState } =
+    case getSubPage subPageState of
+        Commit _ ->
+            True
+
+        _ ->
+            False

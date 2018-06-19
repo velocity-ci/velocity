@@ -100,7 +100,14 @@ Content container
  */
 .content-container {
   position: relative;
+}
+
+.has-sidebar {
   margin-left: 75px;
+}
+
+.has-extra-sidebar {
+  margin-left: 295px !important;
 }
 
 /*
@@ -140,7 +147,7 @@ Content container
 }
 
 .commit-container {
-  padding-left: 200px;
+  //padding-left: 200px;
 }
 
 .sub-sidebar {
