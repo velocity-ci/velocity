@@ -35,6 +35,7 @@ import Dom.Scroll as Scroll
 import Html.Lazy exposing (lazy)
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Button as Button
+import Bootstrap.Modal as Modal
 
 
 -- MODEL
@@ -42,6 +43,7 @@ import Bootstrap.Button as Button
 
 type alias Model =
     { log : Log
+    , stepInfoModalVisibility : Modal.Visibility
     , autoScrollMessages : Bool
     }
 
@@ -105,6 +107,7 @@ init context task maybeAuthToken build =
 initialModel : Log -> Model
 initialModel log =
     { log = log
+    , stepInfoModalVisibility = Modal.hidden
     , autoScrollMessages = True
     }
 
@@ -213,7 +216,13 @@ subscriptions model =
     Sub.batch
         [ scrolledToBottom
         , filterSubscriptions model.log
+        , modalSubscriptions model.stepInfoModalVisibility
         ]
+
+
+modalSubscriptions : Modal.Visibility -> Sub Msg
+modalSubscriptions visibility =
+    Modal.subscriptions visibility AnimateStepInfoModal
 
 
 scrolledToBottom : Sub Msg
@@ -288,6 +297,9 @@ type Msg
     | ToggleStepFilterDropdown BuildStep.Id Dropdown.State
     | ToggleStepCollapse BuildStep.Id
     | ToggleStreamVisibility BuildStep.Id BuildStream.Id
+    | CloseStepInfoModal
+    | AnimateStepInfoModal Modal.Visibility
+    | OpenStepInfoModal LogStep
     | NoOp
 
 
@@ -306,9 +318,7 @@ update msg model =
 
                 scrollCmds =
                     if model.autoScrollMessages then
-                        [ scrollTo "scroll-html-id"
-                        , scrollTo "scroll-body-id"
-                        ]
+                        scrollToBottom
                     else
                         []
             in
@@ -331,8 +341,27 @@ update msg model =
             { model | log = toggleStepCollapse buildStepId model.log }
                 => Cmd.none
 
+        CloseStepInfoModal ->
+            { model | stepInfoModalVisibility = Modal.hidden }
+                => Cmd.none
+
+        AnimateStepInfoModal visibility ->
+            { model | stepInfoModalVisibility = visibility }
+                => Cmd.none
+
+        OpenStepInfoModal logStep ->
+            { model | stepInfoModalVisibility = Modal.shown }
+                => Cmd.none
+
         NoOp ->
             model => Cmd.none
+
+
+scrollToBottom : List (Cmd Msg)
+scrollToBottom =
+    [ scrollTo "scroll-html-id"
+    , scrollTo "scroll-body-id"
+    ]
 
 
 scrollTo : String -> Cmd Msg
@@ -448,15 +477,19 @@ type alias ViewStepLine =
 
 
 view : Build -> Model -> Html Msg
-view build { log } =
+view build { log, stepInfoModalVisibility } =
     let
-        ansiOutput =
+        stepOutput =
             log
                 |> Dict.toList
                 |> List.sortBy (\( _, { step } ) -> step |> Tuple.second |> .number)
                 |> List.map (viewStepContainer build)
     in
-        div [] ansiOutput
+        div []
+            [ viewBuildInformation build
+            , div [] stepOutput
+            , viewStepInfoModal stepInfoModalVisibility
+            ]
 
 
 viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Html Msg
@@ -469,13 +502,6 @@ viewStepContainer build ( stepId, logStep ) =
             build.steps
                 |> List.filter (\s -> s.id == buildStep.id)
                 |> List.head
-
-        buttonToolbar =
-            div []
-                [ Util.viewIf ((Dict.size logStep.streams) > 1) (viewStepStreamFilter logStep)
-                , text " "
-                , viewStepCollapseToggle logStep
-                ]
     in
         case buildStep_ of
             Just step ->
@@ -488,7 +514,7 @@ viewStepContainer build ( stepId, logStep ) =
                         , classList (headerBackgroundColourClassList step)
                         ]
                         [ text (viewCardTitle taskStep)
-                        , buttonToolbar
+                        , viewStepButtonToolbar buildStep_ logStep
                         ]
                     , div [ class "p-0 small" ]
                         [ lazy viewStepLog logStep ]
@@ -496,6 +522,54 @@ viewStepContainer build ( stepId, logStep ) =
 
             Nothing ->
                 text ""
+
+
+viewStepButtonToolbar : Maybe BuildStep -> LogStep -> Html Msg
+viewStepButtonToolbar maybeBuildStep logStep =
+    let
+        showCollapseToggle =
+            maybeBuildStep
+                |> Maybe.map (\step -> step.status /= BuildStep.Waiting)
+                |> Maybe.withDefault False
+
+        showStreamFilter =
+            (Dict.size logStep.streams) > 1 && not logStep.collapsed
+    in
+        div []
+            [ Util.viewIf showStreamFilter (viewStepStreamFilter logStep)
+            , text " "
+            , viewStepInfoButton logStep
+            , text " "
+            , Util.viewIf showCollapseToggle (viewStepCollapseToggle logStep)
+            ]
+
+
+viewStepInfoButton : LogStep -> Html Msg
+viewStepInfoButton logStep =
+    Button.button
+        [ Button.small
+        , Button.light
+        , Button.onClick (OpenStepInfoModal logStep)
+        ]
+        [ text "Info" ]
+
+
+viewStepInfoModal : Modal.Visibility -> Html Msg
+viewStepInfoModal visibility =
+    Modal.config CloseStepInfoModal
+        |> Modal.small
+        |> Modal.withAnimation AnimateStepInfoModal
+        |> Modal.hideOnBackdropClick True
+        |> Modal.h3 [] [ text "Modal header" ]
+        |> Modal.body [] [ p [] [ text "This is a modal for you !" ] ]
+        |> Modal.footer []
+            [ Button.button
+                [ Button.outlinePrimary
+                , Button.attrs [ onClick CloseStepInfoModal ]
+                ]
+                [ text "Close" ]
+            ]
+        |> Modal.view visibility
 
 
 viewStepCollapseToggle : LogStep -> Html Msg
@@ -601,6 +675,30 @@ viewLineAnsi lines =
         |> Array.get ((Array.length lines) - 2)
         |> Maybe.map Ansi.Log.viewLine
         |> Maybe.withDefault (text "")
+
+
+viewBuildInformation : Build -> Html Msg
+viewBuildInformation build =
+    let
+        dateText date =
+            date
+                |> Maybe.map formatDateTime
+                |> Maybe.withDefault "-"
+    in
+        div [ class "card mt-3", classList (buildCardClassList build) ]
+            [ div [ class "card-body" ]
+                [ dl [ class "row mb-0" ]
+                    [ dt [ class "col-sm-3" ] [ text "Created" ]
+                    , dd [ class "col-sm-9" ] [ text (formatDateTime build.createdAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Started" ]
+                    , dd [ class "col-sm-9" ] [ text (dateText build.startedAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Completed" ]
+                    , dd [ class "col-sm-9" ] [ text (dateText build.completedAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Status" ]
+                    , dd [ class "col-sm-9" ] [ text (Build.statusToString build.status) ]
+                    ]
+                ]
+            ]
 
 
 

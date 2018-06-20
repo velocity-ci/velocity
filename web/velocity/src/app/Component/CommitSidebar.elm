@@ -96,7 +96,7 @@ taskNavItem : (String -> msg) -> NavTaskProperties -> Html msg
 taskNavItem newUrlMsg { isSelected, route, itemText, textClass, iconClass } =
     li [ class "nav-item" ]
         [ a
-            [ class "nav-link align-middle"
+            [ class "nav-link text-secondary align-middle"
             , class textClass
             , classList [ "active" => isSelected ]
             , Route.href route
