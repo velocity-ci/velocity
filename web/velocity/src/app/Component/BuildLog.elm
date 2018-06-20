@@ -304,14 +304,16 @@ update msg model =
                         Nothing ->
                             model.log
 
-                scrollCmd =
+                scrollCmds =
                     if model.autoScrollMessages then
-                        Task.attempt (always NoOp) (Scroll.toBottom "scroll-id")
+                        [ scrollTo "scroll-html-id"
+                        , scrollTo "scroll-body-id"
+                        ]
                     else
-                        Cmd.none
+                        []
             in
                 { model | log = log }
-                    => scrollCmd
+                    ! scrollCmds
 
         ScrolledToBottom isScrolled ->
             { model | autoScrollMessages = isScrolled }
@@ -331,6 +333,11 @@ update msg model =
 
         NoOp ->
             model => Cmd.none
+
+
+scrollTo : String -> Cmd Msg
+scrollTo id =
+    Task.attempt (always NoOp) (Scroll.toBottom id)
 
 
 decodeBuildStreamOutput : Encode.Value -> Maybe BuildStreamOutput
