@@ -78,6 +78,7 @@ type alias LogStep =
     { step : Step
     , streams : Dict BuildStreamId LogStepStream
     , filterDropdown : Dropdown.State
+    , collapsed : Bool
     }
 
 
@@ -147,6 +148,7 @@ insertStream ( { buildStream, lines }, step ) dict =
                     { step = step
                     , streams = Dict.singleton streamDictKey outputStream
                     , filterDropdown = Dropdown.initialState
+                    , collapsed = False
                     }
     in
         Dict.insert logStepDictKey insert dict
@@ -284,6 +286,7 @@ type Msg
     = AddStreamOutput BuildStepId BuildStream Encode.Value
     | ScrolledToBottom Bool
     | ToggleStepFilterDropdown BuildStep.Id Dropdown.State
+    | ToggleStepCollapse BuildStep.Id
     | ToggleStreamVisibility BuildStep.Id BuildStream.Id
     | NoOp
 
@@ -322,6 +325,10 @@ update msg model =
             { model | log = toggleLogVisibility buildStepId buildStreamId model.log }
                 => Cmd.none
 
+        ToggleStepCollapse buildStepId ->
+            { model | log = toggleStepCollapse buildStepId model.log }
+                => Cmd.none
+
         NoOp ->
             model => Cmd.none
 
@@ -346,6 +353,15 @@ updateLogStepDropdown buildStepId state log =
                 { step | filterDropdown = Dropdown.initialState }
     in
         Dict.map updateDropdown log
+
+
+toggleStepCollapse : BuildStep.Id -> Log -> Log
+toggleStepCollapse buildStepId log =
+    let
+        dictKey =
+            BuildStep.idToString buildStepId
+    in
+        Dict.update dictKey (Maybe.map (\step -> { step | collapsed = not step.collapsed })) log
 
 
 toggleLogVisibility : BuildStep.Id -> BuildStream.Id -> Log -> Log
@@ -447,8 +463,11 @@ viewStepContainer build ( stepId, logStep ) =
                 |> List.filter (\s -> s.id == buildStep.id)
                 |> List.head
 
-        streamFilter =
+        stepFilter =
             Util.viewIf ((Dict.size logStep.streams) > 1) (viewStepStreamFilter logStep)
+
+        stepCollapse =
+            viewStepCollapseToggle logStep
     in
         case buildStep_ of
             Just step ->
@@ -461,15 +480,34 @@ viewStepContainer build ( stepId, logStep ) =
                         , classList (headerBackgroundColourClassList step)
                         ]
                         [ text (viewCardTitle taskStep)
-                        , text " "
-                        , streamFilter
-                          --                        , viewBuildStepStatusIcon step
+                        , div [] [ stepFilter, text " ", stepCollapse ]
                         ]
-                    , div [ class "p-0 small" ] [ lazy viewStepLog logStep ]
+                    , div [ class "p-0 small" ]
+                        [ lazy viewStepLog logStep ]
                     ]
 
             Nothing ->
                 text ""
+
+
+viewStepCollapseToggle : LogStep -> Html Msg
+viewStepCollapseToggle logStep =
+    let
+        ( _, buildStep ) =
+            logStep.step
+
+        buttonText =
+            if logStep.collapsed then
+                "Show"
+            else
+                "Hide"
+    in
+        Button.button
+            [ Button.small
+            , Button.light
+            , Button.onClick (ToggleStepCollapse buildStep.id)
+            ]
+            [ text buttonText ]
 
 
 viewStepStreamFilter : LogStep -> Html Msg
@@ -484,6 +522,7 @@ viewStepStreamFilter logStep =
         streamItems =
             logStep.streams
                 |> Dict.values
+                |> List.sortBy (.buildStream >> .name)
                 |> List.map (viewStepStreamFilterItem logStep)
     in
         Dropdown.dropdown
@@ -520,7 +559,10 @@ viewStepStreamFilterItem logStep logStepStream =
 
 viewStepLog : LogStep -> Html Msg
 viewStepLog step =
-    div [ class "table-responsive" ] [ viewStepLogTable step ]
+    if step.collapsed then
+        text ""
+    else
+        div [ class "table-responsive" ] [ viewStepLogTable step ]
 
 
 viewStepLogTable : LogStep -> Html Msg
