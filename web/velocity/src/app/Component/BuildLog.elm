@@ -23,7 +23,7 @@ import Ports
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onWithOptions)
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Task exposing (Task)
@@ -547,7 +547,7 @@ viewStepStreamFilterItem logStep logStepStream =
         msg =
             ToggleStreamVisibility buildStep.id logStepStream.buildStream.id
     in
-        Dropdown.buttonItem [ onClick msg ]
+        Dropdown.buttonItem [ onClickPreventDefault msg ]
             [ i
                 [ class "fa"
                 , classList [ "fa-check" => logStepStream.visible ]
@@ -646,3 +646,13 @@ logStepKey buildStep =
 streamKey : BuildStream -> BuildStreamId
 streamKey buildStream =
     BuildStream.idToString buildStream.id
+
+
+onClickPreventDefault : msg -> Attribute msg
+onClickPreventDefault message =
+    onWithOptions
+        "click"
+        { stopPropagation = True
+        , preventDefault = False
+        }
+        (Decode.succeed message)
