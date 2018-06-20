@@ -463,11 +463,12 @@ viewStepContainer build ( stepId, logStep ) =
                 |> List.filter (\s -> s.id == buildStep.id)
                 |> List.head
 
-        stepFilter =
-            Util.viewIf ((Dict.size logStep.streams) > 1) (viewStepStreamFilter logStep)
-
-        stepCollapse =
-            viewStepCollapseToggle logStep
+        buttonToolbar =
+            div []
+                [ Util.viewIf ((Dict.size logStep.streams) > 1) (viewStepStreamFilter logStep)
+                , text " "
+                , viewStepCollapseToggle logStep
+                ]
     in
         case buildStep_ of
             Just step ->
@@ -480,7 +481,7 @@ viewStepContainer build ( stepId, logStep ) =
                         , classList (headerBackgroundColourClassList step)
                         ]
                         [ text (viewCardTitle taskStep)
-                        , div [] [ stepFilter, text " ", stepCollapse ]
+                        , buttonToolbar
                         ]
                     , div [ class "p-0 small" ]
                         [ lazy viewStepLog logStep ]
@@ -522,7 +523,8 @@ viewStepStreamFilter logStep =
         streamItems =
             logStep.streams
                 |> Dict.values
-                |> List.sortBy (.buildStream >> .name)
+                |> List.indexedMap (,)
+                |> List.sortBy (Tuple.second >> .buildStream >> .name)
                 |> List.map (viewStepStreamFilterItem logStep)
     in
         Dropdown.dropdown
@@ -538,8 +540,8 @@ viewStepStreamFilter logStep =
             }
 
 
-viewStepStreamFilterItem : LogStep -> LogStepStream -> Dropdown.DropdownItem Msg
-viewStepStreamFilterItem logStep logStepStream =
+viewStepStreamFilterItem : LogStep -> ( Int, LogStepStream ) -> Dropdown.DropdownItem Msg
+viewStepStreamFilterItem logStep ( streamIndex, logStepStream ) =
     let
         ( _, buildStep ) =
             logStep.step
@@ -553,7 +555,8 @@ viewStepStreamFilterItem logStep logStepStream =
                 , classList [ "fa-check" => logStepStream.visible ]
                 ]
                 []
-            , text (logStepStream.buildStream.name)
+            , text " "
+            , span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text logStepStream.buildStream.name ]
             ]
 
 
@@ -602,7 +605,6 @@ flattenStepLines logStep =
     logStep
         |> .streams
         |> Dict.toList
-        |> List.filter (Tuple.second >> .visible)
         |> List.indexedMap mapStream
         |> List.foldl (++) []
         |> List.sortWith sortLines
@@ -610,24 +612,27 @@ flattenStepLines logStep =
 
 mapStream : BuildStreamIndex -> ( BuildStreamId, LogStepStream ) -> List ViewStepLine
 mapStream streamIndex ( streamId, stream ) =
-    stream
-        |> .lines
-        |> Dict.values
-        |> List.filterMap
-            (\line ->
-                line.updates
-                    |> List.head
-                    |> Maybe.map
-                        (\lastUpdate ->
-                            { ansi = line.ansi
-                            , lineNumber = lastUpdate.line
-                            , streamIndex = streamIndex
-                            , streamId = streamId
-                            , streamName = stream.buildStream.name
-                            , timestamp = lastUpdate.timestamp
-                            }
-                        )
-            )
+    if stream.visible then
+        stream
+            |> .lines
+            |> Dict.values
+            |> List.filterMap
+                (\line ->
+                    line.updates
+                        |> List.head
+                        |> Maybe.map
+                            (\lastUpdate ->
+                                { ansi = line.ansi
+                                , lineNumber = lastUpdate.line
+                                , streamIndex = streamIndex
+                                , streamId = streamId
+                                , streamName = stream.buildStream.name
+                                , timestamp = lastUpdate.timestamp
+                                }
+                            )
+                )
+    else
+        []
 
 
 sortLines : ViewStepLine -> ViewStepLine -> Order
