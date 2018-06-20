@@ -9,7 +9,7 @@ import Data.Build as Build exposing (Build)
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
-import Views.Commit exposing (branchList, infoPanel)
+import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
 import Views.Helpers exposing (onClickPage)
 import Views.Build exposing (viewBuildStatusIconClasses, viewBuildTextClass)
 import Util exposing ((=>))
@@ -60,14 +60,14 @@ view config context =
 
 details : Commit -> Html msg
 details commit =
-    div [ class "p-2" ]
+    div [ class "p-1" ]
         [ div [ class "card" ]
             [ div [ class "card-body" ]
-                [ small [] [ text commit.message ]
-                , hr [] []
-                , infoPanel commit
+                [ infoPanel commit
                 , hr [] []
                 , branchList commit
+                , hr [] []
+                , small [] [ text (truncateCommitMessage commit) ]
                 ]
             ]
         ]

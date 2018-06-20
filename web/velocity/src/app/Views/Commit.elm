@@ -31,8 +31,16 @@ branchList commit =
 branch : Branch.Name -> Html msg
 branch branch =
     li [ class "list-inline-item" ]
-        [ span [ class "badge badge-secondary" ]
+        [ span [ class "badge badge-secondary", style [ ( "white-space", "pre-line" ) ] ]
             [ i [ class "fa fa-code-fork" ] []
             , text (" " ++ (Branch.nameToString (Just branch)))
             ]
         ]
+
+
+truncateCommitMessage : Commit -> String
+truncateCommitMessage commit =
+    if (String.length commit.message) > 48 then
+        (String.slice 0 44 commit.message) ++ "..."
+    else
+        commit.message

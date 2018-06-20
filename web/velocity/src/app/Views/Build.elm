@@ -149,6 +149,22 @@ viewBuildTextClass build =
             "text-danger"
 
 
+viewBuildStepBorderClass : BuildStep -> String
+viewBuildStepBorderClass buildStep =
+    case buildStep.status of
+        BuildStep.Waiting ->
+            "border-secondary"
+
+        BuildStep.Running ->
+            "border-primary"
+
+        BuildStep.Success ->
+            "border-success"
+
+        BuildStep.Failed ->
+            "border-danger"
+
+
 viewBuildStepStatusIcon : BuildStep -> Html msg
 viewBuildStepStatusIcon buildStep =
     case buildStep.status of

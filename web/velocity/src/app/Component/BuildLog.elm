@@ -23,6 +23,7 @@ import Ports
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Task exposing (Task)
@@ -32,6 +33,8 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 import Dom.Scroll as Scroll
 import Html.Lazy exposing (lazy)
+import Bootstrap.Dropdown as Dropdown
+import Bootstrap.Button as Button
 
 
 -- MODEL
@@ -74,12 +77,14 @@ type alias Log =
 type alias LogStep =
     { step : Step
     , streams : Dict BuildStreamId LogStepStream
+    , filterDropdown : Dropdown.State
     }
 
 
 type alias LogStepStream =
     { buildStream : BuildStream
     , lines : Dict LineNumber LogStepStreamLine
+    , visible : Bool
     }
 
 
@@ -124,6 +129,7 @@ insertStream ( { buildStream, lines }, step ) dict =
         outputStream =
             { buildStream = buildStream
             , lines = lines
+            , visible = True
             }
 
         logStepDictKey =
@@ -138,7 +144,10 @@ insertStream ( { buildStream, lines }, step ) dict =
                     { exists | streams = Dict.insert streamDictKey outputStream exists.streams }
 
                 Nothing ->
-                    { step = step, streams = Dict.singleton streamDictKey outputStream }
+                    { step = step
+                    , streams = Dict.singleton streamDictKey outputStream
+                    , filterDropdown = Dropdown.initialState
+                    }
     in
         Dict.insert logStepDictKey insert dict
 
@@ -181,8 +190,16 @@ resolveLogStepStream context maybeAuthToken step =
                 (\buildStream ->
                     buildStream.id
                         |> Request.Build.streamOutput context maybeAuthToken
-                        |> Task.map (\lines -> ( { buildStream = buildStream, lines = linesArrayToDict lines }, step ))
+                        |> Task.map (\lines -> ( logStepStream buildStream lines, step ))
                 )
+
+
+logStepStream : BuildStream -> Array BuildStreamOutput -> LogStepStream
+logStepStream buildStream lines =
+    { buildStream = buildStream
+    , lines = linesArrayToDict lines
+    , visible = True
+    }
 
 
 
@@ -190,8 +207,11 @@ resolveLogStepStream context maybeAuthToken step =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    scrolledToBottom
+subscriptions model =
+    Sub.batch
+        [ scrolledToBottom
+        , filterSubscriptions model.log
+        ]
 
 
 scrolledToBottom : Sub Msg
@@ -201,6 +221,25 @@ scrolledToBottom =
         >> Maybe.withDefault False
         |> Ports.onScrolledToBottom
         |> Sub.map ScrolledToBottom
+
+
+filterSubscriptions : Log -> Sub Msg
+filterSubscriptions log =
+    log
+        |> Dict.values
+        |> List.map logStepSubscriptions
+        |> Sub.batch
+
+
+logStepSubscriptions : LogStep -> Sub Msg
+logStepSubscriptions logStep =
+    let
+        ( _, buildStep ) =
+            logStep.step
+    in
+        buildStep.id
+            |> ToggleStepFilterDropdown
+            |> Dropdown.subscriptions logStep.filterDropdown
 
 
 
@@ -244,6 +283,8 @@ leaveChannels model =
 type Msg
     = AddStreamOutput BuildStepId BuildStream Encode.Value
     | ScrolledToBottom Bool
+    | ToggleStepFilterDropdown BuildStep.Id Dropdown.State
+    | ToggleStreamVisibility BuildStep.Id BuildStream.Id
     | NoOp
 
 
@@ -273,6 +314,14 @@ update msg model =
             { model | autoScrollMessages = isScrolled }
                 => Cmd.none
 
+        ToggleStepFilterDropdown buildStepId state ->
+            { model | log = updateLogStepDropdown buildStepId state model.log }
+                => Cmd.none
+
+        ToggleStreamVisibility buildStepId buildStreamId ->
+            { model | log = toggleLogVisibility buildStepId buildStreamId model.log }
+                => Cmd.none
+
         NoOp ->
             model => Cmd.none
 
@@ -282,6 +331,45 @@ decodeBuildStreamOutput outputValue =
     outputValue
         |> Decode.decodeValue BuildStream.outputDecoder
         |> Result.toMaybe
+
+
+updateLogStepDropdown : BuildStep.Id -> Dropdown.State -> Log -> Log
+updateLogStepDropdown buildStepId state log =
+    let
+        targetKey =
+            BuildStep.idToString buildStepId
+
+        updateDropdown currentKey step =
+            if currentKey == targetKey then
+                { step | filterDropdown = state }
+            else
+                { step | filterDropdown = Dropdown.initialState }
+    in
+        Dict.map updateDropdown log
+
+
+toggleLogVisibility : BuildStep.Id -> BuildStream.Id -> Log -> Log
+toggleLogVisibility buildStepId buildStreamId log =
+    let
+        dictKey =
+            BuildStep.idToString buildStepId
+
+        updateStep =
+            Maybe.map (toggleLogStepVisibility buildStreamId)
+    in
+        Dict.update dictKey updateStep log
+
+
+toggleLogStepVisibility : BuildStream.Id -> LogStep -> LogStep
+toggleLogStepVisibility buildStreamId logStep =
+    let
+        dictKey =
+            BuildStream.idToString buildStreamId
+
+        updateStream =
+            Maybe.map (\stream -> { stream | visible = not stream.visible })
+    in
+        { logStep | streams = Dict.update dictKey updateStream logStep.streams }
 
 
 updateLog : ( BuildStepId, BuildStreamId, BuildStreamOutput ) -> Log -> Log
@@ -358,26 +446,76 @@ viewStepContainer build ( stepId, logStep ) =
             build.steps
                 |> List.filter (\s -> s.id == buildStep.id)
                 |> List.head
+
+        streamFilter =
+            Util.viewIf ((Dict.size logStep.streams) > 1) (viewStepStreamFilter logStep)
     in
         case buildStep_ of
             Just step ->
                 div
-                    [ class "mt-3 build-info-container border-secondary"
-                    , classList (buildStepBorderColourClassList step)
+                    [ class "my-4 build-info-container"
+                    , class (viewBuildStepBorderClass step)
                     ]
                     [ h5
-                        [ class "d-flex justify-content-between"
+                        [ class "pl-2 pt-1 d-flex justify-content-between"
                         , classList (headerBackgroundColourClassList step)
                         ]
                         [ text (viewCardTitle taskStep)
                         , text " "
-                        , viewBuildStepStatusIcon step
+                        , streamFilter
+                          --                        , viewBuildStepStatusIcon step
                         ]
                     , div [ class "p-0 small" ] [ lazy viewStepLog logStep ]
                     ]
 
             Nothing ->
                 text ""
+
+
+viewStepStreamFilter : LogStep -> Html Msg
+viewStepStreamFilter logStep =
+    let
+        ( _, buildStep ) =
+            logStep.step
+
+        headerItem =
+            Dropdown.header [ text "Streams" ]
+
+        streamItems =
+            logStep.streams
+                |> Dict.values
+                |> List.map (viewStepStreamFilterItem logStep)
+    in
+        Dropdown.dropdown
+            logStep.filterDropdown
+            { options =
+                [ Dropdown.dropLeft
+                , Dropdown.menuAttrs [ class "item-filter-dropdown" ]
+                ]
+            , toggleMsg = ToggleStepFilterDropdown buildStep.id
+            , toggleButton =
+                Dropdown.toggle [ Button.light, Button.small ] [ text "Filter" ]
+            , items = headerItem :: streamItems
+            }
+
+
+viewStepStreamFilterItem : LogStep -> LogStepStream -> Dropdown.DropdownItem Msg
+viewStepStreamFilterItem logStep logStepStream =
+    let
+        ( _, buildStep ) =
+            logStep.step
+
+        msg =
+            ToggleStreamVisibility buildStep.id logStepStream.buildStream.id
+    in
+        Dropdown.buttonItem [ onClick msg ]
+            [ i
+                [ class "fa"
+                , classList [ "fa-check" => logStepStream.visible ]
+                ]
+                []
+            , text (logStepStream.buildStream.name)
+            ]
 
 
 viewStepLog : LogStep -> Html Msg
@@ -390,15 +528,18 @@ viewStepLogTable step =
     step
         |> flattenStepLines
         |> List.map viewLine
-        |> table [ class "table table-sm table-hover mb-0" ]
+        |> table [ class "table table-unbordered table-sm table-hover mb-0" ]
 
 
 viewLine : ViewStepLine -> Html Msg
 viewLine { timestamp, streamName, ansi, streamIndex } =
     tr [ class "d-flex" ]
-        [ td [ class "col-1" ] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
-        , td [ class "col-1" ] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
-        , td [ class "col-10" ] [ viewLineAnsi ansi.lines ]
+        [ td [ class "col-1" ]
+            [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
+        , td [ class "col-1" ]
+            [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
+        , td [ class "col-10" ]
+            [ viewLineAnsi ansi.lines ]
         ]
 
 
@@ -419,6 +560,7 @@ flattenStepLines logStep =
     logStep
         |> .streams
         |> Dict.toList
+        |> List.filter (Tuple.second >> .visible)
         |> List.indexedMap mapStream
         |> List.foldl (++) []
         |> List.sortWith sortLines

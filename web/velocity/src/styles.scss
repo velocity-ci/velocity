@@ -59,6 +59,14 @@ $fa-font-path: "~font-awesome/fonts";
   }
 }
 
+.table-unbordered {
+  tr {
+    td {
+      border: 0;
+    }
+  }
+}
+
 /*
  * Base structure
  */

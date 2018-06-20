@@ -314,7 +314,7 @@ pagination activePage total project maybeBranch =
         if totalPages > 1 then
             List.range 1 totalPages
                 |> List.map (\page -> pageLink page (page == activePage) project maybeBranch)
-                |> ul [ class "pagination" ]
+                |> ul [ class "pagination mt-3" ]
         else
             Html.text ""
 
