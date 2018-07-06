@@ -398,20 +398,14 @@ viewBreadcrumb project additionalElements items =
 
 viewBreadcrumbItem : Bool -> ( Route, String ) -> Html Msg
 viewBreadcrumbItem active ( route, name ) =
-    let
-        children =
-            if active then
-                text name
-            else
-                a [ Route.href route, class "text-secondary" ] [ text name ]
-    in
+    Util.viewIf (not active) <|
         li
             [ Route.href route
             , onClickPage NewUrl route
             , class "breadcrumb-item"
             , classList [ ( "active", active ) ]
             ]
-            [ children ]
+            [ a [ Route.href route, class "text-secondary" ] [ text name ] ]
 
 
 

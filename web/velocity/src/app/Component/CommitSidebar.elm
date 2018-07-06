@@ -33,7 +33,7 @@ type alias Context =
     , builds : List Build
     , commit : Commit
     , tasks : List Task
-    , selected : Maybe Task
+    , selected : Maybe Task.Name
     }
 
 
@@ -172,11 +172,11 @@ latestTaskBuild { builds } task =
 
 {-| Determine if a task is currently selected
 -}
-isSelected : Maybe Task -> Task -> Bool
-isSelected maybeTask task =
-    case maybeTask of
+isSelected : Maybe Task.Name -> Task -> Bool
+isSelected maybeTaskName task =
+    case maybeTaskName of
         Just selected ->
-            selected.id == task.id
+            selected == task.name
 
         Nothing ->
             False

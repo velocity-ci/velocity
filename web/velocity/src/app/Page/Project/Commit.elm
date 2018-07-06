@@ -44,7 +44,7 @@ type SubPage
 
 type SubPageState
     = Loaded SubPage
-    | TransitioningFrom SubPage
+    | TransitioningFrom SubPage (Maybe CommitRoute.Route)
 
 
 
@@ -211,11 +211,19 @@ sidebarContext project model =
     }
 
 
-selectedTask : Model -> Maybe ProjectTask.Task
+selectedTask : Model -> Maybe ProjectTask.Name
 selectedTask model =
     case (model.subPageState) of
         Loaded (CommitTask subModel) ->
-            Just subModel.task
+            Just subModel.task.name
+
+        TransitioningFrom _ fromRoute ->
+            case fromRoute of
+                Just (CommitRoute.Task taskName _) ->
+                    Just taskName
+
+                _ ->
+                    Nothing
 
         _ ->
             Nothing
@@ -228,12 +236,12 @@ sidebarConfig =
 
 viewSubPage : Project -> Model -> Html Msg
 viewSubPage project model =
-    case getSubPage model.subPageState of
-        Overview _ ->
+    case model.subPageState of
+        Loaded (Overview _) ->
             Overview.view project model.commit model.tasks model.builds
                 |> frame project model OverviewMsg
 
-        CommitTask subModel ->
+        Loaded (CommitTask subModel) ->
             taskBuilds model.builds (Just subModel.task)
                 |> CommitTask.view project model.commit subModel
                 |> frame project model CommitTaskMsg
@@ -313,7 +321,7 @@ getSubPage subPageState =
         Loaded subPage ->
             subPage
 
-        TransitioningFrom subPage ->
+        TransitioningFrom subPage _ ->
             subPage
 
 
@@ -344,7 +352,7 @@ setRoute : Context -> Session msg -> Project -> Maybe CommitRoute.Route -> Model
 setRoute context session project maybeRoute model =
     let
         transition toMsg task =
-            { model | subPageState = TransitioningFrom (getSubPage model.subPageState) }
+            { model | subPageState = TransitioningFrom (getSubPage model.subPageState) maybeRoute }
                 => Task.attempt toMsg task
 
         errored =

@@ -252,11 +252,17 @@ view : Project -> Commit -> Model -> List Build -> Html Msg
 view project commit model builds =
     div [ class "row" ]
         [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
-            [ viewToolbar model builds
+            [ viewTaskHeading model.task
+            , viewToolbar model builds
             , viewTabFrame model builds commit
             , viewFormModal model.task model.form model.formModalVisibility
             ]
         ]
+
+
+viewTaskHeading : ProjectTask.Task -> Html Msg
+viewTaskHeading task =
+    h2 [ class "mb-5" ] [ text ("Task " ++ (ProjectTask.nameToString task.name)) ]
 
 
 viewFormModal : ProjectTask.Task -> BuildForm.Context -> Modal.Visibility -> Html Msg
@@ -333,7 +339,7 @@ viewTabFrame model builds commit =
                 BuildFrame (LoadedBuild buildId buildOutputModel) ->
                     case findBuild buildId of
                         Just build ->
-                            BuildLog.view build buildOutputModel
+                            BuildLog.view build model.task buildOutputModel
                                 |> Html.map BuildLogMsg
 
                         Nothing ->

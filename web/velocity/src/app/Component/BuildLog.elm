@@ -6,17 +6,21 @@ module Component.BuildLog exposing (..)
 -- INTERNAL
 
 import Context exposing (Context)
+import Component.BuildTimeline
 import Data.Build as Build exposing (Build)
+import Data.BuildOutput as BuildOutput exposing (..)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
 import Data.AuthToken as AuthToken exposing (AuthToken)
-import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
+import Data.Task as ProjectTask
 import Request.Build
 import Request.Errors
 import Util exposing ((=>))
 import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
 import Views.Build exposing (..)
+import Views.Task
 import Ports
+import Component.BuildTimeline as BuildTimeline
 
 
 -- EXTERNAL
@@ -43,17 +47,13 @@ import Bootstrap.Modal as Modal
 
 type alias Model =
     { log : Log
-    , stepInfoModalVisibility : Modal.Visibility
+    , stepInfoModal : StepInfoModal
     , autoScrollMessages : Bool
     }
 
 
-type alias TaskStep =
-    ProjectTask.Step
-
-
-type alias Step =
-    ( TaskStep, BuildStep )
+type alias StepInfoModal =
+    ( Modal.Visibility, Maybe ProjectTask.Step )
 
 
 type alias BuildStepId =
@@ -107,7 +107,7 @@ init context task maybeAuthToken build =
 initialModel : Log -> Model
 initialModel log =
     { log = log
-    , stepInfoModalVisibility = Modal.hidden
+    , stepInfoModal = ( Modal.hidden, Nothing )
     , autoScrollMessages = True
     }
 
@@ -174,15 +174,6 @@ outputToLogLine buildStreamOutput =
         }
 
 
-joinSteps : ProjectTask.Task -> BuildStep -> Maybe Step
-joinSteps task buildStep =
-    task
-        |> .steps
-        |> Array.fromList
-        |> Array.get buildStep.number
-        |> Maybe.map (\taskStep -> ( taskStep, buildStep ))
-
-
 resolveLogStepStream : Context -> Maybe AuthToken -> Step -> List (Task Request.Errors.HttpError ( LogStepStream, Step ))
 resolveLogStepStream context maybeAuthToken step =
     let
@@ -216,7 +207,7 @@ subscriptions model =
     Sub.batch
         [ scrolledToBottom
         , filterSubscriptions model.log
-        , modalSubscriptions model.stepInfoModalVisibility
+        , modalSubscriptions (Tuple.first model.stepInfoModal)
         ]
 
 
@@ -342,16 +333,24 @@ update msg model =
                 => Cmd.none
 
         CloseStepInfoModal ->
-            { model | stepInfoModalVisibility = Modal.hidden }
+            { model | stepInfoModal = ( Modal.hidden, Nothing ) }
                 => Cmd.none
 
         AnimateStepInfoModal visibility ->
-            { model | stepInfoModalVisibility = visibility }
-                => Cmd.none
+            let
+                ( _, maybeStep ) =
+                    model.stepInfoModal
+            in
+                { model | stepInfoModal = ( visibility, maybeStep ) }
+                    => Cmd.none
 
         OpenStepInfoModal logStep ->
-            { model | stepInfoModalVisibility = Modal.shown }
-                => Cmd.none
+            let
+                ( taskStep, _ ) =
+                    logStep.step
+            in
+                { model | stepInfoModal = ( Modal.shown, Just taskStep ) }
+                    => Cmd.none
 
         NoOp ->
             model => Cmd.none
@@ -476,20 +475,28 @@ type alias ViewStepLine =
     }
 
 
-view : Build -> Model -> Html Msg
-view build { log, stepInfoModalVisibility } =
+view : Build -> ProjectTask.Task -> Model -> Html Msg
+view build task model =
     let
         stepOutput =
-            log
+            model.log
                 |> Dict.toList
                 |> List.sortBy (\( _, { step } ) -> step |> Tuple.second |> .number)
                 |> List.map (viewStepContainer build)
     in
         div []
-            [ viewBuildInformation build
+            [ viewTimeline build task
             , div [] stepOutput
-            , viewStepInfoModal stepInfoModalVisibility
+            , viewStepInfoModal model.stepInfoModal
             ]
+
+
+viewTimeline : Build -> ProjectTask.Task -> Html Msg
+viewTimeline build task =
+    build
+        |> .steps
+        |> BuildTimeline.points task
+        |> BuildTimeline.line
 
 
 viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Html Msg
@@ -554,22 +561,27 @@ viewStepInfoButton logStep =
         [ text "Info" ]
 
 
-viewStepInfoModal : Modal.Visibility -> Html Msg
-viewStepInfoModal visibility =
-    Modal.config CloseStepInfoModal
-        |> Modal.small
-        |> Modal.withAnimation AnimateStepInfoModal
-        |> Modal.hideOnBackdropClick True
-        |> Modal.h3 [] [ text "Modal header" ]
-        |> Modal.body [] [ p [] [ text "This is a modal for you !" ] ]
-        |> Modal.footer []
-            [ Button.button
-                [ Button.outlinePrimary
-                , Button.attrs [ onClick CloseStepInfoModal ]
-                ]
-                [ text "Close" ]
-            ]
-        |> Modal.view visibility
+viewStepInfoModal : StepInfoModal -> Html Msg
+viewStepInfoModal ( visibility, maybeStep ) =
+    case maybeStep of
+        Just taskStep ->
+            Modal.config CloseStepInfoModal
+                |> Modal.large
+                |> Modal.withAnimation AnimateStepInfoModal
+                |> Modal.hideOnBackdropClick True
+                |> Modal.h3 [] [ text "Modal header" ]
+                |> Modal.body [] [ Views.Task.viewStepContents taskStep ]
+                |> Modal.footer []
+                    [ Button.button
+                        [ Button.outlinePrimary
+                        , Button.attrs [ onClick CloseStepInfoModal ]
+                        ]
+                        [ text "Close" ]
+                    ]
+                |> Modal.view visibility
+
+        Nothing ->
+            text ""
 
 
 viewStepCollapseToggle : LogStep -> Html Msg

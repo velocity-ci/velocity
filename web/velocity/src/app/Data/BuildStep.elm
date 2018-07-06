@@ -9,6 +9,7 @@ import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, req
 import UrlParser
 import Data.Helpers exposing (stringToDateTime)
 import Time.DateTime as DateTime exposing (DateTime)
+import Data.Helpers exposing (stringToDateTime)
 
 
 type alias BuildStep =
@@ -16,6 +17,8 @@ type alias BuildStep =
     , status : Status
     , number : Int
     , streams : List BuildStream
+    , startedAt : Maybe DateTime
+    , updatedAt : Maybe DateTime
     }
 
 
@@ -30,6 +33,8 @@ decoder =
         |> required "status" statusDecoder
         |> required "number" Decode.int
         |> required "streams" (Decode.list BuildStream.decoder)
+        |> required "startedAt" (Decode.maybe stringToDateTime)
+        |> required "updatedAt" (Decode.maybe stringToDateTime)
 
 
 statusDecoder : Decoder Status

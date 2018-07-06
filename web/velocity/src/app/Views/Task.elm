@@ -6,38 +6,35 @@ import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, ComposeStep, PushStep, Step(..), Parameter(..))
 
 
-viewComposeStep : ComposeStep -> Bool -> Html msg
-viewComposeStep step toggled =
+viewComposeStep : ComposeStep -> Html msg
+viewComposeStep step =
     let
         title =
             "Compose" ++ step.description
     in
-        viewStepCollapse (Compose step) title toggled <|
-            []
+        div [] []
 
 
-viewPushStep : PushStep -> Bool -> Html msg
-viewPushStep step toggled =
+viewPushStep : PushStep -> Html msg
+viewPushStep step =
     let
         title =
             "Push" ++ step.description
     in
-        viewStepCollapse (Push step) title toggled <|
-            []
+        div [] []
 
 
-viewCloneStep : CloneStep -> Bool -> Html msg
-viewCloneStep step toggled =
+viewCloneStep : CloneStep -> Html msg
+viewCloneStep step =
     let
         title =
             "Clone" ++ step.description
     in
-        viewStepCollapse (Clone step) title toggled <|
-            []
+        div [] []
 
 
-viewBuildStep : BuildStep -> Bool -> Html msg
-viewBuildStep step toggled =
+viewBuildStep : BuildStep -> Html msg
+viewBuildStep step =
     let
         tagList =
             List.map (\t -> li [] [ text t ]) step.tags
@@ -60,16 +57,14 @@ viewBuildStep step toggled =
         title =
             "Build" ++ step.description
     in
-        viewStepCollapse (ProjectTask.Build step) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ rightDl ]
-                ]
+        div [ class "row" ]
+            [ div [ class "col-md-6" ] [ leftDl ]
+            , div [ class "col-md-6" ] [ rightDl ]
             ]
 
 
-viewRunStep : Int -> RunStep -> Bool -> Html msg
-viewRunStep i runStep toggled =
+viewRunStep : RunStep -> Html msg
+viewRunStep runStep =
     let
         command =
             String.join " " runStep.command
@@ -108,38 +103,28 @@ viewRunStep i runStep toggled =
                 ]
 
         title =
-            toString i ++ ". " ++ runStep.description
+            runStep.description
     in
-        viewStepCollapse (Run runStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ envTable ]
-                ]
+        div [ class "row" ]
+            [ div [ class "col-md-6" ] [ leftDl ]
+            , div [ class "col-md-6" ] [ envTable ]
             ]
 
 
-viewStepCollapse : Step -> String -> Bool -> List (Html msg) -> Html msg
-viewStepCollapse step title toggled contents =
-    let
-        caretClassList =
-            [ ( "fa-caret-square-o-down", toggled )
-            , ( "fa-caret-square-o-up", not toggled )
-            ]
-    in
-        div [ class "card" ]
-            [ div [ class "card-header collapse-header d-flex justify-content-between align-items-center" ]
-                [ h5 [ class "mb-0" ] [ text title ]
-                , button
-                    [ type_ "button"
-                    , class "btn"
-                    ]
-                    [ i [ class "fa", classList caretClassList ] []
-                    ]
-                ]
-            , div
-                [ class "collapse"
-                , classList [ ( "show", toggled ) ]
-                ]
-                [ div [ class "card-body" ] contents
-                ]
-            ]
+viewStepContents : Step -> Html msg
+viewStepContents step =
+    case step of
+        Compose composeStep ->
+            viewComposeStep composeStep
+
+        Push pushStep ->
+            viewPushStep pushStep
+
+        Clone cloneStep ->
+            viewCloneStep cloneStep
+
+        Build buildStep ->
+            viewBuildStep buildStep
+
+        Run runStep ->
+            viewRunStep runStep
