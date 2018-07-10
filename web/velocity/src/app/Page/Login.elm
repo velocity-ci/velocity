@@ -69,15 +69,11 @@ initialModel =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    div [ class "container-fluid" ]
-        [ div [ class "row justify-content-md-center default-margin-top" ]
-            [ div [ class "col col-md-6" ]
-                [ div [ class "card" ]
-                    [ div [ class "card-body" ]
-                        [ viewGlobalError model.globalError
-                        , viewForm model
-                        ]
-                    ]
+    div [ class "d-flex justify-content-center", style [ "height" => "100vh" ] ]
+        [ div [ class "card col-6 align-self-center" ]
+            [ div [ class "card-body" ]
+                [ viewGlobalError model.globalError
+                , viewForm model
                 ]
             ]
         ]

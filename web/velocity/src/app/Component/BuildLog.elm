@@ -6,23 +6,28 @@ module Component.BuildLog exposing (..)
 -- INTERNAL
 
 import Context exposing (Context)
+import Component.BuildTimeline
 import Data.Build as Build exposing (Build)
+import Data.BuildOutput as BuildOutput exposing (..)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
 import Data.AuthToken as AuthToken exposing (AuthToken)
-import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
+import Data.Task as ProjectTask
 import Request.Build
 import Request.Errors
 import Util exposing ((=>))
 import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
 import Views.Build exposing (..)
+import Views.Task
 import Ports
+import Component.BuildTimeline as BuildTimeline
 
 
 -- EXTERNAL
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onWithOptions)
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Task exposing (Task)
@@ -32,6 +37,9 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 import Dom.Scroll as Scroll
 import Html.Lazy exposing (lazy)
+import Bootstrap.Dropdown as Dropdown
+import Bootstrap.Button as Button
+import Bootstrap.Modal as Modal
 
 
 -- MODEL
@@ -39,16 +47,13 @@ import Html.Lazy exposing (lazy)
 
 type alias Model =
     { log : Log
+    , stepInfoModal : StepInfoModal
     , autoScrollMessages : Bool
     }
 
 
-type alias TaskStep =
-    ProjectTask.Step
-
-
-type alias Step =
-    ( TaskStep, BuildStep )
+type alias StepInfoModal =
+    ( Modal.Visibility, Maybe ProjectTask.Step )
 
 
 type alias BuildStepId =
@@ -74,12 +79,15 @@ type alias Log =
 type alias LogStep =
     { step : Step
     , streams : Dict BuildStreamId LogStepStream
+    , filterDropdown : Dropdown.State
+    , collapsed : Bool
     }
 
 
 type alias LogStepStream =
     { buildStream : BuildStream
     , lines : Dict LineNumber LogStepStreamLine
+    , visible : Bool
     }
 
 
@@ -99,6 +107,7 @@ init context task maybeAuthToken build =
 initialModel : Log -> Model
 initialModel log =
     { log = log
+    , stepInfoModal = ( Modal.hidden, Nothing )
     , autoScrollMessages = True
     }
 
@@ -124,6 +133,7 @@ insertStream ( { buildStream, lines }, step ) dict =
         outputStream =
             { buildStream = buildStream
             , lines = lines
+            , visible = True
             }
 
         logStepDictKey =
@@ -138,7 +148,11 @@ insertStream ( { buildStream, lines }, step ) dict =
                     { exists | streams = Dict.insert streamDictKey outputStream exists.streams }
 
                 Nothing ->
-                    { step = step, streams = Dict.singleton streamDictKey outputStream }
+                    { step = step
+                    , streams = Dict.singleton streamDictKey outputStream
+                    , filterDropdown = Dropdown.initialState
+                    , collapsed = False
+                    }
     in
         Dict.insert logStepDictKey insert dict
 
@@ -160,15 +174,6 @@ outputToLogLine buildStreamOutput =
         }
 
 
-joinSteps : ProjectTask.Task -> BuildStep -> Maybe Step
-joinSteps task buildStep =
-    task
-        |> .steps
-        |> Array.fromList
-        |> Array.get buildStep.number
-        |> Maybe.map (\taskStep -> ( taskStep, buildStep ))
-
-
 resolveLogStepStream : Context -> Maybe AuthToken -> Step -> List (Task Request.Errors.HttpError ( LogStepStream, Step ))
 resolveLogStepStream context maybeAuthToken step =
     let
@@ -181,8 +186,16 @@ resolveLogStepStream context maybeAuthToken step =
                 (\buildStream ->
                     buildStream.id
                         |> Request.Build.streamOutput context maybeAuthToken
-                        |> Task.map (\lines -> ( { buildStream = buildStream, lines = linesArrayToDict lines }, step ))
+                        |> Task.map (\lines -> ( logStepStream buildStream lines, step ))
                 )
+
+
+logStepStream : BuildStream -> Array BuildStreamOutput -> LogStepStream
+logStepStream buildStream lines =
+    { buildStream = buildStream
+    , lines = linesArrayToDict lines
+    , visible = True
+    }
 
 
 
@@ -190,8 +203,17 @@ resolveLogStepStream context maybeAuthToken step =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    scrolledToBottom
+subscriptions model =
+    Sub.batch
+        [ scrolledToBottom
+        , filterSubscriptions model.log
+        , modalSubscriptions (Tuple.first model.stepInfoModal)
+        ]
+
+
+modalSubscriptions : Modal.Visibility -> Sub Msg
+modalSubscriptions visibility =
+    Modal.subscriptions visibility AnimateStepInfoModal
 
 
 scrolledToBottom : Sub Msg
@@ -201,6 +223,25 @@ scrolledToBottom =
         >> Maybe.withDefault False
         |> Ports.onScrolledToBottom
         |> Sub.map ScrolledToBottom
+
+
+filterSubscriptions : Log -> Sub Msg
+filterSubscriptions log =
+    log
+        |> Dict.values
+        |> List.map logStepSubscriptions
+        |> Sub.batch
+
+
+logStepSubscriptions : LogStep -> Sub Msg
+logStepSubscriptions logStep =
+    let
+        ( _, buildStep ) =
+            logStep.step
+    in
+        buildStep.id
+            |> ToggleStepFilterDropdown
+            |> Dropdown.subscriptions logStep.filterDropdown
 
 
 
@@ -244,6 +285,12 @@ leaveChannels model =
 type Msg
     = AddStreamOutput BuildStepId BuildStream Encode.Value
     | ScrolledToBottom Bool
+    | ToggleStepFilterDropdown BuildStep.Id Dropdown.State
+    | ToggleStepCollapse BuildStep.Id
+    | ToggleStreamVisibility BuildStep.Id BuildStream.Id
+    | CloseStepInfoModal
+    | AnimateStepInfoModal Modal.Visibility
+    | OpenStepInfoModal LogStep
     | NoOp
 
 
@@ -260,21 +307,65 @@ update msg model =
                         Nothing ->
                             model.log
 
-                scrollCmd =
+                scrollCmds =
                     if model.autoScrollMessages then
-                        Task.attempt (always NoOp) (Scroll.toBottom "scroll-id")
+                        scrollToBottom
                     else
-                        Cmd.none
+                        []
             in
                 { model | log = log }
-                    => scrollCmd
+                    ! scrollCmds
 
         ScrolledToBottom isScrolled ->
             { model | autoScrollMessages = isScrolled }
                 => Cmd.none
 
+        ToggleStepFilterDropdown buildStepId state ->
+            { model | log = updateLogStepDropdown buildStepId state model.log }
+                => Cmd.none
+
+        ToggleStreamVisibility buildStepId buildStreamId ->
+            { model | log = toggleLogVisibility buildStepId buildStreamId model.log }
+                => Cmd.none
+
+        ToggleStepCollapse buildStepId ->
+            { model | log = toggleStepCollapse buildStepId model.log }
+                => Cmd.none
+
+        CloseStepInfoModal ->
+            { model | stepInfoModal = ( Modal.hidden, Nothing ) }
+                => Cmd.none
+
+        AnimateStepInfoModal visibility ->
+            let
+                ( _, maybeStep ) =
+                    model.stepInfoModal
+            in
+                { model | stepInfoModal = ( visibility, maybeStep ) }
+                    => Cmd.none
+
+        OpenStepInfoModal logStep ->
+            let
+                ( taskStep, _ ) =
+                    logStep.step
+            in
+                { model | stepInfoModal = ( Modal.shown, Just taskStep ) }
+                    => Cmd.none
+
         NoOp ->
             model => Cmd.none
+
+
+scrollToBottom : List (Cmd Msg)
+scrollToBottom =
+    [ scrollTo "scroll-html-id"
+    , scrollTo "scroll-body-id"
+    ]
+
+
+scrollTo : String -> Cmd Msg
+scrollTo id =
+    Task.attempt (always NoOp) (Scroll.toBottom id)
 
 
 decodeBuildStreamOutput : Encode.Value -> Maybe BuildStreamOutput
@@ -282,6 +373,54 @@ decodeBuildStreamOutput outputValue =
     outputValue
         |> Decode.decodeValue BuildStream.outputDecoder
         |> Result.toMaybe
+
+
+updateLogStepDropdown : BuildStep.Id -> Dropdown.State -> Log -> Log
+updateLogStepDropdown buildStepId state log =
+    let
+        targetKey =
+            BuildStep.idToString buildStepId
+
+        updateDropdown currentKey step =
+            if currentKey == targetKey then
+                { step | filterDropdown = state }
+            else
+                { step | filterDropdown = Dropdown.initialState }
+    in
+        Dict.map updateDropdown log
+
+
+toggleStepCollapse : BuildStep.Id -> Log -> Log
+toggleStepCollapse buildStepId log =
+    let
+        dictKey =
+            BuildStep.idToString buildStepId
+    in
+        Dict.update dictKey (Maybe.map (\step -> { step | collapsed = not step.collapsed })) log
+
+
+toggleLogVisibility : BuildStep.Id -> BuildStream.Id -> Log -> Log
+toggleLogVisibility buildStepId buildStreamId log =
+    let
+        dictKey =
+            BuildStep.idToString buildStepId
+
+        updateStep =
+            Maybe.map (toggleLogStepVisibility buildStreamId)
+    in
+        Dict.update dictKey updateStep log
+
+
+toggleLogStepVisibility : BuildStream.Id -> LogStep -> LogStep
+toggleLogStepVisibility buildStreamId logStep =
+    let
+        dictKey =
+            BuildStream.idToString buildStreamId
+
+        updateStream =
+            Maybe.map (\stream -> { stream | visible = not stream.visible })
+    in
+        { logStep | streams = Dict.update dictKey updateStream logStep.streams }
 
 
 updateLog : ( BuildStepId, BuildStreamId, BuildStreamOutput ) -> Log -> Log
@@ -336,16 +475,27 @@ type alias ViewStepLine =
     }
 
 
-view : Build -> Model -> Html Msg
-view build { log } =
+view : Build -> ProjectTask.Task -> Model -> Html Msg
+view build task model =
     let
-        ansiOutput =
-            log
+        stepOutput =
+            model.log
                 |> Dict.toList
                 |> List.sortBy (\( _, { step } ) -> step |> Tuple.second |> .number)
                 |> List.map (viewStepContainer build)
     in
-        div [] ansiOutput
+        div []
+            [ div [ class "mb-4" ] [ viewTimeline build task ]
+            , div [] stepOutput
+            , viewStepInfoModal model.stepInfoModal
+            ]
+
+
+viewTimeline : Build -> ProjectTask.Task -> Html Msg
+viewTimeline build task =
+    task
+        |> BuildTimeline.points build
+        |> BuildTimeline.view
 
 
 viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Html Msg
@@ -362,18 +512,17 @@ viewStepContainer build ( stepId, logStep ) =
         case buildStep_ of
             Just step ->
                 div
-                    [ class "card mt-3 b-0"
-                    , classList (buildStepBorderColourClassList step)
+                    [ class "py-3 build-info-container"
+                    , class (viewBuildStepBorderClass step)
                     ]
                     [ h5
-                        [ class "card-header d-flex justify-content-between"
+                        [ class "px-2 d-flex justify-content-between"
                         , classList (headerBackgroundColourClassList step)
                         ]
-                        [ text (viewCardTitle taskStep)
-                        , text " "
-                        , viewBuildStepStatusIcon step
+                        [ text (ProjectTask.stepName taskStep)
+                        , viewStepButtonToolbar buildStep_ logStep
                         ]
-                    , div [ class "card-body p-0 small b-0" ]
+                    , div [ class "p-0 small" ]
                         [ lazy viewStepLog logStep ]
                     ]
 
@@ -381,20 +530,153 @@ viewStepContainer build ( stepId, logStep ) =
                 text ""
 
 
+viewStepButtonToolbar : Maybe BuildStep -> LogStep -> Html Msg
+viewStepButtonToolbar maybeBuildStep logStep =
+    let
+        showCollapseToggle =
+            maybeBuildStep
+                |> Maybe.map (\step -> step.status /= BuildStep.Waiting)
+                |> Maybe.withDefault False
+
+        showStreamFilter =
+            (Dict.size logStep.streams) > 1 && not logStep.collapsed
+    in
+        div []
+            [ Util.viewIf showStreamFilter (viewStepStreamFilter logStep)
+            , text " "
+            , viewStepInfoButton logStep
+            , text " "
+            , Util.viewIf showCollapseToggle (viewStepCollapseToggle logStep)
+            ]
+
+
+viewStepInfoButton : LogStep -> Html Msg
+viewStepInfoButton logStep =
+    Button.button
+        [ Button.small
+        , Button.light
+        , Button.onClick (OpenStepInfoModal logStep)
+        ]
+        [ text "Info" ]
+
+
+viewStepInfoModal : StepInfoModal -> Html Msg
+viewStepInfoModal ( visibility, maybeStep ) =
+    case maybeStep of
+        Just taskStep ->
+            Modal.config CloseStepInfoModal
+                |> Modal.large
+                |> Modal.withAnimation AnimateStepInfoModal
+                |> Modal.hideOnBackdropClick True
+                |> Modal.h3 [] [ text "Modal header" ]
+                |> Modal.body [] [ Views.Task.viewStepContents taskStep ]
+                |> Modal.footer []
+                    [ Button.button
+                        [ Button.outlinePrimary
+                        , Button.attrs [ onClick CloseStepInfoModal ]
+                        ]
+                        [ text "Close" ]
+                    ]
+                |> Modal.view visibility
+
+        Nothing ->
+            text ""
+
+
+viewStepCollapseToggle : LogStep -> Html Msg
+viewStepCollapseToggle logStep =
+    let
+        ( _, buildStep ) =
+            logStep.step
+
+        buttonText =
+            if logStep.collapsed then
+                "Show"
+            else
+                "Hide"
+    in
+        Button.button
+            [ Button.small
+            , Button.light
+            , Button.onClick (ToggleStepCollapse buildStep.id)
+            ]
+            [ text buttonText ]
+
+
+viewStepStreamFilter : LogStep -> Html Msg
+viewStepStreamFilter logStep =
+    let
+        ( _, buildStep ) =
+            logStep.step
+
+        headerItem =
+            Dropdown.header [ text "Streams" ]
+
+        streamItems =
+            logStep.streams
+                |> Dict.values
+                |> List.indexedMap (,)
+                |> List.sortBy (Tuple.second >> .buildStream >> .name)
+                |> List.map (viewStepStreamFilterItem logStep)
+    in
+        Dropdown.dropdown
+            logStep.filterDropdown
+            { options =
+                [ Dropdown.dropLeft
+                , Dropdown.menuAttrs [ class "item-filter-dropdown" ]
+                ]
+            , toggleMsg = ToggleStepFilterDropdown buildStep.id
+            , toggleButton =
+                Dropdown.toggle [ Button.light, Button.small ] [ text "Filter" ]
+            , items = headerItem :: streamItems
+            }
+
+
+viewStepStreamFilterItem : LogStep -> ( Int, LogStepStream ) -> Dropdown.DropdownItem Msg
+viewStepStreamFilterItem logStep ( streamIndex, logStepStream ) =
+    let
+        ( _, buildStep ) =
+            logStep.step
+
+        msg =
+            ToggleStreamVisibility buildStep.id logStepStream.buildStream.id
+    in
+        Dropdown.buttonItem [ onClickPreventDefault msg ]
+            [ i
+                [ class "fa"
+                , classList [ "fa-check" => logStepStream.visible ]
+                ]
+                []
+            , text " "
+            , span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text logStepStream.buildStream.name ]
+            ]
+
+
 viewStepLog : LogStep -> Html Msg
 viewStepLog step =
+    if step.collapsed then
+        text ""
+    else
+        div [ class "table-responsive" ] [ viewStepLogTable step ]
+
+
+viewStepLogTable : LogStep -> Html Msg
+viewStepLogTable step =
     step
         |> flattenStepLines
         |> List.map viewLine
-        |> table [ class "table-sm mb-0" ]
+        |> table [ class "table table-unbordered table-sm table-hover mb-0" ]
 
 
 viewLine : ViewStepLine -> Html Msg
 viewLine { timestamp, streamName, ansi, streamIndex } =
-    tr [ class "b-0" ]
-        [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
-        , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
-        , td [] [ viewLineAnsi ansi.lines ]
+    tr [ class "d-flex" ]
+        [ td [ class "col-1" ]
+            [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
+        , td [ class "col-1" ]
+            [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
+        , td [ class "col-10" ]
+            [ viewLineAnsi ansi.lines ]
         ]
 
 
@@ -404,6 +686,30 @@ viewLineAnsi lines =
         |> Array.get ((Array.length lines) - 2)
         |> Maybe.map Ansi.Log.viewLine
         |> Maybe.withDefault (text "")
+
+
+viewBuildInformation : Build -> Html Msg
+viewBuildInformation build =
+    let
+        dateText date =
+            date
+                |> Maybe.map formatDateTime
+                |> Maybe.withDefault "-"
+    in
+        div [ class "card mt-3", classList (buildCardClassList build) ]
+            [ div [ class "card-body" ]
+                [ dl [ class "row mb-0" ]
+                    [ dt [ class "col-sm-3" ] [ text "Created" ]
+                    , dd [ class "col-sm-9" ] [ text (formatDateTime build.createdAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Started" ]
+                    , dd [ class "col-sm-9" ] [ text (dateText build.startedAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Completed" ]
+                    , dd [ class "col-sm-9" ] [ text (dateText build.completedAt) ]
+                    , dt [ class "col-sm-3" ] [ text "Status" ]
+                    , dd [ class "col-sm-9" ] [ text (Build.statusToString build.status) ]
+                    ]
+                ]
+            ]
 
 
 
@@ -422,24 +728,27 @@ flattenStepLines logStep =
 
 mapStream : BuildStreamIndex -> ( BuildStreamId, LogStepStream ) -> List ViewStepLine
 mapStream streamIndex ( streamId, stream ) =
-    stream
-        |> .lines
-        |> Dict.values
-        |> List.filterMap
-            (\line ->
-                line.updates
-                    |> List.head
-                    |> Maybe.map
-                        (\lastUpdate ->
-                            { ansi = line.ansi
-                            , lineNumber = lastUpdate.line
-                            , streamIndex = streamIndex
-                            , streamId = streamId
-                            , streamName = stream.buildStream.name
-                            , timestamp = lastUpdate.timestamp
-                            }
-                        )
-            )
+    if stream.visible then
+        stream
+            |> .lines
+            |> Dict.values
+            |> List.filterMap
+                (\line ->
+                    line.updates
+                        |> List.head
+                        |> Maybe.map
+                            (\lastUpdate ->
+                                { ansi = line.ansi
+                                , lineNumber = lastUpdate.line
+                                , streamIndex = streamIndex
+                                , streamId = streamId
+                                , streamName = stream.buildStream.name
+                                , timestamp = lastUpdate.timestamp
+                                }
+                            )
+                )
+    else
+        []
 
 
 sortLines : ViewStepLine -> ViewStepLine -> Order
@@ -458,3 +767,13 @@ logStepKey buildStep =
 streamKey : BuildStream -> BuildStreamId
 streamKey buildStream =
     BuildStream.idToString buildStream.id
+
+
+onClickPreventDefault : msg -> Attribute msg
+onClickPreventDefault message =
+    onWithOptions
+        "click"
+        { stopPropagation = True
+        , preventDefault = False
+        }
+        (Decode.succeed message)
