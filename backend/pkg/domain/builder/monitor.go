@@ -3,6 +3,7 @@ package builder
 import (
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
@@ -36,16 +37,10 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		return
 	}
 
-<<<<<<< HEAD
 	step, err := m.stepManager.GetByID(sL.StepID)
 	if err != nil {
 		velocity.GetLogger().Error("could not get step", zap.String("streamID", sL.StepID), zap.Error(err))
 		return
-=======
-	if stream.Status != sL.Status {
-		stream.Status = sL.Status
-		m.streamManager.Update(stream)
->>>>>>> origin/master
 	}
 
 	m.streamManager.CreateStreamLine(stream,
