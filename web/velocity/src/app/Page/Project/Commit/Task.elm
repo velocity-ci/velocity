@@ -253,6 +253,7 @@ view project commit model builds =
     div [ class "row" ]
         [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
             [ viewTaskHeading model.task
+            , hr [] []
             , viewToolbar model builds
             , viewTabFrame model builds commit
             , viewFormModal model.task model.form model.formModalVisibility
@@ -262,7 +263,7 @@ view project commit model builds =
 
 viewTaskHeading : ProjectTask.Task -> Html Msg
 viewTaskHeading task =
-    h2 [ class "mb-5" ] [ text ("Task " ++ (ProjectTask.nameToString task.name)) ]
+    h2 [] [ text ("Task " ++ (ProjectTask.nameToString task.name)) ]
 
 
 viewFormModal : ProjectTask.Task -> BuildForm.Context -> Modal.Visibility -> Html Msg
@@ -310,10 +311,9 @@ viewToolbar model builds =
         newBuildButton =
             button
                 [ class "btn btn-primary btn-lg"
-                , style [ "border-radius" => "25px" ]
                 , onClick OpenFormModal
                 ]
-                [ i [ class "fa fa-plus" ] [] ]
+                [ text "Run task" ]
     in
         div [ class "btn-toolbar justify-content-between" ]
             [ buildsDropdown

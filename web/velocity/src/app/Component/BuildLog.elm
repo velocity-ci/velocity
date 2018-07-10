@@ -485,7 +485,7 @@ view build task model =
                 |> List.map (viewStepContainer build)
     in
         div []
-            [ viewTimeline build task
+            [ div [ class "mb-4" ] [ viewTimeline build task ]
             , div [] stepOutput
             , viewStepInfoModal model.stepInfoModal
             ]
@@ -493,10 +493,9 @@ view build task model =
 
 viewTimeline : Build -> ProjectTask.Task -> Html Msg
 viewTimeline build task =
-    build
-        |> .steps
-        |> BuildTimeline.points task
-        |> BuildTimeline.line
+    task
+        |> BuildTimeline.points build
+        |> BuildTimeline.view
 
 
 viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Html Msg
@@ -513,14 +512,14 @@ viewStepContainer build ( stepId, logStep ) =
         case buildStep_ of
             Just step ->
                 div
-                    [ class "my-4 build-info-container"
+                    [ class "py-3 build-info-container"
                     , class (viewBuildStepBorderClass step)
                     ]
                     [ h5
-                        [ class "pl-2 pt-1 d-flex justify-content-between"
+                        [ class "px-2 d-flex justify-content-between"
                         , classList (headerBackgroundColourClassList step)
                         ]
-                        [ text (viewCardTitle taskStep)
+                        [ text (ProjectTask.stepName taskStep)
                         , viewStepButtonToolbar buildStep_ logStep
                         ]
                     , div [ class "p-0 small" ]

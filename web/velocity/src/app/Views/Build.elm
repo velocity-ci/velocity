@@ -255,22 +255,3 @@ buildCardClassList { status } =
 
         _ ->
             []
-
-
-viewCardTitle : ProjectTask.Step -> String
-viewCardTitle taskStep =
-    case taskStep of
-        ProjectTask.Build _ ->
-            "Build"
-
-        ProjectTask.Run _ ->
-            "Run"
-
-        ProjectTask.Clone _ ->
-            "Clone"
-
-        ProjectTask.Compose _ ->
-            "Compose"
-
-        ProjectTask.Push _ ->
-            "Push"
