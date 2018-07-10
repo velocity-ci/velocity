@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
-	"github.com/golang/glog"
 )
 
 type StormStream struct {
@@ -21,7 +22,7 @@ type StormStream struct {
 func (s *StormStream) toStream(db *storm.DB) *Stream {
 	step, err := GetStepByID(db, s.StepID)
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("error", zap.Error(err))
 	}
 	return &Stream{
 		ID:     s.ID,
@@ -119,7 +120,7 @@ func (db *streamStormDB) getLinesByStream(s *Stream, pQ *domain.PagingQuery) (r 
 	query := db.Select(q.Eq("StreamID", s.ID))
 	t, err := query.Count(&StormStreamLine{})
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("error", zap.Error(err))
 		return r, t
 	}
 

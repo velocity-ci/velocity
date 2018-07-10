@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/network"
-	"github.com/golang/glog"
+	"go.uber.org/zap"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -97,7 +97,12 @@ func getAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthC
 	for _, r := range dockerRegistries {
 		jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
 		if err != nil {
-			glog.Error(err)
+			GetLogger().Error(
+				"could not decode registry auth config",
+				zap.String("err", err.Error()),
+				zap.String("registry", r.Address),
+			)
+
 		}
 		var authConfig types.AuthConfig
 		err = json.Unmarshal(jsonAuthConfig, &authConfig)
@@ -141,7 +146,7 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 			authConfigs,
 		)
 		if err != nil {
-			glog.Errorf("build image err: %s", err)
+			GetLogger().Error("could not build image", zap.String("err", err.Error()))
 		}
 		sR.image = getImageName(sR.name)
 		sR.containerConfig.Image = getImageName(sR.name)
@@ -159,7 +164,7 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 				},
 			)
 			if err != nil {
-				glog.Errorf("pull image err: %s", err)
+				GetLogger().Error("could not pull image", zap.String("err", err.Error()))
 			}
 			defer pullResp.Close()
 			handleOutput(pullResp, sR.params, sR.writer)
@@ -175,7 +180,7 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 func findImageLocally(imageName string, cli *client.Client, ctx context.Context) error {
 	images, err := cli.ImageList(ctx, types.ImageListOptions{})
 	if err != nil {
-		glog.Errorf("image find err: %s", err)
+		GetLogger().Error("could not find image", zap.String("err", err.Error()))
 		return err
 	}
 	for _, i := range images {
@@ -198,7 +203,7 @@ func (sR *serviceRunner) Create() {
 		getContainerName(sR.name),
 	)
 	if err != nil {
-		glog.Errorf("container create err: %s", err)
+		GetLogger().Error("could not create container", zap.String("err", err.Error()))
 	}
 	sR.containerID = createResp.ID
 }
@@ -211,7 +216,7 @@ func (sR *serviceRunner) Run(stop chan string) {
 		types.ContainerStartOptions{},
 	)
 	if err != nil {
-		glog.Errorf("container %s start err: %s", sR.containerID, err)
+		GetLogger().Error("could not start container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 	}
 	logsResp, err := sR.dockerCli.ContainerLogs(
 		sR.context,
@@ -219,7 +224,7 @@ func (sR *serviceRunner) Run(stop chan string) {
 		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true},
 	)
 	if err != nil {
-		glog.Errorf("container %s logs err: %s", sR.containerID, err)
+		GetLogger().Error("could not get container logs", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 	}
 	defer logsResp.Close()
 	handleOutput(logsResp, sR.params, sR.writer)
@@ -237,12 +242,12 @@ func (sR *serviceRunner) Stop() {
 		&stopTimeout,
 	)
 	if err != nil {
-		glog.Errorf("container %s stop err: %s", sR.containerID, err)
+		GetLogger().Error("could not stop container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 	}
 
 	container, err := sR.dockerCli.ContainerInspect(sR.context, sR.containerID)
 	if err != nil {
-		glog.Errorf("container %s inspect err: %s", sR.containerID, err)
+		GetLogger().Error("could not inspect container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 	}
 
 	sR.exitCode = container.State.ExitCode
@@ -257,7 +262,7 @@ func (sR *serviceRunner) Stop() {
 			types.ContainerRemoveOptions{RemoveVolumes: true},
 		)
 		if err != nil {
-			glog.Errorf("container %s remove err: %s", sR.containerID, err)
+			GetLogger().Error("could not remove container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 		}
 		sR.writer.Write([]byte(fmt.Sprintf("Removed container: %s (%s)", getContainerName(sR.name), sR.containerID)))
 	}
@@ -271,6 +276,8 @@ func buildContainer(
 	writer io.Writer,
 	authConfigs map[string]types.AuthConfig,
 ) error {
+	GetLogger().Debug("building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
+
 	cwd, _ := os.Getwd()
 	buildContext = fmt.Sprintf("%s/%s", cwd, buildContext)
 
@@ -307,6 +314,7 @@ func buildContainer(
 	defer buildResp.Body.Close()
 	handleOutput(buildResp.Body, parameters, writer)
 
+	GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 	return nil
 }
 
@@ -327,7 +335,6 @@ func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io
 		}
 
 		if o != "*" {
-			glog.Infof(o)
 			for _, p := range parameters {
 				if p.IsSecret {
 					o = strings.Replace(o, p.Value, "***", -1)

@@ -6,8 +6,10 @@ import (
 	"os"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
+
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 )
@@ -57,7 +59,7 @@ func (c *Client) Subscribe(s string, ref uint64, payload *PhoenixGuardianJoinPay
 				},
 			},
 		})
-		glog.Errorf("websocket channel auth failed: %s", err)
+		velocity.GetLogger().Warn("could not authenticate client to channel", zap.String("clientID", c.ID), zap.Error(err))
 		return
 	}
 
@@ -194,8 +196,13 @@ func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
 		}
 		m.Payload = &p
 		break
+	case PhxHeartbeatEvent:
+	case PhxLeaveEvent:
+	case PhxCloseEvent:
+		velocity.GetLogger().Debug("websocket heartbeat")
+		break
 	default:
-		glog.Infof("no payload for %s event", m.Event)
+		velocity.GetLogger().Warn("no payload found for event", zap.String("event", m.Event))
 	}
 
 	return nil

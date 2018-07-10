@@ -6,98 +6,38 @@ import Html.Events exposing (onClick, onInput, on, onSubmit)
 import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, ComposeStep, PushStep, Step(..), Parameter(..))
 
 
-viewStepList : List Step -> Maybe Step -> List (Html msg)
-viewStepList steps toggledStep =
-    let
-        stepView i step =
-            let
-                stepNum =
-                    i + 1
-
-                runStep =
-                    viewRunStep stepNum
-
-                buildStep =
-                    viewBuildStep stepNum
-
-                cloneStep =
-                    viewCloneStep stepNum
-
-                composeStep =
-                    viewComposeStep stepNum
-
-                pushStep =
-                    viewPushStep stepNum
-            in
-                case ( step, toggledStep ) of
-                    ( Run run, Just (Run toggled) ) ->
-                        runStep run (run == toggled)
-
-                    ( Build build, Just (Build toggled) ) ->
-                        buildStep build (build == toggled)
-
-                    ( Clone clone, Just (Clone toggled) ) ->
-                        cloneStep clone (clone == toggled)
-
-                    ( Compose compose, Just (Compose toggled) ) ->
-                        composeStep compose (compose == toggled)
-
-                    ( Push push, Just (Push toggled) ) ->
-                        pushStep push (push == toggled)
-
-                    ( Run run, _ ) ->
-                        runStep run False
-
-                    ( Build build, _ ) ->
-                        buildStep build False
-
-                    ( Clone clone, _ ) ->
-                        cloneStep clone False
-
-                    ( Compose compose, _ ) ->
-                        composeStep compose False
-
-                    ( Push push, _ ) ->
-                        pushStep push False
-    in
-        List.indexedMap stepView steps
-
-
-viewComposeStep : Int -> ComposeStep -> Bool -> Html msg
-viewComposeStep i composeStep toggled =
+viewComposeStep : ComposeStep -> Html msg
+viewComposeStep step =
     let
         title =
-            toString i ++ ". Compose" ++ composeStep.description
+            "Compose" ++ step.description
     in
-        viewStepCollapse (Compose composeStep) title toggled <|
-            []
+        div [] []
 
 
-viewPushStep : Int -> PushStep -> Bool -> Html msg
-viewPushStep i composeStep toggled =
+viewPushStep : PushStep -> Html msg
+viewPushStep step =
     let
         title =
-            toString i ++ ". Push" ++ composeStep.description
+            "Push" ++ step.description
     in
-        viewStepCollapse (Push composeStep) title toggled <|
-            []
+        div [] []
 
 
-viewCloneStep : Int -> CloneStep -> Bool -> Html msg
-viewCloneStep i cloneStep toggled =
+viewCloneStep : CloneStep -> Html msg
+viewCloneStep step =
     let
         title =
-            toString i ++ ". Clone" ++ cloneStep.description
+            "Clone" ++ step.description
     in
-        viewStepCollapse (Clone cloneStep) title toggled <|
-            []
+        div [] []
 
 
-viewBuildStep : Int -> BuildStep -> Bool -> Html msg
-viewBuildStep i buildStep toggled =
+viewBuildStep : BuildStep -> Html msg
+viewBuildStep step =
     let
         tagList =
-            List.map (\t -> li [] [ text t ]) buildStep.tags
+            List.map (\t -> li [] [ text t ]) step.tags
                 |> ul []
 
         rightDl =
@@ -109,24 +49,22 @@ viewBuildStep i buildStep toggled =
         leftDl =
             dl []
                 [ dt [] [ text "Context" ]
-                , dd [] [ text buildStep.context ]
+                , dd [] [ text step.context ]
                 , dt [] [ text "Dockerfile" ]
-                , dd [] [ text buildStep.dockerfile ]
+                , dd [] [ text step.dockerfile ]
                 ]
 
         title =
-            toString i ++ ". " ++ buildStep.description
+            "Build" ++ step.description
     in
-        viewStepCollapse (ProjectTask.Build buildStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ rightDl ]
-                ]
+        div [ class "row" ]
+            [ div [ class "col-md-6" ] [ leftDl ]
+            , div [ class "col-md-6" ] [ rightDl ]
             ]
 
 
-viewRunStep : Int -> RunStep -> Bool -> Html msg
-viewRunStep i runStep toggled =
+viewRunStep : RunStep -> Html msg
+viewRunStep runStep =
     let
         command =
             String.join " " runStep.command
@@ -165,38 +103,28 @@ viewRunStep i runStep toggled =
                 ]
 
         title =
-            toString i ++ ". " ++ runStep.description
+            runStep.description
     in
-        viewStepCollapse (Run runStep) title toggled <|
-            [ div [ class "row" ]
-                [ div [ class "col-md-6" ] [ leftDl ]
-                , div [ class "col-md-6" ] [ envTable ]
-                ]
+        div [ class "row" ]
+            [ div [ class "col-md-6" ] [ leftDl ]
+            , div [ class "col-md-6" ] [ envTable ]
             ]
 
 
-viewStepCollapse : Step -> String -> Bool -> List (Html msg) -> Html msg
-viewStepCollapse step title toggled contents =
-    let
-        caretClassList =
-            [ ( "fa-caret-square-o-down", toggled )
-            , ( "fa-caret-square-o-up", not toggled )
-            ]
-    in
-        div [ class "card" ]
-            [ div [ class "card-header collapse-header d-flex justify-content-between align-items-center" ]
-                [ h5 [ class "mb-0" ] [ text title ]
-                , button
-                    [ type_ "button"
-                    , class "btn"
-                    ]
-                    [ i [ class "fa", classList caretClassList ] []
-                    ]
-                ]
-            , div
-                [ class "collapse"
-                , classList [ ( "show", toggled ) ]
-                ]
-                [ div [ class "card-body" ] contents
-                ]
-            ]
+viewStepContents : Step -> Html msg
+viewStepContents step =
+    case step of
+        Compose composeStep ->
+            viewComposeStep composeStep
+
+        Push pushStep ->
+            viewPushStep pushStep
+
+        Clone cloneStep ->
+            viewCloneStep cloneStep
+
+        Build buildStep ->
+            viewBuildStep buildStep
+
+        Run runStep ->
+            viewRunStep runStep

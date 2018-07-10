@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 func runBuild(build *builder.BuildCtrl, ws *websocket.Conn) {
@@ -38,5 +39,6 @@ func runBuild(build *builder.BuildCtrl, ws *websocket.Conn) {
 	if strings.Contains(wd, velocity.WorkspaceDir) {
 		os.RemoveAll(wd)
 	}
+	velocity.GetLogger().Info("completed build", zap.String("buildID", build.Build.ID))
 	os.Chdir("/opt/velocityci")
 }

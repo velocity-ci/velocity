@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/docker/docker/api/types/network"
-	"github.com/golang/glog"
+	"go.uber.org/zap"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -99,7 +99,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		glog.Error(err)
+		GetLogger().Error("could not create docker network", zap.String("err", err.Error()))
 	}
 
 	writers := map[string]StreamWriter{}
@@ -158,7 +158,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		glog.Errorf("network %s remove err: %s", networkResp.ID, err)
+		GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
 	}
 	success := true
 	for _, serviceRunner := range services {
@@ -320,7 +320,7 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 	var serviceMap map[string]interface{}
 	err := unmarshal(&serviceMap)
 	if err != nil {
-		glog.Errorf("unable to unmarshal service: %s", err)
+		GetLogger().Error("could not unmarshal service", zap.Error(err))
 		return err
 	}
 

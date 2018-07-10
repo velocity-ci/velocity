@@ -4,9 +4,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
+	"go.uber.org/zap"
 
 	"github.com/gorilla/websocket"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
@@ -54,7 +54,7 @@ func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 		}
 	}
 	if streamID == "" {
-		glog.Errorf("could not find streamID for %s", streamName)
+		velocity.GetLogger().Error("could not find streamID", zap.String("stream name", streamName))
 	}
 	return &StreamWriter{
 		ws:         e.ws,

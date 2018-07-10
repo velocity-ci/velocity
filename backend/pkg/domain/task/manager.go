@@ -1,8 +1,6 @@
 package task
 
 import (
-	"fmt"
-
 	"github.com/asdine/storm"
 	"github.com/gosimple/slug"
 	uuid "github.com/satori/go.uuid"
@@ -77,19 +75,4 @@ func (m *Manager) GetByCommitAndSlug(c *githistory.Commit, slug string) (*Task, 
 
 func (m *Manager) GetAllForCommit(c *githistory.Commit, q *domain.PagingQuery) ([]*Task, int) {
 	return m.db.getAllForCommit(c, q)
-}
-
-func (m *Manager) Sync(p *project.Project) (*project.Project, error) {
-	if p.Synchronising {
-		return nil, fmt.Errorf("already synchronising")
-	}
-
-	p.Synchronising = true
-	if err := m.projectManager.Update(p); err != nil {
-		return nil, err
-	}
-
-	go sync(p, m)
-
-	return p, nil
 }

@@ -31,7 +31,6 @@ import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Util exposing ((=>))
 import Views.Page as Page
-import Views.Task exposing (viewStepList)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
 import Request.Commit
 import Request.Errors
@@ -251,20 +250,20 @@ buildFilterContext { frame, buildDropdownState, buildFilterTerm, selected } buil
 
 view : Project -> Commit -> Model -> List Build -> Html Msg
 view project commit model builds =
-    let
-        task =
-            model.task
-
-        stepList =
-            viewStepList task.steps model.toggledStep
-    in
-        div [ class "row" ]
-            [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
-                [ viewToolbar model builds
-                , viewTabFrame model builds commit
-                , viewFormModal model.task model.form model.formModalVisibility
-                ]
+    div [ class "row" ]
+        [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
+            [ viewTaskHeading model.task
+            , hr [] []
+            , viewToolbar model builds
+            , viewTabFrame model builds commit
+            , viewFormModal model.task model.form model.formModalVisibility
             ]
+        ]
+
+
+viewTaskHeading : ProjectTask.Task -> Html Msg
+viewTaskHeading task =
+    h2 [] [ text ("Task " ++ (ProjectTask.nameToString task.name)) ]
 
 
 viewFormModal : ProjectTask.Task -> BuildForm.Context -> Modal.Visibility -> Html Msg
@@ -284,19 +283,21 @@ viewFormModal task form visibility =
                     ]
                 |> Modal.footer [] [ BuildForm.viewSubmitButton buildFormConfig form ]
 
-        noParametersAlert =
-            div [ class "alert alert-info m-0" ]
-                [ i [ class "fa fa-info-circle" ] []
-                , text " No parameters required"
-                ]
-
         modal =
             if hasFields then
                 Modal.body [] (BuildForm.view buildFormConfig form) basicModal
             else
-                Modal.body [] [ noParametersAlert ] basicModal
+                Modal.body [] [ viewNoParametersAlert ] basicModal
     in
         Modal.view visibility modal
+
+
+viewNoParametersAlert : Html msg
+viewNoParametersAlert =
+    div [ class "alert alert-info m-0" ]
+        [ i [ class "fa fa-info-circle" ] []
+        , text " No parameters required"
+        ]
 
 
 viewToolbar : Model -> List Build -> Html Msg
@@ -310,10 +311,9 @@ viewToolbar model builds =
         newBuildButton =
             button
                 [ class "btn btn-primary btn-lg"
-                , style [ "border-radius" => "25px" ]
                 , onClick OpenFormModal
                 ]
-                [ i [ class "fa fa-plus" ] [] ]
+                [ text "Run task" ]
     in
         div [ class "btn-toolbar justify-content-between" ]
             [ buildsDropdown
@@ -339,7 +339,7 @@ viewTabFrame model builds commit =
                 BuildFrame (LoadedBuild buildId buildOutputModel) ->
                     case findBuild buildId of
                         Just build ->
-                            BuildLog.view build buildOutputModel
+                            BuildLog.view build model.task buildOutputModel
                                 |> Html.map BuildLogMsg
 
                         Nothing ->

@@ -10,10 +10,11 @@ import (
 	"strings"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/golang/glog"
 )
 
 type DockerRun struct {
@@ -152,7 +153,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		glog.Error(err)
+		GetLogger().Error("could not create docker network", zap.Error(err))
 	}
 
 	sR := newServiceRunner(
@@ -180,7 +181,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		glog.Errorf("network %s remove err: %s", networkResp.ID, err)
+		GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
 	}
 
 	exitCode := sR.exitCode

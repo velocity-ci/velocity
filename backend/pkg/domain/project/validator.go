@@ -1,9 +1,8 @@
 package project
 
 import (
-	"github.com/golang/glog"
-
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 
 	ut "github.com/go-playground/universal-translator"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
@@ -87,7 +86,7 @@ func (v *validator) validateProjectRepository(sl govalidator.StructLevel) {
 			sl.ReportError(p.Config.PrivateKey, "key", "key", "privateKeyError", "")
 			break
 		default:
-			glog.Error(err)
+			velocity.GetLogger().Error("error", zap.Error(err))
 			// sl.ReportError(p.Config.Address, "repository", "repository", "", "")
 		}
 	}

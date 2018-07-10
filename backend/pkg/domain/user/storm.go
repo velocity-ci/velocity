@@ -3,8 +3,9 @@ package user
 import (
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 type StormUser struct {
@@ -85,7 +86,7 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*User, t int) {
 	t = 0
 	t, err := db.Count(&StormUser{})
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("error", zap.Error(err))
 		return r, t
 	}
 

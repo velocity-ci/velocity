@@ -1,4 +1,4 @@
-package task
+package sync
 
 import (
 	"fmt"
@@ -6,58 +6,42 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
-
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 )
 
-func finishProjectSync(p *project.Project, projectManager *project.Manager) {
-	p.UpdatedAt = time.Now()
-	p.Synchronising = false
-	projectManager.Update(p)
-	glog.Infof("finished synchronising project %s", p.Slug)
-}
-
-func sync(
+func syncTasks(
 	p *project.Project,
-	taskManager *Manager,
-) {
-	glog.Infof("synchronising project %s", p.Slug)
-	xd, _ := os.Getwd()
-	defer os.Chdir(xd)
-	defer finishProjectSync(p, taskManager.projectManager)
-	// repo, err := velocity.Clone(&p.Config, false, true, false, velocity.NewBlankEmitter().GetStreamWriter("clone"))
-	repo, err := velocity.Clone(&p.Config, velocity.NewBlankEmitter().GetStreamWriter("clone"), &velocity.CloneOptions{
-		Bare:      false,
-		Full:      true,
-		Submodule: true,
-	})
-	if err != nil {
-		glog.Errorf("could not clone repository %s", err)
-		return
-	}
-	defer os.RemoveAll(repo.Directory) // clean up
-
+	repo *velocity.RawRepository,
+	taskManager *task.Manager,
+	branchManager *githistory.BranchManager,
+	commitManager *githistory.CommitManager,
+) error {
 	branches := repo.GetBranches()
 
 	for _, branchName := range branches {
-		b, err := taskManager.branchManager.GetByProjectAndName(p, branchName)
+		b, err := branchManager.GetByProjectAndName(p, branchName)
 		if err != nil {
-			b = taskManager.branchManager.Create(p, branchName)
+			b = branchManager.Create(p, branchName)
 		}
 
 		rawCommit := repo.GetCommitAtHeadOfBranch(branchName)
-		glog.Infof("got commit for %s:%s - %s @ %s", branchName, rawCommit.SHA, rawCommit.Message, rawCommit.AuthorDate)
-		c, err := taskManager.commitManager.GetByProjectAndHash(p, rawCommit.SHA)
+		velocity.GetLogger().Info("found commit",
+			zap.String("project", p.Slug),
+			zap.String("branch", branchName),
+			zap.String("message", rawCommit.Message),
+			zap.Time("at", rawCommit.AuthorDate),
+		)
+		c, err := commitManager.GetByProjectAndHash(p, rawCommit.SHA)
 
 		if err != nil {
-			c = taskManager.commitManager.Create(
+			c = commitManager.Create(
 				b,
 				p,
 				rawCommit.SHA,
@@ -66,12 +50,16 @@ func sync(
 				rawCommit.AuthorDate,
 				rawCommit.Signed,
 			)
-			glog.Infof("\tcreated commit %s on %s", c.Hash, b.Name)
+			velocity.GetLogger().Info("created commit",
+				zap.String("project", p.Slug),
+				zap.String("sha", c.Hash),
+				zap.String("branch", branchName),
+			)
 
 			err = repo.Checkout(rawCommit.SHA)
 
 			if err != nil {
-				glog.Error(err)
+				velocity.GetLogger().Error("error", zap.Error(err))
 				break
 			}
 
@@ -83,30 +71,39 @@ func sync(
 						var t velocity.Task
 						err := yaml.Unmarshal(taskYml, &t)
 						if err != nil {
-							glog.Error(err)
+							velocity.GetLogger().Error("error", zap.Error(err))
 						} else {
 							taskManager.Create(c, &t, velocity.NewSetup())
-							glog.Infof("\tcreated task %s for %s", t.Name, c.Hash)
+							velocity.GetLogger().Info("created task",
+								zap.String("project", p.Slug),
+								zap.String("sha", c.Hash),
+								zap.String("task", t.Name),
+							)
 						}
 					}
 					return nil
 				})
 			}
-		} else if !taskManager.branchManager.HasCommit(b, c) {
-			glog.Infof("\tadded commit %s to %s", c.Hash, b.Name)
-			taskManager.commitManager.AddCommitToBranch(c, b)
+		} else if !branchManager.HasCommit(b, c) {
+			velocity.GetLogger().Info("added commit to branch",
+				zap.String("project", p.Slug),
+				zap.String("sha", c.Hash),
+				zap.String("branch", b.Name),
+			)
+			commitManager.AddCommitToBranch(c, b)
 		}
 	}
 
 	// Set remaining local branches as inactive.
-	allKnownBranches, _ := taskManager.branchManager.GetAllForProject(p, &domain.PagingQuery{Limit: 100, Page: 1})
+	allKnownBranches, _ := branchManager.GetAllForProject(p, &domain.PagingQuery{Limit: 100, Page: 1})
 
 	localOnlyBranches := removeRemoteBranches(allKnownBranches, branches)
 	for _, b := range localOnlyBranches {
 		b.Active = false
-		taskManager.branchManager.Update(b)
+		branchManager.Update(b)
 	}
 
+	return nil
 }
 
 func removeRemoteBranches(haystack []*githistory.Branch, names []string) (r []*githistory.Branch) {

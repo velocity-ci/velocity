@@ -189,42 +189,49 @@ viewPage session isLoading page =
         case page of
             NotFound ->
                 NotFound.view session
-                    |> frame Page.Other
+                    |> frame Page.Other Page.NoSidebar
 
             Blank ->
                 -- This is for the very initial page load, while we are loading
                 -- data via HTTP. We could also render a spinner here.
                 Html.text ""
-                    |> frame Page.Other
+                    |> frame Page.Other Page.NoSidebar
 
             Errored subModel ->
                 Errored.view session subModel
-                    |> frame Page.Other
+                    |> frame Page.Other Page.NormalSidebar
 
             Home subModel ->
                 Home.view session subModel
                     |> Html.map HomeMsg
-                    |> frame Page.Home
+                    |> frame Page.Home Page.NormalSidebar
 
             Project subModel ->
-                Project.view session subModel
-                    |> Html.map ProjectMsg
-                    |> frame Page.Projects
+                let
+                    sidebar =
+                        if Project.hasExtraWideSidebar subModel then
+                            Page.ExtraWideSidebar
+                        else
+                            Page.NormalSidebar
+                in
+                    Project.view session subModel
+                        |> Html.map ProjectMsg
+                        |> frame Page.Projects sidebar
 
             Login subModel ->
                 Login.view session subModel
                     |> Html.map LoginMsg
-                    |> frame Page.Login
+                    |> frame Page.Login Page.NormalSidebar
 
             KnownHosts subModel ->
                 KnownHosts.view session subModel
                     |> Html.map KnownHostsMsg
-                    |> frame Page.KnownHosts
+                    |> frame Page.KnownHosts Page.NormalSidebar
 
             Users subModel ->
                 Users.view session subModel
                     |> Html.map (always NoOp)
-                    |> frame Page.Users
+                    |> frame Page.Users Page.NormalSidebar
 
 
 

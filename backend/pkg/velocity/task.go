@@ -3,7 +3,7 @@ package velocity
 import (
 	"encoding/json"
 
-	"github.com/golang/glog"
+	"go.uber.org/zap"
 )
 
 type Task struct {
@@ -11,7 +11,7 @@ type Task struct {
 	Description string            `json:"description" yaml:"description"`
 	Git         TaskGit           `json:"git" yaml:"git"`
 	Docker      TaskDocker        `json:"docker" yaml:"docker"`
-	Parameters  []ConfigParameter `json:"parameters" yaml:"parameters"`
+	Parameters  []ParameterConfig `json:"parameters" yaml:"parameters"`
 	Steps       []Step            `json:"steps" yaml:"steps"`
 
 	RunID              string               `json:"-" yaml:"-"`
@@ -61,7 +61,7 @@ func NewTask() Task {
 	return Task{
 		Name:        "",
 		Description: "",
-		Parameters:  []ConfigParameter{},
+		Parameters:  []ParameterConfig{},
 		Steps:       []Step{},
 	}
 }
@@ -85,19 +85,19 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		var rawParameters []*json.RawMessage
 		err = json.Unmarshal(*val, &rawParameters)
 		if err == nil {
-			t.Parameters = []ConfigParameter{}
+			t.Parameters = []ParameterConfig{}
 			for _, rawMessage := range rawParameters {
 				var m map[string]interface{}
 				err = json.Unmarshal(*rawMessage, &m)
 				if err != nil {
-					glog.Error("could not unmarshal parameters")
+					GetLogger().Error("could not unmarshal parameters", zap.Error(err))
 					return err
 				}
 				if _, ok := m["use"]; ok { // derivedParam
 					p := DerivedParameter{}
 					err = json.Unmarshal(*rawMessage, &p)
 					if err != nil {
-						glog.Error("could not unmarshal determined parameter")
+						GetLogger().Error("could not unmarshal determined parameter", zap.Error(err))
 						return err
 					}
 					t.Parameters = append(t.Parameters, p)
@@ -105,7 +105,7 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 					p := BasicParameter{}
 					err = json.Unmarshal(*rawMessage, &p)
 					if err != nil {
-						glog.Error("could not unmarshal determined parameter")
+						GetLogger().Error("could not unmarshal determined parameter", zap.Error(err))
 						return err
 					}
 					t.Parameters = append(t.Parameters, p)
@@ -128,17 +128,18 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 			for _, rawMessage := range rawSteps {
 				err = json.Unmarshal(*rawMessage, &m)
 				if err != nil {
-					glog.Error("could not unmarshal step")
+					GetLogger().Error("could not unmarshal step", zap.Error(err))
+
 					return err
 				}
 
 				s, err := DetermineStepFromInterface(m)
 				if err != nil {
-					glog.Error(err)
+					GetLogger().Error("could not determine step from interface", zap.Error(err))
 				} else {
 					err := json.Unmarshal(*rawMessage, s)
 					if err != nil {
-						glog.Error(err)
+						GetLogger().Error("could not unmarshal step", zap.Error(err))
 					} else {
 						t.Steps = append(t.Steps, s)
 					}
@@ -154,7 +155,7 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var taskMap map[string]interface{}
 	err := unmarshal(&taskMap)
 	if err != nil {
-		glog.Error("unable to unmarshal task")
+		GetLogger().Error("could not unmarshal task", zap.Error(err))
 		return err
 	}
 
@@ -201,26 +202,7 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		break
 	}
 
-	t.Parameters = []ConfigParameter{}
-	switch x := taskMap["parameters"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			switch y := p.(type) {
-			case map[interface{}]interface{}:
-				if _, ok := y["use"]; ok { // derivedParam
-					var dP DerivedParameter
-					dP.UnmarshalYamlInterface(y)
-					t.Parameters = append(t.Parameters, dP)
-				} else if _, ok := y["name"]; ok { // basicParam
-					var bP BasicParameter
-					bP.UnmarshalYamlInterface(y)
-					t.Parameters = append(t.Parameters, bP)
-				}
-				break
-			}
-		}
-		break
-	}
+	t.Parameters = unmarshalConfigParameters(taskMap["parameters"])
 
 	t.Steps = []Step{}
 	switch x := taskMap["steps"].(type) {
@@ -234,11 +216,11 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				}
 				s, err := DetermineStepFromInterface(m)
 				if err != nil {
-					glog.Error(err)
+					GetLogger().Error("could not determine step from interface", zap.Error(err))
 				} else {
 					err = s.UnmarshalYamlInterface(y)
 					if err != nil {
-						glog.Error(err)
+						GetLogger().Error("could not unmarshal yaml step", zap.Error(err))
 					} else {
 						t.Steps = append(t.Steps, s)
 					}

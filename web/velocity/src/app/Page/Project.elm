@@ -26,7 +26,6 @@ import Page.Project.Route as ProjectRoute
 import Page.Project.Commits as Commits
 import Page.Project.Settings as Settings
 import Page.Project.Commit as Commit
-import Page.Project.Overview as Overview
 import Page.Project.Builds as Builds
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
@@ -43,7 +42,6 @@ import Views.Helpers exposing (onClickPage)
 
 type SubPage
     = Blank
-    | Overview Overview.Model
     | Commits Commits.Model
     | Commit Commit.Model
     | Settings Settings.Model
@@ -64,7 +62,6 @@ type alias Model =
     { project : Project
     , branches : List Branch
     , subPageState : SubPageState
-    , builds : List Build
     , sidebar : Sidebar.State
     , toasties : Toasty.Stack (Event Build)
     }
@@ -87,14 +84,10 @@ init context session slug maybeRoute =
         loadBranches =
             Request.Project.branches context slug maybeAuthToken
 
-        loadBuilds =
-            Request.Project.builds context slug maybeAuthToken -1 Nothing
-
-        initialModel project (Paginated branches) (Paginated builds) =
+        initialModel project (Paginated branches) =
             { project = project
             , branches = branches.results
             , subPageState = Loaded initialSubPage
-            , builds = builds.results
             , sidebar =
                 { commitIconPopover = Popover.initialState
                 , buildsIconPopover = Popover.initialState
@@ -112,7 +105,7 @@ init context session slug maybeRoute =
                 _ ->
                     pageLoadError Page.Project "Project unavailable."
     in
-        Task.map3 initialModel loadProject loadBranches loadBuilds
+        Task.map2 initialModel loadProject loadBranches
             |> Task.map
                 (\successModel ->
                     case maybeRoute of
@@ -281,9 +274,6 @@ viewSidebar session model =
             Sidebar.view model.sidebar sidebarConfig model.project
     in
         case page of
-            Overview _ ->
-                sidebar OverviewPage
-
             Commits _ ->
                 sidebar CommitsPage
 
@@ -325,11 +315,6 @@ viewSubPage session model =
 
             Errored subModel ->
                 Html.text "Errored"
-                    |> pageFrame (breadcrumb (text "") [])
-
-            Overview _ ->
-                Overview.view project model.builds
-                    |> Html.map OverviewMsg
                     |> pageFrame (breadcrumb (text "") [])
 
             Builds subModel ->
@@ -413,20 +398,14 @@ viewBreadcrumb project additionalElements items =
 
 viewBreadcrumbItem : Bool -> ( Route, String ) -> Html Msg
 viewBreadcrumbItem active ( route, name ) =
-    let
-        children =
-            if active then
-                text name
-            else
-                a [ Route.href route, class "text-secondary" ] [ text name ]
-    in
+    Util.viewIf (not active) <|
         li
             [ Route.href route
             , onClickPage NewUrl route
             , class "breadcrumb-item"
             , classList [ ( "active", active ) ]
             ]
-            [ children ]
+            [ a [ Route.href route, class "text-secondary" ] [ text name ] ]
 
 
 
@@ -436,7 +415,6 @@ viewBreadcrumbItem active ( route, name ) =
 type Msg
     = NewUrl String
     | SetRoute (Maybe ProjectRoute.Route)
-    | OverviewMsg Overview.Msg
     | CommitsMsg Commits.Msg
     | CommitsLoaded (Result PageLoadError Commits.Model)
     | BuildsMsg Builds.Msg
@@ -485,12 +463,7 @@ setRoute context session maybeRoute model =
                 { model | subPageState = Loaded Blank } => Cmd.none
 
             Just (ProjectRoute.Overview) ->
-                case session.user of
-                    Just user ->
-                        { model | subPageState = Loaded (Overview Overview.initialModel) } => Cmd.none
-
-                    Nothing ->
-                        errored Page.Project "Uhoh"
+                model => Route.modifyUrl (Route.Project model.project.slug <| ProjectRoute.Commits Nothing Nothing)
 
             Just (ProjectRoute.Commits maybeBranch maybePage) ->
                 case session.user of
@@ -636,9 +609,6 @@ updateSubPage context session subPage msg model =
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update context model.project session) subMsg subModel
 
-            ( OverviewMsg subMsg, Overview subModel ) ->
-                toPage Overview OverviewMsg (Overview.update model.project session) subMsg subModel
-
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
@@ -711,11 +681,6 @@ updateSubPage context session subPage msg model =
                             |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
 
-                    builds =
-                        maybeBuild
-                            |> Maybe.map (addBuild model.builds)
-                            |> Maybe.withDefault model.builds
-
                     ( subPageState, subCmd ) =
                         case ( page, maybeBuild ) of
                             ( Commit subModel, Just build ) ->
@@ -728,10 +693,7 @@ updateSubPage context session subPage msg model =
                                 model.subPageState => Cmd.none
 
                     modelCmd =
-                        { model
-                            | builds = sortByDatetime .createdAt builds
-                            , subPageState = subPageState
-                        }
+                        { model | subPageState = subPageState }
                             ! [ subCmd ]
                 in
                     case maybeBuild of
@@ -748,21 +710,6 @@ updateSubPage context session subPage msg model =
                             |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
 
-                    builds =
-                        maybeBuild
-                            |> Maybe.map
-                                (\b ->
-                                    List.map
-                                        (\a ->
-                                            if b.id == a.id then
-                                                b
-                                            else
-                                                a
-                                        )
-                                        model.builds
-                                )
-                            |> Maybe.withDefault model.builds
-
                     ( subPageState, subCmd ) =
                         case ( page, maybeBuild ) of
                             ( Commit subModel, Just build ) ->
@@ -775,10 +722,7 @@ updateSubPage context session subPage msg model =
                                 model.subPageState => Cmd.none
 
                     modelCmd =
-                        { model
-                            | builds = sortByDatetime .createdAt builds
-                            , subPageState = subPageState
-                        }
+                        { model | subPageState = subPageState }
                             ! [ subCmd ]
 
                     modelCmdWithToast =
@@ -800,15 +744,7 @@ updateSubPage context session subPage msg model =
                             modelCmd
 
             ( DeleteBuildEvent buildJson, _ ) ->
-                let
-                    builds =
-                        Decode.decodeValue Build.decoder buildJson
-                            |> Result.toMaybe
-                            |> Maybe.map (\b -> List.filter (\a -> b.id /= a.id) model.builds)
-                            |> Maybe.withDefault model.builds
-                in
-                    { model | builds = builds }
-                        => Cmd.none
+                model => Cmd.none
 
             ( ToastyMsg subMsg, _ ) ->
                 Toasty.update ToastTheme.config ToastyMsg subMsg model
@@ -817,3 +753,17 @@ updateSubPage context session subPage msg model =
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through (project page)" model)
                     => Cmd.none
+
+
+
+-- HELPERS --
+
+
+hasExtraWideSidebar : Model -> Bool
+hasExtraWideSidebar { subPageState } =
+    case getSubPage subPageState of
+        Commit _ ->
+            True
+
+        _ ->
+            False

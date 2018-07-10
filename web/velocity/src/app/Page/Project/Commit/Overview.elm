@@ -36,7 +36,7 @@ initialModel =
 view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
 view project commit tasks builds =
     div []
-        [ viewTaskList project commit tasks builds
+        [--viewTaskList project commit tasks builds
         ]
 
 

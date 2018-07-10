@@ -17,6 +17,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
+	v_sync "github.com/velocity-ci/velocity/backend/pkg/domain/sync"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
@@ -58,7 +59,6 @@ type App interface {
 }
 
 func New() *Architect {
-	velocity.SetLogLevel()
 	a := &Architect{
 		Server: echo.New(),
 	}
@@ -82,6 +82,7 @@ func (a *Architect) Init() {
 	buildStreamManager := build.NewStreamManager(a.DB)
 	buildManager := build.NewBuildManager(a.DB, buildStepManager, buildStreamManager)
 	builderManager := builder.NewManager(buildManager, knownHostManager, buildStepManager, buildStreamManager)
+	syncManager := v_sync.NewManager(projectManager, taskManager, branchManager, commitManager)
 
 	a.Server.Use(middleware.CORS())
 	rest.AddRoutes(
@@ -96,6 +97,7 @@ func (a *Architect) Init() {
 		buildStreamManager,
 		buildManager,
 		builderManager,
+		syncManager,
 	)
 
 	a.Workers = []domain.Worker{

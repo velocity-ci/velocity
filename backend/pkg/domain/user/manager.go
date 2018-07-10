@@ -6,9 +6,10 @@ import (
 
 	"github.com/asdine/storm"
 	ut "github.com/go-playground/universal-translator"
-	"github.com/golang/glog"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 	govalidator "gopkg.in/go-playground/validator.v9"
 )
 
@@ -54,7 +55,7 @@ func (m *Manager) EnsureAdminUser() {
 		}
 		_, err := m.Create("admin", password)
 		if err != nil {
-			glog.Error(err)
+			velocity.GetLogger().Error("error", zap.Error(err))
 		}
 		fmt.Printf("\n\n\nCreated Administrator:\n\tusername: admin \n\tpassword: %s\n\n\n", password)
 	}
@@ -74,7 +75,7 @@ func (m *Manager) Create(username, password string) (*User, *domain.ValidationEr
 	u.hashPassword(password)
 
 	if err := m.db.save(u); err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("error", zap.Error(err))
 		return nil, nil
 	}
 

@@ -5,10 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
+	"go.uber.org/zap"
+
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
 type builderResponse struct {
@@ -92,7 +94,6 @@ var upgrader = websocket.Upgrader{
 
 func (h *builderHandler) connect(c echo.Context) error {
 	auth := c.Request().Header.Get("Authorization")
-	glog.Infof("builder authorization attempt with: %s", auth)
 	if auth == "" {
 		c.JSON(http.StatusUnauthorized, "")
 		return nil
@@ -104,7 +105,8 @@ func (h *builderHandler) connect(c echo.Context) error {
 
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("could not upgrade builder http connection", zap.Error(err))
+
 		return nil
 	}
 

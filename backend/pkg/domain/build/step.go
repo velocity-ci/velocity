@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 type Step struct {
@@ -47,17 +47,18 @@ func (s *Step) UnmarshalJSON(b []byte) error {
 		var m map[string]interface{}
 		err = json.Unmarshal(*rawStep, &m)
 		if err != nil {
-			glog.Error("could not unmarshal step")
+			velocity.GetLogger().Error("could not unmarshal step", zap.Error(err))
+
 			return err
 		}
 
 		step, err := velocity.DetermineStepFromInterface(m)
 		if err != nil {
-			glog.Error(err)
+			velocity.GetLogger().Error("error", zap.Error(err))
 		} else {
 			err := json.Unmarshal(*rawStep, step)
 			if err != nil {
-				glog.Error(err)
+				velocity.GetLogger().Error("error", zap.Error(err))
 			} else {
 				s.VStep = &step
 			}

@@ -5,42 +5,45 @@ import (
 
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 type StormProject struct {
-	ID            string `storm:"id"`
-	Slug          string `storm:"index"`
-	Name          string
-	Config        velocity.GitRepository
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Synchronising bool
+	ID               string `storm:"id"`
+	Slug             string `storm:"index"`
+	Name             string
+	Config           velocity.GitRepository
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Synchronising    bool
+	RepositoryConfig velocity.RepositoryConfig
 }
 
 func (s *StormProject) ToProject() *Project {
 	return &Project{
-		ID:            s.ID,
-		Slug:          s.Slug,
-		Name:          s.Name,
-		Config:        s.Config,
-		CreatedAt:     s.CreatedAt,
-		UpdatedAt:     s.UpdatedAt,
-		Synchronising: s.Synchronising,
+		ID:               s.ID,
+		Slug:             s.Slug,
+		Name:             s.Name,
+		Config:           s.Config,
+		CreatedAt:        s.CreatedAt,
+		UpdatedAt:        s.UpdatedAt,
+		Synchronising:    s.Synchronising,
+		RepositoryConfig: s.RepositoryConfig,
 	}
 }
 
 func (p *Project) toStormProject() *StormProject {
 	return &StormProject{
-		ID:            p.ID,
-		Slug:          p.Slug,
-		Name:          p.Name,
-		Config:        p.Config,
-		CreatedAt:     p.CreatedAt,
-		UpdatedAt:     p.UpdatedAt,
-		Synchronising: p.Synchronising,
+		ID:               p.ID,
+		Slug:             p.Slug,
+		Name:             p.Name,
+		Config:           p.Config,
+		CreatedAt:        p.CreatedAt,
+		UpdatedAt:        p.UpdatedAt,
+		Synchronising:    p.Synchronising,
+		RepositoryConfig: p.RepositoryConfig,
 	}
 }
 
@@ -102,7 +105,7 @@ func (db *stormDB) getAll(pQ *domain.PagingQuery) (r []*Project, t int) {
 	t = 0
 	t, err := db.Count(&StormProject{})
 	if err != nil {
-		glog.Error(err)
+		velocity.GetLogger().Error("error", zap.Error(err))
 		return r, t
 	}
 

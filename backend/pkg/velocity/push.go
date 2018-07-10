@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/golang/glog"
 )
 
 type DockerPush struct {
@@ -60,7 +61,7 @@ func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 			RegistryAuth: authToken,
 		})
 		if err != nil {
-			glog.Error(err)
+			GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
 			writer.SetStatus(StateFailed)
 			writer.Write([]byte(fmt.Sprintf("\nPush failed: %s", err)))
 			return err

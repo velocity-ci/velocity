@@ -3,7 +3,6 @@ package velocity
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -11,10 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/go-cmd/cmd"
-	"github.com/golang/glog"
 	"github.com/gosimple/slug"
 	"golang.org/x/crypto/ssh"
 )
@@ -47,7 +47,7 @@ func getUniqueWorkspace(r *GitRepository) (string, error) {
 	os.RemoveAll(dir)
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		glog.Fatal(err)
+		GetLogger().Fatal("could not create unique workspace", zap.Error(err))
 		return "", err
 	}
 
@@ -63,7 +63,7 @@ func handleGitSSH(r *GitRepository) (ssh.Signer, agent.Agent, error) {
 		a := agent.NewClient(sshAgent)
 		a.Add(agent.AddedKey{PrivateKey: key})
 		signer, _ := ssh.NewSignerFromKey(key)
-		glog.Infof("added ssh key for %s", r.Address)
+		GetLogger().Debug("added ssh key to ssh-agent", zap.String("address", r.Address))
 		return signer, a, nil
 	}
 
@@ -96,7 +96,7 @@ func initWorkspace(r *GitRepository) (string, error) {
 func cleanSSHAgent(r *GitRepository) {
 	if r.Agent != nil {
 		r.Agent.Remove(r.PublicKey)
-		glog.Infof("removed ssh key for %s", r.Address)
+		GetLogger().Debug("removed ssh key from ssh-agent", zap.String("address", r.Address))
 	}
 }
 
@@ -147,7 +147,6 @@ func Clone(
 	}
 	defer cleanSSHAgent(r)
 	os.Chdir(dir)
-	fmt.Println(dir)
 
 	shCmd := []string{"git", "fetch", "--progress"}
 
@@ -156,7 +155,7 @@ func Clone(
 	}
 
 	if !cloneOpts.Full {
-		// shCmd = append(shCmd, "--depth=1")
+		shCmd = append(shCmd, "--depth=1")
 	}
 
 	if cloneOpts.Submodule {
@@ -167,9 +166,7 @@ func Clone(
 		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
 
-	fmt.Println(shCmd)
-	Hf, _ := ioutil.ReadFile("/root/.ssh/known_hosts")
-	fmt.Println(string(Hf))
+	GetLogger().Info("cloning repository", zap.String("cmd", strings.Join(shCmd, " ")))
 
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
@@ -199,6 +196,8 @@ func Clone(
 		return nil, err
 	}
 
+	GetLogger().Info("cloned repository", zap.String("address", r.Address))
+
 	return &RawRepository{Directory: dir}, nil
 }
 
@@ -213,10 +212,8 @@ func (r *RawRepository) GetBranches() (b []string) {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "origin/")
 		if strings.HasPrefix(line, "HEAD") {
-			glog.Infof("skipped branch: %s", line)
 			continue
 		}
-		glog.Infof("got branch: %s", line)
 		b = append(b, line)
 	}
 
@@ -260,7 +257,7 @@ func (r *RawRepository) init() {
 	r.RLock()
 	cwd, err := os.Getwd()
 	if err != nil {
-		glog.Fatalf("could not get work dir: %v", err)
+		GetLogger().Fatal("could not get working directory", zap.Error(err))
 	}
 	r.pwd = cwd
 	os.Chdir(r.Directory)
@@ -324,18 +321,18 @@ func (r *RawRepository) Clean() error {
 
 func handleStatusError(s cmd.Status) error {
 	if s.Error != nil {
+		GetLogger().Error("unknown cmd error", zap.Error(s.Error))
 		return s.Error
 	}
 
 	if s.Exit != 0 {
-		glog.Error(s.Stdout, s.Stderr)
-		return fmt.Errorf("non-zero exit in clone: %d", s.Exit)
+		GetLogger().Error("non-zero exit in git", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
 	}
 
 	return nil
 }
 
-func (r *RawRepository) Checkout(sha string) error {
+func (r *RawRepository) Checkout(ref string) error {
 	r.init()
 	defer r.done()
 
@@ -343,7 +340,7 @@ func (r *RawRepository) Checkout(sha string) error {
 		return err
 	}
 
-	shCmd := []string{"git", "checkout", "--force", sha}
+	shCmd := []string{"git", "checkout", "--force", ref}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
@@ -351,5 +348,19 @@ func (r *RawRepository) Checkout(sha string) error {
 		return err
 	}
 
+	GetLogger().Debug("checked out", zap.String("reference", ref), zap.String("repository", r.Directory))
+
 	return nil
+}
+
+func (r *RawRepository) GetDefaultBranch() string {
+	r.init()
+	defer r.done()
+	shCmd := []string{"git", "remote", "show", "origin"}
+	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+	s := <-c.Start()
+
+	defaultBranch := strings.TrimSpace(strings.Split(s.Stdout[3], ":")[1])
+
+	return defaultBranch
 }
