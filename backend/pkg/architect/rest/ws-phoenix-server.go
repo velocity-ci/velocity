@@ -197,6 +197,8 @@ func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
 		m.Payload = &p
 		break
 	case PhxHeartbeatEvent:
+	case PhxLeaveEvent:
+	case PhxCloseEvent:
 		velocity.GetLogger().Debug("websocket heartbeat")
 		break
 	default:
