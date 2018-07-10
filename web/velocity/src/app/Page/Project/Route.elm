@@ -9,6 +9,7 @@ import Page.Project.Commit.Route as CommitRoute
 
 type Route
     = Overview
+    | Builds (Maybe Int)
     | Commits (Maybe Branch.Name) (Maybe Int)
     | Commit Commit.Hash CommitRoute.Route
     | Settings
@@ -24,6 +25,7 @@ route =
     oneOf
         [ Url.map Overview (s "overview")
         , Url.map Settings (s "settings")
+        , Url.map Builds (s "builds" <?> intParam "page")
         , Url.map Commits (s "commits" </> Branch.nameParser <?> intParam "page")
         , Url.map Commit (s "commit" </> Commit.hashParser </> CommitRoute.route)
         ]
@@ -38,6 +40,21 @@ routeToPieces page =
     case page of
         Overview ->
             [] => []
+
+        Builds maybePageNumber ->
+            let
+                queryParams =
+                    case maybePageNumber of
+                        Just 1 ->
+                            []
+
+                        Just p ->
+                            [ ( "page", toString p ) ]
+
+                        _ ->
+                            []
+            in
+                [ "builds" ] => queryParams
 
         Commits branchName maybePageNumber ->
             let

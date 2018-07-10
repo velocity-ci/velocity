@@ -36,10 +36,16 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		return
 	}
 
+<<<<<<< HEAD
 	step, err := m.stepManager.GetByID(sL.StepID)
 	if err != nil {
 		velocity.GetLogger().Error("could not get step", zap.String("streamID", sL.StepID), zap.Error(err))
 		return
+=======
+	if stream.Status != sL.Status {
+		stream.Status = sL.Status
+		m.streamManager.Update(stream)
+>>>>>>> origin/master
 	}
 
 	m.streamManager.CreateStreamLine(stream,
@@ -48,15 +54,32 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		sL.Output,
 	)
 
+	step, err := m.stepManager.GetByID(sL.StepID)
+	if err != nil {
+		glog.Error(err)
+		return
+	}
+
 	if step.Status == velocity.StateWaiting {
-		step.Status = sL.Status
+		step.Status = velocity.StateRunning
 		step.StartedAt = time.Now().UTC()
 		m.stepManager.Update(step)
 	}
 
-	if sL.Status == velocity.StateSuccess || sL.Status == velocity.StateFailed {
-		step.Status = sL.Status
-		step.CompletedAt = time.Now().UTC()
+	// update step
+	if stream.Status == velocity.StateSuccess || stream.Status == velocity.StateFailed {
+		stepStreams := m.streamManager.GetStreamsForStep(step)
+		status := velocity.StateSuccess
+		for _, stream := range stepStreams {
+			if stream.Status != velocity.StateSuccess {
+				status = stream.Status
+				break
+			}
+		}
+		step.Status = status
+		if step.Status == velocity.StateSuccess || step.Status == velocity.StateFailed {
+			step.CompletedAt = time.Now().UTC()
+		}
 		m.stepManager.Update(step)
 	}
 
@@ -73,8 +96,10 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		m.buildManager.Update(b)
 	}
 
-	if step.Number == (len(steps)-1) && sL.Status == velocity.StateSuccess || sL.Status == velocity.StateFailed {
-		b.Status = sL.Status
+	// if last step and got success/fail check if other streams are success/fail
+
+	if step.Number == (len(steps)-1) && step.Status == velocity.StateSuccess || step.Status == velocity.StateFailed {
+		b.Status = step.Status
 		b.CompletedAt = time.Now().UTC()
 		m.buildManager.Update(b)
 

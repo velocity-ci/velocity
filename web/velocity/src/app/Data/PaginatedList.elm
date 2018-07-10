@@ -1,4 +1,4 @@
-module Data.PaginatedList exposing (PaginatedList, Paginated(..), decoder)
+module Data.PaginatedList exposing (PaginatedList, Paginated(..), decoder, results, total)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, required, optional)
@@ -25,6 +25,16 @@ decoder decoder =
 
 
 -- HELPERS --
+
+
+results : PaginatedList a -> List a
+results (Paginated { results }) =
+    results
+
+
+total : PaginatedList a -> Int
+total (Paginated { total }) =
+    total
 
 
 fromList : Int -> List a -> PaginatedList a

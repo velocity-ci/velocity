@@ -78,6 +78,13 @@ statusToString status =
             "success"
 
 
+findBuild : List Build -> Id -> Maybe Build
+findBuild builds id =
+    builds
+        |> List.filter (\b -> b.id == id)
+        |> List.head
+
+
 addBuild : List Build -> Build -> List Build
 addBuild builds build =
     let
@@ -104,9 +111,14 @@ idParser =
     UrlParser.custom "ID" (Ok << Id)
 
 
-idQueryParser : String -> UrlParser.QueryParser (Maybe String -> b) b
+idParamHelp : Maybe String -> Maybe Id
+idParamHelp maybeValue =
+    Maybe.map Id maybeValue
+
+
+idQueryParser : String -> UrlParser.QueryParser (Maybe Id -> a) a
 idQueryParser id =
-    UrlParser.customParam id identity
+    UrlParser.customParam id idParamHelp
 
 
 type Status

@@ -19,6 +19,7 @@ type alias BuildStream =
 type alias BuildStreamOutput =
     { line : Int
     , timestamp : DateTime
+    , rawTimestamp : String
     , output : String
     }
 
@@ -39,6 +40,7 @@ outputDecoder =
     decode BuildStreamOutput
         |> required "lineNumber" Decode.int
         |> required "timestamp" stringToDateTime
+        |> required "timestamp" Decode.string
         |> required "output" Decode.string
 
 

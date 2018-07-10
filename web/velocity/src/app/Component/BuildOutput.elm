@@ -1,4 +1,4 @@
-module Component.BuildOutput exposing (Model, Msg, init, view, update, events, leaveChannels)
+module Component.BuildOutput exposing (Model, Msg, init, view, update, events, leaveChannels, subscriptions)
 
 {- A stateful BuildOutput component.
    I plan to convert this to a stateless component soon.
@@ -16,6 +16,7 @@ import Request.Errors
 import Util exposing ((=>))
 import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
 import Views.Build exposing (..)
+import Ports
 
 
 -- EXTERNAL
@@ -29,13 +30,20 @@ import Time.DateTime as DateTime exposing (DateTime)
 import Ansi.Log
 import Json.Encode as Encode
 import Json.Decode as Decode
+import Dom.Scroll as Scroll
 
 
 -- MODEL
 
 
 type alias Model =
-    { outputStreams : OutputStreams }
+    { outputStreams : OutputStreams
+    , autoScrollMessages : Bool
+    }
+
+
+type alias OutputStreams =
+    Dict String BuildStepOutput
 
 
 type alias BuildStepOutput =
@@ -52,10 +60,6 @@ type alias OutputStream =
     }
 
 
-type alias OutputStreams =
-    Dict String BuildStepOutput
-
-
 init :
     Context
     -> ProjectTask.Task
@@ -65,7 +69,9 @@ init :
 init context task maybeAuthToken build =
     let
         initialModel outputStreams =
-            { outputStreams = outputStreams }
+            { outputStreams = outputStreams
+            , autoScrollMessages = True
+            }
     in
         build
             |> loadBuildStreams context task maybeAuthToken
@@ -100,7 +106,7 @@ loadBuildStreams context task maybeAuthToken build =
                     )
                     buildStep.streams
             )
-        |> List.foldr (++) []
+        |> List.foldl (++) []
         |> Task.sequence
         |> Task.map
             (List.foldr
@@ -155,6 +161,24 @@ loadBuildStreams context task maybeAuthToken build =
 
 
 
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    scrolledToBottom
+
+
+scrolledToBottom : Sub Msg
+scrolledToBottom =
+    Decode.decodeValue Decode.bool
+        >> Result.toMaybe
+        >> Maybe.withDefault False
+        |> Ports.onScrolledToBottom
+        |> Sub.map ScrolledToBottom
+
+
+
 -- CHANNELS --
 
 
@@ -194,6 +218,8 @@ leaveChannels model =
 
 type Msg
     = AddStreamOutput String BuildStream Encode.Value
+    | ScrolledToBottom Bool
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -203,42 +229,82 @@ update msg model =
             let
                 outputStreams =
                     addStreamOutput ( buildStepId, buildStream, outputJson ) model.outputStreams
+
+                scrollCmd =
+                    if model.autoScrollMessages then
+                        Task.attempt (always NoOp) (Scroll.toBottom "scroll-id")
+                    else
+                        Cmd.none
             in
                 { model | outputStreams = outputStreams }
-                    => Cmd.none
+                    => scrollCmd
+
+        ScrolledToBottom isScrolled ->
+            { model | autoScrollMessages = isScrolled }
+                => Cmd.none
+
+        NoOp ->
+            model => Cmd.none
+
+
+
+-- THERE MUST BE AN ERROR HERE... WITH THE BUILD STEP ID?
 
 
 addStreamOutput : ( String, BuildStream, Encode.Value ) -> OutputStreams -> OutputStreams
 addStreamOutput ( buildStepId, targetBuildStream, outputJson ) outputStreams =
     let
         updateOutputStream newBuildOutput =
-            outputStreams
-                |> Dict.update buildStepId
-                    (Maybe.map
-                        (\value ->
-                            let
-                                streams =
-                                    value.streams
-                                        |> List.map
-                                            (\stream ->
-                                                if stream.buildStream.id == targetBuildStream.id then
-                                                    { stream
-                                                        | ansi = Ansi.Log.update newBuildOutput.output stream.ansi
-                                                        , raw = Dict.insert newBuildOutput.line newBuildOutput stream.raw
-                                                    }
-                                                else
-                                                    stream
-                                            )
-                            in
-                                { value | streams = streams }
+            let
+                debugBuildStepId =
+                    Debug.log "DEBUG - BUILD STEP ID" buildStepId
+
+                debugAllBuildStepIds =
+                    Debug.log "DEBUG - BUILD ALL BUILD STEP IDS" (Dict.keys outputStreams)
+            in
+                outputStreams
+                    |> Dict.update buildStepId
+                        (Maybe.map
+                            (\value ->
+                                let
+                                    debugSuccess =
+                                        Debug.log "DEBUG - BUILD SUCCESLLY FOUND" buildStepId
+
+                                    streams =
+                                        value.streams
+                                            |> List.map
+                                                (\stream ->
+                                                    if stream.buildStream.id == targetBuildStream.id then
+                                                        { stream
+                                                            | ansi = Ansi.Log.update newBuildOutput.output stream.ansi
+                                                            , raw = Dict.insert newBuildOutput.line newBuildOutput stream.raw
+                                                        }
+                                                    else
+                                                        stream
+                                                )
+                                in
+                                    { value | streams = streams }
+                            )
                         )
-                    )
     in
         outputJson
             |> Decode.decodeValue BuildStream.outputDecoder
             |> Result.toMaybe
-            |> Maybe.map updateOutputStream
-            |> Maybe.withDefault outputStreams
+            |> Maybe.map
+                (\s ->
+                    let
+                        debugSuccess =
+                            Debug.log "DEBUG -" s
+                    in
+                        updateOutputStream s
+                )
+            |> Maybe.withDefault
+                (let
+                    debugErr =
+                        Debug.log "DEBUG - BUILD FAIL" outputJson
+                 in
+                    outputStreams
+                )
 
 
 
@@ -286,34 +352,68 @@ viewStepContainer build ( stepId, { taskStep, buildStep, streams } ) =
                 text ""
 
 
+type alias AnsiOutputLine =
+    { timestamp : DateTime
+    , rawTimestamp : String
+    , streamName : String
+    , ansiLine : Ansi.Log.Line
+    , streamIndex : Int
+    , lineNumber : Int
+    }
+
+
 viewStepLog : List OutputStream -> Html Msg
 viewStepLog streams =
-    let
-        mapStream streamIndex { ansi, buildStream, raw } =
-            ansi.lines
-                |> Array.indexedMap (\i ansiLine -> ( Dict.get i raw, buildStream.name, ansiLine, streamIndex ))
-
-        lines =
-            streams
-                |> List.indexedMap mapStream
-                |> List.foldl (Array.append) Array.empty
-                |> Array.toList
-                |> List.filterMap
-                    (\( maybeBuildOutput, streamName, ansiLine, streamIndex ) ->
-                        maybeBuildOutput
-                            |> Maybe.map (\{ timestamp } -> ( timestamp, streamName, ansiLine, streamIndex ))
-                    )
-                |> List.sortWith (\( a, _, _, _ ) ( b, _, _, _ ) -> DateTime.compare a b)
-    in
-        table [ class "table-sm mb-0" ] (List.map viewLine lines)
+    streams
+        |> flattenStreams
+        |> List.map viewLine
+        |> table [ class "table-sm mb-0" ]
 
 
-viewLine : ( DateTime, String, Ansi.Log.Line, Int ) -> Html Msg
-viewLine ( timestamp, streamName, line, streamIndex ) =
+flattenStreams : List OutputStream -> List AnsiOutputLine
+flattenStreams streams =
+    streams
+        |> List.indexedMap mapStream
+        |> List.foldl (++) []
+        |> List.sortWith sortAnsiLogLines
+
+
+mapStream : Int -> OutputStream -> List AnsiOutputLine
+mapStream streamIndex { ansi, buildStream, raw } =
+    raw
+        |> Dict.toList
+        |> List.filterMap
+            (\( lineNumber, { timestamp, rawTimestamp } ) ->
+                ansi
+                    |> .lines
+                    |> Array.get (lineNumber - 1)
+                    |> Maybe.map
+                        (\ansiLine ->
+                            { timestamp = timestamp
+                            , rawTimestamp = rawTimestamp
+                            , streamName = buildStream.name
+                            , ansiLine = ansiLine
+                            , streamIndex = streamIndex
+                            , lineNumber = lineNumber
+                            }
+                        )
+            )
+
+
+sortAnsiLogLines : AnsiOutputLine -> AnsiOutputLine -> Order
+sortAnsiLogLines a b =
+    if a.streamName == b.streamName then
+        Basics.compare a.lineNumber b.lineNumber
+    else
+        DateTime.compare a.timestamp b.timestamp
+
+
+viewLine : AnsiOutputLine -> Html Msg
+viewLine { timestamp, rawTimestamp, streamName, ansiLine, streamIndex } =
     tr [ class "b-0" ]
         [ td [] [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
-        , td [] [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
-        , td [] [ Ansi.Log.viewLine line ]
+        , td [] [ span [ class "badge badge-light" ] [ text rawTimestamp ] ]
+        , td [] [ Ansi.Log.viewLine ansiLine ]
         ]
 
 
@@ -328,9 +428,7 @@ viewBuildInformation build =
         div [ class "card mt-3", classList (buildCardClassList build) ]
             [ div [ class "card-body" ]
                 [ dl [ class "row mb-0" ]
-                    [ dt [ class "col-sm-3" ] [ text "Id" ]
-                    , dd [ class "col-sm-9" ] [ text (Build.idToString build.id) ]
-                    , dt [ class "col-sm-3" ] [ text "Created" ]
+                    [ dt [ class "col-sm-3" ] [ text "Created" ]
                     , dd [ class "col-sm-9" ] [ text (formatDateTime build.createdAt) ]
                     , dt [ class "col-sm-3" ] [ text "Started" ]
                     , dd [ class "col-sm-9" ] [ text (dateText build.startedAt) ]

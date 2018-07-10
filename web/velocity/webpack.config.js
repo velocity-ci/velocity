@@ -3,6 +3,7 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const merge = require('webpack-merge');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
 const env = process.env.NODE_ENV || 'dev';
 const prod = env === 'prod';
@@ -95,9 +96,9 @@ if (prod) {
     plugins: [
       new ExtractTextPlugin({
         filename: 'static/css/[name].[chunkhash].css',
-        allChunks: true,
+        allChunks: true
       }),
-      new webpack.optimize.UglifyJsPlugin()
+      new UglifyJsPlugin()
     ]
   });
 

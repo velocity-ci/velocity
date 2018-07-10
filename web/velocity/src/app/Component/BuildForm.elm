@@ -11,6 +11,7 @@ module Component.BuildForm
         , submitParams
         , view
         , viewSubmitButton
+        , firstId
         )
 
 -- EXTERNAL --
@@ -215,49 +216,67 @@ submitParams { fields } =
 
 
 view : Config msg -> Context -> List (Html msg)
-view { submitMsg, onChangeMsg, onInputMsg } { fields, errors } =
+view config { fields, errors } =
+    [ Html.form [ class "mt-3", attribute "novalidate" "", onSubmit config.submitMsg ] <|
+        List.map (viewField config errors) fields
+    ]
+
+
+viewField :
+    { a
+        | onChangeMsg : ChoiceFormField -> Maybe Int -> msg
+        , onInputMsg : InputFormField -> String -> msg
+    }
+    -> List ( String, error )
+    -> Field
+    -> Html msg
+viewField { onChangeMsg, onInputMsg } errors f =
+    case f of
+        Choice field ->
+            viewChoiceField onChangeMsg errors field
+
+        Input field ->
+            viewInputField onInputMsg errors field
+
+
+viewChoiceField : (ChoiceFormField -> Maybe Int -> msg) -> List ( String, error ) -> ChoiceFormField -> Html msg
+viewChoiceField onChangeMsg errors field =
     let
-        fieldInput f =
-            case f of
-                Choice field ->
-                    let
-                        value =
-                            Maybe.withDefault "" field.value
+        value =
+            Maybe.withDefault "" field.value
 
-                        option o =
-                            Html.option
-                                [ selected (o == value) ]
-                                [ text o ]
-                    in
-                        Form.select
-                            { name = field.field
-                            , label = field.field
-                            , help = Nothing
-                            , errors = []
-                            }
-                            [ attribute "required" ""
-                            , classList (validClasses errors field)
-                            , on "change" <| Decode.map (onChangeMsg field) targetSelectedIndex
-                            ]
-                            (List.map option field.options)
-
-                Input field ->
-                    Form.input
-                        { name = field.field
-                        , label = field.field
-                        , help = Nothing
-                        , errors = []
-                        }
-                        [ attribute "required" ""
-                        , value field.value
-                        , onInput (onInputMsg field)
-                        , classList (validClasses errors field)
-                        ]
-                        []
+        option o =
+            Html.option
+                [ selected (o == value) ]
+                [ text o ]
     in
-        [ Html.form [ class "mt-3", attribute "novalidate" "", onSubmit submitMsg ] <|
-            List.map fieldInput fields
+        Form.select
+            { name = field.field
+            , label = field.field
+            , help = Nothing
+            , errors = []
+            }
+            [ attribute "required" ""
+            , classList (validClasses errors field)
+            , on "change" <| Decode.map (onChangeMsg field) targetSelectedIndex
+            ]
+            (List.map option field.options)
+
+
+viewInputField : (InputFormField -> String -> msg) -> List ( String, error ) -> InputFormField -> Html msg
+viewInputField onInputMsg errors field =
+    Form.input
+        { name = field.field
+        , label = field.field
+        , help = Nothing
+        , errors = []
+        }
+        [ attribute "required" ""
+        , value field.value
+        , onInput (onInputMsg field)
+        , classList (validClasses errors field)
         ]
+        []
 
 
 viewSubmitButton : Config msg -> Context -> Html msg
@@ -274,6 +293,23 @@ viewSubmitButton { submitMsg } { errors } =
                 ]
             ]
             [ text "Start" ]
+
+
+
+-- HELPERS --
+
+
+firstId : Context -> Maybe String
+firstId context =
+    case List.head context.fields of
+        Just (Input { field }) ->
+            Just field
+
+        Just (Choice { field }) ->
+            Just field
+
+        Nothing ->
+            Nothing
 
 
 
