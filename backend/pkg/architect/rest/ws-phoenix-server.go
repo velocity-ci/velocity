@@ -196,6 +196,9 @@ func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
 		}
 		m.Payload = &p
 		break
+	case PhxHeartbeatEvent:
+		velocity.GetLogger().Debug("websocket heartbeat")
+		break
 	default:
 		velocity.GetLogger().Warn("no payload found for event", zap.String("event", m.Event))
 	}

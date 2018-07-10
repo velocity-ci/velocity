@@ -3,7 +3,6 @@ package builder
 import (
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
@@ -48,12 +47,6 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		time.Now().UTC(),
 		sL.Output,
 	)
-
-	step, err := m.stepManager.GetByID(sL.StepID)
-	if err != nil {
-		glog.Error(err)
-		return
-	}
 
 	if step.Status == velocity.StateWaiting {
 		step.Status = velocity.StateRunning
