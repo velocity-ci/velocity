@@ -35,7 +35,6 @@ const (
 // for Task_* we can add a modifier to specify *which* task e.g. TASK_COMPLETE-<task_name>
 // for Step_* we can add a modifier to specify *which* step (in the currently running task) e.g. STEP_COMPLETE-<step_name>
 const (
-	EventBuildQueued   = "BUILD_QUEUED"
 	EventBuildStart    = "BUILD_START"
 	EventTaskStart     = "TASK_START"
 	EventStepStart     = "STEP_START"
