@@ -33,11 +33,11 @@ viewBuildHistoryTable project builds newUrlMsg =
 
 viewBuildHistoryTableHeaderRow : Html msg
 viewBuildHistoryTableHeaderRow =
-    tr []
-        [ th [ class "pl-0 border-0" ] [ text "Task" ]
-        , th [ class "pl-0 border-0" ] [ text "Commit" ]
-        , th [ class "pl-0 border-0" ] [ text "Created" ]
-        , th [ class "pl-0 border-0" ] []
+    tr [ class "d-flex" ]
+        [ th [ class "pl-0 border-0 col-6" ] [ text "Task" ]
+        , th [ class "pl-0 border-0 col-2" ] [ text "Commit" ]
+        , th [ class "pl-0 border-0 col-3" ] [ text "Created" ]
+        , th [ class "pl-0 border-0 col-1" ] []
         ]
 
 
@@ -77,11 +77,11 @@ viewBuildHistoryTableRow project newUrlMsg build =
                 ]
                 [ text content ]
     in
-        tr [ classList colourClassList ]
-            [ td [ class "px-0" ] [ buildLink taskName commitTaskRoute ]
-            , td [ class "px-0" ] [ buildLink truncatedHash commitRoute ]
-            , td [ class "px-0" ] [ buildLink createdAt commitTaskRoute ]
-            , td [ class "px-0 text-right" ] [ viewBuildStatusIcon build ]
+        tr [ classList colourClassList, class "d-flex" ]
+            [ td [ class "px-0 col-6" ] [ buildLink taskName commitTaskRoute ]
+            , td [ class "px-0 col-2" ] [ buildLink truncatedHash commitRoute ]
+            , td [ class "px-0 col-3" ] [ buildLink createdAt commitTaskRoute ]
+            , td [ class "px-0 col-1 text-right" ] [ viewBuildStatusIcon build ]
             ]
 
 
@@ -114,18 +114,23 @@ genericToast variantClass message build =
 
 viewBuildStatusIcon : Build -> Html msg
 viewBuildStatusIcon build =
-    case build.status of
+    i [ class (viewBuildStatusIconClasses build) ] []
+
+
+viewBuildStatusIconClasses : Build -> String
+viewBuildStatusIconClasses { status } =
+    case status of
         Build.Waiting ->
-            i [ class "fa fa-clock-o" ] []
+            "fa fa-clock-o"
 
         Build.Running ->
-            i [ class "fa fa-cog fa-spin" ] []
+            "fa fa-cog fa-spin"
 
         Build.Success ->
-            i [ class "fa fa-check" ] []
+            "fa fa-check"
 
         Build.Failed ->
-            i [ class "fa fa-times" ] []
+            "fa fa-times"
 
 
 viewBuildTextClass : Build -> String
@@ -142,6 +147,22 @@ viewBuildTextClass build =
 
         Build.Failed ->
             "text-danger"
+
+
+viewBuildStepBorderClass : BuildStep -> String
+viewBuildStepBorderClass buildStep =
+    case buildStep.status of
+        BuildStep.Waiting ->
+            "border-secondary"
+
+        BuildStep.Running ->
+            "border-primary"
+
+        BuildStep.Success ->
+            "border-success"
+
+        BuildStep.Failed ->
+            "border-danger"
 
 
 viewBuildStepStatusIcon : BuildStep -> Html msg
@@ -209,21 +230,16 @@ buildStepBorderColourClassList : BuildStep -> List ( String, Bool )
 buildStepBorderColourClassList { status } =
     case status of
         BuildStep.Waiting ->
-            [ "border" => True
-            ]
+            []
 
         BuildStep.Running ->
-            [ "border" => True
-            , "border-primary" => True
-            ]
+            []
 
         BuildStep.Success ->
-            [ "border" => True
-            ]
+            []
 
         BuildStep.Failed ->
-            [ "border" => True
-            ]
+            []
 
 
 buildCardClassList : Build -> List ( String, Bool )
@@ -239,22 +255,3 @@ buildCardClassList { status } =
 
         _ ->
             []
-
-
-viewCardTitle : ProjectTask.Step -> String
-viewCardTitle taskStep =
-    case taskStep of
-        ProjectTask.Build _ ->
-            "Build"
-
-        ProjectTask.Run _ ->
-            "Run"
-
-        ProjectTask.Clone _ ->
-            "Clone"
-
-        ProjectTask.Compose _ ->
-            "Compose"
-
-        ProjectTask.Push _ ->
-            "Push"

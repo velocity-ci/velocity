@@ -1,6 +1,6 @@
 import './styles.scss';
 
-import { parseGitUrl } from 'git-url-parse';
+import * as parseGitUrl from 'git-url-parse';
 
 
 const flags = {

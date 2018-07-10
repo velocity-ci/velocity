@@ -271,3 +271,26 @@ idToString (Id id) =
 idEquals : Id -> Id -> Bool
 idEquals (Id first) (Id second) =
     first == second
+
+
+
+-- HELPERS --
+
+
+stepName : Step -> String
+stepName taskStep =
+    case taskStep of
+        Build _ ->
+            "Build"
+
+        Run _ ->
+            "Run"
+
+        Clone _ ->
+            "Clone"
+
+        Compose _ ->
+            "Compose"
+
+        Push _ ->
+            "Push"

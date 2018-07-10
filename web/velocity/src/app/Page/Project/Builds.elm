@@ -55,7 +55,7 @@ init context session slug maybePage =
 
 perPage : Int
 perPage =
-    10
+    15
 
 
 
