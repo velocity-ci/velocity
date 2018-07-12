@@ -1,8 +1,9 @@
-module Util exposing ((=>), pair, onClickStopPropagation, viewIf, appendErrors)
+module Util exposing ((=>), pair, onClickStopPropagation, viewIf, viewIfStyled, appendErrors)
 
 import Json.Decode as Decode
 import Html.Events exposing (onWithOptions, defaultOptions)
 import Html exposing (Attribute, Html)
+import Html.Styled
 
 
 (=>) : a -> b -> ( a, b )
@@ -36,6 +37,14 @@ viewIf condition content =
         content
     else
         Html.text ""
+
+
+viewIfStyled : Bool -> Html.Styled.Html msg -> Html.Styled.Html msg
+viewIfStyled condition content =
+    if condition then
+        content
+    else
+        Html.Styled.text ""
 
 
 onClickStopPropagation : msg -> Attribute msg

@@ -25,9 +25,13 @@ import Component.BuildTimeline as BuildTimeline
 
 -- EXTERNAL
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onWithOptions)
+import Html exposing (Html)
+import Html.Attributes
+import Html.Events
+import Html.Styled.Attributes exposing (css, class, classList)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Events exposing (onClick)
+import Css exposing (..)
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Task exposing (Task)
@@ -36,7 +40,7 @@ import Ansi.Log
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dom.Scroll as Scroll
-import Html.Lazy exposing (lazy)
+import Html.Styled.Lazy exposing (lazy)
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Button as Button
 import Bootstrap.Modal as Modal
@@ -475,7 +479,7 @@ type alias ViewStepLine =
     }
 
 
-view : Build -> ProjectTask.Task -> Model -> Html Msg
+view : Build -> ProjectTask.Task -> Model -> Html.Html Msg
 view build task model =
     let
         stepOutput =
@@ -489,16 +493,18 @@ view build task model =
             , div [] stepOutput
             , viewStepInfoModal model.stepInfoModal
             ]
+            |> toUnstyled
 
 
-viewTimeline : Build -> ProjectTask.Task -> Html Msg
+viewTimeline : Build -> ProjectTask.Task -> Styled.Html Msg
 viewTimeline build task =
     task
         |> BuildTimeline.points build
         |> BuildTimeline.view
+        |> fromUnstyled
 
 
-viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Html Msg
+viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Styled.Html Msg
 viewStepContainer build ( stepId, logStep ) =
     let
         ( taskStep, buildStep ) =
@@ -512,8 +518,10 @@ viewStepContainer build ( stepId, logStep ) =
         case buildStep_ of
             Just step ->
                 div
-                    [ class "py-3 build-info-container"
+                    [ class "py-3"
                     , class (viewBuildStepBorderClass step)
+                    , css
+                        [ borderLeft2 (px 4) solid ]
                     ]
                     [ h5
                         [ class "px-2 d-flex justify-content-between"
@@ -530,7 +538,7 @@ viewStepContainer build ( stepId, logStep ) =
                 text ""
 
 
-viewStepButtonToolbar : Maybe BuildStep -> LogStep -> Html Msg
+viewStepButtonToolbar : Maybe BuildStep -> LogStep -> Styled.Html Msg
 viewStepButtonToolbar maybeBuildStep logStep =
     let
         showCollapseToggle =
@@ -542,25 +550,26 @@ viewStepButtonToolbar maybeBuildStep logStep =
             (Dict.size logStep.streams) > 1 && not logStep.collapsed
     in
         div []
-            [ Util.viewIf showStreamFilter (viewStepStreamFilter logStep)
+            [ Util.viewIfStyled showStreamFilter (viewStepStreamFilter logStep)
             , text " "
             , viewStepInfoButton logStep
             , text " "
-            , Util.viewIf showCollapseToggle (viewStepCollapseToggle logStep)
+            , Util.viewIfStyled showCollapseToggle (viewStepCollapseToggle logStep)
             ]
 
 
-viewStepInfoButton : LogStep -> Html Msg
+viewStepInfoButton : LogStep -> Styled.Html Msg
 viewStepInfoButton logStep =
     Button.button
         [ Button.small
         , Button.light
         , Button.onClick (OpenStepInfoModal logStep)
         ]
-        [ text "Info" ]
+        [ Html.text "Info" ]
+        |> fromUnstyled
 
 
-viewStepInfoModal : StepInfoModal -> Html Msg
+viewStepInfoModal : StepInfoModal -> Styled.Html Msg
 viewStepInfoModal ( visibility, maybeStep ) =
     case maybeStep of
         Just taskStep ->
@@ -568,22 +577,23 @@ viewStepInfoModal ( visibility, maybeStep ) =
                 |> Modal.large
                 |> Modal.withAnimation AnimateStepInfoModal
                 |> Modal.hideOnBackdropClick True
-                |> Modal.h3 [] [ text "Modal header" ]
+                |> Modal.h3 [] [ Html.text "Modal header" ]
                 |> Modal.body [] [ Views.Task.viewStepContents taskStep ]
                 |> Modal.footer []
                     [ Button.button
                         [ Button.outlinePrimary
-                        , Button.attrs [ onClick CloseStepInfoModal ]
+                        , Button.attrs [ Html.Events.onClick CloseStepInfoModal ]
                         ]
-                        [ text "Close" ]
+                        [ Html.text "Close" ]
                     ]
                 |> Modal.view visibility
+                |> fromUnstyled
 
         Nothing ->
             text ""
 
 
-viewStepCollapseToggle : LogStep -> Html Msg
+viewStepCollapseToggle : LogStep -> Styled.Html Msg
 viewStepCollapseToggle logStep =
     let
         ( _, buildStep ) =
@@ -600,17 +610,18 @@ viewStepCollapseToggle logStep =
             , Button.light
             , Button.onClick (ToggleStepCollapse buildStep.id)
             ]
-            [ text buttonText ]
+            [ Html.text buttonText ]
+            |> fromUnstyled
 
 
-viewStepStreamFilter : LogStep -> Html Msg
+viewStepStreamFilter : LogStep -> Styled.Html Msg
 viewStepStreamFilter logStep =
     let
         ( _, buildStep ) =
             logStep.step
 
         headerItem =
-            Dropdown.header [ text "Streams" ]
+            Dropdown.header [ Html.text "Streams" ]
 
         streamItems =
             logStep.streams
@@ -623,13 +634,14 @@ viewStepStreamFilter logStep =
             logStep.filterDropdown
             { options =
                 [ Dropdown.dropLeft
-                , Dropdown.menuAttrs [ class "item-filter-dropdown" ]
+                , Dropdown.menuAttrs [ Html.Attributes.class "item-filter-dropdown" ]
                 ]
             , toggleMsg = ToggleStepFilterDropdown buildStep.id
             , toggleButton =
-                Dropdown.toggle [ Button.light, Button.small ] [ text "Filter" ]
+                Dropdown.toggle [ Button.light, Button.small ] [ Html.text "Filter" ]
             , items = headerItem :: streamItems
             }
+            |> fromUnstyled
 
 
 viewStepStreamFilterItem : LogStep -> ( Int, LogStepStream ) -> Dropdown.DropdownItem Msg
@@ -641,34 +653,42 @@ viewStepStreamFilterItem logStep ( streamIndex, logStepStream ) =
         msg =
             ToggleStreamVisibility buildStep.id logStepStream.buildStream.id
     in
-        Dropdown.buttonItem [ onClickPreventDefault msg ]
-            [ i
-                [ class "fa"
-                , classList [ "fa-check" => logStepStream.visible ]
+        Dropdown.buttonItem
+            [ onClickPreventDefault msg ]
+            [ Html.i
+                [ Html.Attributes.class "fa"
+                , Html.Attributes.classList [ "fa-check" => logStepStream.visible ]
                 ]
                 []
-            , text " "
-            , span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text logStepStream.buildStream.name ]
+            , Html.text " "
+            , Html.span
+                [ Html.Attributes.classList
+                    [ "badge" => True
+                    , streamBadgeClass streamIndex => True
+                    ]
+                ]
+                [ Html.text logStepStream.buildStream.name ]
             ]
 
 
-viewStepLog : LogStep -> Html Msg
+viewStepLog : LogStep -> Html.Html Msg
 viewStepLog step =
     if step.collapsed then
-        text ""
+        Html.text ""
     else
         div [ class "table-responsive" ] [ viewStepLogTable step ]
+            |> toUnstyled
 
 
-viewStepLogTable : LogStep -> Html Msg
+viewStepLogTable : LogStep -> Styled.Html Msg
 viewStepLogTable step =
     step
         |> flattenStepLines
         |> List.map viewLine
-        |> table [ class "table table-unbordered table-sm table-hover mb-0" ]
+        |> Styled.table [ class "table table-unbordered table-sm table-hover mb-0" ]
 
 
-viewLine : ViewStepLine -> Html Msg
+viewLine : ViewStepLine -> Styled.Html Msg
 viewLine { timestamp, streamName, ansi, streamIndex } =
     tr [ class "d-flex" ]
         [ td [ class "col-1" ]
@@ -680,15 +700,15 @@ viewLine { timestamp, streamName, ansi, streamIndex } =
         ]
 
 
-viewLineAnsi : Array Ansi.Log.Line -> Html Msg
+viewLineAnsi : Array Ansi.Log.Line -> Styled.Html Msg
 viewLineAnsi lines =
     lines
         |> Array.get ((Array.length lines) - 2)
-        |> Maybe.map Ansi.Log.viewLine
+        |> Maybe.map (Ansi.Log.viewLine >> fromUnstyled)
         |> Maybe.withDefault (text "")
 
 
-viewBuildInformation : Build -> Html Msg
+viewBuildInformation : Build -> Styled.Html Msg
 viewBuildInformation build =
     let
         dateText date =
@@ -769,9 +789,9 @@ streamKey buildStream =
     BuildStream.idToString buildStream.id
 
 
-onClickPreventDefault : msg -> Attribute msg
+onClickPreventDefault : msg -> Html.Attribute msg
 onClickPreventDefault message =
-    onWithOptions
+    Html.Events.onWithOptions
         "click"
         { stopPropagation = True
         , preventDefault = False

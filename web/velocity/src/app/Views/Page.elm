@@ -3,8 +3,10 @@ module Views.Page exposing (frame, sidebarFrame, ActivePage(..), SidebarType(..)
 {-| The frame around a typical page - that is, the header and footer.
 -}
 
-import Html exposing (..)
-import Html.Attributes exposing (class, classList)
+import Html exposing (Html)
+import Html.Styled.Attributes as Attributes exposing (css, class, classList)
+import Html.Styled as Styled exposing (..)
+import Css exposing (..)
 import Data.User as User exposing (User)
 import Route as Route
 import Views.Helpers exposing (onClickPage)
@@ -45,53 +47,75 @@ isLoading is for determining whether we should show a loading spinner
 in the header. (This comes up during slow page transitions.)
 
 -}
-frame : Bool -> Maybe User -> ActivePage -> SidebarType -> Html msg -> Html msg
+frame : Bool -> Maybe User -> ActivePage -> SidebarType -> Html.Html msg -> Html.Html msg
 frame isLoading user page sidebarType content =
-    div [ class "content-container px-4", class (sidebarClass sidebarType) ]
+    div
+        [ class "px-4"
+        , css
+            [ marginLeft (px <| sidebarWidthPx sidebarType) ]
+        ]
         [ viewContent content
         , viewFooter
         ]
+        |> toUnstyled
 
 
-sidebarClass : SidebarType -> String
-sidebarClass sidebarType =
+sidebarWidthPx : SidebarType -> Float
+sidebarWidthPx sidebarType =
     case sidebarType of
         NoSidebar ->
-            ""
+            0
 
         NormalSidebar ->
-            "has-sidebar"
+            75
 
         ExtraWideSidebar ->
-            "has-extra-sidebar"
+            295
 
 
-viewContent : Html msg -> Html msg
+viewContent : Html.Html msg -> Styled.Html msg
 viewContent content =
-    div [] [ content ]
+    div [] [ fromUnstyled content ]
 
 
-sidebarFrame : (String -> msg) -> Html msg -> Html msg
+sidebarFrame : (String -> msg) -> Html.Html msg -> Html.Html msg
 sidebarFrame newUrlMsg content =
-    nav [ class "sidebar" ]
-        [ sidebarLogo newUrlMsg
-        , content
+    nav
+        [ css
+            [ width (px 75)
+            , position fixed
+            , top (px 0)
+            , bottom (px 0)
+            , left (px 0)
+            , zIndex (int 2)
+            , paddingTop (Css.rem 1)
+            , backgroundColor (rgb 7 71 166)
+            , color (hex "ffffff")
+            ]
         ]
+        [ sidebarLogo newUrlMsg
+        , fromUnstyled content
+        ]
+        |> toUnstyled
 
 
-sidebarLogo : (String -> msg) -> Html msg
+sidebarLogo : (String -> msg) -> Styled.Html msg
 sidebarLogo newUrlMsg =
     div [ class "d-flex justify-content-center" ]
         [ a
-            [ class "brand"
-            , Route.href Route.Home
-            , onClickPage newUrlMsg Route.Home
+            [ css
+                [ color (hex "ffffff")
+                , hover
+                    [ color (hex "ffffff") ]
+                ]
+            , Attributes.fromUnstyled (Route.href Route.Home)
+            , Attributes.fromUnstyled (onClickPage newUrlMsg Route.Home)
             ]
             [ h1 [] [ i [ class "fa fa-arrow-circle-o-right" ] [] ]
             ]
         ]
 
 
-viewFooter : Html msg
+viewFooter : Styled.Html msg
 viewFooter =
     div [] []

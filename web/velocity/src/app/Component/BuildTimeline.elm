@@ -2,10 +2,12 @@ module Component.BuildTimeline exposing (..)
 
 -- EXTERNAL --
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
 import Time.DateTime as DateTime exposing (DateTime, DateTimeDelta)
 import String exposing (padRight, split, join)
+import Html exposing (Html)
+import Html.Styled.Attributes exposing (css, class, classList)
+import Html.Styled exposing (..)
+import Css exposing (..)
 
 
 -- INTERNAL --
@@ -126,23 +128,54 @@ ratio startTime endTime =
 -- VIEW --
 
 
-view : State -> Html msg
+view : State -> Html.Html msg
 view points =
-    div [ class "timeline" ]
-        [ div [ class "line" ]
-            [ div [ class "events" ] (viewPoints points)
+    points
+        |> viewTimeline
+        |> toUnstyled
+
+
+viewTimeline : State -> Html.Styled.Html msg
+viewTimeline points =
+    div
+        [ css
+            [ position relative
+            , padding3 (Css.em 1.5) (Css.em 0) (Css.em 0.5)
+            , borderWidth2 (px 0) (px 1)
+            ]
+        ]
+        [ div
+            [ css
+                [ display block
+                , listStyleType none
+                , margin3 (Css.em 0.5) (Css.em 0) (Css.em 0)
+                , padding (Css.em 0)
+                , height (Css.em 1)
+                , borderTop3 (px 4) solid (hex "008000")
+                , width (pct 100)
+                , position relative
+                ]
+            ]
+            [ div
+                [ css
+                    [ position relative
+                    , top (Css.em -0.8)
+                    , margin2 (Css.em 0) (Css.em 0.5)
+                    ]
+                ]
+                (viewPoints points)
             ]
         , viewDuration points
         ]
 
 
-viewDuration : State -> Html msg
+viewDuration : State -> Html.Styled.Html msg
 viewDuration state =
     let
         { hours, minutes, seconds } =
             duration state
     in
-        small [ class "pull-right" ]
+        Html.Styled.small [ css [ float right ] ]
             [ i [ class "fa fa-clock-o" ] []
             , text " Ran for "
             , text (pluralizeOrDrop "hour" hours)
@@ -164,7 +197,7 @@ pluralizeOrDrop word amount =
             (toString amount) ++ " " ++ word ++ "s "
 
 
-viewPoints : State -> List (Html msg)
+viewPoints : State -> List (Html.Styled.Html msg)
 viewPoints points =
     let
         start =
@@ -180,29 +213,57 @@ viewPoints points =
             points
 
 
-viewPoint : Float -> Float -> Point -> Html msg
+viewPoint : Float -> Float -> Point -> Html.Styled.Html msg
 viewPoint ratio start point =
-    let
-        timestamp =
-            DateTime.toTimestamp point.dateTime
-
-        pos =
-            eventPosition ratio start timestamp
-    in
-        div [ class "event", style [ "left" => (pos ++ "%") ] ]
-            [ div [ class "circle" ]
-                [ div [ class "circle-inner" ] []
-                , div [ class "label" ]
-                    [ label [] [ text point.label ]
-                    , time [] [ text (formatTimeSeconds point.dateTime) ]
-                    ]
+    div
+        [ css
+            [ left (pct <| eventPosition ratio start <| DateTime.toTimestamp point.dateTime)
+            , width (Css.em 1)
+            , height (Css.em 1)
+            , position absolute
+            , top (Css.em 0)
+            , margin4 (Css.em 0) (Css.em 0) (Css.em 0) (Css.em -0.6)
+            ]
+        ]
+        [ div
+            [ css
+                [ position relative
+                , backgroundColor (hex "ffffff")
+                , border3 (px 4) solid (hex "008000")
+                , width (Css.em 1.3)
+                , height (Css.em 1.3)
+                , borderRadius (pct 50)
                 ]
             ]
+            [ div
+                [ css
+                    [ display block
+                    , width (Css.em 10)
+                    , padding2 (Css.em 0.5) (Css.em 1)
+                    , textAlign center
+                    , position absolute
+                    , margin4 (px -2) (px 0) (px 0) (Css.em -5)
+                    , left (pct 50)
+                    , top (pct 50)
+                    ]
+                ]
+                [ label
+                    [ css
+                        [ display block
+                        , fontWeight bold
+                        , margin4 (px 0) (px 0) (px 5) (px 0)
+                        ]
+                    ]
+                    [ text point.label ]
+                , time [] [ text (formatTimeSeconds point.dateTime) ]
+                ]
+            ]
+        ]
 
 
-eventPosition : Float -> Float -> Float -> String
+eventPosition : Float -> Float -> Float -> Float
 eventPosition ratio start point =
-    toFixed 2 ((point - start) * ratio)
+    ((point - start) * ratio)
 
 
 
@@ -226,7 +287,7 @@ toFixed precision value =
                 val ->
                     val
     in
-        (round (value * power) |> toFloat)
+        (Basics.round (value * power) |> toFloat)
             / power
             |> toString
             |> String.split "."

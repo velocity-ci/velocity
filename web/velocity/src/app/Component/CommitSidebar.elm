@@ -12,13 +12,16 @@ import Page.Project.Commit.Route as CommitRoute
 import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
 import Views.Helpers exposing (onClickPage)
 import Views.Build exposing (viewBuildStatusIconClasses, viewBuildTextClass)
+import Views.Style as Style
 import Util exposing ((=>))
 
 
 -- EXTERNAL
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html exposing (Html)
+import Html.Styled.Attributes as Attributes exposing (css, class, classList)
+import Html.Styled as Styled exposing (..)
+import Css exposing (..)
 
 
 -- CONFIG
@@ -50,24 +53,36 @@ type alias NavTaskProperties =
 -- VIEW
 
 
-view : Config msg -> Context -> Html msg
+view : Config msg -> Context -> Html.Html msg
 view config context =
-    div [ class "sub-sidebar" ]
+    div
+        [ css
+            [ width (px 220)
+            , position fixed
+            , top (px 0)
+            , left (px 75)
+            , bottom (px 0)
+            , zIndex (int 1)
+            , backgroundColor (rgb 244 245 247)
+            , color (rgb 66 82 110)
+            ]
+        ]
         [ details context.commit
         , taskNav config context
         ]
+        |> toUnstyled
 
 
-details : Commit -> Html msg
+details : Commit -> Styled.Html msg
 details commit =
     div [ class "p-1" ]
         [ div [ class "card" ]
             [ div [ class "card-body" ]
-                [ infoPanel commit
+                [ fromUnstyled (infoPanel commit)
                 , hr [] []
-                , branchList commit
+                , fromUnstyled (branchList commit)
                 , hr [] []
-                , small [] [ text (truncateCommitMessage commit) ]
+                , Styled.small [] [ text (truncateCommitMessage commit) ]
                 ]
             ]
         ]
@@ -75,13 +90,13 @@ details commit =
 
 {-| List of task navigation
 -}
-taskNav : Config msg -> Context -> Html msg
+taskNav : Config msg -> Context -> Styled.Html msg
 taskNav config context =
     ul [ class "nav nav-pills flex-column project-navigation p-0" ] <|
         taskNavItems config context
 
 
-taskNavItems : Config msg -> Context -> List (Html msg)
+taskNavItems : Config msg -> Context -> List (Styled.Html msg)
 taskNavItems { newUrlMsg } context =
     context
         |> .tasks
@@ -92,19 +107,35 @@ taskNavItems { newUrlMsg } context =
 
 {-| Single nav item for a task
 -}
-taskNavItem : (String -> msg) -> NavTaskProperties -> Html msg
+taskNavItem : (String -> msg) -> NavTaskProperties -> Styled.Html msg
 taskNavItem newUrlMsg { isSelected, route, itemText, textClass, iconClass } =
     li [ class "nav-item" ]
         [ a
             [ class "nav-link text-secondary align-middle"
             , class textClass
-            , classList [ "active" => isSelected ]
-            , Route.href route
-            , onClickPage newUrlMsg route
+            , css
+                [ Style.textOverflowMixin
+                , taskNavItemActiveCss isSelected
+                , borderRadius (px 0)
+                ]
+            , Attributes.fromUnstyled (Route.href route)
+            , Attributes.fromUnstyled (onClickPage newUrlMsg route)
             ]
             [ text itemText
             ]
         ]
+
+
+taskNavItemActiveCss : Bool -> Style
+taskNavItemActiveCss active =
+    if active then
+        Css.batch
+            [ backgroundColor (hex "e2e3e5")
+            , borderColor (hex "d6d8db")
+            , color (hex "383d41")
+            ]
+    else
+        Css.batch []
 
 
 

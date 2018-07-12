@@ -1,9 +1,11 @@
 module Page.Project.Settings exposing (..)
 
 import Context exposing (Context)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
+import Html exposing (Html)
+import Html.Styled.Attributes as Attributes exposing (css, class, classList, type_, value)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Events exposing (onClick, onInput)
+import Css exposing (..)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Util exposing ((=>))
@@ -36,15 +38,16 @@ initialModel =
 -- VIEW --
 
 
-view : Project -> Model -> Html Msg
+view : Project -> Model -> Html.Html Msg
 view project model =
     div []
         [ h4 [ class "mb-2" ] [ text "Settings" ]
         , viewDangerArea project model
         ]
+        |> toUnstyled
 
 
-viewDangerArea : Project -> Model -> Html Msg
+viewDangerArea : Project -> Model -> Styled.Html Msg
 viewDangerArea project model =
     let
         cardBody =
@@ -63,7 +66,7 @@ viewDangerArea project model =
             ]
 
 
-viewPreDeleteConfirmation : Model -> Html Msg
+viewPreDeleteConfirmation : Model -> Styled.Html Msg
 viewPreDeleteConfirmation model =
     div []
         [ p
@@ -78,7 +81,7 @@ viewPreDeleteConfirmation model =
         ]
 
 
-viewDeleteConfirmation : String -> String -> Bool -> Html Msg
+viewDeleteConfirmation : String -> String -> Bool -> Styled.Html Msg
 viewDeleteConfirmation projectName confirmValue submitting =
     let
         disclaimer =
@@ -92,9 +95,14 @@ viewDeleteConfirmation projectName confirmValue submitting =
                     [ text "Please type in the name of the project to confirm or "
                     , button
                         [ type_ "button"
-                        , class "btn btn-link btn-cancel-delete"
+                        , class "btn btn-link"
+                        , css
+                            [ padding (px 0)
+                            , lineHeight inherit
+                            , verticalAlign baseline
+                            ]
                         , onClick (SetDeleteState Closed)
-                        , disabled submitting
+                        , Attributes.disabled submitting
                         ]
                         [ text "click here to cancel." ]
                     ]
@@ -108,14 +116,18 @@ viewDeleteConfirmation projectName confirmValue submitting =
                     , type_ "text"
                     , value confirmValue
                     , onInput ((Open False) >> SetDeleteState)
-                    , disabled submitting
+                    , Attributes.disabled submitting
                     ]
                     []
                 , span [ class "input-group-btn" ]
                     [ button
                         [ class "btn btn-danger"
                         , type_ "button"
-                        , disabled ((projectName /= confirmValue) || submitting)
+                        , css
+                            [ borderTopLeftRadius (px 0)
+                            , borderBottomLeftRadius (px 0)
+                            ]
+                        , Attributes.disabled ((projectName /= confirmValue) || submitting)
                         , onClick SubmitProjectDelete
                         ]
                         [ text "Delete project" ]
