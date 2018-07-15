@@ -342,7 +342,7 @@ viewSubPage session model =
                         Commit.breadcrumb project subModel.commit subModel.subPageState
                             |> breadcrumb (text "")
                 in
-                    Commit.view project subModel
+                    Commit.view project session subModel
                         |> Html.map CommitMsg
                         |> pageFrame crumb
 
@@ -759,11 +759,11 @@ updateSubPage context session subPage msg model =
 -- HELPERS --
 
 
-hasExtraWideSidebar : Model -> Bool
-hasExtraWideSidebar { subPageState } =
+hasExtraWideSidebar : Model -> Session msg -> Bool
+hasExtraWideSidebar { subPageState } session =
     case getSubPage subPageState of
         Commit _ ->
-            True
+            Commit.hasExtraWideSidebar session
 
         _ ->
             False

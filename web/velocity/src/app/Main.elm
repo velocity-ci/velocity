@@ -24,6 +24,7 @@ import Task
 import Ports
 import Component.UserSidebar as UserSidebar
 import Html exposing (Html, text, div)
+import Window
 
 
 type Page
@@ -72,6 +73,7 @@ init flags location =
         session =
             { user = user
             , socket = initialSocket context
+            , windowSize = Nothing
             }
 
         ( initialModel, initialCmd ) =
@@ -84,7 +86,13 @@ init flags location =
     in
         initialModel
             ! [ initialCmd
+              , initWindowSize
               ]
+
+
+initWindowSize : Cmd Msg
+initWindowSize =
+    Task.perform SetWindowSize Window.size
 
 
 decodeUserFromJson : Value -> Maybe User
@@ -209,7 +217,7 @@ viewPage session isLoading page =
             Project subModel ->
                 let
                     sidebar =
-                        if Project.hasExtraWideSidebar subModel then
+                        if Project.hasExtraWideSidebar subModel session then
                             Page.ExtraWideSidebar
                         else
                             Page.NormalSidebar
@@ -250,12 +258,21 @@ subscriptions model =
         userSidebar =
             UserSidebar.subscriptions userSidebarConfig model.userSidebar
 
+        window =
+            Window.resizes SetWindowSize
+
         page =
             model.pageState
                 |> getPage
                 |> pageSubscriptions
     in
-        Sub.batch [ session, socket, page, userSidebar ]
+        Sub.batch
+            [ session
+            , socket
+            , page
+            , userSidebar
+            , window
+            ]
 
 
 pageSubscriptions : Page -> Sub Msg
@@ -313,6 +330,7 @@ type Msg
     | UsersMsg Users.Msg
     | SocketMsg (Socket.Msg Msg)
     | UserDropdownToggleMsg Dropdown.State
+    | SetWindowSize Window.Size
     | NoOp
 
 
@@ -546,6 +564,17 @@ updatePage page msg model =
             ( NewUrl url, _ ) ->
                 model
                     => Navigation.newUrl url
+
+            ( SetWindowSize windowSize, _ ) ->
+                let
+                    session =
+                        model.session
+
+                    updatedSession =
+                        { session | windowSize = Just windowSize }
+                in
+                    { model | session = updatedSession }
+                        => Cmd.none
 
             ( SocketMsg msg, _ ) ->
                 let

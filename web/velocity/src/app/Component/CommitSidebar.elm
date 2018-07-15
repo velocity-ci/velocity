@@ -1,4 +1,4 @@
-module Component.CommitSidebar exposing (view, Context, Config)
+module Component.CommitSidebar exposing (view, Context, Config, displayType, DisplayType(..))
 
 -- INTERNAL
 
@@ -37,6 +37,7 @@ type alias Context =
     , commit : Commit
     , tasks : List Task
     , selected : Maybe Task.Name
+    , windowWidth : Int
     }
 
 
@@ -49,28 +50,46 @@ type alias NavTaskProperties =
     }
 
 
+type DisplayType
+    = Visible
+    | Hidden
+
+
 
 -- VIEW
 
 
 view : Config msg -> Context -> Html.Html msg
 view config context =
-    div
-        [ css
-            [ width (px 220)
-            , position fixed
-            , top (px 0)
-            , left (px 75)
-            , bottom (px 0)
-            , zIndex (int 1)
-            , backgroundColor (rgb 244 245 247)
-            , color (rgb 66 82 110)
-            ]
-        ]
-        [ details context.commit
-        , taskNav config context
-        ]
-        |> toUnstyled
+    case displayType context.windowWidth of
+        Visible ->
+            div
+                [ css
+                    [ width (px 220)
+                    , position fixed
+                    , top (px 0)
+                    , left (px 75)
+                    , bottom (px 0)
+                    , zIndex (int 1)
+                    , backgroundColor (rgb 244 245 247)
+                    , color (rgb 66 82 110)
+                    ]
+                ]
+                [ details context.commit
+                , taskNav config context
+                ]
+                |> toUnstyled
+
+        Hidden ->
+            toUnstyled (text "")
+
+
+displayType : Int -> DisplayType
+displayType windowWidth =
+    if windowWidth >= 1024 then
+        Visible
+    else
+        Hidden
 
 
 details : Commit -> Styled.Html msg

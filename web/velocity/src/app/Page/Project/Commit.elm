@@ -193,21 +193,22 @@ leaveSubPageChannels subPage subRoute =
 -- VIEW --
 
 
-view : Project -> Model -> Html Msg
-view project model =
+view : Project -> Session msg -> Model -> Html Msg
+view project session model =
     div []
-        [ CommitSidebar.view sidebarConfig (sidebarContext project model)
+        [ viewSidebar project session model
         , viewSubPage project model
         ]
 
 
-sidebarContext : Project -> Model -> CommitSidebar.Context
-sidebarContext project model =
+sidebarContext : Project -> Session msg -> Model -> CommitSidebar.Context
+sidebarContext project { windowSize } model =
     { project = project
     , commit = model.commit
     , tasks = model.tasks
     , selected = selectedTask model
     , builds = model.builds
+    , windowWidth = windowSize |> Maybe.map .width |> Maybe.withDefault 0
     }
 
 
@@ -232,6 +233,13 @@ selectedTask model =
 sidebarConfig : CommitSidebar.Config Msg
 sidebarConfig =
     { newUrlMsg = NewUrl }
+
+
+viewSidebar : Project -> Session msg -> Model -> Html Msg
+viewSidebar project session model =
+    model
+        |> sidebarContext project session
+        |> CommitSidebar.view sidebarConfig
 
 
 viewSubPage : Project -> Model -> Html Msg
@@ -500,3 +508,15 @@ update context project session msg model =
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through (commit page)" model)
                     => Cmd.none
+
+
+hasExtraWideSidebar : Session msg -> Bool
+hasExtraWideSidebar { windowSize } =
+    let
+        sidebarDisplayType =
+            windowSize
+                |> Maybe.map .width
+                |> Maybe.withDefault 0
+                |> CommitSidebar.displayType
+    in
+        sidebarDisplayType == CommitSidebar.Visible
