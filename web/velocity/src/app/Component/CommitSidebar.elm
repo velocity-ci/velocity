@@ -80,7 +80,7 @@ type CollapsableVisibility
 view : Config msg -> Context -> Html.Html msg
 view config context =
     context
-        |> sidebar config
+        |> sidebarContainer config
         |> toUnstyled
 
 
@@ -99,20 +99,11 @@ fixedVisible =
     Fixed
 
 
-sidebar : Config msg -> Context -> Styled.Html msg
-sidebar config context =
+sidebarContainer : Config msg -> Context -> Styled.Html msg
+sidebarContainer config context =
     case context.displayType of
         Fixed ->
-            div
-                [ css
-                    [ width (px 220)
-                    , position fixed
-                    , sidebarStyle
-                    ]
-                ]
-                [ details context.commit
-                , taskNav config context
-                ]
+            sidebar config context
 
         Collapsable Visible ->
             div []
@@ -130,20 +121,26 @@ sidebar config context =
                     , onClick config.hideCollapsableSidebarMsg
                     ]
                     []
-                , div
-                    [ css
-                        [ width (px 220)
-                        , position fixed
-                        , sidebarStyle
-                        ]
-                    ]
-                    [ details context.commit
-                    , taskNav config context
-                    ]
+                , sidebar config context
                 ]
 
         Collapsable Hidden ->
             text ""
+
+
+sidebar : Config msg -> Context -> Styled.Html msg
+sidebar config context =
+    div
+        [ class "slide-in"
+        , css
+            [ width (px 220)
+            , position fixed
+            , sidebarStyle
+            ]
+        ]
+        [ details context.commit
+        , taskNav config context
+        ]
 
 
 sidebarStyle : Style
@@ -152,7 +149,7 @@ sidebarStyle =
         [ top (px 0)
         , left (px 75)
         , bottom (px 0)
-        , zIndex (int 2)
+        , zIndex (int 1)
         , backgroundColor (rgb 244 245 247)
         , color (rgb 66 82 110)
         ]
@@ -160,7 +157,7 @@ sidebarStyle =
 
 initDisplayType : Int -> DisplayType
 initDisplayType windowWidth =
-    if windowWidth >= 1024 then
+    if windowWidth >= 992 then
         fixedVisible
     else
         collapsableHidden

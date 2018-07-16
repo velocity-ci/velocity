@@ -278,15 +278,15 @@ frame :
     -> (a -> Msg)
     -> Html a
     -> Html Msg
-frame project { commit, tasks } toMsg content =
+frame project { commit, tasks, sidebarDisplayType } toMsg content =
     div []
-        [ viewNavbarToggle
+        [ viewNavbarToggle sidebarDisplayType
         , Html.map toMsg content
         ]
 
 
-viewNavbarToggle : Html Msg
-viewNavbarToggle =
+viewNavbarToggle : CommitSidebar.DisplayType -> Html Msg
+viewNavbarToggle displayType =
     nav [ class "navbar navbar-light bg-light px-0" ]
         [ button
             [ type_ "button"
@@ -296,6 +296,7 @@ viewNavbarToggle =
             [ span [ class "navbar-toggler-icon" ] []
             ]
         ]
+        |> Util.viewIf (displayType /= CommitSidebar.fixedVisible)
 
 
 viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
@@ -391,18 +392,24 @@ taskBuilds builds maybeTask =
 setRoute : Context -> Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
 setRoute context session project maybeRoute model =
     let
+        model_ =
+            if model.sidebarDisplayType == CommitSidebar.collapsableVisible then
+                { model | sidebarDisplayType = CommitSidebar.collapsableHidden }
+            else
+                model
+
         transition toMsg task =
-            { model | subPageState = TransitioningFrom (getSubPage model.subPageState) maybeRoute }
+            { model_ | subPageState = TransitioningFrom (getSubPage model.subPageState) maybeRoute }
                 => Task.attempt toMsg task
 
         errored =
-            pageErrored model
+            pageErrored model_
     in
         case maybeRoute of
             Just (CommitRoute.Overview) ->
                 case session.user of
                     Just user ->
-                        { model | subPageState = Overview.initialModel |> Overview |> Loaded }
+                        { model_ | subPageState = Overview.initialModel |> Overview |> Loaded }
                             => Cmd.none
 
                     Nothing ->
@@ -430,7 +437,7 @@ setRoute context session project maybeRoute model =
                         errored Page.Project "Uhoh"
 
             _ ->
-                { model | subPageState = Loaded Blank }
+                { model_ | subPageState = Loaded Blank }
                     => Cmd.none
 
 
