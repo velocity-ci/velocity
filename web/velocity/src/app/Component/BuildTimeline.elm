@@ -145,13 +145,14 @@ viewTimeline points =
             ]
         ]
         [ div
-            [ css
+            [ class "border-success"
+            , css
                 [ display block
                 , listStyleType none
                 , margin3 (Css.em 0.5) (Css.em 0) (Css.em 0)
                 , padding (Css.em 0)
                 , height (Css.em 1)
-                , borderTop3 (px 4) solid (hex "008000")
+                , borderTop2 (px 4) solid
                 , width (pct 100)
                 , position relative
                 ]
@@ -226,10 +227,11 @@ viewPoint ratio start point =
             ]
         ]
         [ div
-            [ css
+            [ class "border-success"
+            , css
                 [ position relative
                 , backgroundColor (hex "ffffff")
-                , border3 (px 4) solid (hex "008000")
+                , border2 (px 4) solid
                 , width (Css.em 1.3)
                 , height (Css.em 1.3)
                 , borderRadius (pct 50)

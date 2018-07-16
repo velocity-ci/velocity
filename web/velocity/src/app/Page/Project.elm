@@ -390,7 +390,7 @@ viewBreadcrumb project additionalElements items =
             allItems
                 |> List.indexedMap breadcrumbItem
     in
-        div [ class "row d-none d-lg-block d-xl-block" ]
+        div [ class "row" ]
             [ ol [ class "breadcrumb bg-white mb-2 pb-0" ] itemElements
             , additionalElements
             ]
