@@ -1,4 +1,14 @@
-module Component.CommitSidebar exposing (view, Context, Config, displayType, DisplayType(..))
+module Component.CommitSidebar
+    exposing
+        ( view
+        , Context
+        , Config
+        , initDisplayType
+        , fixedVisible
+        , collapsableVisible
+        , collapsableHidden
+        , DisplayType
+        )
 
 -- INTERNAL
 
@@ -21,6 +31,7 @@ import Util exposing ((=>))
 import Html exposing (Html)
 import Html.Styled.Attributes as Attributes exposing (css, class, classList)
 import Html.Styled as Styled exposing (..)
+import Html.Styled.Events exposing (onClick)
 import Css exposing (..)
 
 
@@ -28,7 +39,9 @@ import Css exposing (..)
 
 
 type alias Config msg =
-    { newUrlMsg : String -> msg }
+    { newUrlMsg : String -> msg
+    , hideCollapsableSidebarMsg : msg
+    }
 
 
 type alias Context =
@@ -37,7 +50,7 @@ type alias Context =
     , commit : Commit
     , tasks : List Task
     , selected : Maybe Task.Name
-    , windowWidth : Int
+    , displayType : DisplayType
     }
 
 
@@ -51,6 +64,11 @@ type alias NavTaskProperties =
 
 
 type DisplayType
+    = Fixed
+    | Collapsable CollapsableVisibility
+
+
+type CollapsableVisibility
     = Visible
     | Hidden
 
@@ -61,35 +79,91 @@ type DisplayType
 
 view : Config msg -> Context -> Html.Html msg
 view config context =
-    case displayType context.windowWidth of
-        Visible ->
+    context
+        |> sidebar config
+        |> toUnstyled
+
+
+collapsableVisible : DisplayType
+collapsableVisible =
+    Collapsable Visible
+
+
+collapsableHidden : DisplayType
+collapsableHidden =
+    Collapsable Hidden
+
+
+fixedVisible : DisplayType
+fixedVisible =
+    Fixed
+
+
+sidebar : Config msg -> Context -> Styled.Html msg
+sidebar config context =
+    case context.displayType of
+        Fixed ->
             div
                 [ css
                     [ width (px 220)
                     , position fixed
-                    , top (px 0)
-                    , left (px 75)
-                    , bottom (px 0)
-                    , zIndex (int 1)
-                    , backgroundColor (rgb 244 245 247)
-                    , color (rgb 66 82 110)
+                    , sidebarStyle
                     ]
                 ]
                 [ details context.commit
                 , taskNav config context
                 ]
-                |> toUnstyled
 
-        Hidden ->
-            toUnstyled (text "")
+        Collapsable Visible ->
+            div []
+                [ div
+                    [ css
+                        [ position fixed
+                        , top (px 0)
+                        , right (px 0)
+                        , left (px 75)
+                        , bottom (px 0)
+                        , zIndex (int 1)
+                        , backgroundColor (hex "000000")
+                        , opacity (num 0.5)
+                        ]
+                    , onClick config.hideCollapsableSidebarMsg
+                    ]
+                    []
+                , div
+                    [ css
+                        [ width (px 220)
+                        , position fixed
+                        , sidebarStyle
+                        ]
+                    ]
+                    [ details context.commit
+                    , taskNav config context
+                    ]
+                ]
+
+        Collapsable Hidden ->
+            text ""
 
 
-displayType : Int -> DisplayType
-displayType windowWidth =
+sidebarStyle : Style
+sidebarStyle =
+    Css.batch
+        [ top (px 0)
+        , left (px 75)
+        , bottom (px 0)
+        , zIndex (int 2)
+        , backgroundColor (rgb 244 245 247)
+        , color (rgb 66 82 110)
+        ]
+
+
+initDisplayType : Int -> DisplayType
+initDisplayType windowWidth =
     if windowWidth >= 1024 then
-        Visible
+        fixedVisible
     else
-        Hidden
+        collapsableHidden
 
 
 details : Commit -> Styled.Html msg

@@ -762,8 +762,8 @@ updateSubPage context session subPage msg model =
 hasExtraWideSidebar : Model -> Session msg -> Bool
 hasExtraWideSidebar { subPageState } session =
     case getSubPage subPageState of
-        Commit _ ->
-            Commit.hasExtraWideSidebar session
+        Commit subModel ->
+            Commit.hasExtraWideSidebar subModel
 
         _ ->
             False

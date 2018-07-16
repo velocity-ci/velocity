@@ -10,7 +10,6 @@ import Window
 type alias Session msg =
     { user : Maybe User
     , socket : Socket msg
-    , windowSize : Maybe Window.Size
     }
 
 

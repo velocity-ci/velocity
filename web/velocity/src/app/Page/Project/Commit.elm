@@ -3,6 +3,7 @@ module Page.Project.Commit exposing (..)
 import Context exposing (Context)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
@@ -30,6 +31,7 @@ import Views.Spinner exposing (spinner)
 import Component.DropdownFilter as DropdownFilter
 import Component.CommitSidebar as CommitSidebar
 import Dom
+import Window
 
 
 -- SUB PAGES --
@@ -57,6 +59,7 @@ type alias Model =
     , builds : List Build
     , subPageState : SubPageState
     , taskFilterTerm : String
+    , sidebarDisplayType : CommitSidebar.DisplayType
     }
 
 
@@ -83,18 +86,19 @@ init context session project hash maybeRoute =
             maybeAuthToken
                 |> Request.Commit.builds context project.slug hash
 
-        initialModel commit (Paginated tasks) (Paginated builds) =
+        initialModel commit (Paginated tasks) (Paginated builds) width =
             { commit = commit
             , tasks = tasks.results
             , builds = sortByDatetime .createdAt builds.results |> List.reverse
             , subPageState = Loaded initialSubPage
             , taskFilterTerm = ""
+            , sidebarDisplayType = CommitSidebar.initDisplayType width
             }
 
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map3 initialModel loadCommit loadTasks loadBuilds
+        Task.map4 initialModel loadCommit loadTasks loadBuilds Window.width
             |> Task.map
                 (\successModel ->
                     case maybeRoute of
@@ -113,6 +117,14 @@ init context session project hash maybeRoute =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    Sub.batch
+        [ subPageSubscriptions model
+        , Window.resizes WindowSizeChange
+        ]
+
+
+subPageSubscriptions : Model -> Sub Msg
+subPageSubscriptions model =
     case (getSubPage model.subPageState) of
         CommitTask subModel ->
             subModel
@@ -202,13 +214,13 @@ view project session model =
 
 
 sidebarContext : Project -> Session msg -> Model -> CommitSidebar.Context
-sidebarContext project { windowSize } model =
+sidebarContext project session model =
     { project = project
     , commit = model.commit
     , tasks = model.tasks
     , selected = selectedTask model
     , builds = model.builds
-    , windowWidth = windowSize |> Maybe.map .width |> Maybe.withDefault 0
+    , displayType = model.sidebarDisplayType
     }
 
 
@@ -232,7 +244,9 @@ selectedTask model =
 
 sidebarConfig : CommitSidebar.Config Msg
 sidebarConfig =
-    { newUrlMsg = NewUrl }
+    { newUrlMsg = NewUrl
+    , hideCollapsableSidebarMsg = SetSidebarDisplayType CommitSidebar.collapsableHidden
+    }
 
 
 viewSidebar : Project -> Session msg -> Model -> Html Msg
@@ -265,7 +279,23 @@ frame :
     -> Html a
     -> Html Msg
 frame project { commit, tasks } toMsg content =
-    div [ class "commit-container" ] [ Html.map toMsg content ]
+    div []
+        [ viewNavbarToggle
+        , Html.map toMsg content
+        ]
+
+
+viewNavbarToggle : Html Msg
+viewNavbarToggle =
+    nav [ class "navbar navbar-light bg-light px-0" ]
+        [ button
+            [ type_ "button"
+            , class "navbar-toggler"
+            , onClick (SetSidebarDisplayType CommitSidebar.collapsableVisible)
+            ]
+            [ span [ class "navbar-toggler-icon" ] []
+            ]
+        ]
 
 
 viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
@@ -320,6 +350,8 @@ type Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
     | AddBuild Build
     | UpdateBuild Build
+    | SetSidebarDisplayType CommitSidebar.DisplayType
+    | WindowSizeChange Window.Size
     | NoOp
 
 
@@ -427,6 +459,14 @@ update context project session msg model =
                 model
                     => Navigation.newUrl url
 
+            ( SetSidebarDisplayType sidebarDisplayType, _ ) ->
+                { model | sidebarDisplayType = sidebarDisplayType }
+                    => Cmd.none
+
+            ( WindowSizeChange { width }, _ ) ->
+                { model | sidebarDisplayType = CommitSidebar.initDisplayType width }
+                    => Cmd.none
+
             ( SetRoute route, _ ) ->
                 setRoute context session project route model
 
@@ -477,14 +517,13 @@ update context project session msg model =
             ( AddBuild build, _ ) ->
                 let
                     builds =
-                        --                        if Commit.compare model.commit build.task.commit then
-                        build
-                            |> addBuild model.builds
-                            |> sortByDatetime .createdAt
-                            |> List.reverse
-
-                    --                        else
-                    --                            model.builds
+                        if Commit.compare model.commit build.task.commit then
+                            build
+                                |> addBuild model.builds
+                                |> sortByDatetime .createdAt
+                                |> List.reverse
+                        else
+                            model.builds
                 in
                     { model | builds = builds }
                         => Cmd.none
@@ -510,13 +549,17 @@ update context project session msg model =
                     => Cmd.none
 
 
-hasExtraWideSidebar : Session msg -> Bool
-hasExtraWideSidebar { windowSize } =
-    let
-        sidebarDisplayType =
-            windowSize
-                |> Maybe.map .width
-                |> Maybe.withDefault 0
-                |> CommitSidebar.displayType
-    in
-        sidebarDisplayType == CommitSidebar.Visible
+hasExtraWideSidebar : Model -> Bool
+hasExtraWideSidebar { sidebarDisplayType } =
+    sidebarDisplayType == CommitSidebar.fixedVisible
+
+
+
+--    let
+--        sidebarDisplayType =
+--            windowSize
+--                |> Maybe.map .width
+--                |> Maybe.withDefault 0
+--                |> CommitSidebar.displayType
+--    in
+--        sidebarDisplayType == CommitSidebar.visible
