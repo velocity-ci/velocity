@@ -691,11 +691,11 @@ viewStepLogTable step =
 viewLine : ViewStepLine -> Styled.Html Msg
 viewLine { timestamp, streamName, ansi, streamIndex } =
     tr [ class "d-flex" ]
-        [ td [ class "col-1" ]
+        [ td [ class "d-none d-sm-none d-md-block col-1" ]
             [ span [ classList [ "badge" => True, streamBadgeClass streamIndex => True ] ] [ text streamName ] ]
-        , td [ class "col-1" ]
+        , td [ class "d-none d-sm-none d-md-block col-1" ]
             [ span [ class "badge badge-light" ] [ text (formatTimeSeconds timestamp) ] ]
-        , td [ class "col-10" ]
+        , td [ class "col-xs-12 col-sm-12 col-10" ]
             [ viewLineAnsi ansi.lines ]
         ]
 

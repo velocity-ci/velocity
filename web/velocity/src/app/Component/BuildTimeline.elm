@@ -237,7 +237,7 @@ viewPoint ratio start point =
             ]
             [ div
                 [ css
-                    [ display block
+                    [ display none
                     , width (Css.em 10)
                     , padding2 (Css.em 0.5) (Css.em 1)
                     , textAlign center
