@@ -44,6 +44,7 @@ import Html.Styled.Lazy exposing (lazy)
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Button as Button
 import Bootstrap.Modal as Modal
+import Bootstrap.Popover as Popover
 
 
 -- MODEL
@@ -53,6 +54,7 @@ type alias Model =
     { log : Log
     , stepInfoModal : StepInfoModal
     , autoScrollMessages : Bool
+    , timelinePopovers : BuildTimeline.TimelinePopovers
     }
 
 
@@ -113,7 +115,21 @@ initialModel log =
     { log = log
     , stepInfoModal = ( Modal.hidden, Nothing )
     , autoScrollMessages = True
+    , timelinePopovers = timelinePopovers log
     }
+
+
+timelinePopovers : Log -> BuildTimeline.TimelinePopovers
+timelinePopovers log =
+    { queued = Popover.initialState
+    , completed = Popover.initialState
+    , steps = Dict.foldl (\id step acc -> Dict.insert id Popover.initialState acc) Dict.empty log
+    }
+
+
+timelineConfig : BuildTimeline.Config Msg
+timelineConfig =
+    { popoverMsg = UpdatePopover }
 
 
 loadBuildStreams : Context -> ProjectTask.Task -> Maybe AuthToken -> Build -> Task Request.Errors.HttpError Log
@@ -295,6 +311,7 @@ type Msg
     | CloseStepInfoModal
     | AnimateStepInfoModal Modal.Visibility
     | OpenStepInfoModal LogStep
+    | UpdatePopover BuildTimeline.PopoverUpdate Popover.State
     | NoOp
 
 
@@ -355,6 +372,10 @@ update msg model =
             in
                 { model | stepInfoModal = ( Modal.shown, Just taskStep ) }
                     => Cmd.none
+
+        UpdatePopover popover state ->
+            { model | timelinePopovers = BuildTimeline.updatePopovers popover state model.timelinePopovers }
+                => Cmd.none
 
         NoOp ->
             model => Cmd.none
@@ -489,18 +510,18 @@ view build task model =
                 |> List.map (viewStepContainer build)
     in
         div []
-            [ div [ class "mb-4" ] [ viewTimeline build task ]
+            [ div [ class "mb-4" ] [ viewTimeline build model.timelinePopovers task ]
             , div [] stepOutput
             , viewStepInfoModal model.stepInfoModal
             ]
             |> toUnstyled
 
 
-viewTimeline : Build -> ProjectTask.Task -> Styled.Html Msg
-viewTimeline build task =
+viewTimeline : Build -> BuildTimeline.TimelinePopovers -> ProjectTask.Task -> Styled.Html Msg
+viewTimeline build popovers task =
     task
-        |> BuildTimeline.points build
-        |> BuildTimeline.view
+        |> BuildTimeline.points build popovers
+        |> BuildTimeline.view timelineConfig
         |> fromUnstyled
 
 
