@@ -94,7 +94,7 @@ func (w *StreamWriter) Write(p []byte) (n int, err error) {
 		o += "\n"
 	} else {
 		parts := strings.Split(o, "\r")
-		o = parts[len(parts)-1] + "\n"
+		o = parts[len(parts)-1] + "\r"
 	}
 
 	lM := builder.BuilderStreamLineMessage{
