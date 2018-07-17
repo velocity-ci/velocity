@@ -230,7 +230,7 @@ subscriptions model =
                 |> Sub.map CommitsMsg
 
         Commit subModel ->
-            Commit.subscriptions subModel
+            Commit.subscriptions model.project subModel
                 |> Sub.map CommitMsg
 
         _ ->

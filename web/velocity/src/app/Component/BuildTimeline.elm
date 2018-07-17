@@ -217,7 +217,8 @@ viewPoints points =
 viewPoint : Float -> Float -> Point -> Html.Styled.Html msg
 viewPoint ratio start point =
     div
-        [ css
+        [ class "slide-in"
+        , css
             [ left (pct <| eventPosition ratio start <| DateTime.toTimestamp point.dateTime)
             , width (Css.em 1)
             , height (Css.em 1)

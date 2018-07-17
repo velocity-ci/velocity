@@ -32,6 +32,7 @@ import Component.DropdownFilter as DropdownFilter
 import Component.CommitSidebar as CommitSidebar
 import Dom
 import Window
+import Animation
 
 
 -- SUB PAGES --
@@ -115,11 +116,12 @@ init context session project hash maybeRoute =
 -- SUBSCRIPTIONS --
 
 
-subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions : Project -> Model -> Sub Msg
+subscriptions project model =
     Sub.batch
         [ subPageSubscriptions model
         , Window.resizes WindowSizeChange
+        , CommitSidebar.subscriptions sidebarConfig (sidebarContext project model)
         ]
 
 
@@ -213,8 +215,8 @@ view project session model =
         ]
 
 
-sidebarContext : Project -> Session msg -> Model -> CommitSidebar.Context
-sidebarContext project session model =
+sidebarContext : Project -> Model -> CommitSidebar.Context
+sidebarContext project model =
     { project = project
     , commit = model.commit
     , tasks = model.tasks
@@ -245,14 +247,15 @@ selectedTask model =
 sidebarConfig : CommitSidebar.Config Msg
 sidebarConfig =
     { newUrlMsg = NewUrl
-    , hideCollapsableSidebarMsg = SetSidebarDisplayType CommitSidebar.collapsableHidden
+    , hideCollapsableSidebarMsg = HideSidebar
+    , animateMsg = AnimateSidebar
     }
 
 
 viewSidebar : Project -> Session msg -> Model -> Html Msg
-viewSidebar project session model =
+viewSidebar project _ model =
     model
-        |> sidebarContext project session
+        |> sidebarContext project
         |> CommitSidebar.view sidebarConfig
 
 
@@ -291,7 +294,7 @@ viewNavbarToggle displayType =
         [ button
             [ type_ "button"
             , class "navbar-toggler"
-            , onClick (SetSidebarDisplayType CommitSidebar.collapsableVisible)
+            , onClick ShowSidebar
             ]
             [ span [ class "navbar-toggler-icon" ] []
             ]
@@ -351,8 +354,10 @@ type Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
     | AddBuild Build
     | UpdateBuild Build
-    | SetSidebarDisplayType CommitSidebar.DisplayType
     | WindowSizeChange Window.Size
+    | AnimateSidebar Animation.Msg
+    | ShowSidebar
+    | HideSidebar
     | NoOp
 
 
@@ -393,10 +398,7 @@ setRoute : Context -> Session msg -> Project -> Maybe CommitRoute.Route -> Model
 setRoute context session project maybeRoute model =
     let
         model_ =
-            if model.sidebarDisplayType == CommitSidebar.collapsableVisible then
-                { model | sidebarDisplayType = CommitSidebar.collapsableHidden }
-            else
-                model
+            { model | sidebarDisplayType = CommitSidebar.hide model.sidebarDisplayType }
 
         transition toMsg task =
             { model_ | subPageState = TransitioningFrom (getSubPage model.subPageState) maybeRoute }
@@ -466,8 +468,16 @@ update context project session msg model =
                 model
                     => Navigation.newUrl url
 
-            ( SetSidebarDisplayType sidebarDisplayType, _ ) ->
-                { model | sidebarDisplayType = sidebarDisplayType }
+            ( AnimateSidebar animateMsg, _ ) ->
+                { model | sidebarDisplayType = CommitSidebar.animate model.sidebarDisplayType animateMsg }
+                    => Cmd.none
+
+            ( ShowSidebar, _ ) ->
+                { model | sidebarDisplayType = CommitSidebar.show model.sidebarDisplayType }
+                    => Cmd.none
+
+            ( HideSidebar, _ ) ->
+                { model | sidebarDisplayType = CommitSidebar.hide model.sidebarDisplayType }
                     => Cmd.none
 
             ( WindowSizeChange { width }, _ ) ->
@@ -559,14 +569,3 @@ update context project session msg model =
 hasExtraWideSidebar : Model -> Bool
 hasExtraWideSidebar { sidebarDisplayType } =
     sidebarDisplayType == CommitSidebar.fixedVisible
-
-
-
---    let
---        sidebarDisplayType =
---            windowSize
---                |> Maybe.map .width
---                |> Maybe.withDefault 0
---                |> CommitSidebar.displayType
---    in
---        sidebarDisplayType == CommitSidebar.visible

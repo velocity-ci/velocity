@@ -226,14 +226,8 @@ Branch filter
   animation: 1s blinker step-end infinite
 }
 
-
 .animated {
   animation-duration: 1s;
-  animation-fill-mode: both;
-}
-
-.quick-animated {
-  animation-duration: 0.5s;
   animation-fill-mode: both;
 }
 
@@ -267,47 +261,4 @@ Branch filter
 
 .bounceInRight {
   animation-name: bounceInRight;
-}
-
-.slide-in {
-  transform: translateX(-100%);
-  animation: slide-in 0.5s forwards;
-  -webkit-animation: slide-in 0.5s forwards;
-}
-
-.slide-out {
-  animation: slide-out 0.5s forwards;
-  -webkit-animation: slide-out 0.5s forwards;
-}
-
-@keyframes slide-in {
-  100% { transform: translateX(0%); }
-}
-
-@-webkit-keyframes slide-in {
-  100% { -webkit-transform: translateX(0%); }
-}
-
-@keyframes slide-out {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-100%); }
-}
-
-@-webkit-keyframes slide-out {
-  0% { -webkit-transform: translateX(0%); }
-  100% { -webkit-transform: translateX(-100%); }
-}
-@keyframes fadeOutRightBig {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-    transform: translate3d(2000px, 0, 0);
-  }
-}
-
-.fadeOutRightBig {
-  animation-name: fadeOutRightBig;
 }
