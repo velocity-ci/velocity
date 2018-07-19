@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/asdine/storm"
@@ -69,7 +70,10 @@ func (m *StreamManager) CreateStreamLine(
 		Timestamp:  timestamp,
 		Output:     fmt.Sprintf("%s", output),
 	}
-	m.db.saveStreamLine(sL)
+	if !strings.HasSuffix(sL.Output, "\r") {
+		sL.Output = fmt.Sprintf("%s\n", strings.TrimSpace(sL.Output))
+		m.db.saveStreamLine(sL)
+	}
 	for _, b := range m.brokers {
 		b.EmitAll(&domain.Emit{
 			Topic:   fmt.Sprintf("stream:%s", stream.ID),
