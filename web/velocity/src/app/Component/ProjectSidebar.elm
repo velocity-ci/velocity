@@ -2,6 +2,7 @@ module Component.ProjectSidebar exposing (State, Config, ActiveSubPage(..), view
 
 -- EXTERNAL --
 
+import Css exposing (..)
 import Html exposing (Html)
 import Html.Styled as Styled exposing (..)
 import Html.Styled.Attributes as StyledAttributes exposing (..)
@@ -120,7 +121,15 @@ nonTooltipLink config isActive route content =
 
 tooltipLink : Config msg -> Bool -> Route -> List (Styled.Html msg) -> ( Popover.State -> msg, Popover.State ) -> Styled.Html msg
 tooltipLink config isActive route content ( popMsg, popState ) =
-    li ([ class "nav-item" ] ++ (Popover.onHover popState popMsg |> List.map StyledAttributes.fromUnstyled))
+    li
+        ([ class "nav-item"
+         , css
+            [ borderRadius (px 0)
+            , hover [ backgroundColor (hex "ffffff") ]
+            ]
+         ]
+            ++ (Popover.onHover popState popMsg |> List.map StyledAttributes.fromUnstyled)
+        )
         [ a
             ([ class "nav-link text-center h4"
              , Route.styledHref route
