@@ -388,7 +388,7 @@ update msg model =
                         []
 
                     BuildTimeline.Step stepId ->
-                        [ scrollTo Scroll.toTop (BuildStep.idToString stepId) ]
+                        [ Ports.scrollIntoView (BuildStep.idToString stepId) ]
 
                     BuildTimeline.Completed ->
                         scrollToBottom

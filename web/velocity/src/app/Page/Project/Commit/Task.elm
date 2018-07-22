@@ -419,7 +419,6 @@ type Msg
     | OnChange BuildForm.ChoiceFormField (Maybe Int)
     | SubmitForm
     | BuildCreated (Result Request.Errors.HttpError Build)
-      --    | SelectTab Tab String
     | SelectBuild (Maybe Build)
     | BuildLoaded (Result Request.Errors.HttpError (Maybe BuildType))
     | BuildLogMsg BuildLog.Msg

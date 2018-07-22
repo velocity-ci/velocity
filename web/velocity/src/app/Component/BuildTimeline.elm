@@ -287,10 +287,12 @@ viewDuration state =
             , class "py-2"
             ]
             [ i [ class "fa fa-clock-o" ] []
-            , text " Ran for "
-            , text (pluralizeOrDrop "hour" (Basics.rem hours 60))
-            , text (pluralizeOrDrop "min" (Basics.rem minutes 60))
-            , text (pluralizeOrDrop "sec" (Basics.rem seconds 60))
+            , span []
+                [ text " Ran for "
+                , text (pluralizeOrDrop "hour" hours)
+                , text (pluralizeOrDrop "min" (Basics.rem minutes 60))
+                , text (pluralizeOrDrop "sec" (Basics.rem seconds 60))
+                ]
             ]
 
 

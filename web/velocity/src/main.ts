@@ -45,3 +45,15 @@ app.ports.parseGitUrl.subscribe(gitUrl => {
   const parsed = parseGitUrl(gitUrl);
   app.ports.onGitUrlParsed.send(parsed);
 });
+
+
+/*
+Scroll an element into view.
+ */
+app.ports.scrollIntoView.subscribe(id => {
+  const element = document.getElementById(id);
+  if (element) {
+    element.scrollIntoView();
+  }
+});
+

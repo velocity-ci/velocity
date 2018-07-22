@@ -48,7 +48,7 @@ viewBuildHistoryTableRow project newUrlMsg build =
             [ viewBuildTextClass build => True ]
 
         commitTaskRoute =
-            CommitRoute.Task build.task.name Nothing
+            CommitRoute.Task build.task.name (Just build.id)
                 |> ProjectRoute.Commit build.task.commit.hash
                 |> Route.Project project.slug
 
