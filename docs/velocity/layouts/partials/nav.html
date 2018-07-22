@@ -1,6 +1,6 @@
-<nav class="navbar navbar-expand-md {{ if ne .Page.URL "/"}}navbar-dark bg-dark{{ else }}navbar-light{{ end }}">
+<nav class="navbar navbar-expand-md navbar-light">
     <div class="container">
-        <a class="navbar-brand" href="/">{{ .Site.Title }}</a>
+        <a class="navbar-brand text-primary" href="/">{{ .Site.Title }}</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
             aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -15,6 +15,9 @@
               </li> -->
               <li class="nav-item {{ if hasPrefix .Page.URL "/docs"}}active{{ end }}">
                 <a class="nav-link" href="/docs">Docs</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="https://github.com/velocity-ci" target="_blank"><i class="fab fa-github"></i></a>
               </li>
               <!-- <li class="nav-item {{ if hasPrefix .Page.URL "/about"}}active{{ end }}">
                 <a class="nav-link" href="/about">About</a>

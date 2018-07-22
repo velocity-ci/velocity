@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  architect:
+    image: 
+
+  builder:
+    image:
+
+  web:
+    image:

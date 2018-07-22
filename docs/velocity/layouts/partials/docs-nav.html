@@ -1,67 +1,72 @@
-<div class="col-12 col-md-3 col-xl-2 bd-sidebar" style="max-height: 50rem;">
-    <nav class="collapse bd-links" id="bd-docs-nav">
-        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/getting-started"}}active{{ end }}">
-            <a class="bd-toc-link" href="/docs/getting-started/">
-                Getting started
-            </a>
-
-            <ul class="nav bd-sidenav">
-                <li class="{{ if hasPrefix .Page.URL "/docs/getting-started/kubernetes"}}active bd-sidenav-active{{ end }}">
-                    <a href="/docs/getting-started/kubernetes/">
-                        Kubernetes
-                    </a>
-                </li>
-                <li class="{{ if hasPrefix .Page.URL "/docs/getting-started/amazon-ecs"}}active bd-sidenav-active{{ end }}">
-                    <a href="/docs/getting-started/amazon-ecs/">
-                        Amazon ECS
-                    </a>
-                </li>
-            </ul>
+<div class="col-12 col-md-3 col-xl-2" style="max-height: 50rem;">
+    <nav id="docs-nav">
+        <div class="list-group bg-light">
+            <a 
+                href="/docs/getting-started/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/getting-started" }} active{{ end }}"
+            >Getting started</a>
+            <a 
+                href="/docs/getting-started/docker-compose/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/getting-started/docker-compose" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> Docker Compose</a>
+            <a 
+                href="/docs/getting-started/kubernetes/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/getting-started/kubernetes" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> Kubernetes</a>
+            <a 
+                href="/docs/getting-started/amazon-ecs/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/getting-started/amazon-ecs" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> Amazon ECS</a>
         </div>
-        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/cli"}}active{{ end }}">
-            <a class="bd-toc-link" href="/docs/cli/">
-                CLI
-            </a>
 
-            <ul class="nav bd-sidenav">
-                <li class="{{ if hasPrefix .Page.URL "/docs/cli/overview"}}active bd-sidenav-active{{ end }}">
-                    <a href="/docs/cli/overview/">
-                        Overview
-                    </a>
-                </li>
-            </ul>
+        <div class="list-group bg-light">
+            <a 
+                href="/docs/overview/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/overview" }} active{{ end }}"
+            >Overview</a>
+            <a 
+                href="/docs/overview/tasks" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/overview/tasks" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> Tasks</a>
+            <a 
+                href="/docs/overview/plugins" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/overview/plugins" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> Plugins</a>
+            <a 
+                href="/docs/overview/velocity-yaml" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/overview/velocity-yaml" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> .velocity.yaml</a>
         </div>
-        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/master"}}active{{ end }}">
-            <a class="bd-toc-link" href="/docs/master/">
-                Master
-            </a>
 
-            <ul class="nav bd-sidenav">
-                <li class="{{ if hasPrefix .Page.URL "/docs/master/overview"}}active bd-sidenav-active{{ end }}">
-                    <a href="/docs/master/overview/">
-                        Overview
-                    </a>
-                </li>
-                <li class="{{ if hasPrefix .Page.URL "/docs/master/rest-api"}}active bd-sidenav-active{{ end }}">
-                    <a href="/docs/master/rest-api/">
-                        REST API
-                    </a>
-                </li>
-            </ul>
+
+        <div class="list-group">
+            <a 
+                href="/docs/components/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/components" }} active{{ end }}"
+            >Components</a>
+            <a 
+                href="/docs/components/cli/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/components/cli" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> CLI</a>
+            <a 
+                href="/docs/components/architect/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/components/architect" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> Architect</a>
+            <a 
+                href="/docs/components/architect/swagger" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/components/architect/swagger" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i><i class="fas fa-angle-right"></i> Swagger</a>
+            <a 
+                href="/docs/components/builder/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/components/builder" }} active{{ end }}"
+            ><i class="fas fa-angle-right"></i> Builder</a>
         </div>
-        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/worker"}}active{{ end }}">
-            <a class="bd-toc-link" href="/docs/worker/">
-                Worker
-            </a>
 
-            <ul class="nav bd-sidenav">
-                <li class="{{ if hasPrefix .Page.URL "/docs/worker/overview"}}active bd-sidenav-active{{ end }}">
-                    <a href="/docs/worker/overview/">
-                        Overview
-                    </a>
-                </li>
-            </ul>
+        <div class="list-group bg-light">
+            <a 
+                href="/docs/examples/" 
+                class="list-group-item bg-light text-dark border-light list-group-item-action{{ if hasPrefix .Page.URL "/docs/examples" }} active{{ end }}"
+            >Examples</a>
         </div>
     </nav>
-
 </div>
