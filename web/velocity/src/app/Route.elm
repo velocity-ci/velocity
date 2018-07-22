@@ -1,9 +1,11 @@
-module Route exposing (Route(..), href, modifyUrl, fromLocation, routeToString)
+module Route exposing (Route(..), href, styledHref, modifyUrl, fromLocation, routeToString)
 
 import UrlParser as Url exposing (parsePath, s, (</>), string, oneOf, Parser)
 import Navigation exposing (Location)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
+import Html.Styled
+import Html.Styled.Attributes as StyledAttr
 import Data.Project as Project
 import Page.Project.Route as ProjectRoute
 import Util exposing ((=>))
@@ -97,6 +99,11 @@ routeToString page =
 href : Route -> Attribute msg
 href route =
     Attr.href (routeToString route)
+
+
+styledHref : Route -> Html.Styled.Attribute msg
+styledHref route =
+    StyledAttr.href (routeToString route)
 
 
 modifyUrl : Route -> Cmd msg

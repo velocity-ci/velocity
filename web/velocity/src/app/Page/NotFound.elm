@@ -10,7 +10,7 @@ import Html.Attributes exposing (alt, class, id, src, tabindex)
 
 view : Session msg -> Html msg
 view session =
-    main_ [ id "content", class "container", tabindex -1 ]
+    main_ [ id "content", class "p-2", tabindex -1 ]
         [ h1 [] [ text "Not Found" ]
         , div [ class "row" ]
             [ text "Not found" ]

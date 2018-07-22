@@ -1,4 +1,18 @@
-module Component.CommitSidebar exposing (view, Context, Config)
+module Component.CommitSidebar
+    exposing
+        ( view
+        , animate
+        , show
+        , hide
+        , subscriptions
+        , Context
+        , Config
+        , initDisplayType
+        , fixedVisible
+        , collapsableVisible
+        , collapsableHidden
+        , DisplayType
+        )
 
 -- INTERNAL
 
@@ -12,20 +26,28 @@ import Page.Project.Commit.Route as CommitRoute
 import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
 import Views.Helpers exposing (onClickPage)
 import Views.Build exposing (viewBuildStatusIconClasses, viewBuildTextClass)
+import Views.Style as Style
 import Util exposing ((=>))
 
 
 -- EXTERNAL
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html exposing (Html)
+import Html.Styled.Attributes as Attributes exposing (css, class, classList)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Events exposing (onClick)
+import Css exposing (..)
+import Animation
 
 
 -- CONFIG
 
 
 type alias Config msg =
-    { newUrlMsg : String -> msg }
+    { newUrlMsg : String -> msg
+    , animateMsg : Animation.Msg -> msg
+    , hideCollapsableSidebarMsg : msg
+    }
 
 
 type alias Context =
@@ -34,6 +56,7 @@ type alias Context =
     , commit : Commit
     , tasks : List Task
     , selected : Maybe Task.Name
+    , displayType : DisplayType
     }
 
 
@@ -46,28 +69,226 @@ type alias NavTaskProperties =
     }
 
 
+type DisplayType
+    = Fixed
+    | Collapsable CollapsableVisibility
 
--- VIEW
+
+type CollapsableVisibility
+    = Visible Animation.State
+    | Hidden Animation.State
 
 
-view : Config msg -> Context -> Html msg
+
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Config msg -> Context -> Sub msg
+subscriptions { animateMsg } { displayType } =
+    case displayType of
+        Collapsable (Visible animationState) ->
+            Animation.subscription animateMsg [ animationState ]
+
+        Collapsable (Hidden animationState) ->
+            Animation.subscription animateMsg [ animationState ]
+
+        _ ->
+            Sub.none
+
+
+
+-- UPDATE --
+
+
+show : DisplayType -> DisplayType
+show displayType =
+    case displayType of
+        Collapsable (Hidden animationState) ->
+            animationState
+                |> Animation.interrupt [ Animation.to animationFinishAttrs ]
+                |> Visible
+                |> Collapsable
+
+        _ ->
+            displayType
+
+
+hide : DisplayType -> DisplayType
+hide displayType =
+    case displayType of
+        Collapsable (Visible animationState) ->
+            animationState
+                |> Animation.interrupt [ Animation.to animationStartAttrs ]
+                |> Hidden
+                |> Collapsable
+
+        _ ->
+            displayType
+
+
+animate : DisplayType -> Animation.Msg -> DisplayType
+animate displayType msg =
+    case displayType of
+        Collapsable (Visible animationState) ->
+            animationState
+                |> Animation.update msg
+                |> Visible
+                |> Collapsable
+
+        Collapsable (Hidden animationState) ->
+            animationState
+                |> Animation.update msg
+                |> Hidden
+                |> Collapsable
+
+        _ ->
+            displayType
+
+
+
+-- VIEW --
+
+
+view : Config msg -> Context -> Html.Html msg
 view config context =
-    div [ class "sub-sidebar" ]
+    context
+        |> sidebarContainer config
+        |> toUnstyled
+
+
+fixedVisible : DisplayType
+fixedVisible =
+    Fixed
+
+
+collapsableVisible : DisplayType
+collapsableVisible =
+    Collapsable (Visible <| Animation.style animationFinishAttrs)
+
+
+collapsableHidden : DisplayType
+collapsableHidden =
+    Collapsable (Hidden <| Animation.style animationStartAttrs)
+
+
+animationStartAttrs : List Animation.Property
+animationStartAttrs =
+    [ Animation.left (Animation.px -145.0) ]
+
+
+animationFinishAttrs : List Animation.Property
+animationFinishAttrs =
+    [ Animation.left (Animation.px 75.0) ]
+
+
+sidebarContainer : Config msg -> Context -> Styled.Html msg
+sidebarContainer config context =
+    div []
+        [ div
+            [ css (collapsableOverlay context.displayType)
+            , onClick config.hideCollapsableSidebarMsg
+            ]
+            []
+        , sidebar config context
+        ]
+
+
+sidebar : Config msg -> Context -> Styled.Html msg
+sidebar config context =
+    div
+        (List.concat
+            [ sidebarAnimationAttrs context.displayType
+            , [ css
+                    [ sidebarBaseStyle
+                    , sidebarStyle context.displayType
+                    ]
+              ]
+            ]
+        )
         [ details context.commit
         , taskNav config context
         ]
 
 
-details : Commit -> Html msg
+collapsableOverlay : DisplayType -> List Style
+collapsableOverlay displayType =
+    case displayType of
+        Collapsable (Visible _) ->
+            [ position fixed
+            , top (px 0)
+            , right (px 0)
+            , left (px 75)
+            , bottom (px 0)
+            , zIndex (int 1)
+            , backgroundColor (hex "000000")
+            , opacity (num 0.5)
+            ]
+
+        _ ->
+            [ display none ]
+
+
+sidebarAnimationAttrs : DisplayType -> List (Attribute msg)
+sidebarAnimationAttrs displayType =
+    case displayType of
+        Collapsable (Visible animationState) ->
+            animationToStyledAttrs animationState
+
+        Collapsable (Hidden animationState) ->
+            animationToStyledAttrs animationState
+
+        Fixed ->
+            []
+
+
+animationToStyledAttrs : Animation.State -> List (Attribute msg)
+animationToStyledAttrs animationState =
+    animationState
+        |> Animation.render
+        |> List.map Attributes.fromUnstyled
+
+
+sidebarStyle : DisplayType -> Style
+sidebarStyle displayType =
+    case displayType of
+        Fixed ->
+            width (px 220)
+
+        Collapsable _ ->
+            width (px 220)
+
+
+sidebarBaseStyle : Style
+sidebarBaseStyle =
+    Css.batch
+        [ top (px 0)
+        , left (px 75)
+        , bottom (px 0)
+        , zIndex (int 1)
+        , backgroundColor (rgb 244 245 247)
+        , color (rgb 66 82 110)
+        , position fixed
+        ]
+
+
+initDisplayType : Int -> DisplayType
+initDisplayType windowWidth =
+    if windowWidth >= 992 then
+        fixedVisible
+    else
+        collapsableHidden
+
+
+details : Commit -> Styled.Html msg
 details commit =
     div [ class "p-1" ]
         [ div [ class "card" ]
             [ div [ class "card-body" ]
-                [ infoPanel commit
+                [ fromUnstyled (infoPanel commit)
                 , hr [] []
-                , branchList commit
+                , fromUnstyled (branchList commit)
                 , hr [] []
-                , small [] [ text (truncateCommitMessage commit) ]
+                , Styled.small [] [ text (truncateCommitMessage commit) ]
                 ]
             ]
         ]
@@ -75,13 +296,13 @@ details commit =
 
 {-| List of task navigation
 -}
-taskNav : Config msg -> Context -> Html msg
+taskNav : Config msg -> Context -> Styled.Html msg
 taskNav config context =
     ul [ class "nav nav-pills flex-column project-navigation p-0" ] <|
         taskNavItems config context
 
 
-taskNavItems : Config msg -> Context -> List (Html msg)
+taskNavItems : Config msg -> Context -> List (Styled.Html msg)
 taskNavItems { newUrlMsg } context =
     context
         |> .tasks
@@ -92,19 +313,35 @@ taskNavItems { newUrlMsg } context =
 
 {-| Single nav item for a task
 -}
-taskNavItem : (String -> msg) -> NavTaskProperties -> Html msg
+taskNavItem : (String -> msg) -> NavTaskProperties -> Styled.Html msg
 taskNavItem newUrlMsg { isSelected, route, itemText, textClass, iconClass } =
     li [ class "nav-item" ]
         [ a
             [ class "nav-link text-secondary align-middle"
             , class textClass
-            , classList [ "active" => isSelected ]
-            , Route.href route
-            , onClickPage newUrlMsg route
+            , css
+                [ Style.textOverflowMixin
+                , taskNavItemActiveCss isSelected
+                , borderRadius (px 0)
+                ]
+            , Attributes.fromUnstyled (Route.href route)
+            , Attributes.fromUnstyled (onClickPage newUrlMsg route)
             ]
             [ text itemText
             ]
         ]
+
+
+taskNavItemActiveCss : Bool -> Style
+taskNavItemActiveCss active =
+    if active then
+        Css.batch
+            [ backgroundColor (hex "e2e3e5")
+            , borderColor (hex "d6d8db")
+            , color (hex "383d41")
+            ]
+    else
+        Css.batch []
 
 
 

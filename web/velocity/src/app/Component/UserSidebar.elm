@@ -50,7 +50,7 @@ subscriptions { userDropdownMsg } { userDropdown } =
 
 view : State -> Config msg -> Html msg
 view state config =
-    div [] [ sidebarUserDropdown state config ]
+    div [ class "d-flex justify-content-center" ] [ sidebarUserDropdown state config ]
 
 
 sidebarUserDropdown : State -> Config msg -> Html msg
@@ -58,8 +58,7 @@ sidebarUserDropdown { userDropdown } { userDropdownMsg, newUrlMsg } =
     Dropdown.dropdown
         userDropdown
         { options =
-            [ Dropdown.dropUp
-            , Dropdown.attrs [ class "menu-toggle-dropdown d-flex justify-content-center" ]
+            [ Dropdown.attrs [ class "menu-toggle-dropdown" ]
             ]
         , toggleMsg = userDropdownMsg
         , toggleButton =

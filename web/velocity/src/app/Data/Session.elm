@@ -4,6 +4,7 @@ import Data.User as User exposing (User)
 import Data.AuthToken exposing (AuthToken)
 import Phoenix.Socket as Socket exposing (Socket)
 import Util exposing ((=>))
+import Window
 
 
 type alias Session msg =

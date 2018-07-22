@@ -1,6 +1,7 @@
 port module Ports exposing (..)
 
 import Json.Encode exposing (Value)
+import Dom exposing (Id)
 
 
 port storeSession : Maybe String -> Cmd msg
@@ -16,3 +17,6 @@ port onGitUrlParsed : (Value -> msg) -> Sub msg
 
 
 port onScrolledToBottom : (Value -> msg) -> Sub msg
+
+
+port scrollIntoView : Id -> Cmd msg

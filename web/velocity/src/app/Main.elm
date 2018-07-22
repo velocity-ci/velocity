@@ -209,7 +209,7 @@ viewPage session isLoading page =
             Project subModel ->
                 let
                     sidebar =
-                        if Project.hasExtraWideSidebar subModel then
+                        if Project.hasExtraWideSidebar subModel session then
                             Page.ExtraWideSidebar
                         else
                             Page.NormalSidebar
@@ -255,7 +255,12 @@ subscriptions model =
                 |> getPage
                 |> pageSubscriptions
     in
-        Sub.batch [ session, socket, page, userSidebar ]
+        Sub.batch
+            [ session
+            , socket
+            , page
+            , userSidebar
+            ]
 
 
 pageSubscriptions : Page -> Sub Msg

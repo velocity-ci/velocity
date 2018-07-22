@@ -1,9 +1,17 @@
-module Views.Helpers exposing (onClickPage)
+module Views.Helpers exposing (onClickPage, styledOnClickPage)
 
 import Html.Events exposing (onWithOptions, defaultOptions)
+import Html.Styled.Attributes as StyledAttribute
+import Html.Styled
 import Html exposing (Attribute)
 import Json.Decode exposing (Decoder)
 import Route exposing (Route)
+
+
+styledOnClickPage : (String -> msg) -> Route -> Html.Styled.Attribute msg
+styledOnClickPage msg route =
+    onClickPage msg route
+        |> StyledAttribute.fromUnstyled
 
 
 onClickPage : (String -> msg) -> Route -> Attribute msg

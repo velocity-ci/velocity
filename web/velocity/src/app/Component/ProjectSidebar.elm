@@ -2,8 +2,10 @@ module Component.ProjectSidebar exposing (State, Config, ActiveSubPage(..), view
 
 -- EXTERNAL --
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Css exposing (..)
+import Html exposing (Html)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as StyledAttributes exposing (..)
 import Bootstrap.Popover as Popover
 
 
@@ -12,7 +14,7 @@ import Bootstrap.Popover as Popover
 import Data.Project as Project exposing (Project)
 import Page.Project.Route as ProjectRoute
 import Route exposing (Route)
-import Views.Helpers exposing (onClickPage)
+import Views.Helpers exposing (styledOnClickPage)
 import Views.Project exposing (badge)
 
 
@@ -48,12 +50,14 @@ type alias State =
 -- VIEW --
 
 
-view : State -> Config msg -> Project -> ActiveSubPage -> Html msg
+view : State -> Config msg -> Project -> ActiveSubPage -> Html.Html msg
 view state config project subPage =
-    sidebarProjectNavigation state config project subPage
+    subPage
+        |> sidebarProjectNavigation state config project
+        |> toUnstyled
 
 
-sidebarProjectNavigation : State -> Config msg -> Project -> ActiveSubPage -> Html msg
+sidebarProjectNavigation : State -> Config msg -> Project -> ActiveSubPage -> Styled.Html msg
 sidebarProjectNavigation state config project subPage =
     ul [ class "nav nav-pills flex-column project-navigation" ]
         [ sidebarProjectLink state config project
@@ -81,7 +85,7 @@ sidebarProjectNavigation state config project subPage =
         ]
 
 
-sidebarProjectLink : State -> Config msg -> Project -> Html msg
+sidebarProjectLink : State -> Config msg -> Project -> Styled.Html msg
 sidebarProjectLink state config project =
     sidebarLink state
         config
@@ -89,10 +93,10 @@ sidebarProjectLink state config project =
         False
         (Route.Project project.slug ProjectRoute.Overview)
         project.name
-        [ badge ]
+        [ Styled.fromUnstyled badge ]
 
 
-sidebarLink : State -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Html msg) -> Html msg
+sidebarLink : State -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Styled.Html msg) -> Styled.Html msg
 sidebarLink state config activeSubPage isActive route tooltip linkContent =
     tooltipConfig config state activeSubPage
         |> Maybe.map
@@ -103,26 +107,34 @@ sidebarLink state config activeSubPage isActive route tooltip linkContent =
         |> Maybe.withDefault (nonTooltipLink config isActive route linkContent)
 
 
-nonTooltipLink : Config msg -> Bool -> Route -> List (Html msg) -> Html msg
+nonTooltipLink : Config msg -> Bool -> Route -> List (Styled.Html msg) -> Styled.Html msg
 nonTooltipLink config isActive route content =
     li []
         [ a
-            [ Route.href route
+            [ Route.styledHref route
             , classList [ ( "active", isActive ) ]
-            , onClickPage config.newUrlMsg route
+            , styledOnClickPage config.newUrlMsg route
             ]
             content
         ]
 
 
-tooltipLink : Config msg -> Bool -> Route -> List (Html msg) -> ( Popover.State -> msg, Popover.State ) -> Html msg
+tooltipLink : Config msg -> Bool -> Route -> List (Styled.Html msg) -> ( Popover.State -> msg, Popover.State ) -> Styled.Html msg
 tooltipLink config isActive route content ( popMsg, popState ) =
-    li ([ class "nav-item" ] ++ Popover.onHover popState popMsg)
+    li
+        ([ class "nav-item"
+         , css
+            [ borderRadius (px 0)
+            , hover [ backgroundColor (hex "ffffff") ]
+            ]
+         ]
+            ++ (Popover.onHover popState popMsg |> List.map StyledAttributes.fromUnstyled)
+        )
         [ a
             ([ class "nav-link text-center h4"
-             , Route.href route
+             , Route.styledHref route
              , classList [ ( "active", isActive ) ]
-             , onClickPage config.newUrlMsg route
+             , styledOnClickPage config.newUrlMsg route
              ]
             )
             content
@@ -152,10 +164,11 @@ popover :
     (Popover.Config msg -> Popover.Config msg1)
     -> Popover.State
     -> String
-    -> Html msg
-    -> Html msg1
+    -> Styled.Html msg
+    -> Styled.Html msg1
 popover posFn popState tooltipText btn =
-    Popover.config btn
+    Popover.config (toUnstyled btn)
         |> posFn
-        |> Popover.content [] [ text tooltipText ]
+        |> Popover.content [] [ toUnstyled <| text tooltipText ]
         |> Popover.view popState
+        |> Styled.fromUnstyled

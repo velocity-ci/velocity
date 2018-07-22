@@ -1,9 +1,13 @@
 module Page.Project.Commits exposing (..)
 
 import Context exposing (Context)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, on, targetValue)
+import Html exposing (Html)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as StyledAttribute exposing (css, class, classList)
+import Html.Styled.Events exposing (onClick, on, targetValue)
+import Html.Events as UnstyledEvents
+import Html.Attributes as UnstyledAttribute
+import Css exposing (..)
 import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
@@ -27,12 +31,13 @@ import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Navigation
-import Views.Helpers exposing (onClickPage)
+import Views.Helpers exposing (styledOnClickPage)
 import Views.Commit exposing (commitTimeInformation, branchList)
 import Json.Encode as Encode
 import Component.DropdownFilter as DropdownFilter
 import Dom
 import Bootstrap.Button as Button
+import Views.Style as Style
 
 
 -- MODEL --
@@ -98,7 +103,7 @@ branchFilterConfig =
     , noOpMsg = NoOp
     , selectItemMsg = FilterBranch
     , labelFn = (.name >> Just >> Branch.nameToString)
-    , icon = (i [ class "fa fa-code-fork" ] [])
+    , icon = (toUnstyled <| i [ class "fa fa-code-fork" ] [])
     , showFilter = True
     , showAllItemsItem = True
     }
@@ -154,7 +159,7 @@ events projectSlug =
 -- VIEW --
 
 
-view : Project -> List Branch -> Model -> Html Msg
+view : Project -> List Branch -> Model -> Html.Html Msg
 view project branches model =
     let
         commits =
@@ -164,6 +169,7 @@ view project branches model =
         branchFilter =
             branchFilterContext branches model
                 |> DropdownFilter.view branchFilterConfig
+                |> fromUnstyled
 
         refreshCommitsButton =
             refreshButton project model
@@ -184,6 +190,7 @@ view project branches model =
             , commits
             , paginationToolbar
             ]
+            |> toUnstyled
 
 
 commitListToDict : List Commit -> Dict ( Int, Int, Int ) (List Commit)
@@ -209,7 +216,7 @@ commitListToDict commits =
         List.foldl reducer Dict.empty commits
 
 
-viewCommitListContainer : Project -> Dict ( Int, Int, Int ) (List Commit) -> Html Msg
+viewCommitListContainer : Project -> Dict ( Int, Int, Int ) (List Commit) -> Styled.Html Msg
 viewCommitListContainer project dict =
     let
         listItemToDate dateListItem =
@@ -229,7 +236,7 @@ viewCommitListContainer project dict =
             |> div [ class "mt-3" ]
 
 
-viewCommitList : Project -> ( ( Int, Int, Int ), List Commit ) -> Html Msg
+viewCommitList : Project -> ( ( Int, Int, Int ), List Commit ) -> Styled.Html Msg
 viewCommitList project ( dateTuple, commits ) =
     let
         commitListItems =
@@ -248,7 +255,7 @@ viewCommitList project ( dateTuple, commits ) =
             ]
 
 
-viewCommitListItem : Project.Slug -> Commit -> Html Msg
+viewCommitListItem : Project.Slug -> Commit -> Styled.Html Msg
 viewCommitListItem slug commit =
     let
         truncatedHash =
@@ -259,16 +266,20 @@ viewCommitListItem slug commit =
     in
         a
             [ class "list-group-item list-group-item-action flex-column align-items-start"
-            , Route.href route
-            , onClickPage NewUrl route
+            , Route.styledHref route
+            , styledOnClickPage NewUrl route
             ]
             [ div [ class "d-flex w-100 justify-content-between" ]
-                [ h6 [ class "mb-1 text-overflow" ] [ text commit.message ]
-                , small [] [ text truncatedHash ]
+                [ h6
+                    [ class "mb-1"
+                    , css [ Style.textOverflowMixin ]
+                    ]
+                    [ text commit.message ]
+                , Styled.small [] [ text truncatedHash ]
                 ]
             , div [ class "d-flex w-100 justify-content-between" ]
-                [ commitTimeInformation commit
-                , branchList commit
+                [ fromUnstyled <| commitTimeInformation commit
+                , fromUnstyled <| branchList commit
                 ]
             ]
 
@@ -278,12 +289,12 @@ breadcrumb project =
     [ ( Route.Project project.slug (ProjectRoute.Commits Nothing Nothing), "Commits" ) ]
 
 
-viewBreadcrumbExtraItems : Project -> Model -> Html Msg
+viewBreadcrumbExtraItems : Project -> Model -> Html.Html Msg
 viewBreadcrumbExtraItems project model =
-    text ""
+    toUnstyled <| text ""
 
 
-refreshButton : Project -> Model -> Html Msg
+refreshButton : Project -> Model -> Styled.Html Msg
 refreshButton project model =
     let
         submitting =
@@ -297,15 +308,16 @@ refreshButton project model =
         Button.button
             [ Button.outlineSecondary
             , Button.attrs
-                [ class "ml-auto btn btn-dark"
-                , onClick SubmitSync
-                , disabled submitting
+                [ UnstyledAttribute.class "ml-auto btn btn-dark"
+                , UnstyledEvents.onClick SubmitSync
+                , UnstyledAttribute.disabled submitting
                 ]
             ]
-            [ i [ classList iconClassList ] [] ]
+            [ toUnstyled (i [ classList iconClassList ] []) ]
+            |> fromUnstyled
 
 
-pagination : Int -> Int -> Project -> Maybe Branch -> Html Msg
+pagination : Int -> Int -> Project -> Maybe Branch -> Styled.Html Msg
 pagination activePage total project maybeBranch =
     let
         totalPages =
@@ -316,10 +328,10 @@ pagination activePage total project maybeBranch =
                 |> List.map (\page -> pageLink page (page == activePage) project maybeBranch)
                 |> ul [ class "pagination mt-3" ]
         else
-            Html.text ""
+            text ""
 
 
-pageLink : Int -> Bool -> Project -> Maybe Branch -> Html Msg
+pageLink : Int -> Bool -> Project -> Maybe Branch -> Styled.Html Msg
 pageLink page isActive project maybeBranch =
     let
         route =
@@ -328,8 +340,8 @@ pageLink page isActive project maybeBranch =
         li [ classList [ "page-item" => True, "active" => isActive ] ]
             [ a
                 [ class "page-link"
-                , Route.href route
-                , onClickPage NewUrl route
+                , Route.styledHref route
+                , styledOnClickPage NewUrl route
                 ]
                 [ text (toString page) ]
             ]

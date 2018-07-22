@@ -161,7 +161,7 @@ view session model =
         projectList =
             viewProjectList model.projects
     in
-        div [ class "py-2 my-4" ]
+        div [ class "p-4 my-4" ]
             [ viewToolbar
             , viewIf hasProjects projectList
             , viewNewProjectModal model
