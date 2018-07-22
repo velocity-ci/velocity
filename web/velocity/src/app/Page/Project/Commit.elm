@@ -211,6 +211,7 @@ view : Project -> Session msg -> Model -> Html Msg
 view project session model =
     div []
         [ viewSidebar project session model
+        , viewSubPageHeader project model
         , viewSubPage project model
         ]
 
@@ -272,7 +273,35 @@ viewSubPage project model =
                 |> frame project model CommitTaskMsg
 
         _ ->
-            div [ class "d-flex justify-content-center" ] [ spinner ]
+            div []
+                [ viewNavbarToggle model.sidebarDisplayType
+                , div [ class "d-flex justify-content-center" ] [ spinner ]
+                ]
+
+
+viewSubPageHeader : Project -> Model -> Html Msg
+viewSubPageHeader project model =
+    case model.subPageState of
+        Loaded (CommitTask subModel) ->
+            taskBuilds model.builds (Just subModel.task)
+                |> CommitTask.viewHeader subModel
+                |> Html.map CommitTaskMsg
+
+        TransitioningFrom (CommitTask subModel) route ->
+            case route of
+                Just (CommitRoute.Task taskName _) ->
+                    if taskName == subModel.task.name then
+                        taskBuilds model.builds (Just subModel.task)
+                            |> CommitTask.viewHeader subModel
+                            |> Html.map CommitTaskMsg
+                    else
+                        text ""
+
+                _ ->
+                    text ""
+
+        _ ->
+            text ""
 
 
 frame :
@@ -283,21 +312,23 @@ frame :
     -> Html Msg
 frame project { commit, tasks, sidebarDisplayType } toMsg content =
     div []
-        [ viewNavbarToggle sidebarDisplayType
-        , Html.map toMsg content
+        [ Html.map toMsg content
         ]
+
+
+viewNavbar : Model -> Html Msg
+viewNavbar model =
+    viewNavbarToggle model.sidebarDisplayType
 
 
 viewNavbarToggle : CommitSidebar.DisplayType -> Html Msg
 viewNavbarToggle displayType =
-    nav [ class "navbar navbar-light bg-light px-0" ]
-        [ button
-            [ type_ "button"
-            , class "navbar-toggler"
-            , onClick ShowSidebar
-            ]
-            [ span [ class "navbar-toggler-icon" ] []
-            ]
+    button
+        [ type_ "button"
+        , class "navbar-toggler"
+        , onClick ShowSidebar
+        ]
+        [ span [ class "navbar-toggler-icon" ] []
         ]
         |> Util.viewIf (displayType /= CommitSidebar.fixedVisible)
 
@@ -411,7 +442,10 @@ setRoute context session project maybeRoute model =
             Just (CommitRoute.Overview) ->
                 case session.user of
                     Just user ->
-                        { model_ | subPageState = Overview.initialModel |> Overview |> Loaded }
+                        { model_
+                            | subPageState = Overview.initialModel |> Overview |> Loaded
+                            , sidebarDisplayType = CommitSidebar.show model.sidebarDisplayType
+                        }
                             => Cmd.none
 
                     Nothing ->
@@ -481,7 +515,7 @@ update context project session msg model =
                     => Cmd.none
 
             ( WindowSizeChange { width }, _ ) ->
-                { model | sidebarDisplayType = CommitSidebar.initDisplayType width }
+                { model | sidebarDisplayType = CommitSidebar.hide (CommitSidebar.initDisplayType width) }
                     => Cmd.none
 
             ( SetRoute route, _ ) ->

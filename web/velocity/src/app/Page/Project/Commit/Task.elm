@@ -250,20 +250,23 @@ buildFilterContext { frame, buildDropdownState, buildFilterTerm, selected } buil
 
 view : Project -> Commit -> Model -> List Build -> Html Msg
 view project commit model builds =
-    div [ class "row" ]
-        [ div [ class "col-sm-12 col-md-12 col-lg-12" ]
-            [ viewTaskHeading model.task
-            , hr [] []
-            , viewToolbar model builds
-            , viewTabFrame model builds commit
-            , viewFormModal model.task model.form model.formModalVisibility
-            ]
+    div []
+        [ viewTabFrame model builds commit
+        , viewFormModal model.task model.form model.formModalVisibility
+        ]
+
+
+viewHeader : Model -> List Build -> Html Msg
+viewHeader model builds =
+    div [ class "mb-4" ]
+        [ viewTaskHeading model.task
+        , viewToolbar model builds
         ]
 
 
 viewTaskHeading : ProjectTask.Task -> Html Msg
 viewTaskHeading task =
-    h2 [] [ text ("Task " ++ (ProjectTask.nameToString task.name)) ]
+    h4 [] [ text (ProjectTask.nameToString task.name) ]
 
 
 viewFormModal : ProjectTask.Task -> BuildForm.Context -> Modal.Visibility -> Html Msg
@@ -310,43 +313,65 @@ viewToolbar model builds =
 
         newBuildButton =
             button
-                [ class "btn btn-primary btn-lg"
+                [ class "btn btn-primary"
                 , onClick OpenFormModal
                 ]
-                [ text "Run task" ]
-    in
-        div [ class "btn-toolbar justify-content-between" ]
-            [ buildsDropdown
-            , newBuildButton
-            ]
+                [ text
+                    (if List.isEmpty builds then
+                        "Run task"
+                     else
+                        "Run again"
+                    )
+                ]
 
-
-viewTabFrame : Model -> List Build -> Commit -> Html Msg
-viewTabFrame model builds commit =
-    let
-        findBuild id =
-            builds
-                |> List.filter (\a -> a.id == id)
-                |> List.head
-    in
-        if List.isEmpty builds then
-            viewNoBuildsAlert model.task commit
-        else
+        timeline =
             case model.frame of
-                BlankFrame ->
-                    text ""
-
                 BuildFrame (LoadedBuild buildId buildOutputModel) ->
-                    case findBuild buildId of
+                    case findBuild builds buildId of
                         Just build ->
-                            BuildLog.view build model.task buildOutputModel
+                            BuildLog.viewTimeline build buildOutputModel model.task
                                 |> Html.map BuildLogMsg
 
                         Nothing ->
                             text ""
 
-                BuildFrame (LoadingBuild _ _) ->
+                _ ->
                     text ""
+    in
+        div [ class "d-flex" ]
+            [ div [ class "pr-2" ] [ buildsDropdown ]
+            , div [ class "flex-fill px-2 flex-grow-1 d-none d-sm-block" ] [ timeline ]
+            , div [ class "pl-2" ] [ newBuildButton ]
+            ]
+
+
+findBuild : List Build -> Build.Id -> Maybe Build
+findBuild builds id =
+    builds
+        |> List.filter (\a -> a.id == id)
+        |> List.head
+
+
+viewTabFrame : Model -> List Build -> Commit -> Html Msg
+viewTabFrame model builds commit =
+    if List.isEmpty builds then
+        viewNoBuildsAlert model.task commit
+    else
+        case model.frame of
+            BlankFrame ->
+                text ""
+
+            BuildFrame (LoadedBuild buildId buildOutputModel) ->
+                case findBuild builds buildId of
+                    Just build ->
+                        BuildLog.view build model.task buildOutputModel
+                            |> Html.map BuildLogMsg
+
+                    Nothing ->
+                        text ""
+
+            BuildFrame (LoadingBuild _ _) ->
+                viewToolbar model builds
 
 
 viewNoBuildsAlert : ProjectTask.Task -> Commit -> Html Msg
@@ -572,6 +597,7 @@ update context project commit builds session msg model =
                 in
                     { model
                         | frame = BuildFrame (LoadingBuild fromBuild toBuild)
+                        , buildDropdownState = DropdownFilter.initialDropdownState
                         , selected = toBuild
                     }
                         => Route.modifyUrl route

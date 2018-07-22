@@ -1,9 +1,10 @@
-module Util exposing ((=>), pair, onClickStopPropagation, viewIf, viewIfStyled, appendErrors)
+module Util exposing ((=>), pair, onClickStopPropagation, viewIf, viewIfStyled, appendErrors, capitalize)
 
 import Json.Decode as Decode
 import Html.Events exposing (onWithOptions, defaultOptions)
 import Html exposing (Attribute, Html)
 import Html.Styled
+import Char
 
 
 (=>) : a -> b -> ( a, b )
@@ -57,3 +58,18 @@ onClickStopPropagation msg =
 appendErrors : { model | errors : List error } -> List error -> { model | errors : List error }
 appendErrors model errors =
     { model | errors = model.errors ++ errors }
+
+
+capitalize : String -> String
+capitalize string =
+    string
+        |> String.uncons
+        |> Maybe.map
+            (\( a, b ) ->
+                let
+                    upper =
+                        Char.toUpper a
+                in
+                    String.cons upper b
+            )
+        |> Maybe.withDefault string

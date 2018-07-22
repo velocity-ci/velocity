@@ -50,8 +50,7 @@ in the header. (This comes up during slow page transitions.)
 frame : Bool -> Maybe User -> ActivePage -> SidebarType -> Html.Html msg -> Html.Html msg
 frame isLoading user page sidebarType content =
     div
-        [ class "px-4"
-        , css
+        [ css
             [ marginLeft (px <| sidebarWidthPx sidebarType) ]
         ]
         [ viewContent content

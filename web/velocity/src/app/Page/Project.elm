@@ -243,7 +243,7 @@ subscriptions model =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    div []
+    div [ class "p-2" ]
         [ viewSubPage session model
         , toastView model
         ]
@@ -306,7 +306,7 @@ viewSubPage session model =
             viewBreadcrumb project
 
         pageFrame =
-            frame project
+            frame project model
     in
         case page of
             Blank ->
@@ -357,12 +357,33 @@ viewSubPage session model =
                         |> pageFrame crumb
 
 
-frame : Project -> Html msg -> Html msg -> Html msg
-frame project breadcrumb content =
+frame : Project -> Model -> Html Msg -> Html Msg -> Html Msg
+frame project model breadcrumb content =
     div []
-        [ breadcrumb
-        , content
+        [ topNav breadcrumb (subNavbar model)
+        , div [ class "px-3 py-3" ]
+            [ content
+            ]
         ]
+
+
+topNav : Html Msg -> Html Msg -> Html Msg
+topNav breadcrumb subNav =
+    nav [ class "navbar navbar-expand-lg bg-white navbar-light" ]
+        [ subNav
+        , breadcrumb
+        ]
+
+
+subNavbar : Model -> Html Msg
+subNavbar model =
+    case getSubPage model.subPageState of
+        Commit subModel ->
+            Commit.viewNavbar subModel
+                |> Html.map CommitMsg
+
+        _ ->
+            text ""
 
 
 
@@ -373,8 +394,7 @@ viewBreadcrumb : Project -> Html Msg -> List ( Route, String ) -> Html Msg
 viewBreadcrumb project additionalElements items =
     let
         fixedItems =
-            [ ( Route.Projects, "Projects" )
-            , ( Route.Project project.slug ProjectRoute.Overview, project.name )
+            [ ( Route.Project project.slug ProjectRoute.Overview, project.name )
             ]
 
         allItems =
@@ -390,8 +410,8 @@ viewBreadcrumb project additionalElements items =
             allItems
                 |> List.indexedMap breadcrumbItem
     in
-        div [ class "row" ]
-            [ ol [ class "breadcrumb bg-white mb-2 pb-0" ] itemElements
+        div []
+            [ ol [ class "px-0 breadcrumb bg-white mb-2 pb-0" ] itemElements
             , additionalElements
             ]
 

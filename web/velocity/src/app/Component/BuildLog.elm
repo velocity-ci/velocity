@@ -28,7 +28,7 @@ import Component.BuildTimeline as BuildTimeline
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
-import Html.Styled.Attributes exposing (css, class, classList)
+import Html.Styled.Attributes as StyledAttributes exposing (css, class, classList)
 import Html.Styled as Styled exposing (..)
 import Html.Styled.Events exposing (onClick)
 import Css exposing (..)
@@ -45,6 +45,7 @@ import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Button as Button
 import Bootstrap.Modal as Modal
 import Bootstrap.Popover as Popover
+import Dom
 
 
 -- MODEL
@@ -129,7 +130,9 @@ timelinePopovers log =
 
 timelineConfig : BuildTimeline.Config Msg
 timelineConfig =
-    { popoverMsg = UpdatePopover }
+    { popoverMsg = UpdatePopover
+    , clickPopoverMsg = ClickPopover
+    }
 
 
 loadBuildStreams : Context -> ProjectTask.Task -> Maybe AuthToken -> Build -> Task Request.Errors.HttpError Log
@@ -312,6 +315,7 @@ type Msg
     | AnimateStepInfoModal Modal.Visibility
     | OpenStepInfoModal LogStep
     | UpdatePopover BuildTimeline.PopoverUpdate Popover.State
+    | ClickPopover BuildTimeline.PopoverUpdate
     | NoOp
 
 
@@ -377,20 +381,33 @@ update msg model =
             { model | timelinePopovers = BuildTimeline.updatePopovers popover state model.timelinePopovers }
                 => Cmd.none
 
+        ClickPopover popover ->
+            model
+                ! (case popover of
+                    BuildTimeline.Queued ->
+                        []
+
+                    BuildTimeline.Step stepId ->
+                        [ scrollTo Scroll.toTop (BuildStep.idToString stepId) ]
+
+                    BuildTimeline.Completed ->
+                        scrollToBottom
+                  )
+
         NoOp ->
             model => Cmd.none
 
 
 scrollToBottom : List (Cmd Msg)
 scrollToBottom =
-    [ scrollTo "scroll-html-id"
-    , scrollTo "scroll-body-id"
+    [ scrollTo Scroll.toBottom "scroll-html-id"
+    , scrollTo Scroll.toBottom "scroll-body-id"
     ]
 
 
-scrollTo : String -> Cmd Msg
-scrollTo id =
-    Task.attempt (always NoOp) (Scroll.toBottom id)
+scrollTo : (Dom.Id -> Task Dom.Error ()) -> Dom.Id -> Cmd Msg
+scrollTo scrollFn id =
+    Task.attempt (always NoOp) (scrollFn id)
 
 
 decodeBuildStreamOutput : Encode.Value -> Maybe BuildStreamOutput
@@ -510,19 +527,17 @@ view build task model =
                 |> List.map (viewStepContainer build)
     in
         div []
-            [ div [ class "mb-4" ] [ viewTimeline build model.timelinePopovers task ]
-            , div [] stepOutput
+            [ div [] stepOutput
             , viewStepInfoModal model.stepInfoModal
             ]
             |> toUnstyled
 
 
-viewTimeline : Build -> BuildTimeline.TimelinePopovers -> ProjectTask.Task -> Styled.Html Msg
-viewTimeline build popovers task =
+viewTimeline : Build -> Model -> ProjectTask.Task -> Html.Html Msg
+viewTimeline build { timelinePopovers } task =
     task
-        |> BuildTimeline.points build popovers
+        |> BuildTimeline.points build timelinePopovers
         |> BuildTimeline.view timelineConfig
-        |> fromUnstyled
 
 
 viewStepContainer : Build -> ( BuildStepId, LogStep ) -> Styled.Html Msg
@@ -539,7 +554,8 @@ viewStepContainer build ( stepId, logStep ) =
         case buildStep_ of
             Just step ->
                 div
-                    [ class "py-3"
+                    [ StyledAttributes.fromUnstyled (Html.Attributes.id stepId)
+                    , class "py-3"
                     , class (viewBuildStepBorderClass step)
                     , css
                         [ borderLeft2 (px 4) solid ]

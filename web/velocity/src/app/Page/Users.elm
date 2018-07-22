@@ -55,7 +55,7 @@ view session model =
         userList =
             viewUserList model.users
     in
-        div [ class "py-2 my-4" ]
+        div [ class "p-4 my-4" ]
             [ viewToolbar
             , viewIf hasUsers userList
               --            , viewFormModal model.form model.formModalVisibility

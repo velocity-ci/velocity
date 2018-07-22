@@ -81,7 +81,8 @@ toggleButton { selectedItem } config =
             itemLabelString config selectedItem
     in
         Dropdown.toggle
-            [ Button.outlineSecondary ]
+            [ Button.outlineSecondary
+            ]
             [ config.icon
             , text (" " ++ toggleText)
             ]

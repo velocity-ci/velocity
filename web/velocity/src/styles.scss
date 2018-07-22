@@ -1,5 +1,5 @@
-$popover-bg: #000;
-$popover-body-color: #fff;
+//$popover-bg: #000;
+//$popover-body-color: #fff;
 
 @import "~bootstrap/scss/bootstrap.scss";
 $fa-font-path: "~font-awesome/fonts";
@@ -30,7 +30,7 @@ Branch filter
 
   position: absolute;
   bottom: 10px;
-  left: 0;
+  left: 14px;
   width: 75px;
   margin: 0;
   border: 0;
@@ -66,6 +66,11 @@ Branch filter
     position: relative;
     z-index: 0;
     color: black;
+  }
+
+  .dropdown-menu {
+    top: -230px !important;
+    left: 20px !important;
   }
 
 }
@@ -261,4 +266,52 @@ Branch filter
 
 .bounceInRight {
   animation-name: bounceInRight;
+}
+
+
+.slide-in {
+  transform: translateX(-100%);
+  animation: slide-in 1s forwards;
+  -webkit-animation: slide-in 1s forwards;
+}
+
+.slide-out {
+  animation: slide-out 0.5s forwards;
+  -webkit-animation: slide-out 0.5s forwards;
+}
+
+@keyframes slide-in {
+  100% { transform: translateX(0%); }
+}
+
+@-webkit-keyframes slide-in {
+  100% { -webkit-transform: translateX(0%); }
+}
+
+@keyframes slide-out {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+@-webkit-keyframes slide-out {
+  0% { -webkit-transform: translateX(0%); }
+  100% { -webkit-transform: translateX(-100%); }
+}
+@keyframes fadeOutRightBig {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(2000px, 0, 0);
+  }
+}
+
+.fadeOutRightBig {
+  animation-name: fadeOutRightBig;
+}
+
+#build-output-container {
+  overflow: scroll;
 }

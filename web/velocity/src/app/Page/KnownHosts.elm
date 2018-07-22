@@ -75,7 +75,7 @@ view session model =
         knownHostList =
             viewKnownHostList model.knownHosts
     in
-        div [ class "py-2 my-4" ]
+        div [ class "p-4 my-4" ]
             [ viewToolbar
             , viewIf hasKnownHosts knownHostList
             , viewFormModal model.form model.formModalVisibility

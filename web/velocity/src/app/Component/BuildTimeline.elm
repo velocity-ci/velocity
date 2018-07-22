@@ -7,9 +7,11 @@ import String exposing (padRight, split, join)
 import Html exposing (Html)
 import Html.Styled.Attributes as Attributes exposing (css, class, classList)
 import Html.Styled exposing (..)
+import Html.Styled.Events exposing (onClick)
 import Css exposing (..)
 import Bootstrap.Popover as Popover
 import Dict exposing (Dict)
+import Array exposing (Array)
 
 
 -- INTERNAL --
@@ -20,6 +22,7 @@ import Data.Task as ProjectTask exposing (Task)
 import Data.BuildOutput as BuildOutput exposing (Step)
 import Util exposing ((=>))
 import Page.Helpers exposing (formatTimeSeconds)
+import Views.Build
 
 
 -- MODEL --
@@ -27,10 +30,6 @@ import Page.Helpers exposing (formatTimeSeconds)
 
 type alias State =
     List Point
-
-
-type PointColour
-    = Green
 
 
 type alias TimelinePopovers =
@@ -41,7 +40,9 @@ type alias TimelinePopovers =
 
 
 type alias Config msg =
-    { popoverMsg : PopoverUpdate -> Popover.State -> msg }
+    { popoverMsg : PopoverUpdate -> Popover.State -> msg
+    , clickPopoverMsg : PopoverUpdate -> msg
+    }
 
 
 type alias StepPopovers =
@@ -49,9 +50,9 @@ type alias StepPopovers =
 
 
 type alias Point =
-    { label : String
+    { label : Maybe String
     , dateTime : DateTime
-    , color : PointColour
+    , status : BuildStep.Status
     , popover : Popover.State
     , updateType : PopoverUpdate
     }
@@ -74,9 +75,9 @@ points build popovers task =
 
 addCreatedPoint : Build -> Popover.State -> List Point -> State
 addCreatedPoint { createdAt } popover points =
-    { label = "Queued"
+    { label = Just "Queued"
     , dateTime = createdAt
-    , color = Green
+    , status = BuildStep.Waiting
     , popover = popover
     , updateType = Queued
     }
@@ -84,19 +85,57 @@ addCreatedPoint { createdAt } popover points =
 
 
 addCompletedPoint : Build -> Popover.State -> List Point -> State
-addCompletedPoint { completedAt } popover points =
-    case completedAt of
-        Just dateTime ->
-            { label = "Completed"
-            , dateTime = dateTime
-            , color = Green
-            , popover = popover
-            , updateType = Completed
-            }
-                :: points
+addCompletedPoint { completedAt, status } popover points =
+    let
+        stepStatus =
+            case status of
+                Build.Running ->
+                    BuildStep.Running
 
-        Nothing ->
+                Build.Failed ->
+                    BuildStep.Failed
+
+                Build.Success ->
+                    BuildStep.Success
+
+                Build.Waiting ->
+                    BuildStep.Waiting
+
+        label =
+            Build.statusToString status
+                |> Util.capitalize
+
+        durationSecs =
             points
+                |> duration
+                |> .seconds
+
+        lastPointDateTime =
+            points
+                |> List.reverse
+                |> List.head
+                |> Maybe.map .dateTime
+                |> Maybe.map (DateTime.addSeconds (durationSecs // 2))
+                |> Maybe.withDefault DateTime.epoch
+    in
+        case completedAt of
+            Just dateTime ->
+                { label = Just label
+                , dateTime = dateTime
+                , status = stepStatus
+                , popover = popover
+                , updateType = Completed
+                }
+                    :: points
+
+            Nothing ->
+                { label = Nothing
+                , dateTime = lastPointDateTime
+                , status = stepStatus
+                , popover = popover
+                , updateType = Completed
+                }
+                    :: points
 
 
 addStepPoints : Build -> ProjectTask.Task -> StepPopovers -> List Point -> State
@@ -112,9 +151,9 @@ stepToPoint : StepPopovers -> Step -> Maybe Point
 stepToPoint popovers ( taskStep, buildStep ) =
     Maybe.map2
         (\popover dateTime ->
-            { label = ProjectTask.stepName taskStep
+            { label = Just (ProjectTask.stepName taskStep)
             , dateTime = dateTime
-            , color = Green
+            , status = buildStep.status
             , popover = popover
             , updateType = Step buildStep.id
             }
@@ -178,8 +217,17 @@ updatePopovers update state popovers =
 
 view : Config msg -> State -> Html.Html msg
 view config points =
-    points
-        |> viewTimeline config
+    div
+        [ css
+            [ position relative ]
+        , class "build-timeline"
+        ]
+        [ viewTimeline config points
+        , if shouldShowDuration points then
+            viewDuration points
+          else
+            text ""
+        ]
         |> toUnstyled
 
 
@@ -193,14 +241,8 @@ viewTimeline config points =
             ]
         ]
         [ div
-            [ class "border-success"
-            , css
+            [ css
                 [ display block
-                , listStyleType none
-                , margin3 (Css.em 0.5) (Css.em 0) (Css.em 0)
-                , padding (Css.em 0)
-                , height (Css.em 1)
-                , borderTop2 (px 4) solid
                 , width (pct 100)
                 , position relative
                 ]
@@ -212,10 +254,22 @@ viewTimeline config points =
                     , margin2 (Css.em 0) (Css.em 0.5)
                     ]
                 ]
-                (viewPoints config points)
+                (points
+                    |> mapPoints
+                    |> viewPoints config
+                )
             ]
-        , viewDuration points
         ]
+
+
+shouldShowDuration : State -> Bool
+shouldShowDuration points =
+    case List.head (List.reverse points) of
+        Just point ->
+            List.member point.status [ BuildStep.Success, BuildStep.Failed ]
+
+        Nothing ->
+            False
 
 
 viewDuration : State -> Html.Styled.Html msg
@@ -224,12 +278,19 @@ viewDuration state =
         { hours, minutes, seconds } =
             duration state
     in
-        Html.Styled.small [ css [ float right ] ]
+        Html.Styled.small
+            [ css
+                [ position absolute
+                , right (px 0)
+                , top (px -20)
+                ]
+            , class "py-2"
+            ]
             [ i [ class "fa fa-clock-o" ] []
             , text " Ran for "
-            , text (pluralizeOrDrop "hour" hours)
-            , text (pluralizeOrDrop "min" minutes)
-            , text (pluralizeOrDrop "sec" seconds)
+            , text (pluralizeOrDrop "hour" (Basics.rem hours 60))
+            , text (pluralizeOrDrop "min" (Basics.rem minutes 60))
+            , text (pluralizeOrDrop "sec" (Basics.rem seconds 60))
             ]
 
 
@@ -246,9 +307,20 @@ pluralizeOrDrop word amount =
             (toString amount) ++ " " ++ word ++ "s "
 
 
-viewPoints : Config msg -> State -> List (Html.Styled.Html msg)
-viewPoints config points =
+mapPoints : State -> List ( Point, Maybe Point )
+mapPoints points =
+    points
+        |> List.length
+        |> List.range 1
+        |> List.filterMap (pointAndNext points)
+
+
+viewPoints : Config msg -> List ( Point, Maybe Point ) -> List (Html.Styled.Html msg)
+viewPoints config combinedPoints =
     let
+        points =
+            List.map Tuple.first combinedPoints
+
         start =
             startTime points
 
@@ -258,12 +330,28 @@ viewPoints config points =
         lineRatio =
             ratio start end
     in
-        List.map (viewPoint config (ratio start end) start) <|
-            points
+        List.map
+            (viewPoint config (ratio start end) start)
+            combinedPoints
 
 
-viewPoint : Config msg -> Float -> Float -> Point -> Html.Styled.Html msg
-viewPoint { popoverMsg } ratio start point =
+pointAndNext : List Point -> Int -> Maybe ( Point, Maybe Point )
+pointAndNext listPoints index =
+    let
+        points =
+            Array.fromList listPoints
+
+        maybePoint =
+            Array.get (index - 1) points
+
+        maybeNext =
+            Array.get index points
+    in
+        Maybe.map (\p -> ( p, maybeNext )) maybePoint
+
+
+viewPoint : Config msg -> Float -> Float -> ( Point, Maybe Point ) -> Html.Styled.Html msg
+viewPoint { popoverMsg, clickPopoverMsg } ratio start ( point, nextPoint ) =
     let
         popoverAttrs =
             popoverMsg point.updateType
@@ -272,17 +360,10 @@ viewPoint { popoverMsg } ratio start point =
 
         pointCircle =
             div
-                popoverAttrs
+                (List.concat [ popoverAttrs, [ onClick (clickPopoverMsg point.updateType) ] ])
                 [ div
-                    [ class "border-success"
-                    , css
-                        [ position relative
-                        , backgroundColor (hex "ffffff")
-                        , border2 (px 4) solid
-                        , width (Css.em 1.3)
-                        , height (Css.em 1.3)
-                        , borderRadius (pct 50)
-                        ]
+                    [ class borderClass
+                    , css [ pointStyle ]
                     ]
                     []
                 ]
@@ -297,30 +378,112 @@ viewPoint { popoverMsg } ratio start point =
 
                 Completed ->
                     Popover.left
+
+        pointLeft =
+            pointPercentage ratio start point
+
+        nextPointLeft =
+            nextPoint
+                |> Maybe.map (pointPercentage ratio start)
+                |> Maybe.withDefault pointLeft
+
+        nextRemainder =
+            nextPointLeft - pointLeft
+
+        borderCss =
+            case point.status of
+                BuildStep.Waiting ->
+                    [ borderTopStyle dashed ]
+
+                BuildStep.Running ->
+                    [ borderTopStyle dotted ]
+
+                BuildStep.Success ->
+                    []
+
+                BuildStep.Failed ->
+                    []
+
+        borderClass =
+            case point.status of
+                BuildStep.Waiting ->
+                    "border-secondary"
+
+                BuildStep.Running ->
+                    "border-primary slide-in"
+
+                BuildStep.Success ->
+                    "border-success"
+
+                BuildStep.Failed ->
+                    "border-danger"
+
+        popover =
+            case point.label of
+                Just label ->
+                    Popover.config (toUnstyled pointCircle)
+                        |> popoverDirection
+                        |> Popover.titleH6 [] [ Html.text label ]
+                        |> Popover.content [] [ Html.text (formatTimeSeconds point.dateTime) ]
+                        |> Popover.view point.popover
+                        |> fromUnstyled
+
+                Nothing ->
+                    text ""
     in
-        div
-            [ css
-                [ left (pct <| eventPosition ratio start <| DateTime.toTimestamp point.dateTime)
-                , width (Css.em 1)
-                , height (Css.em 1)
-                , position absolute
-                , top (Css.em 0)
-                , margin4 (Css.em 0) (Css.em 0) (Css.em 0) (Css.em -0.6)
+        div []
+            [ div
+                [ class borderClass
+                , css
+                    [ margin3 (Css.em 0.5) (Css.em 0) (Css.em 0)
+                    , padding (Css.em 0)
+                    , borderTop2 (px 4) solid
+                    , width (pct nextRemainder)
+                    , position absolute
+                    , left (pct pointLeft)
+                    , Css.batch borderCss
+                    ]
+                ]
+                []
+            , div
+                [ css
+                    [ pointContainerStyle
+                    , left (pct pointLeft)
+                    ]
+                ]
+                [ popover
                 ]
             ]
-            [ Popover.config (toUnstyled pointCircle)
-                |> popoverDirection
-                |> Popover.titleH4 [] [ Html.text point.label ]
-                |> Popover.content [] [ Html.text (formatTimeSeconds point.dateTime) ]
-                |> Popover.view point.popover
-                |> fromUnstyled
-            ]
 
 
+pointPercentage : Float -> Float -> Point -> Float
+pointPercentage ratio start { dateTime } =
+    dateTime
+        |> DateTime.toTimestamp
+        |> eventPosition ratio start
 
---viewPointPopover : Point -> Html.Styled.Html msg
---viewPointPopover point =
---    Pop
+
+pointStyle : Style
+pointStyle =
+    Css.batch
+        [ position relative
+        , backgroundColor (hex "ffffff")
+        , border2 (px 4) solid
+        , width (Css.em 1.3)
+        , height (Css.em 1.3)
+        , borderRadius (pct 50)
+        ]
+
+
+pointContainerStyle : Style
+pointContainerStyle =
+    Css.batch
+        [ position absolute
+        , display block
+        , top (Css.em 0)
+        , margin4 (Css.em 0) (Css.em 0) (Css.em 0) (Css.em -0.6)
+        , cursor pointer
+        ]
 
 
 eventPosition : Float -> Float -> Float -> Float
