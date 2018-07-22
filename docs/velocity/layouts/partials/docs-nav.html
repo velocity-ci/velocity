@@ -1,0 +1,67 @@
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar" style="max-height: 50rem;">
+    <nav class="collapse bd-links" id="bd-docs-nav">
+        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/getting-started"}}active{{ end }}">
+            <a class="bd-toc-link" href="/docs/getting-started/">
+                Getting started
+            </a>
+
+            <ul class="nav bd-sidenav">
+                <li class="{{ if hasPrefix .Page.URL "/docs/getting-started/kubernetes"}}active bd-sidenav-active{{ end }}">
+                    <a href="/docs/getting-started/kubernetes/">
+                        Kubernetes
+                    </a>
+                </li>
+                <li class="{{ if hasPrefix .Page.URL "/docs/getting-started/amazon-ecs"}}active bd-sidenav-active{{ end }}">
+                    <a href="/docs/getting-started/amazon-ecs/">
+                        Amazon ECS
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/cli"}}active{{ end }}">
+            <a class="bd-toc-link" href="/docs/cli/">
+                CLI
+            </a>
+
+            <ul class="nav bd-sidenav">
+                <li class="{{ if hasPrefix .Page.URL "/docs/cli/overview"}}active bd-sidenav-active{{ end }}">
+                    <a href="/docs/cli/overview/">
+                        Overview
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/master"}}active{{ end }}">
+            <a class="bd-toc-link" href="/docs/master/">
+                Master
+            </a>
+
+            <ul class="nav bd-sidenav">
+                <li class="{{ if hasPrefix .Page.URL "/docs/master/overview"}}active bd-sidenav-active{{ end }}">
+                    <a href="/docs/master/overview/">
+                        Overview
+                    </a>
+                </li>
+                <li class="{{ if hasPrefix .Page.URL "/docs/master/rest-api"}}active bd-sidenav-active{{ end }}">
+                    <a href="/docs/master/rest-api/">
+                        REST API
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="bd-toc-item {{ if hasPrefix .Page.URL "/docs/worker"}}active{{ end }}">
+            <a class="bd-toc-link" href="/docs/worker/">
+                Worker
+            </a>
+
+            <ul class="nav bd-sidenav">
+                <li class="{{ if hasPrefix .Page.URL "/docs/worker/overview"}}active bd-sidenav-active{{ end }}">
+                    <a href="/docs/worker/overview/">
+                        Overview
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+</div>

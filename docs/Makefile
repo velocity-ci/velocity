@@ -16,3 +16,12 @@ deploy:
 	--env AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
 	anigeo/awscli:latest \
 	s3 cp public/. s3://velocityci.io --acl public-read --recursive --cache-control max-age=120
+
+serve:
+	docker run --rm \
+	-it \
+	--volume ${CURDIR}/velocity:/app \
+	--workdir /app \
+	-p 1313:1313 \
+	publysher/hugo \
+	hugo server --bind 0.0.0.0

@@ -15,15 +15,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.min.css">
     <!-- Animate.css -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.4.0/animate.min.css">
+
+    <link rel="stylesheet" href="https://getbootstrap.com/assets/css/docs.min.css">
 </head>
 
 <body>
     {{ partial "nav.html" . }}
 
-    <main role="main" class="container">
-        <div class="container" style="min-height: 400px; margin-top: 3em;">
-            {{ block "main" . }} {{ end }}
-        </div>
+    <main role="main" style="min-height: 400px; margin-top: 1em;">
+        {{ block "main" . }} {{ end }}
     </main>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
