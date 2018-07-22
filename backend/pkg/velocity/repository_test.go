@@ -12,7 +12,6 @@ func TestRepositoryConfigUnmarshal(t *testing.T) {
 	repositoryConfigYaml := `
 ---
 project: 
-  name: Velocity
   logo: image.png
   tasksPath: ./tasks
 git: 
@@ -57,7 +56,6 @@ stages:
 	assert.Nil(t, err)
 	expectedRepositoryConfig := velocity.RepositoryConfig{
 		Project: velocity.ProjectConfig{
-			Name:      "Velocity",
 			Logo:      "image.png",
 			TasksPath: "./tasks",
 		},

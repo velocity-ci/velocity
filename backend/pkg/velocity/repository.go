@@ -14,7 +14,6 @@ type RepositoryConfig struct {
 }
 
 type ProjectConfig struct {
-	Name      string `json:"name" yaml:"name"`
 	Logo      string `json:"logo" yaml:"logo"`
 	TasksPath string `json:"tasksPath" yaml:"tasksPath"`
 }
@@ -53,16 +52,12 @@ func (t *RepositoryConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 
 func unmarshalProjectYaml(y interface{}) ProjectConfig {
 	p := ProjectConfig{
-		Name:      "",
 		Logo:      "",
 		TasksPath: "./tasks",
 	}
 
 	switch x := y.(type) {
 	case map[interface{}]interface{}:
-		if v, ok := x["name"].(string); ok {
-			p.Name = v
-		}
 		if v, ok := x["logo"].(string); ok {
 			p.Logo = v
 		}

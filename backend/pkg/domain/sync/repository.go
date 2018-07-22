@@ -18,13 +18,19 @@ func syncRepository(p *project.Project, repo *velocity.RawRepository) (*project.
 		return p, err
 	}
 
-	repoConfigPath := fmt.Sprintf("%s/.velocity.yaml", repo.Directory)
-	if _, err := os.Stat(repoConfigPath); err != nil {
-		velocity.GetLogger().Warn("could not find repository config .velocity.yaml", zap.Error(err))
+	repoConfigPathYaml := fmt.Sprintf("%s/.velocity.yaml", repo.Directory)
+	repoConfigPathYml := fmt.Sprintf("%s/.velocity.yml", repo.Directory)
+	repoConfig := ""
+	if _, err := os.Stat(repoConfigPathYaml); err == nil {
+		repoConfig = repoConfigPathYaml
+	} else if _, err := os.Stat(repoConfigPathYml); err == nil {
+		repoConfig = repoConfigPathYml
+	} else {
+		velocity.GetLogger().Warn("could not find repository config .velocity.yaml or .velocity.yml", zap.Error(err))
 		return p, nil
 	}
 
-	repoYaml, _ := ioutil.ReadFile(repoConfigPath)
+	repoYaml, _ := ioutil.ReadFile(repoConfig)
 
 	err = yaml.Unmarshal(repoYaml, &p.RepositoryConfig)
 	if err != nil {
