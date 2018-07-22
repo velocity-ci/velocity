@@ -1,0 +1,5 @@
+project: 
+  logo: image.png
+  tasksPath: ./tasks
+git: 
+  depth: 10
