@@ -31,7 +31,10 @@ func syncTasks(
 			b = branchManager.Create(p, branchName)
 		}
 
-		rawCommit := repo.GetCommitAtHeadOfBranch(branchName)
+		rawCommit, err := repo.GetCommitAtHeadOfBranch(branchName)
+		if err != nil {
+			continue
+		}
 		velocity.GetLogger().Info("found commit",
 			zap.String("project", p.Slug),
 			zap.String("branch", branchName),

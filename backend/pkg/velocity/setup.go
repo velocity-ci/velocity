@@ -79,7 +79,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
 			return err
 		}
-		repo.Checkout(s.commitHash)
+		err = repo.Checkout(s.commitHash)
 		if err != nil {
 			GetLogger().Error("could not checkout", zap.Error(err), zap.String("commit", s.commitHash))
 			writer.SetStatus(StateFailed)
@@ -160,7 +160,7 @@ func getGitParams() map[string]Parameter {
 
 	repo := &RawRepository{Directory: path}
 
-	rawCommit := repo.GetCurrentCommitInfo()
+	rawCommit, _ := repo.GetCurrentCommitInfo()
 
 	return map[string]Parameter{
 		"GIT_COMMIT_LONG_SHA": {
