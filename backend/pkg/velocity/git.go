@@ -220,7 +220,7 @@ func (r *RawRepository) GetBranches() (b []string) {
 	return b
 }
 
-func (r *RawRepository) GetCommitAtHeadOfBranch(branch string) *RawCommit {
+func (r *RawRepository) GetCommitAtHeadOfBranch(branch string) (*RawCommit, error) {
 	r.init()
 	defer r.done()
 	commitSha := r.RevParse(fmt.Sprintf("origin/%s", branch))
@@ -305,16 +305,14 @@ func (r *RawRepository) GetCurrentCommitInfo() (*RawCommit, error) {
 	return r.GetCommitInfo(strings.TrimSpace(s.Stdout[0]))
 }
 
-func (r *RawRepository) GetDescribe() (string, error) {
+func (r *RawRepository) GetDescribe() string {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "describe", "--always"}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
-	GetLogger().Debug("git describe --always", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
-
-	return strings.TrimSpace(s.Stdout[0]), nil
+	return strings.TrimSpace(s.Stdout[0])
 }
 
 func (r *RawRepository) Clean() error {
@@ -336,6 +334,7 @@ func handleStatusError(s cmd.Status) error {
 
 	if s.Exit != 0 {
 		GetLogger().Error("non-zero exit in git", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
+		return fmt.Errorf(strings.Join(s.Stderr, "\n"))
 	}
 
 	return nil
