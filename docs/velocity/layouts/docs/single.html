@@ -1,0 +1,14 @@
+{{ define "title" }}{{ .Title }} | Docs | Velocity CI> {{ .Title }}{{ end }} {{ define "main" }}
+
+<div class="container-fluid">
+    <div class="row flex-xl-nowrap">
+        {{ partial "docs-nav.html" . }}
+        <main class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content" role="main">
+            <h2>{{ .Title}}</h2>
+            <p>{{ .Content }}</p>
+        </main>
+    </div>
+</div>
+
+
+{{ end }}

@@ -1,6 +1,7 @@
 baseurl = "https://velocityci.io"
 title = "Velocity CI"
 languageCode = "en-gb"
+pygmentsStyle = "friendly"
 
 [params]
     github_username = "velocity-ci"

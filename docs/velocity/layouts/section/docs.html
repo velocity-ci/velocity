@@ -1,0 +1,16 @@
+{{ define "title" }}Docs | Velocity CI{{ end }} {{ define "main" }}
+
+<div class="container-fluid">
+    <div class="row flex-xl-nowrap">
+        {{ partial "docs-nav.html" . }}
+        <div class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content">
+            <main role="main">
+                <!-- <h1 class="bd-title">Docs</h1> -->
+                <p class="lead">Welcome to the Velocity CI documentation!</p>
+                <p>We recommend checking out <a href="/docs/getting-started/docker-compose">Getting started / Docker Compose</a> to quickly get up and running.</p>
+            </main>
+        </div>
+    </div>
+</div>
+
+{{ end }}
