@@ -74,9 +74,9 @@ init context session branches projectSlug maybeBranchName maybePage =
                 |> List.filter (\b -> maybeBranchName == Just b.name)
                 |> List.head
 
-        initialModel (Paginated { results, total }) =
-            { commits = results
-            , total = total
+        initialModel commits =
+            { commits = PaginatedList.results commits
+            , total = PaginatedList.total commits
             , page = defaultPage
             , submitting = False
             , branch = maybeBranch
@@ -436,10 +436,10 @@ update context project session msg model =
             in
                 model => Task.attempt RefreshCompleted refreshTask
 
-        RefreshCompleted (Ok (Paginated { results, total })) ->
+        RefreshCompleted (Ok paginatedResults) ->
             { model
-                | commits = results
-                , total = total
+                | commits = PaginatedList.results paginatedResults
+                , total = PaginatedList.total paginatedResults
             }
                 => Cmd.none
 

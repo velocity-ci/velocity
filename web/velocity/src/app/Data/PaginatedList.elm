@@ -1,4 +1,4 @@
-module Data.PaginatedList exposing (PaginatedList, Paginated(..), decoder, results, total)
+module Data.PaginatedList exposing (PaginatedList, Paginated, decoder, results, updateResults, total)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, required, optional)
@@ -25,6 +25,21 @@ decoder decoder =
 
 
 -- HELPERS --
+
+
+updateResults : PaginatedList a -> (List a -> List a) -> PaginatedList a
+updateResults paginatedList updateFn =
+    let
+        newResults =
+            updateFn (results paginatedList)
+
+        totalDiff =
+            (total paginatedList) - List.length newResults
+    in
+        Paginated
+            { total = (total paginatedList) - totalDiff
+            , results = newResults
+            }
 
 
 results : PaginatedList a -> List a

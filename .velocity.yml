@@ -1,5 +1,5 @@
-project: 
-  logo: image.png
+project:
+  logo: https://i.imgur.com/4vEcq8U.png
   tasksPath: ./tasks
-git: 
+git:
   depth: 10

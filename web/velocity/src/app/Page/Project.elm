@@ -17,7 +17,7 @@ import Util exposing ((=>), viewIf)
 import Http
 import Route exposing (Route)
 import Navigation exposing (newUrl)
-import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
+import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Dict exposing (Dict)
@@ -84,9 +84,9 @@ init context session slug maybeRoute =
         loadBranches =
             Request.Project.branches context slug maybeAuthToken
 
-        initialModel project (Paginated branches) =
+        initialModel project paginatedBranches =
             { project = project
-            , branches = branches.results
+            , branches = PaginatedList.results paginatedBranches
             , subPageState = Loaded initialSubPage
             , sidebar =
                 { commitIconPopover = Popover.initialState
@@ -686,8 +686,8 @@ updateSubPage context session subPage msg model =
                 in
                     model => cmd
 
-            ( RefreshBranchesComplete (Ok (Paginated { results })), _ ) ->
-                { model | branches = results }
+            ( RefreshBranchesComplete (Ok paginatedBranches), _ ) ->
+                { model | branches = PaginatedList.results paginatedBranches }
                     => Cmd.none
 
             ( ProjectDeleted _, _ ) ->
@@ -708,6 +708,12 @@ updateSubPage context session subPage msg model =
                                     |> Commit.update context model.project session (Commit.AddBuild build)
                                     |> Tuple.mapFirst (Commit >> Loaded)
                                     |> Tuple.mapSecond (Cmd.map CommitMsg)
+
+                            ( Builds subModel, Just build ) ->
+                                subModel
+                                    |> Builds.update context model.project session (Builds.AddBuild build)
+                                    |> Tuple.mapFirst (Builds >> Loaded)
+                                    |> Tuple.mapSecond (Cmd.map BuildsMsg)
 
                             ( _, _ ) ->
                                 model.subPageState => Cmd.none
@@ -737,6 +743,12 @@ updateSubPage context session subPage msg model =
                                     |> Commit.update context model.project session (Commit.UpdateBuild build)
                                     |> Tuple.mapFirst (Commit >> Loaded)
                                     |> Tuple.mapSecond (Cmd.map CommitMsg)
+
+                            ( Builds subModel, Just build ) ->
+                                subModel
+                                    |> Builds.update context model.project session (Builds.UpdateBuild build)
+                                    |> Tuple.mapFirst (Builds >> Loaded)
+                                    |> Tuple.mapSecond (Cmd.map BuildsMsg)
 
                             ( _, _ ) ->
                                 model.subPageState => Cmd.none

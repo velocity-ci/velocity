@@ -43,10 +43,10 @@ init context session =
         loadError =
             pageLoadError Page.KnownHosts "Known hosts are currently unavailable."
 
-        initialModel (Paginated { total, results }) =
+        initialModel paginatedKnownHosts =
             { formModalVisibility = Modal.hidden
             , form = KnownHostForm.init
-            , knownHosts = results
+            , knownHosts = PaginatedList.results paginatedKnownHosts
             }
     in
         Task.map initialModel loadKnownHosts

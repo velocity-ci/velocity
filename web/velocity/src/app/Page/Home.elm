@@ -84,9 +84,9 @@ init context session =
         errorPage =
             pageLoadError Page.Home "Homepage is currently unavailable."
 
-        initialModel (Paginated projects) (Paginated knownHosts) =
-            { projects = projects.results
-            , knownHosts = knownHosts.results
+        initialModel projects knownHosts =
+            { projects = PaginatedList.results projects
+            , knownHosts = PaginatedList.results knownHosts
             , newProjectForm = ProjectForm.init
             , newKnownHostForm = KnownHostForm.init
             , newProjectModalVisibility = Modal.hidden
