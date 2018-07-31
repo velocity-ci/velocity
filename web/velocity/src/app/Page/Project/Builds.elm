@@ -115,6 +115,7 @@ pageLink page isActive project =
 type Msg
     = NewUrl String
     | UpdateBuild Build
+    | AddBuild Build
 
 
 update : Context -> Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -122,6 +123,16 @@ update context project session msg model =
     case msg of
         NewUrl url ->
             model => Navigation.newUrl url
+
+        AddBuild build ->
+            let
+                newModel =
+                    if model.activePage == 1 then
+                        { model | builds = PaginatedList.updateResults model.builds (\builds -> build :: builds) }
+                    else
+                        model
+            in
+                newModel => Cmd.none
 
         UpdateBuild build ->
             let
