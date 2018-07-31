@@ -93,7 +93,7 @@ sidebarProjectLink state config project =
         False
         (Route.Project project.slug ProjectRoute.Overview)
         project.name
-        [ Styled.fromUnstyled badge ]
+        [ Styled.fromUnstyled (badge project) ]
 
 
 sidebarLink : State -> Config msg -> ActiveSubPage -> Bool -> Route -> String -> List (Styled.Html msg) -> Styled.Html msg

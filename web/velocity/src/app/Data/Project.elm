@@ -15,6 +15,7 @@ type alias Project =
     , createdAt : DateTime
     , updatedAt : DateTime
     , synchronising : Bool
+    , logo : Maybe String
     }
 
 
@@ -32,6 +33,7 @@ decoder =
         |> required "createdAt" stringToDateTime
         |> required "updatedAt" stringToDateTime
         |> required "synchronising" Decode.bool
+        |> required "logo" (Decode.maybe decodeLogo)
 
 
 
@@ -64,6 +66,18 @@ type Id
 
 type Slug
     = Slug String
+
+
+decodeLogo : Decoder String
+decodeLogo =
+    Decode.string
+        |> Decode.andThen
+            (\s ->
+                if not (String.isEmpty s) then
+                    Decode.succeed s
+                else
+                    Decode.fail "Invalid"
+            )
 
 
 decodeId : Decoder Id
