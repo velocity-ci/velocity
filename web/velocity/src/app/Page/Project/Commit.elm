@@ -23,7 +23,7 @@ import Views.Page as Page exposing (ActivePage)
 import Views.Helpers exposing (onClickPage)
 import Page.Project.Commit.Overview as Overview
 import Page.Project.Commit.Task as CommitTask
-import Data.PaginatedList exposing (Paginated(..))
+import Data.PaginatedList as PaginatedList
 import Json.Encode as Encode
 import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime, formatDateTime)
@@ -87,10 +87,10 @@ init context session project hash maybeRoute =
             maybeAuthToken
                 |> Request.Commit.builds context project.slug hash
 
-        initialModel commit (Paginated tasks) (Paginated builds) width =
+        initialModel commit tasks builds width =
             { commit = commit
-            , tasks = tasks.results
-            , builds = sortByDatetime .createdAt builds.results |> List.reverse
+            , tasks = PaginatedList.results tasks
+            , builds = sortByDatetime .createdAt (PaginatedList.results builds) |> List.reverse
             , subPageState = Loaded initialSubPage
             , taskFilterTerm = ""
             , sidebarDisplayType = CommitSidebar.initDisplayType width

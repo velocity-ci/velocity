@@ -309,7 +309,9 @@ viewToolbar model builds =
         buildsDropdown =
             buildFilterContext model builds
                 |> DropdownFilter.view buildDropdownFilterConfig
-                |> Util.viewIf (List.length builds > 1)
+
+        shouldDisplayBuildsDropdown =
+            List.length builds > 1
 
         newBuildButton =
             button
@@ -339,9 +341,9 @@ viewToolbar model builds =
                     text ""
     in
         div [ class "d-flex" ]
-            [ div [ class "pr-2" ] [ buildsDropdown ]
-            , div [ class "flex-fill px-2 flex-grow-1 d-none d-sm-block" ] [ timeline ]
-            , div [ class "pl-2" ] [ newBuildButton ]
+            [ Util.viewIf shouldDisplayBuildsDropdown <| div [ class "pr-4" ] [ buildsDropdown ]
+            , div [ class "flex-fill flex-grow-1 d-none d-sm-block" ] [ timeline ]
+            , div [ class "pl-4" ] [ newBuildButton ]
             ]
 
 
