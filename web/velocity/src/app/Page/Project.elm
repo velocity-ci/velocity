@@ -738,6 +738,12 @@ updateSubPage context session subPage msg model =
                                     |> Tuple.mapFirst (Commit >> Loaded)
                                     |> Tuple.mapSecond (Cmd.map CommitMsg)
 
+                            ( Builds subModel, Just build ) ->
+                                subModel
+                                    |> Builds.update context model.project session (Builds.UpdateBuild build)
+                                    |> Tuple.mapFirst (Builds >> Loaded)
+                                    |> Tuple.mapSecond (Cmd.map BuildsMsg)
+
                             ( _, _ ) ->
                                 model.subPageState => Cmd.none
 
