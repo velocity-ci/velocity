@@ -32,8 +32,14 @@ updateResults paginatedList updateFn =
     let
         newResults =
             updateFn (results paginatedList)
+
+        totalDiff =
+            (total paginatedList) - List.length newResults
     in
-        Paginated { total = List.length newResults, results = newResults }
+        Paginated
+            { total = (total paginatedList) - totalDiff
+            , results = newResults
+            }
 
 
 results : PaginatedList a -> List a
