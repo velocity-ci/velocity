@@ -40,7 +40,7 @@ serve_dist: build
 publish:
 	@docker push civelocity/web:${GIT_VERSION}
 
-test: install
+test:
 	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --compiler ./node_modules/.bin/elm-make'
 
 test_watch:

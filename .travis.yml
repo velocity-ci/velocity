@@ -15,17 +15,11 @@ env:
 jobs:
   include:
     - stage: test
-      script: cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make test
-
-    - stage: build
-      script: cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make build
+      script:
+        - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make install && make test
 
     - stage: deploy
       if: branch = master
-      script: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      script: cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make publish
-
-stages:
-  - test
-  - build
-  - deploy
+      script: 
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make install && make build && make publish
