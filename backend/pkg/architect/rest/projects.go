@@ -27,9 +27,9 @@ type projectResponse struct {
 
 	Synchronising bool `json:"synchronising"`
 
-	Logo      string `json:"logo"`
-	TasksPath string `json:"tasksPath"`
-	GitDepth  int    `json:"gitDepth"`
+	Logo      *string `json:"logo"`
+	TasksPath string  `json:"tasksPath"`
+	GitDepth  int     `json:"gitDepth"`
 
 	Parameters []parameterResp `json:"parameters"`
 	Plugins    []pluginResp    `json:"plugins"`
