@@ -73,6 +73,20 @@ func (s *UserSuite) TestInvalidNew() {
 	s.Equal([]string{"password must be at least 3 characters in length"}, errs.ErrorMap["password"])
 }
 
+func (s *UserSuite) TestUnique() {
+	m := s.uM
+
+	u, errs := m.Create("user", "password")
+	s.NotNil(u)
+	s.Nil(errs)
+
+	u, errs = m.Create("user", "pass")
+	s.Nil(u)
+	s.NotNil(errs)
+
+	s.Equal([]string{"username already exists!"}, errs.ErrorMap["username"])
+}
+
 func (s *UserSuite) TestSave() {
 	m := s.uM
 
