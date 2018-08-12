@@ -13,7 +13,11 @@ import (
 )
 
 func syncRepository(p *project.Project, repo *velocity.RawRepository) (*project.Project, error) {
-	err := repo.Checkout(repo.GetDefaultBranch())
+	defBranch, err := repo.GetDefaultBranch()
+	if err != nil {
+		return p, err
+	}
+	err = repo.Checkout(defBranch)
 	if err != nil {
 		return p, err
 	}

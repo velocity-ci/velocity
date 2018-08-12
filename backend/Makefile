@@ -27,7 +27,7 @@ build-cli:
 
 build: build-architect build-builder build-cli
 
-publish: install build
+publish:
 	docker push civelocity/architect:${GIT_VERSION}
 	docker push civelocity/builder:${GIT_VERSION}
 	# TODO: CLI publishing

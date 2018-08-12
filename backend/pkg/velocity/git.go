@@ -54,20 +54,32 @@ func getUniqueWorkspace(r *GitRepository) (string, error) {
 	return dir, nil
 }
 
-func handleGitSSH(r *GitRepository) (ssh.Signer, agent.Agent, error) {
-	key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
-	if err != nil {
-		return nil, nil, err.(SSHKeyError)
-	}
-	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-		a := agent.NewClient(sshAgent)
-		a.Add(agent.AddedKey{PrivateKey: key})
-		signer, _ := ssh.NewSignerFromKey(key)
-		GetLogger().Debug("added ssh key to ssh-agent", zap.String("address", r.Address))
-		return signer, a, nil
+func handleGitSSH(r *GitRepository) (d func(*GitRepository), err error) {
+	if r.Address[:3] == "git" {
+		key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
+		if err != nil {
+			return d, err.(SSHKeyError)
+		}
+
+		if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+			a := agent.NewClient(sshAgent)
+			a.Add(agent.AddedKey{PrivateKey: key})
+			signer, _ := ssh.NewSignerFromKey(key)
+			GetLogger().Debug("added ssh key to ssh-agent", zap.String("address", r.Address))
+			r.Agent = a
+			r.PublicKey = signer.PublicKey()
+			return cleanSSHAgent, nil
+		}
 	}
 
-	return nil, nil, fmt.Errorf("ssh-agent not found")
+	return d, fmt.Errorf("ssh-agent not found")
+}
+
+func cleanSSHAgent(r *GitRepository) {
+	if r.Agent != nil {
+		r.Agent.Remove(r.PublicKey)
+		GetLogger().Debug("removed ssh key from ssh-agent", zap.String("address", r.Address))
+	}
 }
 
 func initWorkspace(r *GitRepository) (string, error) {
@@ -81,23 +93,7 @@ func initWorkspace(r *GitRepository) (string, error) {
 	c = cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	<-c.Start()
 
-	if r.Address[:3] == "git" {
-		signer, agent, err := handleGitSSH(r)
-		if err != nil {
-			return "", err
-		}
-		r.Agent = agent
-		r.PublicKey = signer.PublicKey()
-	}
-
 	return dir, nil
-}
-
-func cleanSSHAgent(r *GitRepository) {
-	if r.Agent != nil {
-		r.Agent.Remove(r.PublicKey)
-		GetLogger().Debug("removed ssh key from ssh-agent", zap.String("address", r.Address))
-	}
 }
 
 func Validate(r *GitRepository) (bool, error) {
@@ -108,7 +104,11 @@ func Validate(r *GitRepository) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer cleanSSHAgent(r)
+	deferFunc, err := handleGitSSH(r)
+	if err != nil {
+		return false, err
+	}
+	defer deferFunc(r)
 	os.Chdir(dir)
 
 	shCmd := []string{"git", "ls-remote"}
@@ -145,7 +145,6 @@ func Clone(
 	if err != nil {
 		return nil, err
 	}
-	defer cleanSSHAgent(r)
 	os.Chdir(dir)
 
 	shCmd := []string{"git", "fetch", "--progress"}
@@ -166,7 +165,13 @@ func Clone(
 		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
 
-	GetLogger().Info("cloning repository", zap.String("cmd", strings.Join(shCmd, " ")))
+	GetLogger().Info("fetching repository", zap.String("cmd", strings.Join(shCmd, " ")))
+
+	deferFunc, err := handleGitSSH(r)
+	if err != nil {
+		return nil, err
+	}
+	defer deferFunc(r)
 
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
@@ -196,9 +201,9 @@ func Clone(
 		return nil, err
 	}
 
-	GetLogger().Info("cloned repository", zap.String("address", r.Address))
+	GetLogger().Info("fetched repository", zap.String("address", r.Address))
 
-	return &RawRepository{Directory: dir}, nil
+	return &RawRepository{Directory: dir, GitRepository: r}, nil
 }
 
 func (r *RawRepository) GetBranches() (b []string) {
@@ -248,8 +253,9 @@ type RawCommit struct {
 }
 
 type RawRepository struct {
-	Directory string
-	pwd       string
+	GitRepository *GitRepository
+	Directory     string
+	pwd           string
 	sync.RWMutex
 }
 
@@ -361,14 +367,25 @@ func (r *RawRepository) Checkout(ref string) error {
 	return nil
 }
 
-func (r *RawRepository) GetDefaultBranch() string {
+func (r *RawRepository) GetDefaultBranch() (string, error) {
 	r.init()
 	defer r.done()
+
+	deferFunc, err := handleGitSSH(r.GitRepository)
+	if err != nil {
+		return "", err
+	}
+	defer deferFunc(r.GitRepository)
+
 	shCmd := []string{"git", "remote", "show", "origin"}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
 	s := <-c.Start()
 
+	if err := handleStatusError(s); err != nil {
+		return "", err
+	}
+
 	defaultBranch := strings.TrimSpace(strings.Split(s.Stdout[3], ":")[1])
 
-	return defaultBranch
+	return defaultBranch, nil
 }
