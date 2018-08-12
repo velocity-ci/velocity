@@ -1,4 +1,4 @@
-module Request.User exposing (login, list, storeSession)
+module Request.User exposing (login, create, list, storeSession)
 
 import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
