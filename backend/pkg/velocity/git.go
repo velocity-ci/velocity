@@ -55,6 +55,7 @@ func getUniqueWorkspace(r *GitRepository) (string, error) {
 }
 
 func handleGitSSH(r *GitRepository) (d func(*GitRepository), err error) {
+	d = func(*GitRepository) {}
 	if r.Address[:3] == "git" {
 		key, err := ssh.ParseRawPrivateKey([]byte(r.PrivateKey))
 		if err != nil {
@@ -70,9 +71,11 @@ func handleGitSSH(r *GitRepository) (d func(*GitRepository), err error) {
 			r.PublicKey = signer.PublicKey()
 			return cleanSSHAgent, nil
 		}
+
+		return d, fmt.Errorf("ssh-agent not found")
 	}
 
-	return d, fmt.Errorf("ssh-agent not found")
+	return d, nil
 }
 
 func cleanSSHAgent(r *GitRepository) {
@@ -201,7 +204,7 @@ func Clone(
 		return nil, err
 	}
 
-	GetLogger().Info("fetched repository", zap.String("address", r.Address))
+	GetLogger().Info("fetched repository", zap.String("address", r.Address), zap.String("dir", dir))
 
 	return &RawRepository{Directory: dir, GitRepository: r}, nil
 }
