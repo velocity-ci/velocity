@@ -8,6 +8,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Task exposing (Task)
 import Bootstrap.Modal as Modal
+import Bootstrap.Button as Button
 import Json.Decode exposing (decodeString)
 
 
@@ -30,8 +31,10 @@ import Component.UserForm as UserForm
 
 type alias Model =
     { users : List Username
+    , deletingUsers : List Username
     , form : UserForm.Context
     , formModalVisibility : Modal.Visibility
+    , deleteModalVisibility : ( Maybe Username, Modal.Visibility )
     }
 
 
@@ -56,6 +59,8 @@ initialModel users =
     { users = users
     , form = UserForm.init
     , formModalVisibility = Modal.hidden
+    , deleteModalVisibility = ( Nothing, Modal.hidden )
+    , deletingUsers = []
     }
 
 
@@ -64,8 +69,11 @@ initialModel users =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions { formModalVisibility } =
-    Modal.subscriptions formModalVisibility AnimateFormModal
+subscriptions { formModalVisibility, deleteModalVisibility } =
+    Sub.batch
+        [ Modal.subscriptions formModalVisibility AnimateFormModal
+        , Modal.subscriptions (Tuple.second deleteModalVisibility) AnimateDeleteModal
+        ]
 
 
 
@@ -74,18 +82,12 @@ subscriptions { formModalVisibility } =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    let
-        hasUsers =
-            not (List.isEmpty model.users)
-
-        userList =
-            viewUserList model.users
-    in
-        div [ class "p-4 my-4" ]
-            [ viewToolbar
-            , viewIf hasUsers userList
-            , viewFormModal model.form model.formModalVisibility
-            ]
+    div [ class "p-4 my-4" ]
+        [ viewToolbar
+        , viewIf (not (List.isEmpty model.users)) (viewUserList model.users model.deletingUsers)
+        , viewFormModal model.form model.formModalVisibility
+        , viewDeleteModal model.deleteModalVisibility
+        ]
 
 
 viewToolbar : Html Msg
@@ -100,13 +102,13 @@ viewToolbar =
         ]
 
 
-viewUserList : List Username -> Html Msg
-viewUserList users =
+viewUserList : List Username -> List Username -> Html Msg
+viewUserList users deletingUsers =
     let
         userLis =
             users
                 |> List.sortBy User.usernameToString
-                |> List.map viewUserListItem
+                |> List.map (\u -> viewUserListItem u (List.member u deletingUsers))
     in
         div []
             [ h6 [] [ text "Users" ]
@@ -114,11 +116,24 @@ viewUserList users =
             ]
 
 
-viewUserListItem : Username -> Html Msg
-viewUserListItem username =
-    li [ class "list-group-item align-items-start px-0" ]
-        [ div [ class "d-flex w-100 justify-content-between" ]
-            [ h6 [ class "mb-1" ] [ text (User.usernameToString username) ]
+viewUserListItem : Username -> Bool -> Html Msg
+viewUserListItem username deleting =
+    li
+        [ class "list-group-item align-items-start px-0 d-flex"
+        , classList [ "text-muted" => deleting ]
+        ]
+        [ h6 [ class "w-100 align-self-center" ] [ text (User.usernameToString username) ]
+        , div [ class "flex-shrink-1 align-self-bottom" ]
+            [ Util.viewIf (not deleting)
+                (Button.button
+                    [ Button.outlineDanger
+                    , Button.small
+                    , Button.attrs
+                        [ onClick (ShowDeleteModal username) ]
+                    ]
+                    [ i [ class "fa fa-trash" ] []
+                    ]
+                )
             ]
         ]
 
@@ -133,6 +148,42 @@ viewFormModal userForm visibility =
         |> Modal.body [] [ UserForm.view userFormConfig userForm ]
         |> Modal.footer [] [ UserForm.viewSubmitButton userFormConfig userForm ]
         |> Modal.view visibility
+
+
+viewDeleteModal : ( Maybe Username, Modal.Visibility ) -> Html Msg
+viewDeleteModal ( maybeUsername, visibility ) =
+    case maybeUsername of
+        Just username ->
+            let
+                header =
+                    "Delete user '" ++ User.usernameToString username ++ "'"
+
+                confirmButton =
+                    Button.button
+                        [ Button.outlinePrimary
+                        , Button.attrs
+                            [ onClick (DeleteUser username) ]
+                        ]
+                        [ text "Confirm" ]
+
+                cancelButton =
+                    Button.button
+                        [ Button.outlineSecondary
+                        , Button.attrs
+                            [ onClick CloseDeleteModal ]
+                        ]
+                        [ text "Cancel" ]
+            in
+                Modal.config CloseDeleteModal
+                    |> Modal.withAnimation AnimateDeleteModal
+                    |> Modal.large
+                    |> Modal.hideOnBackdropClick True
+                    |> Modal.h3 [] [ text header ]
+                    |> Modal.footer [] [ cancelButton, confirmButton ]
+                    |> Modal.view visibility
+
+        Nothing ->
+            text ""
 
 
 userFormConfig : UserForm.Config Msg
@@ -150,13 +201,18 @@ userFormConfig =
 
 type Msg
     = CloseFormModal
+    | CloseDeleteModal
     | ShowFormModal
+    | ShowDeleteModal Username
     | AnimateFormModal Modal.Visibility
+    | AnimateDeleteModal Modal.Visibility
     | SetUsername String
     | SetPassword String
     | SetPasswordConfirm String
     | UserCreated (Result Request.Errors.HttpError Username)
     | SubmitForm
+    | DeleteUser Username
+    | UserDeleted (Result ( Request.Errors.HttpError, Username ) Username)
 
 
 type ExternalMsg
@@ -167,6 +223,11 @@ type ExternalMsg
 update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update context session msg model =
     case msg of
+        CloseDeleteModal ->
+            { model | deleteModalVisibility = ( Nothing, Modal.hidden ) }
+                => Cmd.none
+                => NoOp
+
         CloseFormModal ->
             { model
                 | formModalVisibility = Modal.hidden
@@ -177,6 +238,20 @@ update context session msg model =
 
         AnimateFormModal visibility ->
             { model | formModalVisibility = visibility }
+                => Cmd.none
+                => NoOp
+
+        AnimateDeleteModal visibility ->
+            let
+                ( maybeUsername, modalVisibility ) =
+                    model.deleteModalVisibility
+            in
+                { model | deleteModalVisibility = ( maybeUsername, visibility ) }
+                    => Cmd.none
+                    => NoOp
+
+        ShowDeleteModal username ->
+            { model | deleteModalVisibility = ( Just username, Modal.shown ) }
                 => Cmd.none
                 => NoOp
 
@@ -217,17 +292,54 @@ update context session msg model =
                     => cmd
                     => NoOp
 
-        UserCreated (Ok user) ->
+        DeleteUser username ->
+            let
+                cmdFromAuth authToken =
+                    username
+                        |> Request.User.delete context (Just authToken)
+                        |> Task.andThen (always <| Task.succeed username)
+                        |> Task.mapError (\e -> ( e, username ))
+                        |> Task.attempt UserDeleted
+
+                cmd =
+                    session
+                        |> Session.attempt "delete user" cmdFromAuth
+                        |> Tuple.second
+            in
+                { model
+                    | deleteModalVisibility = ( Nothing, Modal.hidden )
+                    , deletingUsers = username :: model.deletingUsers
+                }
+                    => cmd
+                    => NoOp
+
+        UserDeleted (Ok username) ->
+            { model
+                | users = List.filter (\a -> a /= username) model.users
+                , deletingUsers = List.filter (\a -> a /= username) model.deletingUsers
+            }
+                => Cmd.none
+                => NoOp
+
+        UserDeleted (Err ( err, username )) ->
+            { model | deletingUsers = List.filter (\a -> a /= username) model.deletingUsers }
+                => Cmd.none
+                => NoOp
+
+        UserCreated (Ok username) ->
             { model
                 | formModalVisibility = Modal.hidden
                 , form = UserForm.init
-                , users = user :: model.users
+                , users = username :: model.users
             }
                 => Cmd.none
                 => NoOp
 
         UserCreated (Err err) ->
             let
+                globalError =
+                    [ "" => "Unable to process user." ]
+
                 ( updatedForm, externalMsg ) =
                     case err of
                         Request.Errors.HandledError handledError ->
@@ -247,7 +359,7 @@ update context session msg model =
 
                         _ ->
                             model.form
-                                |> Form.updateServerErrors [ "" => "Unable to process user." ] UserForm.serverErrorToFormError
+                                |> Form.updateServerErrors globalError UserForm.serverErrorToFormError
                                 => NoOp
             in
                 { model | form = Form.submitting False updatedForm }

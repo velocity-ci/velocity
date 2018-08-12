@@ -6,9 +6,17 @@ $fa-font-path: "~font-awesome/fonts";
 @import "~font-awesome/scss/font-awesome.scss";
 
 
+//.delete-gradient {
+//  background-color: rgba(255,255,255,1);
+//  background: @include filter-gradient(#ffffff, #a8a8a8, horizontal);
+//  background: @include background-image(linear-gradient(left, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 49%, rgba(189,189,189,1) 80%, rgba(168,168,168,1) 100%));
+//}
+
 /*
 Branch filter
  */
+
+
 
 .item-filter-dropdown {
   .dropdown-item {
