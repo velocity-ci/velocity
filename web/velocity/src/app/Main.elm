@@ -230,7 +230,7 @@ viewPage session isLoading page =
 
             Users subModel ->
                 Users.view session subModel
-                    |> Html.map (always NoOp)
+                    |> Html.map UsersMsg
                     |> frame Page.Users Page.NormalSidebar
 
 
@@ -277,6 +277,10 @@ pageSubscriptions page =
         KnownHosts subModel ->
             KnownHosts.subscriptions subModel
                 |> Sub.map KnownHostsMsg
+
+        Users subModel ->
+            Users.subscriptions subModel
+                |> Sub.map UsersMsg
 
         _ ->
             Sub.none
@@ -664,7 +668,10 @@ updatePage page msg model =
                             Users.HandleRequestError err ->
                                 update (handledErrorToMsg err) model_
                 in
-                    modelAfterExternalMsg ! [ Cmd.map UsersMsg newSubCmd, cmdAfterExternalMsg ]
+                    modelAfterExternalMsg
+                        ! [ Cmd.map UsersMsg newSubCmd
+                          , cmdAfterExternalMsg
+                          ]
 
             ( KnownHostsLoaded subModel, _ ) ->
                 { model | pageState = Loaded (KnownHosts subModel) } => Cmd.none
