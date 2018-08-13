@@ -26,17 +26,13 @@ func (s *DockerPush) UnmarshalYamlInterface(y map[interface{}]interface{}) error
 		}
 		break
 	}
-	return nil
+	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func NewDockerPush() *DockerPush {
 	return &DockerPush{
-		Tags: []string{},
-		BaseStep: BaseStep{
-			Type:          "push",
-			OutputStreams: []string{"push"},
-			Params:        map[string]Parameter{},
-		},
+		Tags:     []string{},
+		BaseStep: newBaseStep("push", []string{"push"}),
 	}
 }
 

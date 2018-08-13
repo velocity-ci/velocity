@@ -17,11 +17,7 @@ func NewDockerBuild() *DockerBuild {
 		Dockerfile: "",
 		Context:    "",
 		Tags:       []string{},
-		BaseStep: BaseStep{
-			Type:          "build",
-			OutputStreams: []string{"build"},
-			Params:        map[string]Parameter{},
-		},
+		BaseStep:   newBaseStep("build", []string{"build"}),
 	}
 }
 
@@ -47,7 +43,7 @@ func (s *DockerBuild) UnmarshalYamlInterface(y map[interface{}]interface{}) erro
 		break
 	}
 
-	return nil
+	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func (dB DockerBuild) GetDetails() string {

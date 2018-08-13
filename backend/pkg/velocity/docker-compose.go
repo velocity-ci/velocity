@@ -28,10 +28,7 @@ type DockerCompose struct {
 
 func NewDockerCompose() *DockerCompose {
 	return &DockerCompose{
-		BaseStep: BaseStep{
-			Type:   "compose",
-			Params: map[string]Parameter{},
-		},
+		BaseStep: newBaseStep("compose", []string{}),
 	}
 }
 
@@ -40,6 +37,10 @@ func (s *DockerCompose) UnmarshalYamlInterface(y map[interface{}]interface{}) er
 	case interface{}:
 		s.ComposeFile = x.(string)
 		break
+	}
+	err := s.BaseStep.UnmarshalYamlInterface(y)
+	if err != nil {
+		return err
 	}
 	return s.parseDockerComposeFile()
 }
