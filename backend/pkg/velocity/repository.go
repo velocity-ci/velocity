@@ -14,8 +14,8 @@ type RepositoryConfig struct {
 }
 
 type ProjectConfig struct {
-	Logo      string `json:"logo" yaml:"logo"`
-	TasksPath string `json:"tasksPath" yaml:"tasksPath"`
+	Logo      *string `json:"logo" yaml:"logo"`
+	TasksPath string  `json:"tasksPath" yaml:"tasksPath"`
 }
 
 type GitConfig struct {
@@ -52,14 +52,14 @@ func (t *RepositoryConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 
 func unmarshalProjectYaml(y interface{}) ProjectConfig {
 	p := ProjectConfig{
-		Logo:      "",
+		Logo:      nil,
 		TasksPath: "./tasks",
 	}
 
 	switch x := y.(type) {
 	case map[interface{}]interface{}:
 		if v, ok := x["logo"].(string); ok {
-			p.Logo = v
+			p.Logo = &v
 		}
 		if v, ok := x["tasksPath"].(string); ok {
 			p.TasksPath = v

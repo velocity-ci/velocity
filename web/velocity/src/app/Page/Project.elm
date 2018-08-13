@@ -706,14 +706,12 @@ updateSubPage context session subPage msg model =
                             ( Commit subModel, Just build ) ->
                                 subModel
                                     |> Commit.update context model.project session (Commit.AddBuild build)
-                                    |> Tuple.mapFirst (Commit >> Loaded)
-                                    |> Tuple.mapSecond (Cmd.map CommitMsg)
+                                    |> sendSubPageMsg Commit CommitMsg
 
                             ( Builds subModel, Just build ) ->
                                 subModel
                                     |> Builds.update context model.project session (Builds.AddBuild build)
-                                    |> Tuple.mapFirst (Builds >> Loaded)
-                                    |> Tuple.mapSecond (Cmd.map BuildsMsg)
+                                    |> sendSubPageMsg Builds BuildsMsg
 
                             ( _, _ ) ->
                                 model.subPageState => Cmd.none
@@ -741,14 +739,12 @@ updateSubPage context session subPage msg model =
                             ( Commit subModel, Just build ) ->
                                 subModel
                                     |> Commit.update context model.project session (Commit.UpdateBuild build)
-                                    |> Tuple.mapFirst (Commit >> Loaded)
-                                    |> Tuple.mapSecond (Cmd.map CommitMsg)
+                                    |> sendSubPageMsg Commit CommitMsg
 
                             ( Builds subModel, Just build ) ->
                                 subModel
                                     |> Builds.update context model.project session (Builds.UpdateBuild build)
-                                    |> Tuple.mapFirst (Builds >> Loaded)
-                                    |> Tuple.mapSecond (Cmd.map BuildsMsg)
+                                    |> sendSubPageMsg Builds BuildsMsg
 
                             ( _, _ ) ->
                                 model.subPageState => Cmd.none
@@ -785,6 +781,17 @@ updateSubPage context session subPage msg model =
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through (project page)" model)
                     => Cmd.none
+
+
+sendSubPageMsg :
+    (subPage -> SubPage)
+    -> (subPageMsg -> msg)
+    -> ( subPage, Cmd subPageMsg )
+    -> ( SubPageState, Cmd msg )
+sendSubPageMsg updatePage updateMsg subModel =
+    subModel
+        |> Tuple.mapFirst (updatePage >> Loaded)
+        |> Tuple.mapSecond (Cmd.map updateMsg)
 
 
 
