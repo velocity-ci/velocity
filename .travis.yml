@@ -2,24 +2,11 @@ language: generic
 sudo: required
 services:
   - docker
+
 env:
-  global:
-    # DOCKER_USERNAME
-    - secure: "tjr48Nma/kDohMNNjgbK0mqyiKIruqZVfUZt4T8vdsOrsDT1BlxyLWefg1huqdOUZYKEIHkpuhjE6E4e86Gl0zD75ep9BROSepzv1nimXiwrOH6IKN4YV9AJbIRUAYpHaDArlQliSUdihP+lMyVp2fomhlbnUxhQHKVn6elQWNu7BcuFqn6fBUfgvamQkGnEHw52WcNTZWYa1ZT6rT3qEEGb+IwM/SXKbhn07x/gP6PCZ35NCh4gyQRjjMTx2v09i3OMubfHt+TqUPm4Rtk6FY7QfIx5MSvbyX5/IkAABw2mMjtjWdK58MS2k8sdx5n67ZbeF9T3ee1LqDyOmcMzM6NRv1/6LwVZeSywcauSCM+yg7dCThDps4eENZD0MLy7oV2PYbIHXLkeK7UoLKnl52kUr/X4s2c1yX3QWyh1Nlc0Wy/BrU6RanJz3zFzUhrtmAqXhJQ5553jbpVTADC53m5Ax+eueKX51EiQ/CtCcjlGrjXkV6LuebijUm+FkQziSMgJkpKKkECgJfkaf3NrgGBEM6FG2idk1v3Ie9B5v4uIL+Ksns2YhWbbzbEct1as4J8NaktGhobug8QgCr0lk1Rq2rGZM3ptjNmMwdA6IzdyuTc+HyE8Pre9WAvIaWBbFecZkDPwoRnwYoZVsf9qIt1ArrTIOt6A7WsOEPSm5H8="
-    # DOCKER_PASSWORD
-    - secure: "m24dRVM6vQ+4Z2RGfAjxmi1YbI/yY4Vp/leRI7Av7WB1Vgma/M69nDdbeWSXvtFwlqH4E6/ukXUQotmiVg3Ua+JZKuxctBMS8ytBKLk5yjCVdMxvb4CAKoWM8X9XJb4f//15HNML4+7kZuxB06guObzZmxgNGwilqt370gcUru/VvMcZwNXDP8aLOnPGaSZmHFcTu3fLrFzYRQoaAN9UCw8YK/220x2ciyV0dWmU0OesXFnF8p3QHc6xy0cn12AfOE5nH30Vc/c+geybcHO7t5DH+/ri4YwcOZZlexEHJ4raym1EV08V1HTmToVrTC+OA3NKXBIM5JlHpzgBKTXyk3w44NP+u9QMPFfb4JAtboc7JQ1fuXP3Hcfj0oiNP6cGqYvNfhLA9WyLa15vqTYkUKoS9gAGgaVd4lOT5PQftXDGj9RTZy2awEVt82LEzarStfGcAPvQ6f3O619lOrGwv0Dwn200w6cZ/7YzeHDKwauxGHHmWT1g/oKmruyocrMnJAa+OwSUhbCVyZN8uUCszRFS8vTd49Cj+CK8ijgvlQfojqypf2qgfZPJjllpHLl02/NhwAcm1rk8f+INmAoEhWq2ER/OJpNu9Y1kJ/e/7q3pzALcGBgqIWpvQrMOsMNhCVueDNqyt7nCdTfPRWuXTjI7us6PLbO8kKKzcQVGcoQ="
+  matrix:
+    - COMPONENT=backend
+    - COMPONENT=web
 
-jobs:
-  include:
-    - stage: test
-      script: cd ${TRAVIS_BUILD_DIR}/backend && make install && make test
-    - script: cd ${TRAVIS_BUILD_DIR}/web && make install && make test
-
-    - stage: deploy
-      if: branch = master
-      script: 
-        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - cd ${TRAVIS_BUILD_DIR}/backend && make install && make build && make publish
-    - script: 
-        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - cd ${TRAVIS_BUILD_DIR}/web && make install && make build && make publish
+script:
+  - cd ${TRAVIS_BUILD_DIR}/${COMPONENT} && make install && make test && make build
