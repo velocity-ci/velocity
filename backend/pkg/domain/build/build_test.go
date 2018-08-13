@@ -133,11 +133,40 @@ func (s *BuildSuite) TestGetBuildsForProject() {
 	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
 
-	rbs, total := m.GetAllForProject(p, &domain.PagingQuery{Limit: 5, Page: 1})
+	rbs, total := m.GetAllForProject(p, &build.BuildQuery{Limit: 5, Page: 1})
 
 	s.Equal(1, total)
 	s.Len(rbs, 1)
 
+	s.Equal(b, rbs[0])
+}
+
+func (s *BuildSuite) TestGetBuildsForProjectFilter() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
+		Address: "testGit",
+	})
+
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
+
+	tsk := s.taskManager.Create(c, &velocity.Task{
+		Name: "testTask",
+	}, velocity.NewSetup())
+
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
+	params := map[string]string{}
+	b, errs := m.Create(tsk, params)
+	s.Nil(errs)
+	b.Status = "running"
+	err := m.Update(b)
+	s.Nil(err)
+	_, errs = m.Create(tsk, params)
+	s.Nil(errs)
+
+	rbs, total := m.GetAllForProject(p, &build.BuildQuery{Limit: 5, Page: 1, Status: "running"})
+
+	s.Equal(1, total)
+	s.Len(rbs, 1)
 	s.Equal(b, rbs[0])
 }
 
@@ -158,11 +187,40 @@ func (s *BuildSuite) TestGetBuildsForCommit() {
 	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
 
-	rbs, total := m.GetAllForCommit(c, &domain.PagingQuery{Limit: 5, Page: 1})
+	rbs, total := m.GetAllForCommit(c, &build.BuildQuery{Limit: 5, Page: 1})
 
 	s.Equal(1, total)
 	s.Len(rbs, 1)
 
+	s.Equal(b, rbs[0])
+}
+
+func (s *BuildSuite) TestGetBuildsForCommitFilter() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
+		Address: "testGit",
+	})
+
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
+
+	tsk := s.taskManager.Create(c, &velocity.Task{
+		Name: "testTask",
+	}, velocity.NewSetup())
+
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
+	params := map[string]string{}
+	b, errs := m.Create(tsk, params)
+	s.Nil(errs)
+	b.Status = "running"
+	err := m.Update(b)
+	s.Nil(err)
+	_, errs = m.Create(tsk, params)
+	s.Nil(errs)
+
+	rbs, total := m.GetAllForCommit(c, &build.BuildQuery{Limit: 5, Page: 1, Status: "running"})
+
+	s.Equal(1, total)
+	s.Len(rbs, 1)
 	s.Equal(b, rbs[0])
 }
 
@@ -183,11 +241,40 @@ func (s *BuildSuite) TestGetBuildsForTask() {
 	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
 
-	rbs, total := m.GetAllForTask(tsk, &domain.PagingQuery{Limit: 5, Page: 1})
+	rbs, total := m.GetAllForTask(tsk, &build.BuildQuery{Limit: 5, Page: 1})
 
 	s.Equal(1, total)
 	s.Len(rbs, 1)
 
+	s.Equal(b, rbs[0])
+}
+
+func (s *BuildSuite) TestGetBuildsForTaskFilter() {
+	p, _ := s.projectManager.Create("testProject", velocity.GitRepository{
+		Address: "testGit",
+	})
+
+	br := s.branchManager.Create(p, "testBranch")
+	c := s.commitManager.Create(br, p, "abcdef", "test commit", "me@velocityci.io", time.Now().UTC(), "")
+
+	tsk := s.taskManager.Create(c, &velocity.Task{
+		Name: "testTask",
+	}, velocity.NewSetup())
+
+	m := build.NewBuildManager(s.storm, s.stepManager, s.streamManager)
+	params := map[string]string{}
+	b, errs := m.Create(tsk, params)
+	s.Nil(errs)
+	b.Status = "running"
+	err := m.Update(b)
+	s.Nil(err)
+	_, errs = m.Create(tsk, params)
+	s.Nil(errs)
+
+	rbs, total := m.GetAllForTask(tsk, &build.BuildQuery{Limit: 5, Page: 1, Status: "running"})
+
+	s.Equal(1, total)
+	s.Len(rbs, 1)
 	s.Equal(b, rbs[0])
 }
 

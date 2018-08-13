@@ -91,6 +91,16 @@ func newBuildHandler(
 	}
 }
 
+func getBuildQueryParams(c echo.Context) *build.BuildQuery {
+	pQ := build.NewBuildQuery()
+	if err := c.Bind(pQ); err != nil {
+		c.JSON(http.StatusBadRequest, "invalid parameters")
+		return nil
+	}
+
+	return pQ
+}
+
 func (h *buildHandler) create(c echo.Context) error {
 	rB := new(buildRequest)
 	if err := c.Bind(rB); err != nil {
@@ -126,7 +136,7 @@ func (h *buildHandler) getAllForProject(c echo.Context) error {
 		return nil
 	}
 
-	pQ := getPagingQueryParams(c)
+	pQ := getBuildQueryParams(c)
 	if pQ == nil {
 		return nil
 	}
@@ -149,7 +159,7 @@ func (h *buildHandler) getAllForCommit(c echo.Context) error {
 		return nil
 	}
 
-	pQ := getPagingQueryParams(c)
+	pQ := getBuildQueryParams(c)
 	if pQ == nil {
 		return nil
 	}
@@ -172,7 +182,7 @@ func (h *buildHandler) getAllForTask(c echo.Context) error {
 		return nil
 	}
 
-	pQ := getPagingQueryParams(c)
+	pQ := getBuildQueryParams(c)
 	if pQ == nil {
 		return nil
 	}

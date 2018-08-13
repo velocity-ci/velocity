@@ -26,3 +26,16 @@ func (s Build) String() string {
 	j, _ := json.Marshal(s)
 	return string(j)
 }
+
+type BuildQuery struct {
+	Limit  int    `json:"amount" query:"amount"`
+	Page   int    `json:"page" query:"page"`
+	Status string `json:"status" query:"status"`
+}
+
+func NewBuildQuery() *BuildQuery {
+	return &BuildQuery{
+		Limit: 10,
+		Page:  1,
+	}
+}

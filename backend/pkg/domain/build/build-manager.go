@@ -100,11 +100,11 @@ func (m *BuildManager) GetBuildByID(id string) (*Build, error) {
 	return GetBuildByID(m.db.DB, id)
 }
 
-func (m *BuildManager) GetAllForProject(p *project.Project, q *domain.PagingQuery) ([]*Build, int) {
+func (m *BuildManager) GetAllForProject(p *project.Project, q *BuildQuery) ([]*Build, int) {
 	return m.db.getAllForProject(p, q)
 }
 
-func (m *BuildManager) GetAllForCommit(c *githistory.Commit, q *domain.PagingQuery) ([]*Build, int) {
+func (m *BuildManager) GetAllForCommit(c *githistory.Commit, q *BuildQuery) ([]*Build, int) {
 	return m.db.getAllForCommit(c, q)
 }
 
@@ -112,7 +112,7 @@ func (m *BuildManager) GetAllForCommit(c *githistory.Commit, q *domain.PagingQue
 // 	return m.db.getAllForBranch(b, q)
 // }
 
-func (m *BuildManager) GetAllForTask(t *task.Task, q *domain.PagingQuery) ([]*Build, int) {
+func (m *BuildManager) GetAllForTask(t *task.Task, q *BuildQuery) ([]*Build, int) {
 	return m.db.getAllForTask(t, q)
 }
 

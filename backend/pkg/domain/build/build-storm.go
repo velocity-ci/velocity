@@ -9,8 +9,6 @@ import (
 
 	"github.com/asdine/storm/q"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain"
-
 	"github.com/asdine/storm"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
@@ -95,9 +93,12 @@ func (db *buildStormDB) save(b *Build) error {
 	return tx.Commit()
 }
 
-func (db *buildStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQuery) (r []*Build, t int) {
+func (db *buildStormDB) getAllForProject(p *project.Project, pQ *BuildQuery) (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
+	if len(pQ.Status) > 0 {
+		query = db.Select(q.Eq("ProjectID", p.ID), q.Eq("Status", pQ.Status)).OrderBy("CreatedAt").Reverse()
+	}
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		velocity.GetLogger().Error("error", zap.Error(err))
@@ -115,9 +116,12 @@ func (db *buildStormDB) getAllForProject(p *project.Project, pQ *domain.PagingQu
 	return r, t
 }
 
-func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *domain.PagingQuery) (r []*Build, t int) {
+func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *BuildQuery) (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("CommitID", c.ID)).OrderBy("CreatedAt").Reverse()
+	if len(pQ.Status) > 0 {
+		query = db.Select(q.Eq("CommitID", c.ID), q.Eq("Status", pQ.Status)).OrderBy("CreatedAt").Reverse()
+	}
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		velocity.GetLogger().Error("error", zap.Error(err))
@@ -135,9 +139,12 @@ func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *domain.PagingQ
 	return r, t
 }
 
-func (db *buildStormDB) getAllForTask(tsk *task.Task, pQ *domain.PagingQuery) (r []*Build, t int) {
+func (db *buildStormDB) getAllForTask(tsk *task.Task, pQ *BuildQuery) (r []*Build, t int) {
 	t = 0
 	query := db.Select(q.Eq("TaskID", tsk.ID)).OrderBy("CreatedAt").Reverse()
+	if len(pQ.Status) > 0 {
+		query = db.Select(q.Eq("TaskID", tsk.ID), q.Eq("Status", pQ.Status)).OrderBy("CreatedAt").Reverse()
+	}
 	t, err := query.Count(&StormBuild{})
 	if err != nil {
 		velocity.GetLogger().Error("error", zap.Error(err))
