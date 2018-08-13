@@ -33,7 +33,7 @@ decoder =
         |> required "createdAt" stringToDateTime
         |> required "updatedAt" stringToDateTime
         |> required "synchronising" Decode.bool
-        |> required "logo" (Decode.maybe decodeLogo)
+        |> required "logo" (Decode.maybe Decode.string)
 
 
 
@@ -66,18 +66,6 @@ type Id
 
 type Slug
     = Slug String
-
-
-decodeLogo : Decoder String
-decodeLogo =
-    Decode.string
-        |> Decode.andThen
-            (\s ->
-                if not (String.isEmpty s) then
-                    Decode.succeed s
-                else
-                    Decode.fail "Invalid"
-            )
 
 
 decodeId : Decoder Id

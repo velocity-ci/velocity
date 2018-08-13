@@ -1,4 +1,4 @@
-module Request.User exposing (login, list, storeSession)
+module Request.User exposing (login, create, delete, list, storeSession)
 
 import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
@@ -93,20 +93,14 @@ delete :
     Context
     -> Maybe AuthToken
     -> User.Username
-    -> Task Request.Errors.HttpError User.Username
+    -> Task Request.Errors.HttpError ()
 delete context maybeAuthToken username =
     let
         usernameString =
             User.usernameToString username
-
-        expect =
-            User.usernameDecoder
-                |> Decode.at [ "username" ]
-                |> Http.expectJson
     in
         apiUrl context ("/users/" ++ usernameString)
             |> HttpBuilder.delete
-            |> HttpBuilder.withExpect expect
             |> withAuthorization maybeAuthToken
             |> HttpBuilder.toTask
             |> Task.mapError Request.Errors.handleHttpError
