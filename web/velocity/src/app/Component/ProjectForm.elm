@@ -13,6 +13,7 @@ module Component.ProjectForm
         , errorsDecoder
         , serverErrorToFormError
         , isUnknownHost
+        , isSshAddress
         )
 
 -- EXTERNAL
