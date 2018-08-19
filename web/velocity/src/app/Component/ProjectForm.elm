@@ -14,6 +14,7 @@ module Component.ProjectForm
         , serverErrorToFormError
         , isUnknownHost
         , isSshAddress
+        , isUntouched
         )
 
 -- EXTERNAL
@@ -155,13 +156,6 @@ update context field value =
             , form = updatedForm
             , serverErrors = resetServerErrorsForField context field
         }
-
-
-isUntouched : Context -> Bool
-isUntouched { form } =
-    [ form.name.dirty, form.repository.dirty, form.privateKey.dirty ]
-        |> List.member True
-        |> not
 
 
 submitValues : Context -> { name : String, repository : String, privateKey : Maybe String }
@@ -328,6 +322,13 @@ isSshAddress maybeGitUrl =
 
         Nothing ->
             False
+
+
+isUntouched : Context -> Bool
+isUntouched { form } =
+    [ form.name.dirty, form.repository.dirty, form.privateKey.dirty ]
+        |> List.member True
+        |> not
 
 
 privateKeyValidator : ( { a | value : String }, Maybe GitUrl ) -> Bool

@@ -220,7 +220,7 @@ viewNewProjectModal { forms, newProjectModalVisibility, knownHosts } =
         |> Modal.hideOnBackdropClick (not (forms |> projectForm |> .submitting))
         |> Modal.h3 [] [ text "Create project" ]
         |> Modal.body [] [ viewCombinedForm knownHosts forms ]
-        |> Modal.footer [] [ viewCombinedFormSubmit knownHosts (projectForm forms) ]
+        |> Modal.footer [] [ viewCombinedFormSubmit knownHosts forms ]
         |> Modal.view newProjectModalVisibility
 
 
@@ -236,22 +236,6 @@ projectForm forms =
 
 viewCombinedForm : List KnownHost -> Forms -> Html Msg
 viewCombinedForm knownHosts forms =
-    --    let
-    --        projectFormView =
-    --            ProjectForm.view projectFormConfig projectForm
-    --
-    --        isUnknownHost =
-    --            ProjectForm.isUnknownHost knownHosts projectForm.form.gitUrl
-    --
-    --        isSshAddress =
-    --            ProjectForm.isSshAddress projectForm.form.gitUrl
-    --
-    --        knownHostFormView =
-    --            if isUnknownHost && isSshAddress then
-    --                KnownHostForm.view (knownHostFormConfig projectForm.form.gitUrl) knownHostForm
-    --            else
-    --                text ""
-    --    in
     case forms of
         ProjectFormOnly projectForm ->
             div []
@@ -264,16 +248,46 @@ viewCombinedForm knownHosts forms =
                 ]
 
 
-viewCombinedFormSubmit : List KnownHost -> ProjectForm.Context -> Html Msg
-viewCombinedFormSubmit knownHosts projectForm =
+viewCombinedFormSubmit : List KnownHost -> Forms -> Html Msg
+viewCombinedFormSubmit knownHosts forms =
     Button.button
         [ Button.outlinePrimary
         , Button.attrs
             [ onClick SubmitBothForms
-              --       o     , disabled (hasErrors || submitting || untouched)
+            , disabled (hasErrors forms || submitting forms || untouched forms)
             ]
         ]
         [ text "Create" ]
+
+
+hasErrors : Forms -> Bool
+hasErrors forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            not (List.isEmpty projectForm.errors)
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            not (List.isEmpty projectForm.errors) || not (List.isEmpty knownHostForm.errors)
+
+
+submitting : Forms -> Bool
+submitting forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            projectForm.submitting
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            projectForm.submitting || knownHostForm.submitting
+
+
+untouched : Forms -> Bool
+untouched forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            ProjectForm.isUntouched projectForm
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            ProjectForm.isUntouched projectForm && KnownHostForm.isUntouched knownHostForm
 
 
 viewProjectListItem : Project -> Html Msg
@@ -331,67 +345,6 @@ type ExternalMsg
     | HandleRequestError Request.Errors.HandledError
 
 
-formError : String -> List ( String, String )
-formError errorMsg =
-    [ "" => errorMsg ]
-
-
-formErrors :
-    Form.Context ProjectForm.Field projectForm
-    -> Form.Context ProjectForm.Field projectForm
-formErrors =
-    ProjectForm.serverErrorToFormError
-        |> Form.updateServerErrors (formError "Unable to process project.")
-
-
-handleFormError : Model -> Request.Errors.Error Http.Error -> ( Forms, ExternalMsg )
-handleFormError model err =
-    case err of
-        Request.Errors.HandledError handledError ->
-            ( model.forms, HandleRequestError handledError )
-
-        Request.Errors.UnhandledError (Http.BadStatus response) ->
-            let
-                projectErrors =
-                    response.body
-                        |> decodeString ProjectForm.errorsDecoder
-                        |> Result.withDefault []
-
-                projectFormWithErrors =
-                    model.forms
-                        |> projectForm
-                        |> Form.updateServerErrors projectErrors ProjectForm.serverErrorToFormError
-            in
-                case model.forms of
-                    ProjectFormOnly _ ->
-                        ProjectFormOnly projectFormWithErrors
-                            => NoOp
-
-                    ProjectAndKnownHostForm _ knownHostForm ->
-                        let
-                            knownHostErrors =
-                                response.body
-                                    |> decodeString KnownHostForm.errorsDecoder
-                                    |> Result.withDefault []
-
-                            knownHostFormWithErrors =
-                                knownHostForm
-                                    |> Form.updateServerErrors knownHostErrors KnownHostForm.serverErrorToFormError
-                        in
-                            ProjectAndKnownHostForm projectFormWithErrors knownHostFormWithErrors
-                                => NoOp
-
-        _ ->
-            case model.forms of
-                ProjectFormOnly projectForm ->
-                    ProjectFormOnly (formErrors projectForm)
-                        => NoOp
-
-                ProjectAndKnownHostForm projectForm knownHostForm ->
-                    ProjectAndKnownHostForm (formErrors projectForm) knownHostForm
-                        => NoOp
-
-
 update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update context session msg model =
     case msg of
@@ -417,17 +370,20 @@ update context session msg model =
 
                 isSshAddress =
                     ProjectForm.isSshAddress updatedProjectForm.form.gitUrl
+
+                needsKnownHostForm =
+                    isUnknownHost && isSshAddress
             in
                 { model
                     | forms =
-                        case ( isUnknownHost, isSshAddress, model.forms ) of
-                            ( True, True, ProjectFormOnly _ ) ->
+                        case ( needsKnownHostForm, model.forms ) of
+                            ( True, ProjectFormOnly _ ) ->
                                 ProjectAndKnownHostForm updatedProjectForm KnownHostForm.init
 
-                            ( True, True, ProjectAndKnownHostForm _ knownHostForm ) ->
+                            ( True, ProjectAndKnownHostForm _ knownHostForm ) ->
                                 ProjectAndKnownHostForm updatedProjectForm knownHostForm
 
-                            ( _, _, _ ) ->
+                            ( _, _ ) ->
                                 ProjectFormOnly updatedProjectForm
                 }
                     => Cmd.none
@@ -533,7 +489,7 @@ update context session msg model =
                 , projects = addProject model.projects project
                 , knownHosts = addKnownHost model.knownHosts knownHost
             }
-                => Cmd.none
+                => Route.modifyUrl (Route.Project project.slug ProjectRoute.default)
                 => NoOp
 
         KnownHostAndProjectCreated (Err err) ->
@@ -541,15 +497,7 @@ update context session msg model =
                 ( forms, externalMsg ) =
                     handleFormError model err
             in
-                { model
-                    | forms =
-                        case forms of
-                            ProjectFormOnly projectForm ->
-                                ProjectFormOnly (Form.submitting False projectForm)
-
-                            ProjectAndKnownHostForm projectForm knownHostForm ->
-                                ProjectAndKnownHostForm (Form.submitting False projectForm) (Form.submitting False knownHostForm)
-                }
+                { model | forms = resetSubmittingForms forms }
                     => Cmd.none
                     => externalMsg
 
@@ -573,15 +521,7 @@ update context session msg model =
                 ( forms, externalMsg ) =
                     handleFormError model err
             in
-                { model
-                    | forms =
-                        case forms of
-                            ProjectFormOnly projectForm ->
-                                ProjectFormOnly (Form.submitting False projectForm)
-
-                            ProjectAndKnownHostForm projectForm knownHostForm ->
-                                ProjectAndKnownHostForm (Form.submitting False projectForm) (Form.submitting False knownHostForm)
-                }
+                { model | forms = resetSubmittingForms forms }
                     => Cmd.none
                     => externalMsg
 
@@ -591,7 +531,7 @@ update context session msg model =
                 , newProjectModalVisibility = Modal.hidden
                 , projects = addProject model.projects project
             }
-                => Cmd.none
+                => Route.modifyUrl (Route.Project project.slug ProjectRoute.default)
                 => NoOp
 
         ShowNewProjectModal ->
@@ -626,3 +566,74 @@ update context session msg model =
                 { model | knownHosts = knownHosts }
                     => Cmd.none
                     => NoOp
+
+
+formError : String -> List ( String, String )
+formError errorMsg =
+    [ "" => errorMsg ]
+
+
+formErrors :
+    Form.Context ProjectForm.Field projectForm
+    -> Form.Context ProjectForm.Field projectForm
+formErrors =
+    ProjectForm.serverErrorToFormError
+        |> Form.updateServerErrors (formError "Unable to process project.")
+
+
+handleFormError : Model -> Request.Errors.Error Http.Error -> ( Forms, ExternalMsg )
+handleFormError model err =
+    case err of
+        Request.Errors.HandledError handledError ->
+            ( model.forms, HandleRequestError handledError )
+
+        Request.Errors.UnhandledError (Http.BadStatus response) ->
+            let
+                projectErrors =
+                    response.body
+                        |> decodeString ProjectForm.errorsDecoder
+                        |> Result.withDefault []
+
+                projectFormWithErrors =
+                    model.forms
+                        |> projectForm
+                        |> Form.updateServerErrors projectErrors ProjectForm.serverErrorToFormError
+            in
+                case model.forms of
+                    ProjectFormOnly _ ->
+                        ProjectFormOnly projectFormWithErrors
+                            => NoOp
+
+                    ProjectAndKnownHostForm _ knownHostForm ->
+                        let
+                            knownHostErrors =
+                                response.body
+                                    |> decodeString KnownHostForm.errorsDecoder
+                                    |> Result.withDefault []
+
+                            knownHostFormWithErrors =
+                                knownHostForm
+                                    |> Form.updateServerErrors knownHostErrors KnownHostForm.serverErrorToFormError
+                        in
+                            ProjectAndKnownHostForm projectFormWithErrors knownHostFormWithErrors
+                                => NoOp
+
+        _ ->
+            case model.forms of
+                ProjectFormOnly projectForm ->
+                    ProjectFormOnly (formErrors projectForm)
+                        => NoOp
+
+                ProjectAndKnownHostForm projectForm knownHostForm ->
+                    ProjectAndKnownHostForm (formErrors projectForm) knownHostForm
+                        => NoOp
+
+
+resetSubmittingForms : Forms -> Forms
+resetSubmittingForms forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            ProjectFormOnly (Form.submitting False projectForm)
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            ProjectAndKnownHostForm (Form.submitting False projectForm) (Form.submitting False knownHostForm)
