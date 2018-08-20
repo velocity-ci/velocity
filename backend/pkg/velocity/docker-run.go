@@ -88,7 +88,8 @@ func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error 
 		s.IgnoreExitCode = x.(bool)
 		break
 	}
-	return nil
+
+	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func NewDockerRun() *DockerRun {
@@ -99,10 +100,7 @@ func NewDockerRun() *DockerRun {
 		WorkingDir:     "",
 		MountPoint:     "",
 		IgnoreExitCode: false,
-		BaseStep: BaseStep{
-			Type:          "run",
-			OutputStreams: []string{"run"},
-		},
+		BaseStep:       newBaseStep("run", []string{"run"}),
 	}
 }
 

@@ -57,6 +57,14 @@ type BaseStep struct {
 	runID         string
 }
 
+func newBaseStep(t string, streams []string) BaseStep {
+	return BaseStep{
+		Type:          t,
+		OutputStreams: streams,
+		Params:        map[string]Parameter{},
+	}
+}
+
 func (bS *BaseStep) GetType() string {
 	return bS.Type
 }
@@ -79,6 +87,15 @@ func (bS *BaseStep) GetRunID() string {
 	}
 
 	return bS.runID
+}
+
+func (s *BaseStep) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	switch x := y["description"].(type) {
+	case interface{}:
+		s.Description = x.(string)
+		break
+	}
+	return nil
 }
 
 type StreamLine struct {
