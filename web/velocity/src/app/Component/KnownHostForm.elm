@@ -10,6 +10,7 @@ module Component.KnownHostForm
         , viewSubmitButton
         , serverErrorToFormError
         , submitValues
+        , isUntouched
         )
 
 -- EXTERNAL
@@ -152,7 +153,11 @@ view { setScannedKeyMsg, submitMsg, gitUrl } context =
         help =
             case gitUrl of
                 Just { source } ->
-                    "Because this is the first project from host " ++ source ++ ", we require you to scan a key. <reason>"
+                    String.join " "
+                        [ "We require the host's public ssh key so we know which git servers to trust."
+                        , "You can run `ssh-keyscan " ++ source ++ "` and verify the fingerprints are trusted for " ++ source ++ "."
+                        , "e.g. GitHub publish theirs here: https://help.github.com/articles/github-s-ssh-key-fingerprints/"
+                        ]
 
                 Nothing ->
                     ""

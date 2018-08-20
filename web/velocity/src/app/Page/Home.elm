@@ -63,10 +63,14 @@ import Ports
 type alias Model =
     { projects : List Project
     , knownHosts : List KnownHost
-    , newProjectForm : ProjectForm.Context
-    , newKnownHostForm : KnownHostForm.Context
+    , forms : Forms
     , newProjectModalVisibility : Modal.Visibility
     }
+
+
+type Forms
+    = ProjectFormOnly ProjectForm.Context
+    | ProjectAndKnownHostForm ProjectForm.Context KnownHostForm.Context
 
 
 init : Context -> Session msg -> Task (Request.Errors.Error PageLoadError) Model
@@ -87,8 +91,7 @@ init context session =
         initialModel projects knownHosts =
             { projects = PaginatedList.results projects
             , knownHosts = PaginatedList.results knownHosts
-            , newProjectForm = ProjectForm.init
-            , newKnownHostForm = KnownHostForm.init
+            , forms = ProjectFormOnly ProjectForm.init
             , newProjectModalVisibility = Modal.hidden
             }
     in
@@ -197,61 +200,94 @@ projectFormConfig =
     { setNameMsg = SetProjectFormName
     , setRepositoryMsg = SetProjectFormRepository
     , setPrivateKeyMsg = SetProjectFormPrivateKey
-    , submitMsg = SubmitProjectForm
+    , submitMsg = NoOp_
     }
 
 
 knownHostFormConfig : Maybe GitUrl -> KnownHostForm.Config Msg
 knownHostFormConfig maybeGitUrl =
     { setScannedKeyMsg = SetKnownHostFormScannedKey
-    , submitMsg = SubmitKnownHostForm
+    , submitMsg = NoOp_
     , gitUrl = maybeGitUrl
     }
 
 
 viewNewProjectModal : Model -> Html Msg
-viewNewProjectModal { newProjectForm, newKnownHostForm, newProjectModalVisibility, knownHosts } =
+viewNewProjectModal { forms, newProjectModalVisibility, knownHosts } =
     Modal.config CloseNewProjectModal
         |> Modal.withAnimation AnimateNewProjectModal
         |> Modal.large
-        |> Modal.hideOnBackdropClick (not newProjectForm.submitting)
+        |> Modal.hideOnBackdropClick (not (forms |> projectForm |> .submitting))
         |> Modal.h3 [] [ text "Create project" ]
-        |> Modal.body [] [ viewCombinedForm knownHosts newProjectForm newKnownHostForm ]
-        |> Modal.footer [] [ viewCombinedFormSubmit knownHosts newProjectForm ]
+        |> Modal.body [] [ viewCombinedForm knownHosts forms ]
+        |> Modal.footer [] [ viewCombinedFormSubmit knownHosts forms ]
         |> Modal.view newProjectModalVisibility
 
 
-viewCombinedForm : List KnownHost -> ProjectForm.Context -> KnownHostForm.Context -> Html Msg
-viewCombinedForm knownHosts projectForm knownHostForm =
-    let
-        projectFormView =
-            ProjectForm.view projectFormConfig projectForm
+projectForm : Forms -> ProjectForm.Context
+projectForm forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            projectForm
 
-        knownHostFormView =
-            if ProjectForm.isUnknownHost knownHosts projectForm.form.gitUrl then
-                KnownHostForm.view (knownHostFormConfig projectForm.form.gitUrl) knownHostForm
-            else
-                text ""
-    in
-        div []
-            [ projectFormView
-            , knownHostFormView
-            ]
+        ProjectAndKnownHostForm projectForm _ ->
+            projectForm
 
 
-viewCombinedFormSubmit : List KnownHost -> ProjectForm.Context -> Html Msg
-viewCombinedFormSubmit knownHosts projectForm =
-    if not <| ProjectForm.isUnknownHost knownHosts projectForm.form.gitUrl then
-        ProjectForm.viewSubmitButton projectFormConfig projectForm
-    else
-        Button.button
-            [ Button.outlinePrimary
-            , Button.attrs
-                [ onClick SubmitBothForms
-                  --            , disabled (hasErrors || submitting || untouched)
+viewCombinedForm : List KnownHost -> Forms -> Html Msg
+viewCombinedForm knownHosts forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            div []
+                [ ProjectForm.view projectFormConfig projectForm ]
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            div []
+                [ ProjectForm.view projectFormConfig projectForm
+                , KnownHostForm.view (knownHostFormConfig projectForm.form.gitUrl) knownHostForm
                 ]
+
+
+viewCombinedFormSubmit : List KnownHost -> Forms -> Html Msg
+viewCombinedFormSubmit knownHosts forms =
+    Button.button
+        [ Button.outlinePrimary
+        , Button.attrs
+            [ onClick SubmitBothForms
+            , disabled (hasErrors forms || submitting forms || untouched forms)
             ]
-            [ text "Create" ]
+        ]
+        [ text "Create" ]
+
+
+hasErrors : Forms -> Bool
+hasErrors forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            not (List.isEmpty projectForm.errors)
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            not (List.isEmpty projectForm.errors) || not (List.isEmpty knownHostForm.errors)
+
+
+submitting : Forms -> Bool
+submitting forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            projectForm.submitting
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            projectForm.submitting || knownHostForm.submitting
+
+
+untouched : Forms -> Bool
+untouched forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            ProjectForm.isUntouched projectForm
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            ProjectForm.isUntouched projectForm && KnownHostForm.isUntouched knownHostForm
 
 
 viewProjectListItem : Project -> Html Msg
@@ -294,15 +330,12 @@ type Msg
     | CloseNewProjectModal
     | AnimateNewProjectModal Modal.Visibility
     | ShowNewProjectModal
-    | SubmitProjectForm
     | SubmitBothForms
     | SetProjectFormName String
     | SetProjectFormRepository String
     | SetProjectFormPrivateKey String
     | SetKnownHostFormScannedKey String
-    | SubmitKnownHostForm
     | ProjectCreated (Result Request.Errors.HttpError Project)
-    | KnownHostCreated (Result Request.Errors.HttpError KnownHost)
     | KnownHostAndProjectCreated (Result Request.Errors.HttpError ( KnownHost, Project ))
     | SetGitUrl (Maybe GitUrl)
 
@@ -310,57 +343,6 @@ type Msg
 type ExternalMsg
     = NoOp
     | HandleRequestError Request.Errors.HandledError
-
-
-formError : String -> List ( String, String )
-formError errorMsg =
-    [ "" => errorMsg ]
-
-
-formErrors :
-    Form.Context ProjectForm.Field projectForm
-    -> Form.Context ProjectForm.Field projectForm
-formErrors =
-    ProjectForm.serverErrorToFormError
-        |> Form.updateServerErrors (formError "Unable to process project.")
-
-
-handleFormError :
-    { a
-        | newKnownHostForm : Form.Context KnownHostForm.Field knownHostForm
-        , newProjectForm : Form.Context ProjectForm.Field projectForm
-    }
-    -> Request.Errors.Error Http.Error
-    -> ( Form.Context ProjectForm.Field projectForm, Form.Context KnownHostForm.Field knownHostForm, ExternalMsg )
-handleFormError model err =
-    case err of
-        Request.Errors.HandledError handledError ->
-            ( model.newProjectForm, model.newKnownHostForm, HandleRequestError handledError )
-
-        Request.Errors.UnhandledError (Http.BadStatus response) ->
-            let
-                projectErrors =
-                    response.body
-                        |> decodeString ProjectForm.errorsDecoder
-                        |> Result.withDefault []
-
-                projectForm =
-                    model.newProjectForm
-                        |> Form.updateServerErrors projectErrors ProjectForm.serverErrorToFormError
-
-                knownHostErrors =
-                    response.body
-                        |> decodeString KnownHostForm.errorsDecoder
-                        |> Result.withDefault []
-
-                knownHostForm =
-                    model.newKnownHostForm
-                        |> Form.updateServerErrors knownHostErrors KnownHostForm.serverErrorToFormError
-            in
-                ( projectForm, knownHostForm, NoOp )
-
-        _ ->
-            ( formErrors model.newProjectForm, model.newKnownHostForm, NoOp )
 
 
 update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
@@ -377,14 +359,40 @@ update context session msg model =
                 => NoOp
 
         SetGitUrl maybeGitUrl ->
-            { model | newProjectForm = ProjectForm.updateGitUrl maybeGitUrl model.newProjectForm }
-                => Cmd.none
-                => NoOp
+            let
+                updatedProjectForm =
+                    model.forms
+                        |> projectForm
+                        |> ProjectForm.updateGitUrl maybeGitUrl
+
+                isUnknownHost =
+                    ProjectForm.isUnknownHost model.knownHosts updatedProjectForm.form.gitUrl
+
+                isSshAddress =
+                    ProjectForm.isSshAddress updatedProjectForm.form.gitUrl
+
+                needsKnownHostForm =
+                    isUnknownHost && isSshAddress
+            in
+                { model
+                    | forms =
+                        case ( needsKnownHostForm, model.forms ) of
+                            ( True, ProjectFormOnly _ ) ->
+                                ProjectAndKnownHostForm updatedProjectForm KnownHostForm.init
+
+                            ( True, ProjectAndKnownHostForm _ knownHostForm ) ->
+                                ProjectAndKnownHostForm updatedProjectForm knownHostForm
+
+                            ( _, _ ) ->
+                                ProjectFormOnly updatedProjectForm
+                }
+                    => Cmd.none
+                    => NoOp
 
         CloseNewProjectModal ->
             { model
                 | newProjectModalVisibility = Modal.hidden
-                , newProjectForm = ProjectForm.init
+                , forms = ProjectFormOnly ProjectForm.init
             }
                 => Cmd.none
                 => NoOp
@@ -395,35 +403,78 @@ update context session msg model =
                 => NoOp
 
         SetProjectFormName name ->
-            { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.Name name }
-                => Cmd.none
-                => NoOp
+            let
+                updatedProjectForm =
+                    ProjectForm.update (projectForm model.forms) ProjectForm.Name name
+            in
+                { model
+                    | forms =
+                        case model.forms of
+                            ProjectFormOnly _ ->
+                                ProjectFormOnly updatedProjectForm
+
+                            ProjectAndKnownHostForm _ knownHostForm ->
+                                ProjectAndKnownHostForm updatedProjectForm knownHostForm
+                }
+                    => Cmd.none
+                    => NoOp
 
         SetProjectFormRepository repository ->
-            { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.Repository repository }
-                => Ports.parseGitUrl repository
-                => NoOp
+            let
+                updatedProjectForm =
+                    ProjectForm.update (projectForm model.forms) ProjectForm.Repository repository
+            in
+                { model
+                    | forms =
+                        case model.forms of
+                            ProjectFormOnly _ ->
+                                ProjectFormOnly updatedProjectForm
+
+                            ProjectAndKnownHostForm _ knownHostForm ->
+                                ProjectAndKnownHostForm updatedProjectForm knownHostForm
+                }
+                    => Ports.parseGitUrl repository
+                    => NoOp
 
         SetProjectFormPrivateKey privateKey ->
-            { model | newProjectForm = ProjectForm.update model.newProjectForm ProjectForm.PrivateKey privateKey }
-                => Cmd.none
-                => NoOp
+            let
+                updatedProjectForm =
+                    ProjectForm.update (projectForm model.forms) ProjectForm.PrivateKey privateKey
+            in
+                { model
+                    | forms =
+                        case model.forms of
+                            ProjectFormOnly _ ->
+                                ProjectFormOnly updatedProjectForm
+
+                            ProjectAndKnownHostForm _ knownHostForm ->
+                                ProjectAndKnownHostForm updatedProjectForm knownHostForm
+                }
+                    => Cmd.none
+                    => NoOp
 
         SubmitBothForms ->
             let
-                submitBothForms authToken =
-                    authToken
-                        |> Request.KnownHost.create context (KnownHostForm.submitValues model.newKnownHostForm)
-                        |> Task.andThen
-                            (\knownHostResult ->
-                                Request.Project.create context (ProjectForm.submitValues model.newProjectForm) authToken
-                                    |> Task.andThen (\projectResult -> Task.succeed ( knownHostResult, projectResult ))
-                            )
+                submit authToken =
+                    case model.forms of
+                        ProjectFormOnly projectForm ->
+                            Request.Project.create context (ProjectForm.submitValues projectForm) authToken
+                                |> Task.attempt ProjectCreated
+
+                        ProjectAndKnownHostForm projectForm knownHostForm ->
+                            authToken
+                                |> Request.KnownHost.create context (KnownHostForm.submitValues knownHostForm)
+                                |> Task.andThen
+                                    (\knownHostResult ->
+                                        Request.Project.create context (ProjectForm.submitValues projectForm) authToken
+                                            |> Task.andThen (\projectResult -> Task.succeed ( knownHostResult, projectResult ))
+                                    )
+                                |> Task.attempt KnownHostAndProjectCreated
             in
                 case Maybe.map .token session.user of
                     Just authToken ->
                         model
-                            => Task.attempt KnownHostAndProjectCreated (submitBothForms authToken)
+                            => submit authToken
                             => NoOp
 
                     Nothing ->
@@ -433,101 +484,55 @@ update context session msg model =
 
         KnownHostAndProjectCreated (Ok ( knownHost, project )) ->
             { model
-                | newProjectForm = ProjectForm.init
+                | forms = ProjectFormOnly ProjectForm.init
                 , newProjectModalVisibility = Modal.hidden
                 , projects = addProject model.projects project
                 , knownHosts = addKnownHost model.knownHosts knownHost
             }
-                => Cmd.none
+                => Route.modifyUrl (Route.Project project.slug ProjectRoute.default)
                 => NoOp
 
         KnownHostAndProjectCreated (Err err) ->
             let
-                ( updatedProjectForm, updatedKnownHostForm, externalMsg ) =
+                ( forms, externalMsg ) =
                     handleFormError model err
             in
-                { model
-                    | newProjectForm = Form.submitting False updatedProjectForm
-                    , newKnownHostForm = Form.submitting False updatedKnownHostForm
-                }
+                { model | forms = resetSubmittingForms forms }
                     => Cmd.none
                     => externalMsg
 
-        SubmitProjectForm ->
-            let
-                cmdFromAuth authToken =
-                    authToken
-                        |> Request.Project.create context (ProjectForm.submitValues model.newProjectForm)
-                        |> Task.attempt ProjectCreated
-
-                cmd =
-                    session
-                        |> Session.attempt "create project" cmdFromAuth
-                        |> Tuple.second
-            in
-                { model | newProjectForm = Form.submit model.newProjectForm }
-                    => cmd
-                    => NoOp
-
-        SubmitKnownHostForm ->
-            let
-                cmdFromAuth authToken =
-                    authToken
-                        |> Request.KnownHost.create context (KnownHostForm.submitValues model.newKnownHostForm)
-                        |> Task.attempt KnownHostCreated
-
-                cmd =
-                    session
-                        |> Session.attempt "create known host" cmdFromAuth
-                        |> Tuple.second
-            in
-                { model | newKnownHostForm = Form.submit model.newKnownHostForm }
-                    => cmd
-                    => NoOp
-
         SetKnownHostFormScannedKey key ->
-            { model | newKnownHostForm = KnownHostForm.update model.newKnownHostForm KnownHostForm.ScannedKey key }
-                => Cmd.none
-                => NoOp
+            let
+                forms =
+                    case model.forms of
+                        ProjectFormOnly projectForm ->
+                            ProjectFormOnly projectForm
+
+                        ProjectAndKnownHostForm projectForm knownHostForm ->
+                            KnownHostForm.update knownHostForm KnownHostForm.ScannedKey key
+                                |> ProjectAndKnownHostForm projectForm
+            in
+                { model | forms = forms }
+                    => Cmd.none
+                    => NoOp
 
         ProjectCreated (Err err) ->
             let
-                ( updatedProjectForm, _, externalMsg ) =
+                ( forms, externalMsg ) =
                     handleFormError model err
             in
-                { model | newProjectForm = Form.submitting False updatedProjectForm }
+                { model | forms = resetSubmittingForms forms }
                     => Cmd.none
                     => externalMsg
 
         ProjectCreated (Ok project) ->
             { model
-                | newProjectForm = ProjectForm.init
+                | forms = ProjectFormOnly ProjectForm.init
                 , newProjectModalVisibility = Modal.hidden
                 , projects = addProject model.projects project
             }
-                => Cmd.none
+                => Route.modifyUrl (Route.Project project.slug ProjectRoute.default)
                 => NoOp
-
-        KnownHostCreated (Err err) ->
-            let
-                ( _, updatedKnownHostForm, externalMsg ) =
-                    handleFormError model err
-            in
-                { model | newKnownHostForm = Form.submitting False updatedKnownHostForm }
-                    => Cmd.none
-                    => externalMsg
-
-        KnownHostCreated (Ok knownHost) ->
-            let
-                updatedModel =
-                    { model
-                        | newKnownHostForm = KnownHostForm.init
-                        , knownHosts = addKnownHost model.knownHosts knownHost
-                    }
-            in
-                updatedModel
-                    => Cmd.none
-                    => NoOp
 
         ShowNewProjectModal ->
             { model | newProjectModalVisibility = Modal.shown }
@@ -561,3 +566,74 @@ update context session msg model =
                 { model | knownHosts = knownHosts }
                     => Cmd.none
                     => NoOp
+
+
+formError : String -> List ( String, String )
+formError errorMsg =
+    [ "" => errorMsg ]
+
+
+formErrors :
+    Form.Context ProjectForm.Field projectForm
+    -> Form.Context ProjectForm.Field projectForm
+formErrors =
+    ProjectForm.serverErrorToFormError
+        |> Form.updateServerErrors (formError "Unable to process project.")
+
+
+handleFormError : Model -> Request.Errors.Error Http.Error -> ( Forms, ExternalMsg )
+handleFormError model err =
+    case err of
+        Request.Errors.HandledError handledError ->
+            ( model.forms, HandleRequestError handledError )
+
+        Request.Errors.UnhandledError (Http.BadStatus response) ->
+            let
+                projectErrors =
+                    response.body
+                        |> decodeString ProjectForm.errorsDecoder
+                        |> Result.withDefault []
+
+                projectFormWithErrors =
+                    model.forms
+                        |> projectForm
+                        |> Form.updateServerErrors projectErrors ProjectForm.serverErrorToFormError
+            in
+                case model.forms of
+                    ProjectFormOnly _ ->
+                        ProjectFormOnly projectFormWithErrors
+                            => NoOp
+
+                    ProjectAndKnownHostForm _ knownHostForm ->
+                        let
+                            knownHostErrors =
+                                response.body
+                                    |> decodeString KnownHostForm.errorsDecoder
+                                    |> Result.withDefault []
+
+                            knownHostFormWithErrors =
+                                knownHostForm
+                                    |> Form.updateServerErrors knownHostErrors KnownHostForm.serverErrorToFormError
+                        in
+                            ProjectAndKnownHostForm projectFormWithErrors knownHostFormWithErrors
+                                => NoOp
+
+        _ ->
+            case model.forms of
+                ProjectFormOnly projectForm ->
+                    ProjectFormOnly (formErrors projectForm)
+                        => NoOp
+
+                ProjectAndKnownHostForm projectForm knownHostForm ->
+                    ProjectAndKnownHostForm (formErrors projectForm) knownHostForm
+                        => NoOp
+
+
+resetSubmittingForms : Forms -> Forms
+resetSubmittingForms forms =
+    case forms of
+        ProjectFormOnly projectForm ->
+            ProjectFormOnly (Form.submitting False projectForm)
+
+        ProjectAndKnownHostForm projectForm knownHostForm ->
+            ProjectAndKnownHostForm (Form.submitting False projectForm) (Form.submitting False knownHostForm)
