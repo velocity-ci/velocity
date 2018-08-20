@@ -164,10 +164,14 @@ func (s *BuildSuite) TestGetBuildsForProjectFilter() {
 	s.Nil(errs)
 
 	rbs, total := m.GetAllForProject(p, &build.BuildQuery{Limit: 5, Page: 1, Status: "running"})
-
 	s.Equal(1, total)
 	s.Len(rbs, 1)
 	s.Equal(b, rbs[0])
+
+	rbs, total = m.GetAllForProject(p, &build.BuildQuery{Limit: 5, Page: 1, Status: "success"})
+	s.Equal(0, total)
+	s.Len(rbs, 0)
+	s.Equal([]*build.Build{}, rbs)
 }
 
 func (s *BuildSuite) TestGetBuildsForCommit() {
@@ -191,7 +195,6 @@ func (s *BuildSuite) TestGetBuildsForCommit() {
 
 	s.Equal(1, total)
 	s.Len(rbs, 1)
-
 	s.Equal(b, rbs[0])
 }
 
@@ -218,10 +221,14 @@ func (s *BuildSuite) TestGetBuildsForCommitFilter() {
 	s.Nil(errs)
 
 	rbs, total := m.GetAllForCommit(c, &build.BuildQuery{Limit: 5, Page: 1, Status: "running"})
-
 	s.Equal(1, total)
 	s.Len(rbs, 1)
 	s.Equal(b, rbs[0])
+
+	rbs, total = m.GetAllForProject(p, &build.BuildQuery{Limit: 5, Page: 1, Status: "success"})
+	s.Equal(0, total)
+	s.Len(rbs, 0)
+	s.Equal([]*build.Build{}, rbs)
 }
 
 func (s *BuildSuite) TestGetBuildsForTask() {
@@ -242,11 +249,14 @@ func (s *BuildSuite) TestGetBuildsForTask() {
 	s.Nil(errs)
 
 	rbs, total := m.GetAllForTask(tsk, &build.BuildQuery{Limit: 5, Page: 1})
-
 	s.Equal(1, total)
 	s.Len(rbs, 1)
-
 	s.Equal(b, rbs[0])
+
+	rbs, total = m.GetAllForProject(p, &build.BuildQuery{Limit: 5, Page: 1, Status: "success"})
+	s.Equal(0, total)
+	s.Len(rbs, 0)
+	s.Equal([]*build.Build{}, rbs)
 }
 
 func (s *BuildSuite) TestGetBuildsForTaskFilter() {
@@ -272,10 +282,14 @@ func (s *BuildSuite) TestGetBuildsForTaskFilter() {
 	s.Nil(errs)
 
 	rbs, total := m.GetAllForTask(tsk, &build.BuildQuery{Limit: 5, Page: 1, Status: "running"})
-
 	s.Equal(1, total)
 	s.Len(rbs, 1)
 	s.Equal(b, rbs[0])
+
+	rbs, total = m.GetAllForProject(p, &build.BuildQuery{Limit: 5, Page: 1, Status: "success"})
+	s.Equal(0, total)
+	s.Len(rbs, 0)
+	s.Equal([]*build.Build{}, rbs)
 }
 
 func (s *BuildSuite) TestGetRunningBuilds() {
@@ -298,10 +312,8 @@ func (s *BuildSuite) TestGetRunningBuilds() {
 	m.Update(b)
 
 	rbs, total := m.GetRunningBuilds()
-
 	s.Equal(1, total)
 	s.Len(rbs, 1)
-
 	// s.Equal(b, rbs[0])
 }
 

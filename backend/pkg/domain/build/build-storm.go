@@ -95,6 +95,7 @@ func (db *buildStormDB) save(b *Build) error {
 
 func (db *buildStormDB) getAllForProject(p *project.Project, pQ *BuildQuery) (r []*Build, t int) {
 	t = 0
+	r = []*Build{}
 	query := db.Select(q.Eq("ProjectID", p.ID)).OrderBy("CreatedAt").Reverse()
 	if len(pQ.Status) > 0 {
 		query = db.Select(q.Eq("ProjectID", p.ID), q.Eq("Status", pQ.Status)).OrderBy("CreatedAt").Reverse()
@@ -118,6 +119,7 @@ func (db *buildStormDB) getAllForProject(p *project.Project, pQ *BuildQuery) (r 
 
 func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *BuildQuery) (r []*Build, t int) {
 	t = 0
+	r = []*Build{}
 	query := db.Select(q.Eq("CommitID", c.ID)).OrderBy("CreatedAt").Reverse()
 	if len(pQ.Status) > 0 {
 		query = db.Select(q.Eq("CommitID", c.ID), q.Eq("Status", pQ.Status)).OrderBy("CreatedAt").Reverse()
@@ -141,6 +143,7 @@ func (db *buildStormDB) getAllForCommit(c *githistory.Commit, pQ *BuildQuery) (r
 
 func (db *buildStormDB) getAllForTask(tsk *task.Task, pQ *BuildQuery) (r []*Build, t int) {
 	t = 0
+	r = []*Build{}
 	query := db.Select(q.Eq("TaskID", tsk.ID)).OrderBy("CreatedAt").Reverse()
 	if len(pQ.Status) > 0 {
 		query = db.Select(q.Eq("TaskID", tsk.ID), q.Eq("Status", pQ.Status)).OrderBy("CreatedAt").Reverse()
