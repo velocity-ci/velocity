@@ -21,7 +21,7 @@ module "velocityci" {
   region = "${var.region}"
 
   domain           = "${var.domain}"
-  velocity_version = "fb0a48a"
+  velocity_version = "88e2e7b"
 
   cluster_name = "${data.aws_ecs_cluster.org.cluster_name}"
 
