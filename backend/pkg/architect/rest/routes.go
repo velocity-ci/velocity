@@ -30,6 +30,10 @@ func AddRoutes(
 	builderManager *builder.Manager,
 	syncManager *sync.Manager,
 ) {
+
+	// Health
+	e.GET("/v1/health", health)
+
 	// Unauthenticated routes
 	authHandler := newAuthHandler(userManager)
 	e.POST("/v1/auth", authHandler.create)

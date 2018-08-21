@@ -166,7 +166,7 @@ func (m *Manager) GetByID(id string) (*Builder, error) {
 }
 
 func (m *Manager) Delete(b *Builder) {
-	if b.Command.Command == "build" {
+	if b.Command != nil && b.Command.Command == "build" {
 		build := b.Command.Payload.(*BuildCtrl).Build
 		build.Status = velocity.StateFailed
 		m.buildManager.Update(build)

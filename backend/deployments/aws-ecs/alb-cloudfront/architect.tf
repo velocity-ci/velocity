@@ -7,12 +7,8 @@ data "template_file" "ecs_def_architect" {
     builder_secret = "${var.builder_secret}"
     admin_password = "${var.admin_password}"
 
-    architect_labels = "${jsonencode(var.architect_labels)}"
-
     logs_group  = "${var.cluster_name}.velocityci-container-logs"
-    logs_region = "${var.aws_region}"
-
-    weave_cidr = "${var.weave_cidr}"
+    logs_region = "${data.aws_region.current.name}"
   }
 }
 
@@ -28,7 +24,13 @@ resource "aws_ecs_service" "architect" {
   desired_count                      = 1
   deployment_minimum_healthy_percent = 100
 
-  placement_strategy {
+  load_balancer {
+    target_group_arn = "${aws_alb_target_group.architect.arn}"
+    container_name   = "velocityci_architect"
+    container_port   = 80
+  }
+
+  ordered_placement_strategy {
     type  = "spread"
     field = "attribute:ecs.availability-zone"
   }

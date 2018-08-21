@@ -2,13 +2,12 @@ data "template_file" "ecs_def_builder" {
   template = "${file("${path.module}/builder.def.tpl.json")}"
 
   vars {
-    version        = "${var.velocity_version}"
-    builder_secret = "${var.builder_secret}"
+    architect_address = "https://${aws_route53_record.architect.name}"
+    version           = "${var.velocity_version}"
+    builder_secret    = "${var.builder_secret}"
 
     logs_group  = "${var.cluster_name}.velocityci-container-logs"
-    logs_region = "${var.aws_region}"
-
-    weave_cidr = "${var.weave_cidr}"
+    logs_region = "${data.aws_region.current.name}"
   }
 }
 
@@ -36,7 +35,7 @@ resource "aws_ecs_service" "builder" {
   desired_count                      = 1
   deployment_minimum_healthy_percent = 100
 
-  placement_strategy {
+  ordered_placement_strategy {
     type  = "spread"
     field = "attribute:ecs.availability-zone"
   }
