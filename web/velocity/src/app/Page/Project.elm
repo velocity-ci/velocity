@@ -29,7 +29,8 @@ import Page.Project.Commit as Commit
 import Page.Project.Builds as Builds
 import Page.Helpers exposing (sortByDatetime)
 import Bootstrap.Popover as Popover
-import Component.ProjectSidebar as Sidebar exposing (ActiveSubPage(..))
+import Component.Sidebar as Sidebar
+import Component.ProjectNavigation as ProjectNavigation exposing (ActiveSubPage(..))
 import Toasty
 import Views.Build
 import Views.Toast as ToastTheme
@@ -62,7 +63,7 @@ type alias Model =
     { project : Project
     , branches : List Branch
     , subPageState : SubPageState
-    , sidebar : Sidebar.State
+    , sidebar : ProjectNavigation.State
     , toasties : Toasty.Stack (Event Build)
     }
 
@@ -254,7 +255,7 @@ toastView { toasties } =
     Toasty.view ToastTheme.config Views.Build.toast ToastyMsg toasties
 
 
-sidebarConfig : Sidebar.Config Msg
+sidebarConfig : ProjectNavigation.Config Msg
 sidebarConfig =
     { newUrlMsg = NewUrl
     , commitPopMsg = CommitsIconPopMsg
@@ -264,14 +265,14 @@ sidebarConfig =
     }
 
 
-viewSidebar : Session msg -> Model -> Html Msg
-viewSidebar session model =
+viewProjectNavigation : Model -> Html Msg
+viewProjectNavigation model =
     let
         page =
             getSubPage model.subPageState
 
         sidebar =
-            Sidebar.view model.sidebar sidebarConfig model.project
+            ProjectNavigation.view model.sidebar sidebarConfig model.project
     in
         case page of
             Commits _ ->
@@ -288,6 +289,18 @@ viewSidebar session model =
 
             _ ->
                 sidebar OtherPage
+
+
+viewSubpageProjectNavigation : Model -> Html Msg
+viewSubpageProjectNavigation model =
+    case getSubPage model.subPageState of
+        Commit subModel ->
+            subModel
+                |> Commit.viewSidebar model.project
+                |> Html.map CommitMsg
+
+        _ ->
+            text ""
 
 
 viewSubPage : Session msg -> Model -> Html Msg
@@ -378,10 +391,9 @@ topNav breadcrumb subNav =
 subNavbar : Model -> Html Msg
 subNavbar model =
     case getSubPage model.subPageState of
-        Commit subModel ->
-            Commit.viewNavbar subModel
-                |> Html.map CommitMsg
-
+        --        Commit subModel ->
+        --            Commit.viewNavbar subModel
+        --                |> Html.map CommitMsg
         _ ->
             text ""
 
@@ -466,6 +478,16 @@ getSubPage subPageState =
 
         TransitioningFrom subPage ->
             subPage
+
+
+setSidebar : Maybe ProjectRoute.Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
+setSidebar maybeRoute pageWidth displayType =
+    case maybeRoute of
+        Just (ProjectRoute.Commit _ commitRoute) ->
+            Commit.setSidebar (Just commitRoute) displayType
+
+        _ ->
+            Sidebar.collapsableHidden
 
 
 setRoute : Context -> Session msg -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
@@ -560,7 +582,7 @@ pageErrored model activePage errorMessage =
 
 update : Context -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update context session msg model =
-    case updateSidebar model.sidebar msg of
+    case updateProjectNavigation model.sidebar msg of
         Just sidebar ->
             { model | sidebar = sidebar }
                 => Cmd.none
@@ -569,8 +591,8 @@ update context session msg model =
             updateSubPage context session (getSubPage model.subPageState) msg model
 
 
-updateSidebar : Sidebar.State -> Msg -> Maybe Sidebar.State
-updateSidebar sidebar msg =
+updateProjectNavigation : ProjectNavigation.State -> Msg -> Maybe ProjectNavigation.State
+updateProjectNavigation sidebar msg =
     case msg of
         CommitsIconPopMsg state ->
             Just { sidebar | commitIconPopover = state }
@@ -798,11 +820,11 @@ sendSubPageMsg updatePage updateMsg subModel =
 -- HELPERS --
 
 
-hasExtraWideSidebar : Model -> Session msg -> Bool
-hasExtraWideSidebar { subPageState } session =
+hasExtraWideSidebar : Model -> Sidebar.DisplayType -> Bool
+hasExtraWideSidebar { subPageState } sidebarDisplayType =
     case getSubPage subPageState of
-        Commit subModel ->
-            Commit.hasExtraWideSidebar subModel
+        Commit _ ->
+            Commit.hasExtraWideSidebar sidebarDisplayType
 
         _ ->
             False

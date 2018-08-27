@@ -29,10 +29,11 @@ import Dict exposing (Dict)
 import Page.Helpers exposing (sortByDatetime, formatDateTime)
 import Views.Spinner exposing (spinner)
 import Component.DropdownFilter as DropdownFilter
-import Component.CommitSidebar as CommitSidebar
+import Component.CommitNavigation as CommitNavigation
 import Dom
 import Window
 import Animation
+import Component.Sidebar as Sidebar
 
 
 -- SUB PAGES --
@@ -60,7 +61,6 @@ type alias Model =
     , builds : List Build
     , subPageState : SubPageState
     , taskFilterTerm : String
-    , sidebarDisplayType : CommitSidebar.DisplayType
     }
 
 
@@ -93,7 +93,6 @@ init context session project hash maybeRoute =
             , builds = sortByDatetime .createdAt (PaginatedList.results builds) |> List.reverse
             , subPageState = Loaded initialSubPage
             , taskFilterTerm = ""
-            , sidebarDisplayType = CommitSidebar.initDisplayType width
             }
 
         handleLoadError _ =
@@ -120,8 +119,6 @@ subscriptions : Project -> Model -> Sub Msg
 subscriptions project model =
     Sub.batch
         [ subPageSubscriptions model
-        , Window.resizes WindowSizeChange
-        , CommitSidebar.subscriptions sidebarConfig (sidebarContext project model)
         ]
 
 
@@ -210,20 +207,18 @@ leaveSubPageChannels subPage subRoute =
 view : Project -> Session msg -> Model -> Html Msg
 view project session model =
     div []
-        [ viewSidebar project session model
-        , viewSubPageHeader project model
+        [ viewSubPageHeader project model
         , viewSubPage project model
         ]
 
 
-sidebarContext : Project -> Model -> CommitSidebar.Context
+sidebarContext : Project -> Model -> CommitNavigation.Context
 sidebarContext project model =
     { project = project
     , commit = model.commit
     , tasks = model.tasks
     , selected = selectedTask model
     , builds = model.builds
-    , displayType = model.sidebarDisplayType
     }
 
 
@@ -245,19 +240,16 @@ selectedTask model =
             Nothing
 
 
-sidebarConfig : CommitSidebar.Config Msg
+sidebarConfig : CommitNavigation.Config Msg
 sidebarConfig =
-    { newUrlMsg = NewUrl
-    , hideCollapsableSidebarMsg = HideSidebar
-    , animateMsg = AnimateSidebar
-    }
+    { newUrlMsg = NewUrl }
 
 
-viewSidebar : Project -> Session msg -> Model -> Html Msg
-viewSidebar project _ model =
+viewSidebar : Project -> Model -> Html Msg
+viewSidebar project model =
     model
         |> sidebarContext project
-        |> CommitSidebar.view sidebarConfig
+        |> CommitNavigation.view sidebarConfig
 
 
 viewSubPage : Project -> Model -> Html Msg
@@ -274,8 +266,7 @@ viewSubPage project model =
 
         _ ->
             div []
-                [ viewNavbarToggle model.sidebarDisplayType
-                , div [ class "d-flex justify-content-center" ] [ spinner ]
+                [ div [ class "d-flex justify-content-center" ] [ spinner ]
                 ]
 
 
@@ -310,27 +301,28 @@ frame :
     -> (a -> Msg)
     -> Html a
     -> Html Msg
-frame project { commit, tasks, sidebarDisplayType } toMsg content =
+frame project { commit, tasks } toMsg content =
     div []
         [ Html.map toMsg content
         ]
 
 
-viewNavbar : Model -> Html Msg
-viewNavbar model =
-    viewNavbarToggle model.sidebarDisplayType
 
-
-viewNavbarToggle : CommitSidebar.DisplayType -> Html Msg
-viewNavbarToggle displayType =
-    button
-        [ type_ "button"
-        , class "navbar-toggler"
-        , onClick ShowSidebar
-        ]
-        [ span [ class "navbar-toggler-icon" ] []
-        ]
-        |> Util.viewIf (displayType /= CommitSidebar.fixedVisible)
+--viewNavbar : Model -> Html Msg
+--viewNavbar model =
+--    viewNavbarToggle model.sidebarDisplayType
+--
+--
+--viewNavbarToggle : CommitNavigation.DisplayType -> Html Msg
+--viewNavbarToggle displayType =
+--    button
+--        [ type_ "button"
+--        , class "navbar-toggler"
+--        , onClick ShowSidebar
+--        ]
+--        [ span [ class "navbar-toggler-icon" ] []
+--        ]
+--        |> Util.viewIf (displayType /= CommitNavigation.fixedVisible)
 
 
 viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
@@ -385,10 +377,6 @@ type Msg
     | CommitTaskLoaded (Result PageLoadError CommitTask.Model)
     | AddBuild Build
     | UpdateBuild Build
-    | WindowSizeChange Window.Size
-    | AnimateSidebar Animation.Msg
-    | ShowSidebar
-    | HideSidebar
     | NoOp
 
 
@@ -429,7 +417,7 @@ setRoute : Context -> Session msg -> Project -> Maybe CommitRoute.Route -> Model
 setRoute context session project maybeRoute model =
     let
         model_ =
-            { model | sidebarDisplayType = CommitSidebar.hide model.sidebarDisplayType }
+            model
 
         transition toMsg task =
             { model_ | subPageState = TransitioningFrom (getSubPage model.subPageState) maybeRoute }
@@ -443,8 +431,9 @@ setRoute context session project maybeRoute model =
                 case session.user of
                     Just user ->
                         { model_
-                            | subPageState = Overview.initialModel |> Overview |> Loaded
-                            , sidebarDisplayType = CommitSidebar.show model.sidebarDisplayType
+                            | subPageState =
+                                Overview.initialModel |> Overview |> Loaded
+                                --                            , sidebarDisplayType = CommitNavigation.show model.sidebarDisplayType
                         }
                             => Cmd.none
 
@@ -477,6 +466,16 @@ setRoute context session project maybeRoute model =
                     => Cmd.none
 
 
+setSidebar : Maybe CommitRoute.Route -> Sidebar.DisplayType -> Sidebar.DisplayType
+setSidebar maybeRoute displayType =
+    case maybeRoute of
+        Just (CommitRoute.Overview) ->
+            Sidebar.show displayType
+
+        _ ->
+            Sidebar.hide displayType
+
+
 update : Context -> Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
 update context project session msg model =
     let
@@ -501,22 +500,6 @@ update context project session msg model =
             ( NewUrl url, _ ) ->
                 model
                     => Navigation.newUrl url
-
-            ( AnimateSidebar animateMsg, _ ) ->
-                { model | sidebarDisplayType = CommitSidebar.animate model.sidebarDisplayType animateMsg }
-                    => Cmd.none
-
-            ( ShowSidebar, _ ) ->
-                { model | sidebarDisplayType = CommitSidebar.show model.sidebarDisplayType }
-                    => Cmd.none
-
-            ( HideSidebar, _ ) ->
-                { model | sidebarDisplayType = CommitSidebar.hide model.sidebarDisplayType }
-                    => Cmd.none
-
-            ( WindowSizeChange { width }, _ ) ->
-                { model | sidebarDisplayType = CommitSidebar.hide (CommitSidebar.initDisplayType width) }
-                    => Cmd.none
 
             ( SetRoute route, _ ) ->
                 setRoute context session project route model
@@ -600,6 +583,6 @@ update context project session msg model =
                     => Cmd.none
 
 
-hasExtraWideSidebar : Model -> Bool
-hasExtraWideSidebar { sidebarDisplayType } =
-    sidebarDisplayType == CommitSidebar.fixedVisible
+hasExtraWideSidebar : Sidebar.DisplayType -> Bool
+hasExtraWideSidebar sidebarDisplayType =
+    sidebarDisplayType == Sidebar.fixedVisible

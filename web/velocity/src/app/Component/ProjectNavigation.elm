@@ -1,4 +1,4 @@
-module Component.ProjectSidebar exposing (State, Config, ActiveSubPage(..), view)
+module Component.ProjectNavigation exposing (State, Config, ActiveSubPage(..), view)
 
 -- EXTERNAL --
 

@@ -22,8 +22,11 @@ import Phoenix.Socket as Socket exposing (Socket)
 import Json.Decode as Decode exposing (Value)
 import Task
 import Ports
-import Component.UserSidebar as UserSidebar
+import Component.UserMenuDropdown as UserMenuDropdown
 import Html exposing (Html, text, div)
+import Component.Sidebar as Sidebar
+import Window
+import Animation
 
 
 type Page
@@ -50,7 +53,9 @@ type alias Model =
     { session : Session Msg
     , context : Context
     , pageState : PageState
-    , userSidebar : UserSidebar.State
+    , userDropdown : UserMenuDropdown.State
+    , sidebarDisplayType : Sidebar.DisplayType
+    , pageWidth : Int
     }
 
 
@@ -74,16 +79,22 @@ init flags location =
             , socket = initialSocket context
             }
 
+        maybeRoute =
+            (Route.fromLocation location)
+
         ( initialModel, initialCmd ) =
-            setRoute (Route.fromLocation location)
+            setRoute maybeRoute
                 { pageState = Loaded initialPage
                 , context = context
                 , session = session
-                , userSidebar = UserSidebar.init
+                , userDropdown = UserMenuDropdown.init
+                , sidebarDisplayType = Sidebar.collapsableHidden
+                , pageWidth = 0
                 }
     in
         initialModel
             ! [ initialCmd
+              , Task.perform WindowWidthChange Window.width
               ]
 
 
@@ -106,8 +117,8 @@ initialSocket { wsUrl } =
         |> Socket.withoutHeartbeat
 
 
-userSidebarConfig : UserSidebar.Config Msg
-userSidebarConfig =
+userDropdownConfig : UserMenuDropdown.Config Msg
+userDropdownConfig =
     { userDropdownMsg = UserDropdownToggleMsg
     , newUrlMsg = NewUrl
     }
@@ -121,7 +132,7 @@ view : Model -> Html Msg
 view model =
     let
         page =
-            viewPage model.session
+            viewPage model.sidebarDisplayType model.session
 
         sidebar =
             viewSidebar model
@@ -162,80 +173,93 @@ viewSidebar model isLoading page =
         pageSidebar =
             case page of
                 Project subModel ->
-                    Project.viewSidebar model.session subModel
+                    subModel
+                        |> Project.viewProjectNavigation
                         |> Html.map ProjectMsg
 
                 _ ->
                     text ""
 
-        userSidebar =
+        subSidebar =
+            case page of
+                Project subModel ->
+                    subModel
+                        |> Project.viewSubpageProjectNavigation
+                        |> Html.map ProjectMsg
+
+                _ ->
+                    text ""
+
+        userDropdown =
             case model.session.user of
                 Just user ->
-                    UserSidebar.view model.userSidebar userSidebarConfig
+                    UserMenuDropdown.view model.userDropdown userDropdownConfig
 
                 Nothing ->
                     text ""
     in
-        div [] [ pageSidebar, userSidebar ]
-            |> Page.sidebarFrame NewUrl
+        div []
+            [ Page.sidebarFrame NewUrl (div [] [ pageSidebar, userDropdown ])
+            , Page.subSidebarFrame sidebarConfig model.sidebarDisplayType subSidebar
+            ]
 
 
-viewPage : Session Msg -> Bool -> Page -> Html Msg
-viewPage session isLoading page =
+viewPage : Sidebar.DisplayType -> Session Msg -> Bool -> Page -> Html Msg
+viewPage sidebarDisplayType session isLoading page =
     let
         frame =
-            Page.frame isLoading session.user
+            Page.frame isLoading session.user sidebarDisplayType
     in
         case page of
             NotFound ->
                 NotFound.view session
-                    |> frame Page.Other Page.NoSidebar
+                    |> frame Page.Other
 
             Blank ->
                 -- This is for the very initial page load, while we are loading
                 -- data via HTTP. We could also render a spinner here.
                 Html.text ""
-                    |> frame Page.Other Page.NoSidebar
+                    |> frame Page.Other
 
             Errored subModel ->
                 Errored.view session subModel
-                    |> frame Page.Other Page.NormalSidebar
+                    |> frame Page.Other
 
             Home subModel ->
                 Home.view session subModel
                     |> Html.map HomeMsg
-                    |> frame Page.Home Page.NormalSidebar
+                    |> frame Page.Home
 
             Project subModel ->
-                let
-                    sidebar =
-                        if Project.hasExtraWideSidebar subModel session then
-                            Page.ExtraWideSidebar
-                        else
-                            Page.NormalSidebar
-                in
-                    Project.view session subModel
-                        |> Html.map ProjectMsg
-                        |> frame Page.Projects sidebar
+                Project.view session subModel
+                    |> Html.map ProjectMsg
+                    |> frame Page.Projects
 
             Login subModel ->
                 Login.view session subModel
                     |> Html.map LoginMsg
-                    |> frame Page.Login Page.NormalSidebar
+                    |> frame Page.Login
 
             KnownHosts subModel ->
                 KnownHosts.view session subModel
                     |> Html.map KnownHostsMsg
-                    |> frame Page.KnownHosts Page.NormalSidebar
+                    |> frame Page.KnownHosts
 
             Users subModel ->
                 Users.view session subModel
                     |> Html.map UsersMsg
-                    |> frame Page.Users Page.NormalSidebar
+                    |> frame Page.Users
 
 
 
 -- SUBSCRIPTIONS --
+
+
+sidebarConfig : Sidebar.Config Msg
+sidebarConfig =
+    { hideCollapsableSidebarMsg = NoOp
+    , animateMsg = AnimateSidebar
+    }
 
 
 subscriptions : Model -> Sub Msg
@@ -247,9 +271,14 @@ subscriptions model =
         socket =
             Socket.listen model.session.socket SocketMsg
 
-        userSidebar =
-            UserSidebar.subscriptions userSidebarConfig model.userSidebar
+        userDropdown =
+            UserMenuDropdown.subscriptions userDropdownConfig model.userDropdown
 
+        resizes =
+            Window.resizes (.width >> WindowWidthChange)
+
+        --        sidebar =
+        --            Sidebar.subscriptions sidebarConfig (sidebarContext model)
         page =
             model.pageState
                 |> getPage
@@ -259,7 +288,8 @@ subscriptions model =
             [ session
             , socket
             , page
-            , userSidebar
+            , userDropdown
+            , resizes
             ]
 
 
@@ -322,6 +352,10 @@ type Msg
     | UsersMsg Users.Msg
     | SocketMsg (Socket.Msg Msg)
     | UserDropdownToggleMsg Dropdown.State
+    | WindowWidthChange Int
+    | AnimateSidebar Animation.Msg
+      --    | ShowSidebar
+      --    | HideSidebar
     | NoOp
 
 
@@ -366,6 +400,16 @@ handledChannelErrorToMsg err =
 
         _ ->
             NoOp
+
+
+setSidebar : Maybe Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
+setSidebar maybeRoute pageWidth displayType =
+    case maybeRoute of
+        Just (Route.Project _ projectRoute) ->
+            Project.setSidebar (Just projectRoute) pageWidth displayType
+
+        _ ->
+            Sidebar.collapsableHidden
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -523,7 +567,11 @@ setRouteUpdate maybeRoute model =
 
         ( routeModel, routeCmd ) =
             setRoute maybeRoute { model | session = channelLeaveSession }
+
+        sidebarDisplayType =
+            setSidebar maybeRoute model.pageWidth model.sidebarDisplayType
     in
+        --        { routeModel | sidebarDisplayType = sidebarDisplayType }
         routeModel
             ! [ routeCmd, channelLeaveCmd ]
 
@@ -556,6 +604,25 @@ updatePage page msg model =
                 model
                     => Navigation.newUrl url
 
+            ( WindowWidthChange width, _ ) ->
+                { model
+                    | sidebarDisplayType = Sidebar.initDisplayType width
+                    , pageWidth = width
+                }
+                    => Cmd.none
+
+            ( AnimateSidebar animateMsg, _ ) ->
+                { model | sidebarDisplayType = Sidebar.animate model.sidebarDisplayType animateMsg }
+                    => Cmd.none
+
+            --
+            --            ( ShowSidebar, _ ) ->
+            --                { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+            --                    => Cmd.none
+            --
+            --            ( HideSidebar, _ ) ->
+            --                { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
+            --                    => Cmd.none
             ( SocketMsg msg, _ ) ->
                 let
                     ( newSocket, socketCmd ) =
@@ -574,9 +641,9 @@ updatePage page msg model =
             ( UserDropdownToggleMsg state, _ ) ->
                 let
                     sidebar =
-                        model.userSidebar
+                        model.userDropdown
                 in
-                    { model | userSidebar = { sidebar | userDropdown = state } }
+                    { model | userDropdown = { sidebar | userDropdown = state } }
                         => Cmd.none
 
             ( SetUser user, _ ) ->

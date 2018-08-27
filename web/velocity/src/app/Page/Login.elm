@@ -69,8 +69,8 @@ initialModel =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    div [ class "d-flex justify-content-center p-2", style [ "height" => "100vh" ] ]
-        [ div [ class "card col-3 align-self-center" ]
+    div [ class "d-flex justify-content-center", style [ "height" => "100vh" ] ]
+        [ div [ class "card col-8 align-self-center" ]
             [ div [ class "card-body" ]
                 [ viewGlobalError model.globalError
                 , viewForm model

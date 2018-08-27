@@ -1,4 +1,4 @@
-module Component.UserSidebar exposing (Config, State, init, view, subscriptions)
+module Component.UserMenuDropdown exposing (Config, State, init, view, subscriptions)
 
 -- EXTERNAL --
 

@@ -1,17 +1,8 @@
-module Component.CommitSidebar
+module Component.CommitNavigation
     exposing
         ( view
-        , animate
-        , show
-        , hide
-        , subscriptions
         , Context
         , Config
-        , initDisplayType
-        , fixedVisible
-        , collapsableVisible
-        , collapsableHidden
-        , DisplayType
         )
 
 -- INTERNAL
@@ -37,17 +28,13 @@ import Html.Styled.Attributes as Attributes exposing (css, class, classList)
 import Html.Styled as Styled exposing (..)
 import Html.Styled.Events exposing (onClick)
 import Css exposing (..)
-import Animation
 
 
 -- CONFIG
 
 
 type alias Config msg =
-    { newUrlMsg : String -> msg
-    , animateMsg : Animation.Msg -> msg
-    , hideCollapsableSidebarMsg : msg
-    }
+    { newUrlMsg : String -> msg }
 
 
 type alias Context =
@@ -56,7 +43,6 @@ type alias Context =
     , commit : Commit
     , tasks : List Task
     , selected : Maybe Task.Name
-    , displayType : DisplayType
     }
 
 
@@ -69,214 +55,17 @@ type alias NavTaskProperties =
     }
 
 
-type DisplayType
-    = Fixed
-    | Collapsable CollapsableVisibility
-
-
-type CollapsableVisibility
-    = Visible Animation.State
-    | Hidden Animation.State
-
-
-
--- SUBSCRIPTIONS --
-
-
-subscriptions : Config msg -> Context -> Sub msg
-subscriptions { animateMsg } { displayType } =
-    case displayType of
-        Collapsable (Visible animationState) ->
-            Animation.subscription animateMsg [ animationState ]
-
-        Collapsable (Hidden animationState) ->
-            Animation.subscription animateMsg [ animationState ]
-
-        _ ->
-            Sub.none
-
-
-
--- UPDATE --
-
-
-show : DisplayType -> DisplayType
-show displayType =
-    case displayType of
-        Collapsable (Hidden animationState) ->
-            animationState
-                |> Animation.interrupt [ Animation.to animationFinishAttrs ]
-                |> Visible
-                |> Collapsable
-
-        _ ->
-            displayType
-
-
-hide : DisplayType -> DisplayType
-hide displayType =
-    case displayType of
-        Collapsable (Visible animationState) ->
-            animationState
-                |> Animation.interrupt [ Animation.to animationStartAttrs ]
-                |> Hidden
-                |> Collapsable
-
-        _ ->
-            displayType
-
-
-animate : DisplayType -> Animation.Msg -> DisplayType
-animate displayType msg =
-    case displayType of
-        Collapsable (Visible animationState) ->
-            animationState
-                |> Animation.update msg
-                |> Visible
-                |> Collapsable
-
-        Collapsable (Hidden animationState) ->
-            animationState
-                |> Animation.update msg
-                |> Hidden
-                |> Collapsable
-
-        _ ->
-            displayType
-
-
 
 -- VIEW --
 
 
 view : Config msg -> Context -> Html.Html msg
 view config context =
-    context
-        |> sidebarContainer config
-        |> toUnstyled
-
-
-fixedVisible : DisplayType
-fixedVisible =
-    Fixed
-
-
-collapsableVisible : DisplayType
-collapsableVisible =
-    Collapsable (Visible <| Animation.style animationFinishAttrs)
-
-
-collapsableHidden : DisplayType
-collapsableHidden =
-    Collapsable (Hidden <| Animation.style animationStartAttrs)
-
-
-animationStartAttrs : List Animation.Property
-animationStartAttrs =
-    [ Animation.left (Animation.px -145.0) ]
-
-
-animationFinishAttrs : List Animation.Property
-animationFinishAttrs =
-    [ Animation.left (Animation.px 75.0) ]
-
-
-sidebarContainer : Config msg -> Context -> Styled.Html msg
-sidebarContainer config context =
     div []
-        [ div
-            [ css (collapsableOverlay context.displayType)
-            , onClick config.hideCollapsableSidebarMsg
-            ]
-            []
-        , sidebar config context
-        ]
-
-
-sidebar : Config msg -> Context -> Styled.Html msg
-sidebar config context =
-    div
-        (List.concat
-            [ sidebarAnimationAttrs context.displayType
-            , [ css
-                    [ sidebarBaseStyle
-                    , sidebarStyle context.displayType
-                    ]
-              ]
-            ]
-        )
         [ details context.commit
         , taskNav config context
         ]
-
-
-collapsableOverlay : DisplayType -> List Style
-collapsableOverlay displayType =
-    case displayType of
-        Collapsable (Visible _) ->
-            [ position fixed
-            , top (px 0)
-            , right (px 0)
-            , left (px 75)
-            , bottom (px 0)
-            , zIndex (int 1)
-            , backgroundColor (hex "000000")
-            , opacity (num 0.5)
-            ]
-
-        _ ->
-            [ display none ]
-
-
-sidebarAnimationAttrs : DisplayType -> List (Attribute msg)
-sidebarAnimationAttrs displayType =
-    case displayType of
-        Collapsable (Visible animationState) ->
-            animationToStyledAttrs animationState
-
-        Collapsable (Hidden animationState) ->
-            animationToStyledAttrs animationState
-
-        Fixed ->
-            []
-
-
-animationToStyledAttrs : Animation.State -> List (Attribute msg)
-animationToStyledAttrs animationState =
-    animationState
-        |> Animation.render
-        |> List.map Attributes.fromUnstyled
-
-
-sidebarStyle : DisplayType -> Style
-sidebarStyle displayType =
-    case displayType of
-        Fixed ->
-            width (px 220)
-
-        Collapsable _ ->
-            width (px 220)
-
-
-sidebarBaseStyle : Style
-sidebarBaseStyle =
-    Css.batch
-        [ top (px 0)
-        , left (px 75)
-        , bottom (px 0)
-        , zIndex (int 1)
-        , backgroundColor (rgb 244 245 247)
-        , color (rgb 66 82 110)
-        , position fixed
-        ]
-
-
-initDisplayType : Int -> DisplayType
-initDisplayType windowWidth =
-    if windowWidth >= 992 then
-        fixedVisible
-    else
-        collapsableHidden
+        |> toUnstyled
 
 
 details : Commit -> Styled.Html msg

@@ -1,4 +1,4 @@
-module Views.Page exposing (frame, sidebarFrame, ActivePage(..), SidebarType(..))
+module Views.Page exposing (frame, sidebarFrame, subSidebarFrame, ActivePage(..))
 
 {-| The frame around a typical page - that is, the header and footer.
 -}
@@ -11,6 +11,7 @@ import Data.User as User exposing (User)
 import Route as Route
 import Views.Helpers exposing (onClickPage)
 import Util exposing ((=>))
+import Component.Sidebar as Sidebar
 
 
 {-| Determines which navbar link (if any) will be rendered as active.
@@ -30,14 +31,6 @@ type ActivePage
     | Users
 
 
-{-| Determines the amount of margin-left width to pad the main frame
--}
-type SidebarType
-    = NoSidebar
-    | NormalSidebar
-    | ExtraWideSidebar
-
-
 {-| Take a page's Html and frame it with a header and footer.
 
 The caller provides the current user, so we can display in either
@@ -47,29 +40,16 @@ isLoading is for determining whether we should show a loading spinner
 in the header. (This comes up during slow page transitions.)
 
 -}
-frame : Bool -> Maybe User -> ActivePage -> SidebarType -> Html.Html msg -> Html.Html msg
-frame isLoading user page sidebarType content =
+frame : Bool -> Maybe User -> Sidebar.DisplayType -> ActivePage -> Html.Html msg -> Html.Html msg
+frame isLoading user sidebarType page content =
     div
         [ css
-            [ marginLeft (px <| sidebarWidthPx sidebarType) ]
+            [ marginLeft (px <| Sidebar.sidebarWidthPx sidebarType) ]
         ]
         [ viewContent content
         , viewFooter
         ]
         |> toUnstyled
-
-
-sidebarWidthPx : SidebarType -> Float
-sidebarWidthPx sidebarType =
-    case sidebarType of
-        NoSidebar ->
-            0
-
-        NormalSidebar ->
-            75
-
-        ExtraWideSidebar ->
-            295
 
 
 viewContent : Html.Html msg -> Styled.Html msg
@@ -96,6 +76,11 @@ sidebarFrame newUrlMsg content =
         , fromUnstyled content
         ]
         |> toUnstyled
+
+
+subSidebarFrame : Sidebar.Config msg -> Sidebar.DisplayType -> Html.Html msg -> Html.Html msg
+subSidebarFrame config displayType content =
+    Sidebar.view config displayType content
 
 
 sidebarLogo : (String -> msg) -> Styled.Html msg
