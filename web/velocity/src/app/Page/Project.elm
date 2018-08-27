@@ -490,6 +490,16 @@ setSidebar maybeRoute pageWidth displayType =
             Sidebar.collapsableHidden
 
 
+sidebarSize : Model -> Sidebar.Size
+sidebarSize model =
+    case getSubPage model.subPageState of
+        Commit _ ->
+            Sidebar.extraWideSize
+
+        _ ->
+            Sidebar.normalSize
+
+
 setRoute : Context -> Session msg -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
 setRoute context session maybeRoute model =
     let

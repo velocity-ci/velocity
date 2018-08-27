@@ -585,4 +585,4 @@ update context project session msg model =
 
 hasExtraWideSidebar : Sidebar.DisplayType -> Bool
 hasExtraWideSidebar sidebarDisplayType =
-    sidebarDisplayType == Sidebar.fixedVisible
+    sidebarDisplayType == Sidebar.fixedVisibleExtraWide

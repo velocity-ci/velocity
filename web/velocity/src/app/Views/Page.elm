@@ -1,4 +1,4 @@
-module Views.Page exposing (frame, sidebarFrame, subSidebarFrame, ActivePage(..))
+module Views.Page exposing (frame, sidebarFrame, ActivePage(..))
 
 {-| The frame around a typical page - that is, the header and footer.
 -}
@@ -44,7 +44,7 @@ frame : Bool -> Maybe User -> Sidebar.DisplayType -> ActivePage -> Html.Html msg
 frame isLoading user sidebarType page content =
     div
         [ css
-            [ marginLeft (px <| Sidebar.sidebarWidthPx sidebarType) ]
+            [ marginLeft (px <| Sidebar.sidebarWidth sidebarType) ]
         ]
         [ viewContent content
         , viewFooter
@@ -57,30 +57,32 @@ viewContent content =
     div [] [ fromUnstyled content ]
 
 
-sidebarFrame : (String -> msg) -> Html.Html msg -> Html.Html msg
-sidebarFrame newUrlMsg content =
+sidebarFrame : Sidebar.DisplayType -> Sidebar.Config msg -> Html.Html msg -> Html.Html msg -> Html.Html msg
+sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
     nav
         [ css
-            [ width (px 75)
+            [ width (px <| Sidebar.sidebarWidth displayType)
             , position fixed
             , top (px 0)
             , bottom (px 0)
-            , left (px 0)
+            , left (px <| Sidebar.sidebarLeft displayType)
             , zIndex (int 2)
             , paddingTop (Css.rem 1)
             , backgroundColor (rgb 7 71 166)
             , color (hex "ffffff")
             ]
         ]
-        [ sidebarLogo newUrlMsg
-        , fromUnstyled content
+        [ sidebarLogo sidebarConfig.newUrlMsg
+        , fromUnstyled sidebarContent
         ]
         |> toUnstyled
 
 
-subSidebarFrame : Sidebar.Config msg -> Sidebar.DisplayType -> Html.Html msg -> Html.Html msg
-subSidebarFrame config displayType content =
-    Sidebar.view config displayType content
+
+--
+--subSidebarFrame : Sidebar.Config msg -> Sidebar.DisplayType -> Html.Html msg -> Html.Html msg
+--subSidebarFrame config displayType content =
+--    Sidebar.view config displayType content
 
 
 sidebarLogo : (String -> msg) -> Styled.Html msg

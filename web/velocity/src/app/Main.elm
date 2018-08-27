@@ -180,6 +180,17 @@ viewSidebar model isLoading page =
                 _ ->
                     text ""
 
+        userDropdown =
+            case model.session.user of
+                Just user ->
+                    UserMenuDropdown.view model.userDropdown userDropdownConfig
+
+                Nothing ->
+                    text ""
+
+        sidebar =
+            div [] [ pageSidebar, userDropdown ]
+
         subSidebar =
             case page of
                 Project subModel ->
@@ -189,19 +200,8 @@ viewSidebar model isLoading page =
 
                 _ ->
                     text ""
-
-        userDropdown =
-            case model.session.user of
-                Just user ->
-                    UserMenuDropdown.view model.userDropdown userDropdownConfig
-
-                Nothing ->
-                    text ""
     in
-        div []
-            [ Page.sidebarFrame NewUrl (div [] [ pageSidebar, userDropdown ])
-            , Page.subSidebarFrame sidebarConfig model.sidebarDisplayType subSidebar
-            ]
+        Page.sidebarFrame model.sidebarDisplayType sidebarConfig sidebar subSidebar
 
 
 viewPage : Sidebar.DisplayType -> Session Msg -> Bool -> Page -> Html Msg
@@ -259,6 +259,7 @@ sidebarConfig : Sidebar.Config Msg
 sidebarConfig =
     { hideCollapsableSidebarMsg = NoOp
     , animateMsg = AnimateSidebar
+    , newUrlMsg = NewUrl
     }
 
 
@@ -410,6 +411,16 @@ setSidebar maybeRoute pageWidth displayType =
 
         _ ->
             Sidebar.collapsableHidden
+
+
+sidebarSize : Model -> Sidebar.Size
+sidebarSize model =
+    case getPage model.pageState of
+        Project subModel ->
+            Project.sidebarSize subModel
+
+        _ ->
+            Sidebar.normalSize
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -606,7 +617,7 @@ updatePage page msg model =
 
             ( WindowWidthChange width, _ ) ->
                 { model
-                    | sidebarDisplayType = Sidebar.initDisplayType width
+                    | sidebarDisplayType = Sidebar.initDisplayType width (sidebarSize model)
                     , pageWidth = width
                 }
                     => Cmd.none

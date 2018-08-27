@@ -7,12 +7,15 @@ module Component.Sidebar
         , subscriptions
         , Config
         , initDisplayType
-        , fixedHidden
-        , fixedVisible
-        , sidebarWidthPx
+        , fixedVisibleExtraWide
+        , sidebarWidth
+        , sidebarLeft
+        , normalSize
+        , extraWideSize
         , collapsableVisible
         , collapsableHidden
         , DisplayType
+        , Size
         )
 
 -- INTERNAL
@@ -47,22 +50,23 @@ import Animation
 type alias Config msg =
     { animateMsg : Animation.Msg -> msg
     , hideCollapsableSidebarMsg : msg
+    , newUrlMsg : String -> msg
     }
 
 
 type DisplayType
-    = Fixed FixedVisibility Size
+    = Fixed FixedVisibility
     | Collapsable CollapsableVisibility Size
+
+
+type FixedVisibility
+    = FixedHidden
+    | FixedVisible Size
 
 
 type Size
     = Normal
     | ExtraWide
-
-
-type FixedVisibility
-    = FixedVisible
-    | FixedHidden
 
 
 type CollapsableVisibility
@@ -144,20 +148,45 @@ animate displayType msg =
 -- VIEW --
 
 
-sidebarWidthPx : DisplayType -> Float
-sidebarWidthPx sidebarType =
+sidebarWidth : DisplayType -> Float
+sidebarWidth sidebarType =
     case sidebarType of
-        Fixed _ Normal ->
+        Collapsable _ _ ->
+            0
+
+        Fixed (FixedVisible Normal) ->
             75
 
-        Collapsable _ Normal ->
-            75
-
-        Fixed _ ExtraWide ->
+        Fixed (FixedVisible ExtraWide) ->
             295
 
-        Collapsable _ ExtraWide ->
-            295
+        Fixed FixedHidden ->
+            0
+
+
+sidebarLeft : DisplayType -> Float
+sidebarLeft sidebarType =
+    case sidebarType of
+        Collapsable (Hidden _) ExtraWide ->
+            -295.0
+
+        Collapsable (Hidden _) Normal ->
+            -75.0
+
+        Collapsable (Visible _) ExtraWide ->
+            0.0
+
+        Collapsable (Visible _) Normal ->
+            0.0
+
+        Fixed (FixedVisible Normal) ->
+            0.0
+
+        Fixed (FixedVisible ExtraWide) ->
+            0.0
+
+        Fixed FixedHidden ->
+            -1000.0
 
 
 view : Config msg -> DisplayType -> Html.Html msg -> Html.Html msg
@@ -167,14 +196,19 @@ view config displayType content =
         |> toUnstyled
 
 
-fixedVisible : DisplayType
-fixedVisible =
-    Fixed FixedVisible ExtraWide
+fixedVisibleExtraWide : DisplayType
+fixedVisibleExtraWide =
+    Fixed (FixedVisible ExtraWide)
 
 
-fixedHidden : DisplayType
-fixedHidden =
-    Fixed FixedHidden ExtraWide
+normalSize : Size
+normalSize =
+    Normal
+
+
+extraWideSize : Size
+extraWideSize =
+    ExtraWide
 
 
 collapsableVisible : DisplayType
@@ -256,7 +290,7 @@ sidebarAnimationAttrs displayType =
         Collapsable (Hidden animationState) _ ->
             animationToStyledAttrs animationState
 
-        Fixed _ _ ->
+        Fixed _ ->
             []
 
 
@@ -270,8 +304,14 @@ animationToStyledAttrs animationState =
 sidebarStyle : DisplayType -> Style
 sidebarStyle displayType =
     case displayType of
-        Fixed _ _ ->
+        Fixed (FixedVisible ExtraWide) ->
             width (px 220)
+
+        Fixed (FixedVisible Normal) ->
+            width (px 75)
+
+        Fixed FixedHidden ->
+            display none
 
         Collapsable _ _ ->
             width (px 220)
@@ -290,9 +330,9 @@ sidebarBaseStyle =
         ]
 
 
-initDisplayType : Int -> DisplayType
-initDisplayType windowWidth =
+initDisplayType : Int -> Size -> DisplayType
+initDisplayType windowWidth size =
     if windowWidth >= 992 then
-        fixedVisible
+        Fixed (FixedVisible size)
     else
-        collapsableHidden
+        Collapsable (Hidden <| Animation.style animationStartAttrs) size
