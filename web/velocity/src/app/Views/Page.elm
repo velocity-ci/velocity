@@ -6,6 +6,7 @@ module Views.Page exposing (frame, sidebarFrame, ActivePage(..))
 import Html exposing (Html)
 import Html.Styled.Attributes as Attributes exposing (css, class, classList)
 import Html.Styled as Styled exposing (..)
+import Html.Styled.Events exposing (onClick)
 import Css exposing (..)
 import Data.User as User exposing (User)
 import Route as Route
@@ -40,13 +41,14 @@ isLoading is for determining whether we should show a loading spinner
 in the header. (This comes up during slow page transitions.)
 
 -}
-frame : Bool -> Maybe User -> Sidebar.DisplayType -> ActivePage -> Html.Html msg -> Html.Html msg
-frame isLoading user sidebarType page content =
+frame : Bool -> Maybe User -> Sidebar.Config msg -> Sidebar.DisplayType -> ActivePage -> Html.Html msg -> Html.Html msg
+frame isLoading user sidebarConfig sidebarType page content =
     div
         [ css
-            [ marginLeft (px <| Sidebar.sidebarWidth sidebarType) ]
+            [ marginLeft (px <| Sidebar.containerMarginLeft sidebarType) ]
         ]
-        [ viewContent content
+        [ Util.viewIfStyled (Sidebar.isCollapsable sidebarType) (viewNavbar sidebarConfig)
+        , viewContent content
         , viewFooter
         ]
         |> toUnstyled
@@ -55,6 +57,23 @@ frame isLoading user sidebarType page content =
 viewContent : Html.Html msg -> Styled.Html msg
 viewContent content =
     div [] [ fromUnstyled content ]
+
+
+viewNavbar : Sidebar.Config msg -> Styled.Html msg
+viewNavbar { showCollapsableSidebarMsg } =
+    nav
+        [ class "navbar navbar-light bg-light" ]
+        [ viewNavbarToggle showCollapsableSidebarMsg ]
+
+
+viewNavbarToggle : msg -> Styled.Html msg
+viewNavbarToggle showCollapsableSidebarMsg =
+    button
+        [ class "navbar-toggler"
+        , onClick showCollapsableSidebarMsg
+        ]
+        [ span [ class "navbar-toggler-icon" ] []
+        ]
 
 
 sidebarFrame : Sidebar.DisplayType -> Sidebar.Config msg -> Html.Html msg -> Html.Html msg -> Html.Html msg
@@ -72,34 +91,9 @@ sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
             , color (hex "ffffff")
             ]
         ]
-        [ sidebarLogo sidebarConfig.newUrlMsg
-        , fromUnstyled sidebarContent
+        [ fromUnstyled sidebarContent
         ]
         |> toUnstyled
-
-
-
---
---subSidebarFrame : Sidebar.Config msg -> Sidebar.DisplayType -> Html.Html msg -> Html.Html msg
---subSidebarFrame config displayType content =
---    Sidebar.view config displayType content
-
-
-sidebarLogo : (String -> msg) -> Styled.Html msg
-sidebarLogo newUrlMsg =
-    div [ class "d-flex justify-content-center" ]
-        [ a
-            [ css
-                [ color (hex "ffffff")
-                , hover
-                    [ color (hex "ffffff") ]
-                ]
-            , Attributes.fromUnstyled (Route.href Route.Home)
-            , Attributes.fromUnstyled (onClickPage newUrlMsg Route.Home)
-            ]
-            [ h1 [] [ i [ class "fa fa-arrow-circle-o-right" ] [] ]
-            ]
-        ]
 
 
 viewFooter : Styled.Html msg

@@ -307,24 +307,6 @@ frame project { commit, tasks } toMsg content =
         ]
 
 
-
---viewNavbar : Model -> Html Msg
---viewNavbar model =
---    viewNavbarToggle model.sidebarDisplayType
---
---
---viewNavbarToggle : CommitNavigation.DisplayType -> Html Msg
---viewNavbarToggle displayType =
---    button
---        [ type_ "button"
---        , class "navbar-toggler"
---        , onClick ShowSidebar
---        ]
---        [ span [ class "navbar-toggler-icon" ] []
---        ]
---        |> Util.viewIf (displayType /= CommitNavigation.fixedVisible)
-
-
 viewCommitDetailsIcon : Commit -> String -> (Commit -> String) -> Html Msg
 viewCommitDetailsIcon commit iconClass fn =
     li []

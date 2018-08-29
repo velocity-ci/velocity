@@ -188,7 +188,7 @@ viewSidebar model isLoading page =
                 Nothing ->
                     text ""
 
-        sidebar =
+        content =
             div [] [ pageSidebar, userDropdown ]
 
         subSidebar =
@@ -201,14 +201,14 @@ viewSidebar model isLoading page =
                 _ ->
                     text ""
     in
-        Page.sidebarFrame model.sidebarDisplayType sidebarConfig sidebar subSidebar
+        Page.sidebarFrame model.sidebarDisplayType sidebarConfig content subSidebar
 
 
 viewPage : Sidebar.DisplayType -> Session Msg -> Bool -> Page -> Html Msg
 viewPage sidebarDisplayType session isLoading page =
     let
         frame =
-            Page.frame isLoading session.user sidebarDisplayType
+            Page.frame isLoading session.user sidebarConfig sidebarDisplayType
     in
         case page of
             NotFound ->
@@ -257,7 +257,8 @@ viewPage sidebarDisplayType session isLoading page =
 
 sidebarConfig : Sidebar.Config Msg
 sidebarConfig =
-    { hideCollapsableSidebarMsg = NoOp
+    { hideCollapsableSidebarMsg = HideSidebar
+    , showCollapsableSidebarMsg = ShowSidebar
     , animateMsg = AnimateSidebar
     , newUrlMsg = NewUrl
     }
@@ -278,8 +279,9 @@ subscriptions model =
         resizes =
             Window.resizes (.width >> WindowWidthChange)
 
-        --        sidebar =
-        --            Sidebar.subscriptions sidebarConfig (sidebarContext model)
+        sidebar =
+            Sidebar.subscriptions sidebarConfig model.sidebarDisplayType
+
         page =
             model.pageState
                 |> getPage
@@ -291,6 +293,7 @@ subscriptions model =
             , page
             , userDropdown
             , resizes
+            , sidebar
             ]
 
 
@@ -355,8 +358,8 @@ type Msg
     | UserDropdownToggleMsg Dropdown.State
     | WindowWidthChange Int
     | AnimateSidebar Animation.Msg
-      --    | ShowSidebar
-      --    | HideSidebar
+    | ShowSidebar
+    | HideSidebar
     | NoOp
 
 
@@ -626,14 +629,14 @@ updatePage page msg model =
                 { model | sidebarDisplayType = Sidebar.animate model.sidebarDisplayType animateMsg }
                     => Cmd.none
 
-            --
-            --            ( ShowSidebar, _ ) ->
-            --                { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
-            --                    => Cmd.none
-            --
-            --            ( HideSidebar, _ ) ->
-            --                { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
-            --                    => Cmd.none
+            ( ShowSidebar, _ ) ->
+                { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+                    => Cmd.none
+
+            ( HideSidebar, _ ) ->
+                { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
+                    => Cmd.none
+
             ( SocketMsg msg, _ ) ->
                 let
                     ( newSocket, socketCmd ) =

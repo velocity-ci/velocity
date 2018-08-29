@@ -9,11 +9,13 @@ module Component.Sidebar
         , initDisplayType
         , fixedVisibleExtraWide
         , sidebarWidth
+        , containerMarginLeft
         , sidebarLeft
         , normalSize
         , extraWideSize
         , collapsableVisible
         , collapsableHidden
+        , isCollapsable
         , DisplayType
         , Size
         )
@@ -50,6 +52,7 @@ import Animation
 type alias Config msg =
     { animateMsg : Animation.Msg -> msg
     , hideCollapsableSidebarMsg : msg
+    , showCollapsableSidebarMsg : msg
     , newUrlMsg : String -> msg
     }
 
@@ -148,11 +151,54 @@ animate displayType msg =
 -- VIEW --
 
 
+view : Config msg -> DisplayType -> Html.Html msg -> Html.Html msg
+view config displayType content =
+    content
+        |> sidebarContainer config displayType
+        |> toUnstyled
+
+
+viewLogo : (String -> msg) -> Styled.Html msg
+viewLogo newUrlMsg =
+    div [ class "d-flex justify-content-center" ]
+        [ a
+            [ css
+                [ color (hex "ffffff")
+                , hover
+                    [ color (hex "ffffff") ]
+                ]
+            , Attributes.fromUnstyled (Route.href Route.Home)
+            , Attributes.fromUnstyled (onClickPage newUrlMsg Route.Home)
+            ]
+            [ h1 [] [ i [ class "fa fa-arrow-circle-o-right" ] [] ]
+            ]
+        ]
+
+
+containerMarginLeft : DisplayType -> Float
+containerMarginLeft sidebarType =
+    case sidebarType of
+        Collapsable _ _ ->
+            0.0
+
+        Fixed (FixedVisible Normal) ->
+            75
+
+        Fixed (FixedVisible ExtraWide) ->
+            295
+
+        Fixed FixedHidden ->
+            0
+
+
 sidebarWidth : DisplayType -> Float
 sidebarWidth sidebarType =
     case sidebarType of
-        Collapsable _ _ ->
-            0
+        Collapsable _ Normal ->
+            75
+
+        Collapsable _ ExtraWide ->
+            295
 
         Fixed (FixedVisible Normal) ->
             75
@@ -167,18 +213,17 @@ sidebarWidth sidebarType =
 sidebarLeft : DisplayType -> Float
 sidebarLeft sidebarType =
     case sidebarType of
-        Collapsable (Hidden _) ExtraWide ->
+        Collapsable _ ExtraWide ->
             -295.0
 
-        Collapsable (Hidden _) Normal ->
+        Collapsable _ Normal ->
             -75.0
 
-        Collapsable (Visible _) ExtraWide ->
-            0.0
-
-        Collapsable (Visible _) Normal ->
-            0.0
-
+        --        Collapsable (Visible _) ExtraWide ->
+        --            0.0
+        --
+        --        Collapsable (Visible _) Normal ->
+        --            0.0
         Fixed (FixedVisible Normal) ->
             0.0
 
@@ -189,11 +234,14 @@ sidebarLeft sidebarType =
             -1000.0
 
 
-view : Config msg -> DisplayType -> Html.Html msg -> Html.Html msg
-view config displayType content =
-    content
-        |> sidebarContainer config displayType
-        |> toUnstyled
+isCollapsable : DisplayType -> Bool
+isCollapsable sidebarType =
+    case sidebarType of
+        Collapsable _ _ ->
+            True
+
+        _ ->
+            False
 
 
 fixedVisibleExtraWide : DisplayType
@@ -223,12 +271,12 @@ collapsableHidden =
 
 animationStartAttrs : List Animation.Property
 animationStartAttrs =
-    animateLeft -145.0
+    animateLeft -75.0
 
 
 animationFinishAttrs : List Animation.Property
 animationFinishAttrs =
-    animateLeft 75.0
+    animateLeft 0.0
 
 
 animateLeft : Float -> List Animation.Property
@@ -270,7 +318,6 @@ collapsableOverlay displayType =
             [ position fixed
             , top (px 0)
             , right (px 0)
-            , left (px 75)
             , bottom (px 0)
             , zIndex (int 1)
             , backgroundColor (hex "000000")
@@ -321,7 +368,6 @@ sidebarBaseStyle : Style
 sidebarBaseStyle =
     Css.batch
         [ top (px 0)
-        , left (px 75)
         , bottom (px 0)
         , zIndex (int 1)
         , backgroundColor (rgb 244 245 247)
