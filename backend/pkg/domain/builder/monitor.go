@@ -48,9 +48,9 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		sL.Output,
 	)
 
-	step, err := m.stepManager.GetByID(sL.StepID)
+	step, err := m.stepManager.GetByID(stream.Step.ID)
 	if err != nil {
-		velocity.GetLogger().Error("could not get step", zap.String("streamID", sL.StepID), zap.Error(err))
+		velocity.GetLogger().Error("could not get step", zap.String("streamID", stream.Step.ID), zap.Error(err))
 		return
 	}
 
@@ -77,9 +77,9 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		m.stepManager.Update(step)
 	}
 
-	b, err := m.buildManager.GetBuildByID(sL.BuildID)
+	b, err := m.buildManager.GetBuildByID(step.Build.ID)
 	if err != nil {
-		velocity.GetLogger().Error("could not get build", zap.String("buildID", sL.BuildID), zap.Error(err))
+		velocity.GetLogger().Error("could not get build", zap.String("buildID", step.Build.ID), zap.Error(err))
 		return
 	}
 	steps := m.stepManager.GetStepsForBuild(b)

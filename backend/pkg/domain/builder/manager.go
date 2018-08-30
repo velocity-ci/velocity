@@ -8,6 +8,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
@@ -54,6 +55,7 @@ func (m *Manager) AddBroker(b domain.Broker) {
 func (m *Manager) CreateBuilder(t Transport) *Builder {
 	b := &Builder{
 		ID:        uuid.NewV4().String(),
+		Password:  user.GenerateRandomString(64),
 		State:     stateReady,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),

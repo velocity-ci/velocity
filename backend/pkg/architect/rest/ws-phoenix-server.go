@@ -1,11 +1,11 @@
 package rest
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 
@@ -45,14 +45,14 @@ func (c *Client) WriteJSON(v interface{}) error {
 	return c.ws.WriteJSON(v)
 }
 
-func (c *Client) Subscribe(s string, ref uint64, payload *PhoenixGuardianJoinPayload) {
+func (c *Client) Subscribe(s string, ref uint64, payload *phoenix.PhoenixGuardianJoinPayload) {
 	_, err := jwt.ParseWithClaims(payload.Token, jwtStandardClaims, jwtKeyFunc)
 	if err != nil {
-		c.WriteJSON(PhoenixMessage{
-			Event: PhxReplyEvent,
+		c.WriteJSON(phoenix.PhoenixMessage{
+			Event: phoenix.PhxReplyEvent,
 			Topic: s,
 			Ref:   ref,
-			Payload: PhoenixReplyPayload{
+			Payload: phoenix.PhoenixReplyPayload{
 				Status: "error",
 				Response: map[string]string{
 					"message": "access denied",
@@ -64,11 +64,11 @@ func (c *Client) Subscribe(s string, ref uint64, payload *PhoenixGuardianJoinPay
 	}
 
 	c.subscriptions = append(c.subscriptions, s)
-	c.WriteJSON(PhoenixMessage{
-		Event: PhxReplyEvent,
+	c.WriteJSON(phoenix.PhoenixMessage{
+		Event: phoenix.PhxReplyEvent,
 		Topic: s,
 		Ref:   ref,
-		Payload: PhoenixReplyPayload{
+		Payload: phoenix.PhoenixReplyPayload{
 			Status:   "ok",
 			Response: map[string]string{},
 		},
@@ -86,11 +86,11 @@ func (c *Client) Unsubscribe(s string, ref uint64) {
 	if element < len(c.subscriptions) {
 		c.subscriptions = append(c.subscriptions[:element], c.subscriptions[element+1:]...)
 	}
-	c.WriteJSON(PhoenixMessage{
-		Event: PhxReplyEvent,
+	c.WriteJSON(phoenix.PhoenixMessage{
+		Event: phoenix.PhxReplyEvent,
 		Topic: s,
 		Ref:   ref,
-		Payload: PhoenixReplyPayload{
+		Payload: phoenix.PhoenixReplyPayload{
 			Status:   "ok",
 			Response: map[string]string{},
 		},
@@ -98,21 +98,21 @@ func (c *Client) Unsubscribe(s string, ref uint64) {
 }
 
 func (c *Client) HandleHeartbeat(ref uint64) {
-	c.WriteJSON(PhoenixMessage{
-		Event: PhxReplyEvent,
-		Topic: PhxSystemTopic,
+	c.WriteJSON(phoenix.PhoenixMessage{
+		Event: phoenix.PhxReplyEvent,
+		Topic: phoenix.PhxSystemTopic,
 		Ref:   ref,
-		Payload: PhoenixReplyPayload{
+		Payload: phoenix.PhoenixReplyPayload{
 			Status:   "ok",
 			Response: map[string]string{},
 		},
 	})
 }
 
-func (c *Client) HandleMessage(m *PhoenixMessage) {
-	if m.Topic == PhxSystemTopic {
+func (c *Client) HandleMessage(m *phoenix.PhoenixMessage) {
+	if m.Topic == phoenix.PhxSystemTopic {
 		switch m.Event {
-		case PhxHeartbeatEvent:
+		case phoenix.PhxHeartbeatEvent:
 			c.HandleHeartbeat(m.Ref)
 			break
 		}
@@ -120,90 +120,11 @@ func (c *Client) HandleMessage(m *PhoenixMessage) {
 	}
 
 	switch m.Event {
-	case PhxJoinEvent:
-		c.Subscribe(m.Topic, m.Ref, m.Payload.(*PhoenixGuardianJoinPayload))
+	case phoenix.PhxJoinEvent:
+		c.Subscribe(m.Topic, m.Ref, m.Payload.(*phoenix.PhoenixGuardianJoinPayload))
 		break
-	case PhxLeaveEvent:
+	case phoenix.PhxLeaveEvent:
 		c.Unsubscribe(m.Topic, m.Ref)
 		break
 	}
-}
-
-// Channel Event constants
-const (
-	PhxCloseEvent     = "phx_close"
-	PhxErrorEvent     = "phx_error"
-	PhxJoinEvent      = "phx_join"
-	PhxReplyEvent     = "phx_reply"
-	PhxLeaveEvent     = "phx_leave"
-	PhxHeartbeatEvent = "heartbeat"
-	PhxSystemTopic    = "phoenix"
-)
-
-type PhoenixMessage struct {
-	Event   string      `json:"event"`
-	Topic   string      `json:"topic"`
-	Payload interface{} `json:"payload"`
-	Ref     uint64      `json:"ref"`
-}
-
-type PhoenixReplyPayload struct {
-	Status   string      `json:"status"`
-	Response interface{} `json:"response"`
-}
-
-type PhoenixGuardianJoinPayload struct {
-	Token string `json:"token"`
-}
-
-func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
-	var objMap map[string]*json.RawMessage
-	// We'll store the error (if any) so we can return it if necessary
-	err := json.Unmarshal(b, &objMap)
-	if err != nil {
-		return err
-	}
-
-	// Deserialize Event
-	err = json.Unmarshal(*objMap["event"], &m.Event)
-	if err != nil {
-		return err
-	}
-	// Deserialize Topic
-	err = json.Unmarshal(*objMap["topic"], &m.Topic)
-	if err != nil {
-		return err
-	}
-	// Deserialize Ref
-	err = json.Unmarshal(*objMap["ref"], &m.Ref)
-	if err != nil {
-		return err
-	}
-
-	// Deserialize Payload by Event
-	var rawData json.RawMessage
-	err = json.Unmarshal(*objMap["payload"], &rawData)
-	if err != nil {
-		return err
-	}
-
-	switch m.Event {
-	case PhxJoinEvent:
-		p := PhoenixGuardianJoinPayload{}
-		err := json.Unmarshal(rawData, &p)
-		if err != nil {
-			return err
-		}
-		m.Payload = &p
-		break
-	case PhxHeartbeatEvent:
-	case PhxLeaveEvent:
-	case PhxCloseEvent:
-		velocity.GetLogger().Debug("websocket heartbeat")
-		break
-	default:
-		velocity.GetLogger().Warn("no payload found for event", zap.String("event", m.Event))
-	}
-
-	return nil
 }

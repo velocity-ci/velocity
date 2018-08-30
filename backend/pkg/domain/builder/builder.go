@@ -16,6 +16,7 @@ const (
 
 type Builder struct {
 	ID        string
+	Password  string
 	State     string
 	CreatedAt time.Time
 	UpdatedAt time.Time

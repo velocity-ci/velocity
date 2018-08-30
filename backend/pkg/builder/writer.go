@@ -2,30 +2,16 @@ package builder
 
 import (
 	"strings"
-	"sync"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 	"go.uber.org/zap"
 
-	"github.com/gorilla/websocket"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
-type safeWebsocket struct {
-	ws   *websocket.Conn
-	lock sync.RWMutex
-}
-
-func (sws *safeWebsocket) WriteJSON(m interface{}) error {
-	sws.lock.Lock()
-	defer sws.lock.Unlock()
-
-	return sws.ws.WriteJSON(m)
-}
-
 type StreamWriter struct {
-	ws         *safeWebsocket
+	ws         *PhoenixWSClient
 	StepNumber int
 
 	BuildID  string
@@ -37,7 +23,7 @@ type StreamWriter struct {
 }
 
 type Emitter struct {
-	ws      *safeWebsocket
+	ws      *PhoenixWSClient
 	BuildID string
 	StepID  string
 	Streams []*build.Stream
@@ -80,9 +66,9 @@ func (e *Emitter) SetStepNumber(n int) {
 	e.StepNumber = n
 }
 
-func NewEmitter(ws *websocket.Conn, b *build.Build) *Emitter {
+func NewEmitter(ws *PhoenixWSClient, b *build.Build) *Emitter {
 	return &Emitter{
-		ws:      &safeWebsocket{ws: ws},
+		ws:      ws,
 		BuildID: b.ID,
 	}
 }
