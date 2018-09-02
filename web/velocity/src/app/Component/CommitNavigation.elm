@@ -61,7 +61,7 @@ type alias NavTaskProperties =
 
 view : Config msg -> Context -> Html.Html msg
 view config context =
-    div []
+    div [ class "bg-light" ]
         [ details context.commit
         , taskNav config context
         ]

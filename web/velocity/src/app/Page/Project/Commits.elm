@@ -60,8 +60,8 @@ loadCommits context projectSlug maybeAuthToken maybeBranch page =
         |> Request.Commit.list context projectSlug (Maybe.map .name maybeBranch) perPage page
 
 
-init : Context -> Session msg -> List Branch -> Project.Slug -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
-init context session branches projectSlug maybeBranchName maybePage =
+init : Context -> Session msg -> List Branch -> Project -> Maybe Branch.Name -> Maybe Int -> Task PageLoadError Model
+init context session branches project maybeBranchName maybePage =
     let
         defaultPage =
             Maybe.withDefault 1 maybePage
@@ -87,15 +87,15 @@ init context session branches projectSlug maybeBranchName maybePage =
         handleLoadError _ =
             pageLoadError Page.Project "Project unavailable."
     in
-        Task.map initialModel (loadCommits context projectSlug maybeAuthToken maybeBranch defaultPage)
+        Task.map initialModel (loadCommits context project.slug maybeAuthToken maybeBranch defaultPage)
             |> Task.andThen
                 (\initialModel ->
-                    case maybeAuthToken of
-                        Just authToken ->
-                            Request.Project.sync context projectSlug authToken
+                    case ( maybeAuthToken, project.synchronising ) of
+                        ( Just authToken, False ) ->
+                            Request.Project.sync context project.slug authToken
                                 |> Task.andThen (\_ -> Task.succeed initialModel)
 
-                        Nothing ->
+                        _ ->
                             Task.succeed initialModel
                 )
             |> Task.mapError handleLoadError

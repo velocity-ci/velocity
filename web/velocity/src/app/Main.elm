@@ -88,7 +88,7 @@ init flags location =
                 , context = context
                 , session = session
                 , userDropdown = UserMenuDropdown.init
-                , sidebarDisplayType = Sidebar.collapsableHidden
+                , sidebarDisplayType = Sidebar.initDisplayType 0 Sidebar.normalSize
                 , pageWidth = 0
                 }
     in
@@ -189,7 +189,7 @@ viewSidebar model isLoading page =
                     text ""
 
         content =
-            div [] [ pageSidebar, userDropdown ]
+            Page.sidebar [ pageSidebar, userDropdown ]
 
         subSidebar =
             case page of
@@ -406,24 +406,23 @@ handledChannelErrorToMsg err =
             NoOp
 
 
-setSidebar : Maybe Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
-setSidebar maybeRoute pageWidth displayType =
-    case maybeRoute of
-        Just (Route.Project _ projectRoute) ->
-            Project.setSidebar (Just projectRoute) pageWidth displayType
 
-        _ ->
-            Sidebar.collapsableHidden
-
-
-sidebarSize : Model -> Sidebar.Size
-sidebarSize model =
-    case getPage model.pageState of
-        Project subModel ->
-            Project.sidebarSize subModel
-
-        _ ->
-            Sidebar.normalSize
+--setSidebar : Maybe Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
+--setSidebar maybeRoute pageWidth displayType =
+--    case maybeRoute of
+--        Just (Route.Project _ projectRoute) ->
+--            Project.setSidebar (Just projectRoute) pageWidth displayType
+--
+--        _ ->
+--            Sidebar.initDisplayType pageWidth Sidebar.normalSize
+--sidebarSize : Model -> Sidebar.Size
+--sidebarSize model =
+--    case getPage model.pageState of
+--        Project subModel ->
+--            Project.sidebarSize subModel
+--
+--        _ ->
+--            Sidebar.normalSize
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -522,10 +521,18 @@ setRoute maybeRoute model =
 
                     transitionSubPage subModel =
                         let
-                            ( newModel, newMsg ) =
+                            ( ( newModel, newMsg ), externalMsg ) =
                                 Project.update model.context model.session (Project.SetRoute (Just subRoute)) subModel
+
+                            externalUpdatedModel =
+                                case externalMsg of
+                                    Project.SetSidebarSize size ->
+                                        { model | sidebarDisplayType = Sidebar.initDisplayType model.pageWidth size }
+
+                                    Project.NoOp_ ->
+                                        model
                         in
-                            { model
+                            { externalUpdatedModel
                                 | pageState = Loaded (Project newModel)
                                 , session = { session | socket = listeningSocket }
                             }
@@ -570,7 +577,18 @@ pageErrored model activePage errorMessage =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    updatePage (getPage model.pageState) msg model
+    let
+        ( updatedPageModel, pageCmd ) =
+            updatePage (getPage model.pageState) msg model
+
+        --
+        --        updatedSidebar =
+        --            updateSidebar (getPage updatedPageModel.pageState) model.pageWidth model.sidebarDisplayType
+    in
+        updatedPageModel
+            --        { updatedPageModel | sidebarDisplayType = updatedSidebar }
+            =>
+                pageCmd
 
 
 setRouteUpdate : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -581,13 +599,26 @@ setRouteUpdate maybeRoute model =
 
         ( routeModel, routeCmd ) =
             setRoute maybeRoute { model | session = channelLeaveSession }
-
-        sidebarDisplayType =
-            setSidebar maybeRoute model.pageWidth model.sidebarDisplayType
     in
-        --        { routeModel | sidebarDisplayType = sidebarDisplayType }
         routeModel
             ! [ routeCmd, channelLeaveCmd ]
+
+
+sidebarSize : Page -> Sidebar.Size
+sidebarSize page =
+    case page of
+        Project subModel ->
+            Project.sidebarSize subModel
+
+        _ ->
+            Sidebar.normalSize
+
+
+updateSidebar : Page -> Int -> Sidebar.DisplayType
+updateSidebar page windowWidth =
+    page
+        |> sidebarSize
+        |> Sidebar.initDisplayType windowWidth
 
 
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
@@ -596,14 +627,19 @@ updatePage page msg model =
         session =
             model.session
 
-        toPage toModel toMsg subUpdate subMsg subModel =
-            let
-                ( newModel, newCmd ) =
-                    subUpdate subMsg subModel
-            in
-                { model | pageState = Loaded (toModel newModel) }
-                    ! [ Cmd.map toMsg newCmd ]
-
+        --        toPage toModel toMsg subUpdate subMsg subModel =
+        --            let
+        --                ( newModel, newCmd ) =
+        --                    subUpdate subMsg subModel
+        --
+        --                page =
+        --                    toModel newModel
+        --            in
+        --                { model
+        --                    | pageState = Loaded page
+        --                    , sidebarDisplayType = updateSidebar page model.pageWidth
+        --                }
+        --                    ! [ Cmd.map toMsg newCmd ]
         errored =
             pageErrored model
 
@@ -620,7 +656,7 @@ updatePage page msg model =
 
             ( WindowWidthChange width, _ ) ->
                 { model
-                    | sidebarDisplayType = Sidebar.initDisplayType width (sidebarSize model)
+                    | sidebarDisplayType = updateSidebar page model.pageWidth
                     , pageWidth = width
                 }
                     => Cmd.none
@@ -630,7 +666,7 @@ updatePage page msg model =
                     => Cmd.none
 
             ( ShowSidebar, _ ) ->
-                { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+                { model | sidebarDisplayType = Debug.log "WHAT" (Sidebar.show model.sidebarDisplayType) }
                     => Cmd.none
 
             ( HideSidebar, _ ) ->
@@ -681,7 +717,11 @@ updatePage page msg model =
                         => cmd
 
             ( LoadFailed error, _ ) ->
-                { model | pageState = Loaded (Errored error) } => Cmd.none
+                { model
+                    | pageState = Loaded (Errored error)
+                    , sidebarDisplayType = updateSidebar (Errored error) model.pageWidth
+                }
+                    => Cmd.none
 
             ( LoginMsg subMsg, Login subModel ) ->
                 let
@@ -709,7 +749,11 @@ updatePage page msg model =
                         => Cmd.map LoginMsg cmd
 
             ( HomeLoaded subModel, _ ) ->
-                { model | pageState = Loaded (Home subModel) } => Cmd.none
+                { model
+                    | pageState = Loaded (Home subModel)
+                    , sidebarDisplayType = updateSidebar (Home subModel) model.pageWidth
+                }
+                    => Cmd.none
 
             ( HomeMsg subMsg, Home subModel ) ->
                 let
@@ -730,7 +774,10 @@ updatePage page msg model =
                     modelAfterExternalMsg ! [ Cmd.map HomeMsg newSubCmd, cmdAfterExternalMsg ]
 
             ( UsersLoaded subModel, _ ) ->
-                { model | pageState = Loaded (Users subModel) }
+                { model
+                    | pageState = Loaded (Users subModel)
+                    , sidebarDisplayType = updateSidebar (Users subModel) model.pageWidth
+                }
                     => Cmd.none
 
             ( UsersMsg subMsg, Users subModel ) ->
@@ -755,7 +802,11 @@ updatePage page msg model =
                           ]
 
             ( KnownHostsLoaded subModel, _ ) ->
-                { model | pageState = Loaded (KnownHosts subModel) } => Cmd.none
+                { model
+                    | pageState = Loaded (KnownHosts subModel)
+                    , sidebarDisplayType = updateSidebar (KnownHosts subModel) model.pageWidth
+                }
+                    => Cmd.none
 
             ( KnownHostsMsg subMsg, KnownHosts subModel ) ->
                 let
@@ -780,9 +831,11 @@ updatePage page msg model =
                     pageState =
                         Loaded (Project subModel)
                 in
-                    { model | pageState = pageState }
-                        ! [ Cmd.map ProjectMsg subMsg
-                          ]
+                    { model
+                        | pageState = pageState
+                        , sidebarDisplayType = updateSidebar (Project subModel) model.pageWidth
+                    }
+                        ! [ Cmd.map ProjectMsg subMsg ]
 
             ( ProjectMsg subMsg, Project subModel ) ->
                 let
@@ -792,7 +845,7 @@ updatePage page msg model =
                     socket =
                         session.socket
 
-                    ( newSubModel, newCmd ) =
+                    ( ( newSubModel, newCmd ), _ ) =
                         Project.update model.context session subMsg subModel
 
                     ( listeningSocket, socketCmd ) =

@@ -10,13 +10,14 @@ module Component.Sidebar
         , fixedVisibleExtraWide
         , sidebarWidth
         , containerMarginLeft
+        , sidebarAnimationAttrs
         , sidebarLeft
         , normalSize
         , extraWideSize
         , collapsableVisible
-        , collapsableHidden
         , isCollapsable
         , DisplayType
+        , collapsableOverlay
         , Size
         )
 
@@ -100,7 +101,7 @@ subscriptions { animateMsg } displayType =
 
 show : DisplayType -> DisplayType
 show displayType =
-    case displayType of
+    case Debug.log "DISPLAY TYPE" displayType of
         Collapsable (Hidden animationState) size ->
             let
                 animation =
@@ -118,7 +119,7 @@ hide displayType =
         Collapsable (Visible animationState) size ->
             let
                 animation =
-                    Animation.interrupt [ Animation.to animationStartAttrs ] animationState
+                    Animation.interrupt [ Animation.to (animationStartAttrs size) ] animationState
             in
                 Collapsable (Hidden animation) size
 
@@ -154,7 +155,7 @@ animate displayType msg =
 view : Config msg -> DisplayType -> Html.Html msg -> Html.Html msg
 view config displayType content =
     content
-        |> sidebarContainer config displayType
+        |> sidebar config displayType
         |> toUnstyled
 
 
@@ -264,14 +265,20 @@ collapsableVisible =
     Collapsable (Visible <| Animation.style animationFinishAttrs) ExtraWide
 
 
-collapsableHidden : DisplayType
-collapsableHidden =
-    Collapsable (Hidden <| Animation.style animationStartAttrs) ExtraWide
+
+--collapsableHidden : DisplayType
+--collapsableHidden =
+--    Collapsable (Hidden <| Animation.style animationStartAttrs) ExtraWide
 
 
-animationStartAttrs : List Animation.Property
-animationStartAttrs =
-    animateLeft -75.0
+animationStartAttrs : Size -> List Animation.Property
+animationStartAttrs size =
+    case size of
+        Normal ->
+            animateLeft -75.0
+
+        ExtraWide ->
+            animateLeft -295.0
 
 
 animationFinishAttrs : List Animation.Property
@@ -284,16 +291,17 @@ animateLeft left =
     [ Animation.left (Animation.px left) ]
 
 
-sidebarContainer : Config msg -> DisplayType -> Html.Html msg -> Styled.Html msg
-sidebarContainer config displayType content =
-    div []
-        [ div
-            [ css (collapsableOverlay displayType)
-            , onClick config.hideCollapsableSidebarMsg
-            ]
-            []
-        , sidebar config displayType content
-        ]
+
+--sidebarContainer : Config msg -> DisplayType -> Html.Html msg -> Styled.Html msg
+--sidebarContainer config displayType content =
+--    div []
+--        [ div
+--            [ css (collapsableOverlay displayType)
+--            , onClick config.hideCollapsableSidebarMsg
+--            ]
+--            []
+--        , sidebar config displayType content
+--        ]
 
 
 sidebar : Config msg -> DisplayType -> Html.Html msg -> Styled.Html msg
@@ -322,6 +330,7 @@ collapsableOverlay displayType =
             , zIndex (int 1)
             , backgroundColor (hex "000000")
             , opacity (num 0.5)
+            , width (pct 100)
             ]
 
         _ ->
@@ -381,4 +390,4 @@ initDisplayType windowWidth size =
     if windowWidth >= 992 then
         Fixed (FixedVisible size)
     else
-        Collapsable (Hidden <| Animation.style animationStartAttrs) size
+        Collapsable (Hidden <| Animation.style (animationStartAttrs size)) size

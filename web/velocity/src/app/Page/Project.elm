@@ -107,15 +107,7 @@ init context session slug maybeRoute =
                     pageLoadError Page.Project "Project unavailable."
     in
         Task.map2 initialModel loadProject loadBranches
-            |> Task.map
-                (\successModel ->
-                    case maybeRoute of
-                        Just route ->
-                            update context session (SetRoute maybeRoute) successModel
-
-                        Nothing ->
-                            ( successModel, Cmd.none )
-                )
+            |> Task.map (setRoute context session maybeRoute)
             |> Task.mapError (Request.Errors.mapUnhandledError handleLoadError)
 
 
@@ -470,6 +462,11 @@ type Msg
     | NoOp
 
 
+type ExternalMsg
+    = NoOp_
+    | SetSidebarSize Sidebar.Size
+
+
 getSubPage : SubPageState -> SubPage
 getSubPage subPageState =
     case subPageState of
@@ -480,14 +477,15 @@ getSubPage subPageState =
             subPage
 
 
-setSidebar : Maybe ProjectRoute.Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
-setSidebar maybeRoute pageWidth displayType =
-    case maybeRoute of
-        Just (ProjectRoute.Commit _ commitRoute) ->
-            Commit.setSidebar (Just commitRoute) displayType
 
-        _ ->
-            Sidebar.collapsableHidden
+--setSidebar : Maybe ProjectRoute.Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
+--setSidebar maybeRoute pageWidth displayType =
+--    case maybeRoute of
+--        Just (ProjectRoute.Commit _ commitRoute) ->
+--            Sidebar.initDisplayType pageWidth Sidebar.extraWideSize
+--
+--        _ ->
+--            Sidebar.initDisplayType pageWidth Sidebar.normalSize
 
 
 sidebarSize : Model -> Sidebar.Size
@@ -512,15 +510,17 @@ setRoute context session maybeRoute model =
     in
         case maybeRoute of
             Nothing ->
-                { model | subPageState = Loaded Blank } => Cmd.none
+                { model | subPageState = Loaded Blank }
+                    => Cmd.none
 
             Just (ProjectRoute.Overview) ->
-                model => Route.modifyUrl (Route.Project model.project.slug <| ProjectRoute.Commits Nothing Nothing)
+                model
+                    => Route.modifyUrl (Route.Project model.project.slug <| ProjectRoute.Commits Nothing Nothing)
 
             Just (ProjectRoute.Commits maybeBranch maybePage) ->
                 case session.user of
                     Just user ->
-                        Commits.init context session model.branches model.project.slug maybeBranch maybePage
+                        Commits.init context session model.branches model.project maybeBranch maybePage
                             |> transition CommitsLoaded
 
                     Nothing ->
@@ -575,7 +575,8 @@ setRoute context session maybeRoute model =
             Just (ProjectRoute.Settings) ->
                 case session.user of
                     Just user ->
-                        { model | subPageState = Loaded (Settings (Settings.initialModel)) } => Cmd.none
+                        { model | subPageState = Loaded (Settings (Settings.initialModel)) }
+                            => Cmd.none
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -590,12 +591,13 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-update : Context -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update context session msg model =
     case updateProjectNavigation model.sidebar msg of
         Just sidebar ->
             { model | sidebar = sidebar }
                 => Cmd.none
+                => NoOp_
 
         Nothing ->
             updateSubPage context session (getSubPage model.subPageState) msg model
@@ -620,7 +622,7 @@ updateProjectNavigation sidebar msg =
             Nothing
 
 
-updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( Model, Cmd Msg )
+updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 updateSubPage context session subPage msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -638,36 +640,46 @@ updateSubPage context session subPage msg model =
     in
         case ( msg, subPage ) of
             ( NoOp, _ ) ->
-                model => Cmd.none
+                model
+                    => Cmd.none
+                    => NoOp_
 
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
+                    => NoOp_
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model
+                    => NoOp_
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update context model.project session) subMsg subModel
+                    => NoOp_
 
             ( CommitsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Commits subModel) }
                     => Cmd.none
+                    => NoOp_
 
             ( CommitsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
+                    => NoOp_
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update context model.project session) subMsg subModel
+                    => NoOp_
 
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
+                    => SetSidebarSize Sidebar.extraWideSize
 
             ( CommitLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored (Debug.log "ERROR " error)) }
                     => Cmd.none
+                    => NoOp_
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
@@ -676,17 +688,21 @@ updateSubPage context session subPage msg model =
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
+                        => NoOp_
 
             ( BuildsMsg subMsg, Builds subModel ) ->
                 toPage Builds BuildsMsg (Builds.update context model.project session) subMsg subModel
+                    => NoOp_
 
             ( BuildsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Builds subModel) }
                     => Cmd.none
+                    => NoOp_
 
             ( BuildsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
+                    => NoOp_
 
             ( UpdateProject updateJson, _ ) ->
                 let
@@ -698,6 +714,7 @@ updateSubPage context session subPage msg model =
                 in
                     { model | project = newProject }
                         => Cmd.none
+                        => NoOp_
 
             ( AddBranch branchJson, _ ) ->
                 let
@@ -709,6 +726,7 @@ updateSubPage context session subPage msg model =
                 in
                     { model | branches = branches }
                         => Cmd.none
+                        => NoOp_
 
             ( RefreshBranches _, _ ) ->
                 let
@@ -716,15 +734,19 @@ updateSubPage context session subPage msg model =
                         Request.Project.branches context model.project.slug (Maybe.map .token session.user)
                             |> Task.attempt RefreshBranchesComplete
                 in
-                    model => cmd
+                    model
+                        => cmd
+                        => NoOp_
 
             ( RefreshBranchesComplete (Ok paginatedBranches), _ ) ->
                 { model | branches = PaginatedList.results paginatedBranches }
                     => Cmd.none
+                    => NoOp_
 
             ( ProjectDeleted _, _ ) ->
                 model
                     => Route.modifyUrl Route.Projects
+                    => NoOp_
 
             ( AddBuildEvent buildJson, page ) ->
                 let
@@ -755,9 +777,11 @@ updateSubPage context session subPage msg model =
                     case maybeBuild of
                         Just build ->
                             Toasty.addToast ToastTheme.config ToastyMsg (Event.Created build) modelCmd
+                                => NoOp_
 
                         Nothing ->
                             modelCmd
+                                => NoOp_
 
             ( UpdateBuildEvent buildJson, page ) ->
                 let
@@ -796,23 +820,30 @@ updateSubPage context session subPage msg model =
                     case Maybe.map .status maybeBuild of
                         Just (Build.Success) ->
                             modelCmdWithToast
+                                => NoOp_
 
                         Just (Build.Failed) ->
                             modelCmdWithToast
+                                => NoOp_
 
                         _ ->
                             modelCmd
+                                => NoOp_
 
             ( DeleteBuildEvent buildJson, _ ) ->
-                model => Cmd.none
+                model
+                    => Cmd.none
+                    => NoOp_
 
             ( ToastyMsg subMsg, _ ) ->
                 Toasty.update ToastTheme.config ToastyMsg subMsg model
+                    => NoOp_
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through (project page)" model)
                     => Cmd.none
+                    => NoOp_
 
 
 sendSubPageMsg :
