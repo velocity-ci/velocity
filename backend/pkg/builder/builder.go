@@ -50,11 +50,10 @@ func (b *Builder) Start() {
 			b.registerWithArchitect()
 		}
 
+		velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress))
 		b.connect()
 
 		// ws := connectToArchitect(address, secret)
-
-		velocity.GetLogger().Info("connected to architect", zap.String("address", b.baseArchitectAddress))
 
 		// monitorCommands(ws)
 	}
@@ -94,12 +93,18 @@ func (b *Builder) registerWithArchitect() error {
 func (b *Builder) connect() {
 	wsAddress := strings.Replace(b.baseArchitectAddress, "http", "ws", 1)
 	wsAddress = fmt.Sprintf("%s/builders/ws", wsAddress)
+	topic := fmt.Sprintf("builder:%s", b.id)
 
 	b.ws = NewPhoenixWSClient(wsAddress)
-	b.ws.Subscribe(
-		fmt.Sprintf("builder:%s", b.id),
+	err := b.ws.Subscribe(
+		topic,
 		b.token,
 	)
+	if err != nil {
+		b.run = false
+		return
+	}
+	velocity.GetLogger().Info("connected to architect", zap.String("address", b.baseArchitectAddress))
 }
 
 func New() architect.App {

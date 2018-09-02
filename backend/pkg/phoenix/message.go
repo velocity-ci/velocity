@@ -18,6 +18,12 @@ const (
 	PhxSystemTopic    = "phoenix"
 )
 
+// Response Payload Status constants
+const (
+	ResponseOK    = "ok"
+	ResponseError = "error" // Maybe we should use phx_reply/phx_error events instead of embedding status in payload.
+)
+
 type PhoenixMessage struct {
 	Event   string      `json:"event"`
 	Topic   string      `json:"topic"`

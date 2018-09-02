@@ -10,6 +10,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
+// TODO: Debouncing
 type StreamWriter struct {
 	ws         *PhoenixWSClient
 	StepNumber int

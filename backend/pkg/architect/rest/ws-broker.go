@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 
@@ -54,7 +55,7 @@ func (m *broker) remove(c *Client) {
 func (m *broker) monitor(c *Client) {
 	c.alive = true
 	for {
-		message := &PhoenixMessage{}
+		message := &phoenix.PhoenixMessage{}
 		err := c.ws.ReadJSON(message)
 		if err != nil {
 			c.alive = false
@@ -88,7 +89,7 @@ func (m *broker) EmitAll(message *domain.Emit) {
 	}
 }
 
-func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
+func (m *broker) handleEmit(em *domain.Emit) *phoenix.PhoenixMessage {
 	var payload interface{}
 	var topic string
 
@@ -145,7 +146,7 @@ func (m *broker) handleEmit(em *domain.Emit) *PhoenixMessage {
 		velocity.GetLogger().Error("could not resolve websocket event for client", zap.Any("event", em.Event))
 	}
 
-	return &PhoenixMessage{
+	return &phoenix.PhoenixMessage{
 		Topic:   topic,
 		Event:   wsEvent,
 		Payload: payload,

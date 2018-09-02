@@ -91,7 +91,7 @@ func (c *Client) Unsubscribe(s string, ref uint64) {
 		Topic: s,
 		Ref:   ref,
 		Payload: phoenix.PhoenixReplyPayload{
-			Status:   "ok",
+			Status:   phoenix.ResponseOK,
 			Response: map[string]string{},
 		},
 	})
@@ -103,7 +103,7 @@ func (c *Client) HandleHeartbeat(ref uint64) {
 		Topic: phoenix.PhxSystemTopic,
 		Ref:   ref,
 		Payload: phoenix.PhoenixReplyPayload{
-			Status:   "ok",
+			Status:   phoenix.ResponseOK,
 			Response: map[string]string{},
 		},
 	})
