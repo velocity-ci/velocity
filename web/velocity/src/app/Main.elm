@@ -521,18 +521,10 @@ setRoute maybeRoute model =
 
                     transitionSubPage subModel =
                         let
-                            ( ( newModel, newMsg ), externalMsg ) =
+                            ( ( newModel, newMsg ), _ ) =
                                 Project.update model.context model.session (Project.SetRoute (Just subRoute)) subModel
-
-                            externalUpdatedModel =
-                                case externalMsg of
-                                    Project.SetSidebarSize size ->
-                                        { model | sidebarDisplayType = Sidebar.initDisplayType model.pageWidth size }
-
-                                    Project.NoOp_ ->
-                                        model
                         in
-                            { externalUpdatedModel
+                            { model
                                 | pageState = Loaded (Project newModel)
                                 , session = { session | socket = listeningSocket }
                             }
@@ -845,14 +837,22 @@ updatePage page msg model =
                     socket =
                         session.socket
 
-                    ( ( newSubModel, newCmd ), _ ) =
+                    ( ( newSubModel, newCmd ), externalMsg ) =
                         Project.update model.context session subMsg subModel
+
+                    externalUpdatedModel =
+                        case externalMsg of
+                            Project.SetSidebarSize size ->
+                                { model | sidebarDisplayType = Sidebar.initDisplayType model.pageWidth size }
+
+                            Project.NoOp_ ->
+                                model
 
                     ( listeningSocket, socketCmd ) =
                         Project.loadedEvents subMsg subModel
                             |> joinChannels ProjectMsg
                 in
-                    { model
+                    { externalUpdatedModel
                         | pageState = Loaded (Project newSubModel)
                         , session = { session | socket = listeningSocket }
                     }

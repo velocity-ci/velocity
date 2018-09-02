@@ -655,21 +655,21 @@ updateSubPage context session subPage msg model =
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update context model.project session) subMsg subModel
-                    => NoOp_
+                    => SetSidebarSize Sidebar.normalSize
 
             ( CommitsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Commits subModel) }
                     => Cmd.none
-                    => NoOp_
+                    => SetSidebarSize Sidebar.normalSize
 
             ( CommitsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => NoOp_
+                    => SetSidebarSize Sidebar.normalSize
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update context model.project session) subMsg subModel
-                    => NoOp_
+                    => SetSidebarSize Sidebar.normalSize
 
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
@@ -679,7 +679,7 @@ updateSubPage context session subPage msg model =
             ( CommitLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored (Debug.log "ERROR " error)) }
                     => Cmd.none
-                    => NoOp_
+                    => SetSidebarSize Sidebar.extraWideSize
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
@@ -688,21 +688,21 @@ updateSubPage context session subPage msg model =
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
-                        => NoOp_
+                        => SetSidebarSize Sidebar.extraWideSize
 
             ( BuildsMsg subMsg, Builds subModel ) ->
                 toPage Builds BuildsMsg (Builds.update context model.project session) subMsg subModel
-                    => NoOp_
+                    => SetSidebarSize Sidebar.normalSize
 
             ( BuildsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Builds subModel) }
                     => Cmd.none
-                    => NoOp_
+                    => SetSidebarSize Sidebar.normalSize
 
             ( BuildsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => NoOp_
+                    => SetSidebarSize Sidebar.normalSize
 
             ( UpdateProject updateJson, _ ) ->
                 let
