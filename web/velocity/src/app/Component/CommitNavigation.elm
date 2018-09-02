@@ -72,7 +72,7 @@ details : Commit -> Styled.Html msg
 details commit =
     div [ class "p-1" ]
         [ div [ class "card" ]
-            [ div [ class "card-body" ]
+            [ div [ class "card-body text-dark" ]
                 [ fromUnstyled (infoPanel commit)
                 , hr [] []
                 , fromUnstyled (branchList commit)

@@ -79,7 +79,7 @@ viewNavbarToggle showCollapsableSidebarMsg =
 sidebar : List (Html.Html msg) -> Html.Html msg
 sidebar items =
     div
-        [ css [ width (px 75) ] ]
+        []
         (List.map fromUnstyled items)
         |> toUnstyled
 
@@ -96,14 +96,13 @@ sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
         , nav
             (List.concat
                 [ Sidebar.sidebarAnimationAttrs displayType
-                , [ class "d-flex justify-content-center"
+                , [ class "d-flex"
                   , css
                         [ width (px <| Sidebar.sidebarWidth displayType)
                         , position fixed
                         , top (px 0)
                         , bottom (px 0)
                         , zIndex (int 2)
-                        , paddingTop (Css.rem 1)
                         , backgroundColor (rgb 7 71 166)
                         , color (hex "ffffff")
                         ]

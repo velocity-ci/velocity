@@ -186,7 +186,7 @@ containerMarginLeft sidebarType =
             75
 
         Fixed (FixedVisible ExtraWide) ->
-            295
+            308
 
         Fixed FixedHidden ->
             0
@@ -199,13 +199,13 @@ sidebarWidth sidebarType =
             75
 
         Collapsable _ ExtraWide ->
-            295
+            308
 
         Fixed (FixedVisible Normal) ->
             75
 
         Fixed (FixedVisible ExtraWide) ->
-            295
+            308
 
         Fixed FixedHidden ->
             0
@@ -215,7 +215,7 @@ sidebarLeft : DisplayType -> Float
 sidebarLeft sidebarType =
     case sidebarType of
         Collapsable _ ExtraWide ->
-            -295.0
+            -308
 
         Collapsable _ Normal ->
             -75.0
@@ -278,7 +278,7 @@ animationStartAttrs size =
             animateLeft -75.0
 
         ExtraWide ->
-            animateLeft -295.0
+            animateLeft -308.0
 
 
 animationFinishAttrs : List Animation.Property
@@ -361,7 +361,7 @@ sidebarStyle : DisplayType -> Style
 sidebarStyle displayType =
     case displayType of
         Fixed (FixedVisible ExtraWide) ->
-            width (px 220)
+            width (px 308)
 
         Fixed (FixedVisible Normal) ->
             width (px 75)
@@ -370,7 +370,7 @@ sidebarStyle displayType =
             display none
 
         Collapsable _ _ ->
-            width (px 220)
+            width (px 308)
 
 
 sidebarBaseStyle : Style
