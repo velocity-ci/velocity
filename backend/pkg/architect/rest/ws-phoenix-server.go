@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
@@ -33,7 +34,7 @@ type Client struct {
 
 func jwtKeyFunc(t *jwt.Token) (interface{}, error) {
 	// Check the signing method (from echo.labstack.jwt middleware)
-	if t.Method.Alg() != jwtSigningMethod.Name {
+	if t.Method.Alg() != auth.JWTSigningMethod.Name {
 		return nil, fmt.Errorf("Unexpected jwt signing method=%v", t.Header["alg"])
 	}
 	return []byte(os.Getenv("JWT_SECRET")), nil
@@ -46,7 +47,7 @@ func (c *Client) WriteJSON(v interface{}) error {
 }
 
 func (c *Client) Subscribe(s string, ref uint64, payload *phoenix.PhoenixGuardianJoinPayload) {
-	_, err := jwt.ParseWithClaims(payload.Token, jwtStandardClaims, jwtKeyFunc)
+	_, err := jwt.ParseWithClaims(payload.Token, auth.JWTStandardClaims, jwtKeyFunc)
 	if err != nil {
 		c.WriteJSON(phoenix.PhoenixMessage{
 			Event: phoenix.PhxReplyEvent,

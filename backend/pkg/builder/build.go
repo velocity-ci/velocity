@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
-func runBuild(build *builder.BuildCtrl, ws *PhoenixWSClient) {
+func runBuild(build *builder.BuildCtrl, ws *phoenix.PhoenixWSClient) {
 	emitter := NewEmitter(ws, build.Build)
 
 	backupResolver := NewParameterResolver(build.Build.Parameters)

@@ -1,10 +1,8 @@
 package builder
 
 import (
-	"strings"
-
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
-	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"go.uber.org/zap"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
@@ -12,7 +10,7 @@ import (
 
 // TODO: Debouncing
 type StreamWriter struct {
-	ws         *PhoenixWSClient
+	ws         *phoenix.PhoenixWSClient
 	StepNumber int
 
 	BuildID  string
@@ -24,7 +22,7 @@ type StreamWriter struct {
 }
 
 type Emitter struct {
-	ws      *PhoenixWSClient
+	ws      *phoenix.PhoenixWSClient
 	BuildID string
 	StepID  string
 	Streams []*build.Stream
@@ -67,7 +65,7 @@ func (e *Emitter) SetStepNumber(n int) {
 	e.StepNumber = n
 }
 
-func NewEmitter(ws *PhoenixWSClient, b *build.Build) *Emitter {
+func NewEmitter(ws *phoenix.PhoenixWSClient, b *build.Build) *Emitter {
 	return &Emitter{
 		ws:      ws,
 		BuildID: b.ID,
@@ -75,29 +73,29 @@ func NewEmitter(ws *PhoenixWSClient, b *build.Build) *Emitter {
 }
 
 func (w *StreamWriter) Write(p []byte) (n int, err error) {
-	o := strings.TrimSpace(string(p))
-	if !strings.HasSuffix(string(p), "\r") {
-		w.LineNumber++
-		o += "\n"
-	}
+	// o := strings.TrimSpace(string(p))
+	// if !strings.HasSuffix(string(p), "\r") {
+	// 	w.LineNumber++
+	// 	o += "\n"
+	// }
 
-	lM := builder.BuilderStreamLineMessage{
-		BuildID:    w.BuildID,
-		StepID:     w.StepID,
-		StreamID:   w.StreamID,
-		LineNumber: w.LineNumber,
-		Status:     w.status,
-		Output:     o,
-	}
-	m := builder.BuilderRespMessage{
-		Type: "log",
-		Data: lM,
-	}
-	err = w.ws.WriteJSON(m)
+	// lM := builder.BuilderStreamLineMessage{
+	// 	BuildID:    w.BuildID,
+	// 	StepID:     w.StepID,
+	// 	StreamID:   w.StreamID,
+	// 	LineNumber: w.LineNumber,
+	// 	Status:     w.status,
+	// 	Output:     o,
+	// }
+	// m := builder.BuilderRespMessage{
+	// 	Type: "log",
+	// 	Data: lM,
+	// }
+	// err = w.ws.WriteJSON(m)
 
-	if err != nil {
-		return 0, err
-	}
+	// if err != nil {
+	// 	return 0, err
+	// }
 
 	return len(p), nil
 }

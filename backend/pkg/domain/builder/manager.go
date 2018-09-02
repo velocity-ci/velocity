@@ -52,19 +52,15 @@ func (m *Manager) AddBroker(b domain.Broker) {
 	m.brokers = append(m.brokers, b)
 }
 
-func (m *Manager) CreateBuilder(t Transport) *Builder {
+func (m *Manager) CreateBuilder() *Builder {
 	b := &Builder{
 		ID:        uuid.NewV4().String(),
-		Password:  user.GenerateRandomString(64),
+		Token:     user.GenerateRandomString(64),
 		State:     stateReady,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
-
-		ws: t,
 	}
 	m.Save(b)
-
-	go m.monitor(b)
 
 	return b
 }

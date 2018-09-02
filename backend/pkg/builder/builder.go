@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/velocity-ci/velocity/backend/pkg/architect"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
@@ -27,7 +28,7 @@ type Builder struct {
 	token string
 
 	http *http.Client
-	ws   *PhoenixWSClient
+	ws   *phoenix.PhoenixWSClient
 }
 
 func (b *Builder) Stop() error {
@@ -41,22 +42,16 @@ func (b *Builder) Start() {
 		Timeout: time.Second * 10,
 	}
 
-	for b.run {
-		if !waitForService(b.http, b.baseArchitectAddress) {
-			velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", b.baseArchitectAddress))
-		}
-
-		if len(b.id) < 1 {
-			b.registerWithArchitect()
-		}
-
-		velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress))
-		b.connect()
-
-		// ws := connectToArchitect(address, secret)
-
-		// monitorCommands(ws)
+	if !waitForService(b.http, fmt.Sprintf("%s/v1/health", b.baseArchitectAddress)) {
+		velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", b.baseArchitectAddress))
 	}
+
+	if len(b.id) < 1 {
+		b.registerWithArchitect()
+	}
+
+	velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress))
+	b.connect()
 }
 
 func (b *Builder) registerWithArchitect() error {
@@ -92,19 +87,36 @@ func (b *Builder) registerWithArchitect() error {
 
 func (b *Builder) connect() {
 	wsAddress := strings.Replace(b.baseArchitectAddress, "http", "ws", 1)
-	wsAddress = fmt.Sprintf("%s/builders/ws", wsAddress)
-	topic := fmt.Sprintf("builder:%s", b.id)
+	wsAddress = fmt.Sprintf("%s/v1/builders/ws", wsAddress)
 
-	b.ws = NewPhoenixWSClient(wsAddress)
-	err := b.ws.Subscribe(
+	ws, err := phoenix.NewPhoenixWSClient(wsAddress, map[string]func(*phoenix.PhoenixMessage) error{
+		"build:start": func(m *phoenix.PhoenixMessage) error {
+			return nil
+		},
+		"knownhost:set": func(m *phoenix.PhoenixMessage) error {
+			return nil
+		},
+	})
+	if err != nil {
+		velocity.GetLogger().Error("could not establish websocket connection", zap.Error(err))
+		b.run = false
+		return
+	}
+	velocity.GetLogger().Debug("established websocket connection", zap.String("address", wsAddress))
+	b.ws = ws
+
+	topic := fmt.Sprintf("builder:%s", b.id)
+	err = b.ws.Subscribe(
 		topic,
 		b.token,
 	)
 	if err != nil {
+		velocity.GetLogger().Error("could not subscribe to builder topic", zap.String("topic", topic), zap.Error(err))
 		b.run = false
 		return
 	}
-	velocity.GetLogger().Info("connected to architect", zap.String("address", b.baseArchitectAddress))
+
+	b.ws.Wait(5)
 }
 
 func New() architect.App {

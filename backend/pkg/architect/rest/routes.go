@@ -3,6 +3,8 @@ package rest
 import (
 	"os"
 
+	"github.com/velocity-ci/velocity/backend/pkg/auth"
+
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
@@ -49,9 +51,8 @@ func AddRoutes(
 	buildStepHandler := newBuildStepHandler(buildManager, buildStepManager, buildStreamManager)
 	buildStreamHandler := newBuildStreamHandler(buildStepManager, buildStreamManager)
 
-	builderHandler := newBuilderHandler(builderManager)
-
 	wsBroker := NewBroker(branchManager, buildStepManager, buildStreamManager)
+	builderHandler := newBuilderHandler(builderManager, wsBroker)
 	websocketHandler := newWebsocketHandler(wsBroker)
 	userManager.AddBroker(wsBroker)
 	knownHostManager.AddBroker(wsBroker)
@@ -65,12 +66,13 @@ func AddRoutes(
 	buildStreamManager.AddBroker(wsBroker)
 
 	// Used by Builders
-	e.GET("/builder/ws", builderHandler.connect)
+	e.GET("/v1/builders/ws", builderHandler.connect)
+	e.POST("/v1/builders", builderHandler.register)
 
 	jwtConfig := middleware.JWTConfig{
-		Claims:        jwtStandardClaims,
+		Claims:        auth.JWTStandardClaims,
 		SigningKey:    []byte(os.Getenv("JWT_SECRET")),
-		SigningMethod: jwtSigningMethod.Name,
+		SigningMethod: auth.JWTSigningMethod.Name,
 	}
 
 	r := e.Group("/v1/users")
@@ -120,10 +122,8 @@ func AddRoutes(
 	r.GET("/:id", buildStreamHandler.getByID)
 	r.GET("/:id/log", buildStreamHandler.getLogByID)
 
-	r = e.Group("/v1/builders")
-	r.Use(middleware.JWTWithConfig(jwtConfig))
-	r.GET("", builderHandler.getAll)
-	r.GET("/:id", builderHandler.getByID)
+	e.GET("/v1/builders", builderHandler.getAll, middleware.JWTWithConfig(jwtConfig))
+	e.GET("/v1/builders/:id", builderHandler.getByID, middleware.JWTWithConfig(jwtConfig))
 
 	e.GET("/v1/ws", websocketHandler.phxClient)
 }
