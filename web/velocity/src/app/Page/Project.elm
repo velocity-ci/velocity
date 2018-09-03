@@ -465,6 +465,7 @@ type Msg
 type ExternalMsg
     = SetSidebarSize Sidebar.Size
     | OpenSidebar
+    | CloseSidebar
 
 
 getSubPage : SubPageState -> SubPage
@@ -651,7 +652,7 @@ updateSubPage context session subPage msg model =
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model
-                    => []
+                    => [ CloseSidebar ]
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update context model.project session) subMsg subModel
@@ -677,7 +678,7 @@ updateSubPage context session subPage msg model =
                     => [ SetSidebarSize Sidebar.extraWideSize, OpenSidebar ]
 
             ( CommitLoaded (Err error), _ ) ->
-                { model | subPageState = Loaded (Errored (Debug.log "ERROR " error)) }
+                { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
                     => [ SetSidebarSize Sidebar.extraWideSize ]
 

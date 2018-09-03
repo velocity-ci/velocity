@@ -69,10 +69,10 @@ viewContent sidebarDisplayType content =
 
 
 viewNavbar : Sidebar.Config msg -> Styled.Html msg
-viewNavbar { showCollapsableSidebarMsg } =
+viewNavbar { toggleSidebarMsg } =
     nav
         [ class "navbar navbar-light bg-light" ]
-        [ viewNavbarToggle showCollapsableSidebarMsg ]
+        [ viewNavbarToggle toggleSidebarMsg ]
 
 
 viewNavbarToggle : msg -> Styled.Html msg

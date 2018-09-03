@@ -259,6 +259,7 @@ sidebarConfig : Sidebar.Config Msg
 sidebarConfig =
     { hideCollapsableSidebarMsg = HideSidebar
     , showCollapsableSidebarMsg = ShowSidebar
+    , toggleSidebarMsg = ToggleSidebar
     , animateMsg = AnimateSidebar
     , newUrlMsg = NewUrl
     }
@@ -360,6 +361,7 @@ type Msg
     | AnimateSidebar Animation.Msg
     | ShowSidebar
     | HideSidebar
+    | ToggleSidebar
     | NoOp
 
 
@@ -658,11 +660,15 @@ updatePage page msg model =
                     => Cmd.none
 
             ( ShowSidebar, _ ) ->
-                { model | sidebarDisplayType = Debug.log "WHAT" (Sidebar.show model.sidebarDisplayType) }
+                { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
                     => Cmd.none
 
             ( HideSidebar, _ ) ->
                 { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
+                    => Cmd.none
+
+            ( ToggleSidebar, _ ) ->
+                { model | sidebarDisplayType = Sidebar.toggle model.sidebarDisplayType }
                     => Cmd.none
 
             ( SocketMsg msg, _ ) ->
@@ -849,6 +855,9 @@ updatePage page msg model =
 
                                     Project.OpenSidebar ->
                                         { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+
+                                    Project.CloseSidebar ->
+                                        { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
                             )
                             model
                             externalMsgs

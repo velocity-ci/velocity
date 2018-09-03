@@ -4,6 +4,7 @@ module Component.Sidebar
         , animate
         , show
         , hide
+        , toggle
         , subscriptions
         , Config
         , initDisplayType
@@ -54,6 +55,7 @@ type alias Config msg =
     { animateMsg : Animation.Msg -> msg
     , hideCollapsableSidebarMsg : msg
     , showCollapsableSidebarMsg : msg
+    , toggleSidebarMsg : msg
     , newUrlMsg : String -> msg
     }
 
@@ -122,6 +124,19 @@ hide displayType =
                     Animation.interrupt [ Animation.to (animationStartAttrs size) ] animationState
             in
                 Collapsable (Hidden animation) size
+
+        _ ->
+            displayType
+
+
+toggle : DisplayType -> DisplayType
+toggle displayType =
+    case displayType of
+        Collapsable (Visible _) _ ->
+            hide displayType
+
+        Collapsable (Hidden _) _ ->
+            show displayType
 
         _ ->
             displayType
@@ -328,8 +343,8 @@ collapsableOverlay displayType =
             , right (px 0)
             , bottom (px 0)
             , zIndex (int 1)
-              --            , backgroundColor (hex "000000")
-              --            , opacity (num 0.5)
+            , backgroundColor (hex "000000")
+            , opacity (num 0.1)
             , width (pct 100)
             ]
 

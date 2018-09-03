@@ -81,6 +81,7 @@ init context session =
 
         loadProjects =
             Request.Project.list context maybeAuthToken
+                |> Task.map PaginatedList.results
 
         loadKnownHosts =
             Request.KnownHost.list context maybeAuthToken
@@ -89,10 +90,14 @@ init context session =
             pageLoadError Page.Home "Homepage is currently unavailable."
 
         initialModel projects knownHosts =
-            { projects = PaginatedList.results projects
+            { projects = projects
             , knownHosts = PaginatedList.results knownHosts
             , forms = ProjectFormOnly ProjectForm.init
-            , newProjectModalVisibility = Modal.hidden
+            , newProjectModalVisibility =
+                if List.isEmpty projects then
+                    Modal.shown
+                else
+                    Modal.hidden
             }
     in
         Task.map2 initialModel loadProjects loadKnownHosts
