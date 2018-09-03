@@ -44,19 +44,28 @@ in the header. (This comes up during slow page transitions.)
 frame : Bool -> Maybe User -> Sidebar.Config msg -> Sidebar.DisplayType -> ActivePage -> Html.Html msg -> Html.Html msg
 frame isLoading user sidebarConfig sidebarType page content =
     div
-        [ css
-            [ marginLeft (px <| Sidebar.containerMarginLeft sidebarType) ]
-        ]
+        []
         [ Util.viewIfStyled (Sidebar.isCollapsable sidebarType) (viewNavbar sidebarConfig)
-        , viewContent content
+        , viewContent sidebarType content
         , viewFooter
         ]
         |> toUnstyled
 
 
-viewContent : Html.Html msg -> Styled.Html msg
-viewContent content =
-    div [] [ fromUnstyled content ]
+viewContent : Sidebar.DisplayType -> Html.Html msg -> Styled.Html msg
+viewContent sidebarDisplayType content =
+    div
+        (List.concat
+            [ (Sidebar.sidebarAnimationAttrs sidebarDisplayType)
+            , [ css
+                    [ position relative
+                    , paddingLeft (px (Sidebar.sidebarWidth sidebarDisplayType))
+                    , width (calc (pct 100) plus (px <| Sidebar.sidebarWidth sidebarDisplayType))
+                    ]
+              ]
+            ]
+        )
+        [ fromUnstyled content ]
 
 
 viewNavbar : Sidebar.Config msg -> Styled.Html msg
@@ -86,7 +95,8 @@ sidebar items =
 
 sidebarFrame : Sidebar.DisplayType -> Sidebar.Config msg -> Html.Html msg -> Html.Html msg -> Html.Html msg
 sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
-    div []
+    div
+        []
         [ div
             [ id "sidebar-overlay"
             , css (Sidebar.collapsableOverlay displayType)
@@ -100,7 +110,14 @@ sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
                   , css
                         [ width (px <| Sidebar.sidebarWidth displayType)
                         , position fixed
-                        , top (px 0)
+                        , top
+                            (px
+                                (if Sidebar.isCollapsable displayType then
+                                    56
+                                 else
+                                    0
+                                )
+                            )
                         , bottom (px 0)
                         , zIndex (int 2)
                         , backgroundColor (rgb 7 71 166)

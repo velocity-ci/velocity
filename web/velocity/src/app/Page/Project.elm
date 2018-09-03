@@ -463,8 +463,8 @@ type Msg
 
 
 type ExternalMsg
-    = NoOp_
-    | SetSidebarSize Sidebar.Size
+    = SetSidebarSize Sidebar.Size
+    | OpenSidebar
 
 
 getSubPage : SubPageState -> SubPage
@@ -591,13 +591,13 @@ pageErrored model activePage errorMessage =
         { model | subPageState = Loaded (Errored error) } => Cmd.none
 
 
-update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), List ExternalMsg )
 update context session msg model =
     case updateProjectNavigation model.sidebar msg of
         Just sidebar ->
             { model | sidebar = sidebar }
                 => Cmd.none
-                => NoOp_
+                => []
 
         Nothing ->
             updateSubPage context session (getSubPage model.subPageState) msg model
@@ -622,7 +622,7 @@ updateProjectNavigation sidebar msg =
             Nothing
 
 
-updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+updateSubPage : Context -> Session msg -> SubPage -> Msg -> Model -> ( ( Model, Cmd Msg ), List ExternalMsg )
 updateSubPage context session subPage msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -642,44 +642,44 @@ updateSubPage context session subPage msg model =
             ( NoOp, _ ) ->
                 model
                     => Cmd.none
-                    => NoOp_
+                    => []
 
             ( NewUrl url, _ ) ->
                 model
                     => newUrl url
-                    => NoOp_
+                    => []
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model
-                    => NoOp_
+                    => []
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update context model.project session) subMsg subModel
-                    => SetSidebarSize Sidebar.normalSize
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( CommitsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Commits subModel) }
                     => Cmd.none
-                    => SetSidebarSize Sidebar.normalSize
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( CommitsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => SetSidebarSize Sidebar.normalSize
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( CommitsMsg subMsg, Commits subModel ) ->
                 toPage Commits CommitsMsg (Commits.update context model.project session) subMsg subModel
-                    => SetSidebarSize Sidebar.normalSize
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
-                    => SetSidebarSize Sidebar.extraWideSize
+                    => [ SetSidebarSize Sidebar.extraWideSize, OpenSidebar ]
 
             ( CommitLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored (Debug.log "ERROR " error)) }
                     => Cmd.none
-                    => SetSidebarSize Sidebar.extraWideSize
+                    => [ SetSidebarSize Sidebar.extraWideSize ]
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
@@ -688,21 +688,21 @@ updateSubPage context session subPage msg model =
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
-                        => SetSidebarSize Sidebar.extraWideSize
+                        => [ SetSidebarSize Sidebar.extraWideSize ]
 
             ( BuildsMsg subMsg, Builds subModel ) ->
                 toPage Builds BuildsMsg (Builds.update context model.project session) subMsg subModel
-                    => SetSidebarSize Sidebar.normalSize
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( BuildsLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (Builds subModel) }
                     => Cmd.none
-                    => SetSidebarSize Sidebar.normalSize
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( BuildsLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => SetSidebarSize Sidebar.normalSize
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( UpdateProject updateJson, _ ) ->
                 let
@@ -714,7 +714,7 @@ updateSubPage context session subPage msg model =
                 in
                     { model | project = newProject }
                         => Cmd.none
-                        => NoOp_
+                        => []
 
             ( AddBranch branchJson, _ ) ->
                 let
@@ -726,7 +726,7 @@ updateSubPage context session subPage msg model =
                 in
                     { model | branches = branches }
                         => Cmd.none
-                        => NoOp_
+                        => []
 
             ( RefreshBranches _, _ ) ->
                 let
@@ -736,17 +736,17 @@ updateSubPage context session subPage msg model =
                 in
                     model
                         => cmd
-                        => NoOp_
+                        => []
 
             ( RefreshBranchesComplete (Ok paginatedBranches), _ ) ->
                 { model | branches = PaginatedList.results paginatedBranches }
                     => Cmd.none
-                    => NoOp_
+                    => []
 
             ( ProjectDeleted _, _ ) ->
                 model
                     => Route.modifyUrl Route.Projects
-                    => NoOp_
+                    => []
 
             ( AddBuildEvent buildJson, page ) ->
                 let
@@ -777,11 +777,11 @@ updateSubPage context session subPage msg model =
                     case maybeBuild of
                         Just build ->
                             Toasty.addToast ToastTheme.config ToastyMsg (Event.Created build) modelCmd
-                                => NoOp_
+                                => []
 
                         Nothing ->
                             modelCmd
-                                => NoOp_
+                                => []
 
             ( UpdateBuildEvent buildJson, page ) ->
                 let
@@ -820,30 +820,30 @@ updateSubPage context session subPage msg model =
                     case Maybe.map .status maybeBuild of
                         Just (Build.Success) ->
                             modelCmdWithToast
-                                => NoOp_
+                                => []
 
                         Just (Build.Failed) ->
                             modelCmdWithToast
-                                => NoOp_
+                                => []
 
                         _ ->
                             modelCmd
-                                => NoOp_
+                                => []
 
             ( DeleteBuildEvent buildJson, _ ) ->
                 model
                     => Cmd.none
-                    => NoOp_
+                    => []
 
             ( ToastyMsg subMsg, _ ) ->
                 Toasty.update ToastTheme.config ToastyMsg subMsg model
-                    => NoOp_
+                    => []
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through (project page)" model)
                     => Cmd.none
-                    => NoOp_
+                    => []
 
 
 sendSubPageMsg :

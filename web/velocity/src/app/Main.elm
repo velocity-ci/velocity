@@ -88,7 +88,7 @@ init flags location =
                 , context = context
                 , session = session
                 , userDropdown = UserMenuDropdown.init
-                , sidebarDisplayType = Sidebar.initDisplayType 0 Sidebar.normalSize
+                , sidebarDisplayType = Sidebar.initDisplayType 0 Nothing Sidebar.normalSize
                 , pageWidth = 0
                 }
     in
@@ -606,11 +606,11 @@ sidebarSize page =
             Sidebar.normalSize
 
 
-updateSidebar : Page -> Int -> Sidebar.DisplayType
-updateSidebar page windowWidth =
+updateSidebar : Sidebar.DisplayType -> Page -> Int -> Sidebar.DisplayType
+updateSidebar sidebarDisplayType page windowWidth =
     page
         |> sidebarSize
-        |> Sidebar.initDisplayType windowWidth
+        |> Sidebar.initDisplayType windowWidth (Just sidebarDisplayType)
 
 
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
@@ -648,7 +648,7 @@ updatePage page msg model =
 
             ( WindowWidthChange width, _ ) ->
                 { model
-                    | sidebarDisplayType = updateSidebar page model.pageWidth
+                    | sidebarDisplayType = updateSidebar model.sidebarDisplayType page model.pageWidth
                     , pageWidth = width
                 }
                     => Cmd.none
@@ -711,7 +711,7 @@ updatePage page msg model =
             ( LoadFailed error, _ ) ->
                 { model
                     | pageState = Loaded (Errored error)
-                    , sidebarDisplayType = updateSidebar (Errored error) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Errored error) model.pageWidth
                 }
                     => Cmd.none
 
@@ -743,7 +743,7 @@ updatePage page msg model =
             ( HomeLoaded subModel, _ ) ->
                 { model
                     | pageState = Loaded (Home subModel)
-                    , sidebarDisplayType = updateSidebar (Home subModel) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Home subModel) model.pageWidth
                 }
                     => Cmd.none
 
@@ -768,7 +768,7 @@ updatePage page msg model =
             ( UsersLoaded subModel, _ ) ->
                 { model
                     | pageState = Loaded (Users subModel)
-                    , sidebarDisplayType = updateSidebar (Users subModel) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Users subModel) model.pageWidth
                 }
                     => Cmd.none
 
@@ -796,7 +796,7 @@ updatePage page msg model =
             ( KnownHostsLoaded subModel, _ ) ->
                 { model
                     | pageState = Loaded (KnownHosts subModel)
-                    , sidebarDisplayType = updateSidebar (KnownHosts subModel) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (KnownHosts subModel) model.pageWidth
                 }
                     => Cmd.none
 
@@ -825,7 +825,7 @@ updatePage page msg model =
                 in
                     { model
                         | pageState = pageState
-                        , sidebarDisplayType = updateSidebar (Project subModel) model.pageWidth
+                        , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Project subModel) model.pageWidth
                     }
                         ! [ Cmd.map ProjectMsg subMsg ]
 
@@ -837,16 +837,21 @@ updatePage page msg model =
                     socket =
                         session.socket
 
-                    ( ( newSubModel, newCmd ), externalMsg ) =
+                    ( ( newSubModel, newCmd ), externalMsgs ) =
                         Project.update model.context session subMsg subModel
 
                     externalUpdatedModel =
-                        case externalMsg of
-                            Project.SetSidebarSize size ->
-                                { model | sidebarDisplayType = Sidebar.initDisplayType model.pageWidth size }
+                        List.foldl
+                            (\msg model ->
+                                case msg of
+                                    Project.SetSidebarSize size ->
+                                        { model | sidebarDisplayType = Sidebar.initDisplayType model.pageWidth (Just model.sidebarDisplayType) size }
 
-                            Project.NoOp_ ->
-                                model
+                                    Project.OpenSidebar ->
+                                        { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+                            )
+                            model
+                            externalMsgs
 
                     ( listeningSocket, socketCmd ) =
                         Project.loadedEvents subMsg subModel

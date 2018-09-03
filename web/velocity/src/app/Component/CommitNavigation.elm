@@ -70,9 +70,9 @@ view config context =
 
 details : Commit -> Styled.Html msg
 details commit =
-    div [ class "p-1" ]
-        [ div [ class "card" ]
-            [ div [ class "card-body text-dark" ]
+    div [ class "p-3" ]
+        [ div []
+            [ div [ class "text-dark" ]
                 [ fromUnstyled (infoPanel commit)
                 , hr [] []
                 , fromUnstyled (branchList commit)

@@ -324,12 +324,12 @@ collapsableOverlay displayType =
     case displayType of
         Collapsable (Visible _) _ ->
             [ position fixed
-            , top (px 0)
+            , top (px 56)
             , right (px 0)
             , bottom (px 0)
             , zIndex (int 1)
-            , backgroundColor (hex "000000")
-            , opacity (num 0.5)
+              --            , backgroundColor (hex "000000")
+              --            , opacity (num 0.5)
             , width (pct 100)
             ]
 
@@ -379,15 +379,33 @@ sidebarBaseStyle =
         [ top (px 0)
         , bottom (px 0)
         , zIndex (int 1)
-        , backgroundColor (rgb 244 245 247)
+        , backgroundColor (hex "ffffff")
         , color (rgb 66 82 110)
         , position fixed
         ]
 
 
-initDisplayType : Int -> Size -> DisplayType
-initDisplayType windowWidth size =
+sizeWidth : Size -> Int
+sizeWidth size =
+    case size of
+        Normal ->
+            75
+
+        ExtraWide ->
+            308
+
+
+initDisplayType : Int -> Maybe DisplayType -> Size -> DisplayType
+initDisplayType windowWidth displayType size =
     if windowWidth >= 992 then
         Fixed (FixedVisible size)
     else
-        Collapsable (Hidden <| Animation.style (animationStartAttrs size)) size
+        case displayType of
+            Just (Collapsable (Visible _) _) ->
+                Collapsable (Visible (Animation.style animationFinishAttrs)) size
+
+            Just (Collapsable (Hidden _) _) ->
+                Collapsable (Hidden (Animation.style (animationStartAttrs size))) size
+
+            _ ->
+                Collapsable (Hidden (Animation.style (animationStartAttrs size))) Normal
