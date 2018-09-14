@@ -54,18 +54,31 @@ frame isLoading user sidebarConfig sidebarType page content =
 
 viewContent : Sidebar.DisplayType -> Html.Html msg -> Styled.Html msg
 viewContent sidebarDisplayType content =
-    div
-        (List.concat
-            [ (Sidebar.sidebarAnimationAttrs sidebarDisplayType)
-            , [ css
-                    [ position relative
-                    , paddingLeft (px (Sidebar.sidebarWidth sidebarDisplayType))
-                    , width (calc (pct 100) plus (px <| Sidebar.sidebarWidth sidebarDisplayType))
-                    ]
-              ]
+    let
+        sidebarWidth =
+            if Sidebar.isCollapsable sidebarDisplayType then
+                calc (pct 100) plus (px <| Sidebar.sidebarWidth sidebarDisplayType)
+            else
+                calc (pct 100) plus (px 0)
+    in
+        div
+            [ css
+                [ paddingLeft (px (Sidebar.sidebarWidth sidebarDisplayType))
+                , width sidebarWidth
+                ]
             ]
-        )
-        [ fromUnstyled content ]
+            [ div
+                (List.concat
+                    [ (Sidebar.sidebarAnimationAttrs sidebarDisplayType)
+                    , [ css
+                            [ position relative
+                            , width (pct 100)
+                            ]
+                      ]
+                    ]
+                )
+                [ fromUnstyled content ]
+            ]
 
 
 viewNavbar : Sidebar.Config msg -> Styled.Html msg

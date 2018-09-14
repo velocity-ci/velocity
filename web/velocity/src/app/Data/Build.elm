@@ -78,6 +78,10 @@ statusToString status =
             "success"
 
 
+
+-- HELPERS --
+
+
 findBuild : List Build -> Id -> Maybe Build
 findBuild builds id =
     builds
@@ -99,6 +103,11 @@ addBuild builds build =
 
 
 -- IDENTIFIERS --
+
+
+duration : Build -> BuildStep -> DateTime.DateTime
+duration build buildStep =
+    DateTime.epoch
 
 
 compare : Build -> Build -> Bool

@@ -174,7 +174,7 @@ insertStream ( { buildStream, lines }, step ) dict =
                     { step = step
                     , streams = Dict.singleton streamDictKey outputStream
                     , filterDropdown = Dropdown.initialState
-                    , collapsed = False
+                    , collapsed = True
                     }
     in
         Dict.insert logStepDictKey insert dict
@@ -589,8 +589,8 @@ viewStepButtonToolbar maybeBuildStep logStep =
         div []
             [ Util.viewIfStyled showStreamFilter (viewStepStreamFilter logStep)
             , text " "
-            , viewStepInfoButton logStep
-            , text " "
+              --            , viewStepInfoButton logStep
+              --            , text " "
             , Util.viewIfStyled showCollapseToggle (viewStepCollapseToggle logStep)
             ]
 

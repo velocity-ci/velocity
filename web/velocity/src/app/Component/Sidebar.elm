@@ -343,8 +343,8 @@ collapsableOverlay displayType =
             , right (px 0)
             , bottom (px 0)
             , zIndex (int 1)
-            , backgroundColor (hex "000000")
-            , opacity (num 0.1)
+              --            , backgroundColor (hex "000000")
+              --            , opacity (num 0.1)
             , width (pct 100)
             ]
 
