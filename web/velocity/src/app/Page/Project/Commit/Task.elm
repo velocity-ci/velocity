@@ -19,6 +19,7 @@ import Context exposing (Context)
 import Component.BuildLog as BuildLog
 import Component.BuildForm as BuildForm
 import Component.DropdownFilter as DropdownFilter
+import Data.Device as Device
 import Data.AuthToken as AuthToken exposing (AuthToken)
 import Data.Commit as Commit exposing (Commit)
 import Data.Project as Project exposing (Project)
@@ -248,8 +249,8 @@ buildFilterContext { frame, buildDropdownState, buildFilterTerm, selected } buil
 -- VIEW --
 
 
-view : Project -> Commit -> Model -> List Build -> Html Msg
-view project commit model builds =
+view : Device.Size -> Project -> Commit -> Model -> List Build -> Html Msg
+view deviceSize project commit model builds =
     div []
         [ viewTabFrame model builds commit
         , viewFormModal model.task model.form model.formModalVisibility

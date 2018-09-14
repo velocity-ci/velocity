@@ -5,6 +5,7 @@ import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Project
 import Request.Errors
 import Task exposing (Task)
+import Data.Device as Device
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
@@ -234,10 +235,10 @@ subscriptions model =
 -- VIEW --
 
 
-view : Session msg -> Model -> Html Msg
-view session model =
+view : Session msg -> Device.Size -> Model -> Html Msg
+view session deviceSize model =
     div [ class "p-2" ]
-        [ viewSubPage session model
+        [ viewSubPage session deviceSize model
         , toastView model
         ]
 
@@ -295,8 +296,8 @@ viewSubpageProjectNavigation model =
             text ""
 
 
-viewSubPage : Session msg -> Model -> Html Msg
-viewSubPage session model =
+viewSubPage : Session msg -> Device.Size -> Model -> Html Msg
+viewSubPage session deviceSize model =
     let
         page =
             getSubPage model.subPageState
@@ -347,7 +348,7 @@ viewSubPage session model =
                         Commit.breadcrumb project subModel.commit subModel.subPageState
                             |> breadcrumb (text "")
                 in
-                    Commit.view project session subModel
+                    Commit.view project session deviceSize subModel
                         |> Html.map CommitMsg
                         |> pageFrame crumb
 
@@ -365,7 +366,7 @@ viewSubPage session model =
 frame : Project -> Model -> Html Msg -> Html Msg -> Html Msg
 frame project model breadcrumb content =
     div []
-        [ topNav breadcrumb (subNavbar model)
+        [ topNav breadcrumb (text "")
         , div [ class "px-3 py-3" ]
             [ content
             ]
@@ -378,16 +379,6 @@ topNav breadcrumb subNav =
         [ subNav
         , breadcrumb
         ]
-
-
-subNavbar : Model -> Html Msg
-subNavbar model =
-    case getSubPage model.subPageState of
-        --        Commit subModel ->
-        --            Commit.viewNavbar subModel
-        --                |> Html.map CommitMsg
-        _ ->
-            text ""
 
 
 
@@ -476,17 +467,6 @@ getSubPage subPageState =
 
         TransitioningFrom subPage ->
             subPage
-
-
-
---setSidebar : Maybe ProjectRoute.Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
---setSidebar maybeRoute pageWidth displayType =
---    case maybeRoute of
---        Just (ProjectRoute.Commit _ commitRoute) ->
---            Sidebar.initDisplayType pageWidth Sidebar.extraWideSize
---
---        _ ->
---            Sidebar.initDisplayType pageWidth Sidebar.normalSize
 
 
 sidebarSize : Model -> Sidebar.Size

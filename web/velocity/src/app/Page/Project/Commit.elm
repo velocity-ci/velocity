@@ -4,6 +4,7 @@ import Context exposing (Context)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
+import Data.Device as Device
 import Data.Commit as Commit exposing (Commit)
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
@@ -204,11 +205,11 @@ leaveSubPageChannels subPage subRoute =
 -- VIEW --
 
 
-view : Project -> Session msg -> Model -> Html Msg
-view project session model =
+view : Project -> Session msg -> Device.Size -> Model -> Html Msg
+view project session deviceSize model =
     div []
         [ viewSubPageHeader project model
-        , viewSubPage project model
+        , viewSubPage deviceSize project model
         ]
 
 
@@ -252,8 +253,8 @@ viewSidebar project model =
         |> CommitNavigation.view sidebarConfig
 
 
-viewSubPage : Project -> Model -> Html Msg
-viewSubPage project model =
+viewSubPage : Device.Size -> Project -> Model -> Html Msg
+viewSubPage deviceSize project model =
     case model.subPageState of
         Loaded (Overview _) ->
             Overview.view project model.commit model.tasks model.builds
@@ -261,7 +262,7 @@ viewSubPage project model =
 
         Loaded (CommitTask subModel) ->
             taskBuilds model.builds (Just subModel.task)
-                |> CommitTask.view project model.commit subModel
+                |> CommitTask.view deviceSize project model.commit subModel
                 |> frame project model CommitTaskMsg
 
         _ ->

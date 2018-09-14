@@ -3,6 +3,7 @@ module Main exposing (main)
 import Context exposing (Context)
 import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
+import Data.Device as Device
 import Navigation exposing (Location)
 import Views.Page as Page exposing (ActivePage)
 import Bootstrap.Dropdown as Dropdown
@@ -55,7 +56,7 @@ type alias Model =
     , pageState : PageState
     , userDropdown : UserMenuDropdown.State
     , sidebarDisplayType : Sidebar.DisplayType
-    , pageWidth : Int
+    , deviceWidth : Device.Size
     }
 
 
@@ -82,14 +83,17 @@ init flags location =
         maybeRoute =
             (Route.fromLocation location)
 
+        defaultDevice =
+            Device.size 0
+
         ( initialModel, initialCmd ) =
             setRoute maybeRoute
                 { pageState = Loaded initialPage
                 , context = context
                 , session = session
                 , userDropdown = UserMenuDropdown.init
-                , sidebarDisplayType = Sidebar.initDisplayType 0 Nothing Sidebar.normalSize
-                , pageWidth = 0
+                , sidebarDisplayType = Sidebar.initDisplayType defaultDevice Nothing Sidebar.normalSize
+                , deviceWidth = defaultDevice
                 }
     in
         initialModel
@@ -132,7 +136,7 @@ view : Model -> Html Msg
 view model =
     let
         page =
-            viewPage model.sidebarDisplayType model.session
+            viewPage model.sidebarDisplayType model.deviceWidth model.session
 
         sidebar =
             viewSidebar model
@@ -204,8 +208,8 @@ viewSidebar model isLoading page =
         Page.sidebarFrame model.sidebarDisplayType sidebarConfig content subSidebar
 
 
-viewPage : Sidebar.DisplayType -> Session Msg -> Bool -> Page -> Html Msg
-viewPage sidebarDisplayType session isLoading page =
+viewPage : Sidebar.DisplayType -> Device.Size -> Session Msg -> Bool -> Page -> Html Msg
+viewPage sidebarDisplayType deviceSize session isLoading page =
     let
         frame =
             Page.frame isLoading session.user sidebarConfig sidebarDisplayType
@@ -231,7 +235,7 @@ viewPage sidebarDisplayType session isLoading page =
                     |> frame Page.Home
 
             Project subModel ->
-                Project.view session subModel
+                Project.view session deviceSize subModel
                     |> Html.map ProjectMsg
                     |> frame Page.Projects
 
@@ -608,11 +612,11 @@ sidebarSize page =
             Sidebar.normalSize
 
 
-updateSidebar : Sidebar.DisplayType -> Page -> Int -> Sidebar.DisplayType
-updateSidebar sidebarDisplayType page windowWidth =
+updateSidebar : Sidebar.DisplayType -> Page -> Device.Size -> Sidebar.DisplayType
+updateSidebar sidebarDisplayType page size =
     page
         |> sidebarSize
-        |> Sidebar.initDisplayType windowWidth (Just sidebarDisplayType)
+        |> Sidebar.initDisplayType size (Just sidebarDisplayType)
 
 
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
@@ -649,11 +653,15 @@ updatePage page msg model =
                     => Navigation.newUrl url
 
             ( WindowWidthChange width, _ ) ->
-                { model
-                    | sidebarDisplayType = updateSidebar model.sidebarDisplayType page model.pageWidth
-                    , pageWidth = width
-                }
-                    => Cmd.none
+                let
+                    deviceWidth =
+                        Device.size width
+                in
+                    { model
+                        | sidebarDisplayType = updateSidebar model.sidebarDisplayType page deviceWidth
+                        , deviceWidth = deviceWidth
+                    }
+                        => Cmd.none
 
             ( AnimateSidebar animateMsg, _ ) ->
                 { model | sidebarDisplayType = Sidebar.animate model.sidebarDisplayType animateMsg }
@@ -717,7 +725,7 @@ updatePage page msg model =
             ( LoadFailed error, _ ) ->
                 { model
                     | pageState = Loaded (Errored error)
-                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Errored error) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Errored error) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -749,7 +757,7 @@ updatePage page msg model =
             ( HomeLoaded subModel, _ ) ->
                 { model
                     | pageState = Loaded (Home subModel)
-                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Home subModel) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Home subModel) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -774,7 +782,7 @@ updatePage page msg model =
             ( UsersLoaded subModel, _ ) ->
                 { model
                     | pageState = Loaded (Users subModel)
-                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Users subModel) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Users subModel) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -802,7 +810,7 @@ updatePage page msg model =
             ( KnownHostsLoaded subModel, _ ) ->
                 { model
                     | pageState = Loaded (KnownHosts subModel)
-                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (KnownHosts subModel) model.pageWidth
+                    , sidebarDisplayType = updateSidebar model.sidebarDisplayType (KnownHosts subModel) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -831,7 +839,7 @@ updatePage page msg model =
                 in
                     { model
                         | pageState = pageState
-                        , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Project subModel) model.pageWidth
+                        , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Project subModel) model.deviceWidth
                     }
                         ! [ Cmd.map ProjectMsg subMsg ]
 
@@ -851,7 +859,7 @@ updatePage page msg model =
                             (\msg model ->
                                 case msg of
                                     Project.SetSidebarSize size ->
-                                        { model | sidebarDisplayType = Sidebar.initDisplayType model.pageWidth (Just model.sidebarDisplayType) size }
+                                        { model | sidebarDisplayType = Sidebar.initDisplayType model.deviceWidth (Just model.sidebarDisplayType) size }
 
                                     Project.OpenSidebar ->
                                         { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }

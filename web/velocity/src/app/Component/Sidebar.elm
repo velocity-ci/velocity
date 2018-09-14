@@ -28,6 +28,7 @@ import Data.Commit as Commit exposing (Commit)
 import Data.Task as Task exposing (Task)
 import Data.Project as Project exposing (Project)
 import Data.Build as Build exposing (Build)
+import Data.Device as Device
 import Route exposing (Route)
 import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
@@ -410,9 +411,9 @@ sizeWidth size =
             308
 
 
-initDisplayType : Int -> Maybe DisplayType -> Size -> DisplayType
-initDisplayType windowWidth displayType size =
-    if windowWidth >= 992 then
+initDisplayType : Device.Size -> Maybe DisplayType -> Size -> DisplayType
+initDisplayType deviceWidth displayType size =
+    if Device.isLarge deviceWidth then
         Fixed (FixedVisible size)
     else
         case displayType of
