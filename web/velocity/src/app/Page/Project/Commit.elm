@@ -70,7 +70,7 @@ initialSubPage =
     Blank
 
 
-init : Context -> Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( Model, Cmd Msg )
+init : Context -> Session msg -> Project -> Commit.Hash -> Maybe CommitRoute.Route -> Task PageLoadError ( ( Model, Cmd Msg ), List ExternalMsg )
 init context session project hash maybeRoute =
     let
         maybeAuthToken =
@@ -100,15 +100,7 @@ init context session project hash maybeRoute =
             pageLoadError Page.Project "Project unavailable."
     in
         Task.map4 initialModel loadCommit loadTasks loadBuilds Window.width
-            |> Task.map
-                (\successModel ->
-                    case maybeRoute of
-                        Just route ->
-                            update context project session (SetRoute maybeRoute) successModel
-
-                        Nothing ->
-                            ( successModel, Cmd.none )
-                )
+            |> Task.map (setRoute context session project maybeRoute)
             |> Task.mapError handleLoadError
 
 
@@ -363,6 +355,11 @@ type Msg
     | NoOp
 
 
+type ExternalMsg
+    = OpenSidebar
+    | CloseSidebar
+
+
 getSubPage : SubPageState -> SubPage
 getSubPage subPageState =
     case subPageState of
@@ -373,13 +370,15 @@ getSubPage subPageState =
             subPage
 
 
-pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
+pageErrored : Model -> ActivePage -> String -> ( ( Model, Cmd msg ), List ExternalMsg )
 pageErrored model activePage errorMessage =
     let
         error =
             Errored.pageLoadError activePage errorMessage
     in
-        { model | subPageState = Loaded (Errored error) } => Cmd.none
+        { model | subPageState = Loaded (Errored error) }
+            => Cmd.none
+            => []
 
 
 taskBuilds : List Build -> Maybe ProjectTask.Task -> List Build
@@ -396,7 +395,7 @@ taskBuilds builds maybeTask =
             )
 
 
-setRoute : Context -> Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( Model, Cmd Msg )
+setRoute : Context -> Session msg -> Project -> Maybe CommitRoute.Route -> Model -> ( ( Model, Cmd Msg ), List ExternalMsg )
 setRoute context session project maybeRoute model =
     let
         model_ =
@@ -405,6 +404,7 @@ setRoute context session project maybeRoute model =
         transition toMsg task =
             { model_ | subPageState = TransitioningFrom (getSubPage model.subPageState) maybeRoute }
                 => Task.attempt toMsg task
+                => []
 
         errored =
             pageErrored model_
@@ -415,6 +415,7 @@ setRoute context session project maybeRoute model =
                     Just user ->
                         { model_ | subPageState = Overview.initialModel |> Overview |> Loaded }
                             => Cmd.none
+                            => []
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -443,6 +444,7 @@ setRoute context session project maybeRoute model =
             _ ->
                 { model_ | subPageState = Loaded Blank }
                     => Cmd.none
+                    => []
 
 
 setSidebar : Maybe CommitRoute.Route -> Sidebar.DisplayType -> Sidebar.DisplayType
@@ -455,7 +457,7 @@ setSidebar maybeRoute displayType =
             Sidebar.hide displayType
 
 
-update : Context -> Project -> Session msg -> Msg -> Model -> ( Model, Cmd Msg )
+update : Context -> Project -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), List ExternalMsg )
 update context project session msg model =
     let
         toPage toModel toMsg subUpdate subMsg subModel =
@@ -464,6 +466,7 @@ update context project session msg model =
                     subUpdate subMsg subModel
             in
                 ( { model | subPageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
+                    => []
 
         subPage =
             getSubPage model.subPageState
@@ -479,6 +482,7 @@ update context project session msg model =
             ( NewUrl url, _ ) ->
                 model
                     => Navigation.newUrl url
+                    => []
 
             ( SetRoute route, _ ) ->
                 setRoute context session project route model
@@ -489,10 +493,12 @@ update context project session msg model =
             ( CommitTaskLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (CommitTask subModel) }
                     => Cmd.none
+                    => []
 
             ( CommitTaskLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
+                    => []
 
             ( CommitTaskMsg subMsg, CommitTask subModel ) ->
                 let
@@ -526,6 +532,7 @@ update context project session msg model =
                 in
                     { model_ | subPageState = Loaded (CommitTask newModel) }
                         ! [ Cmd.map CommitTaskMsg newCmd ]
+                        => []
 
             ( AddBuild build, _ ) ->
                 let
@@ -540,6 +547,7 @@ update context project session msg model =
                 in
                     { model | builds = builds }
                         => Cmd.none
+                        => []
 
             ( UpdateBuild build, _ ) ->
                 let
@@ -555,11 +563,13 @@ update context project session msg model =
                 in
                     { model | builds = builds }
                         => Cmd.none
+                        => []
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
                 (Debug.log "Fell through (commit page)" model)
                     => Cmd.none
+                    => []
 
 
 hasExtraWideSidebar : Sidebar.DisplayType -> Bool

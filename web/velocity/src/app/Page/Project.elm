@@ -440,7 +440,7 @@ type Msg
     | BuildsMsg Builds.Msg
     | BuildsLoaded (Result PageLoadError Builds.Model)
     | CommitMsg Commit.Msg
-    | CommitLoaded (Result PageLoadError ( Commit.Model, Cmd Commit.Msg ))
+    | CommitLoaded (Result PageLoadError ( ( Commit.Model, Cmd Commit.Msg ), List Commit.ExternalMsg ))
     | SettingsMsg Settings.Msg
     | UpdateProject Encode.Value
     | AddBranch Encode.Value
@@ -524,7 +524,7 @@ setRoute context session maybeRoute model =
 
                     transitionSubPage subModel =
                         let
-                            ( newModel, newMsg ) =
+                            ( ( newModel, newMsg ), externalMsgs ) =
                                 subModel
                                     |> Commit.update context model.project session (Commit.SetRoute (Just maybeRoute))
                         in
@@ -663,7 +663,7 @@ updateSubPage context session subPage msg model =
                 toPage Commits CommitsMsg (Commits.update context model.project session) subMsg subModel
                     => [ SetSidebarSize Sidebar.normalSize ]
 
-            ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
+            ( CommitLoaded (Ok ( ( subModel, subMsg ), externalMsgs )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
                     => [ SetSidebarSize Sidebar.extraWideSize ]
@@ -675,7 +675,7 @@ updateSubPage context session subPage msg model =
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
-                    ( newSubModel, newCmd ) =
+                    ( ( newSubModel, newCmd ), externalMsgs ) =
                         Commit.update context model.project session subMsg subModel
                 in
                     { model | subPageState = Loaded (Commit newSubModel) }
@@ -750,9 +750,12 @@ updateSubPage context session subPage msg model =
                     ( subPageState, subCmd ) =
                         case ( page, maybeBuild ) of
                             ( Commit subModel, Just build ) ->
-                                subModel
-                                    |> Commit.update context model.project session (Commit.AddBuild build)
-                                    |> sendSubPageMsg Commit CommitMsg
+                                let
+                                    ( updatedSubPage, externalMsgs ) =
+                                        Commit.update context model.project session (Commit.AddBuild build) subModel
+                                in
+                                    updatedSubPage
+                                        |> sendSubPageMsg Commit CommitMsg
 
                             ( Builds subModel, Just build ) ->
                                 subModel
@@ -785,9 +788,12 @@ updateSubPage context session subPage msg model =
                     ( subPageState, subCmd ) =
                         case ( page, maybeBuild ) of
                             ( Commit subModel, Just build ) ->
-                                subModel
-                                    |> Commit.update context model.project session (Commit.UpdateBuild build)
-                                    |> sendSubPageMsg Commit CommitMsg
+                                let
+                                    ( updatedSubPage, externalMsgs ) =
+                                        Commit.update context model.project session (Commit.UpdateBuild build) subModel
+                                in
+                                    updatedSubPage
+                                        |> sendSubPageMsg Commit CommitMsg
 
                             ( Builds subModel, Just build ) ->
                                 subModel

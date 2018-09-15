@@ -359,7 +359,7 @@ type Msg
     | SessionExpired
     | LoadFailed PageLoadError
     | LoginMsg Login.Msg
-    | ProjectLoaded ( Project.Model, Cmd Project.Msg )
+    | ProjectLoaded ( ( Project.Model, Cmd Project.Msg ), List Project.ExternalMsg )
     | ProjectMsg Project.Msg
     | KnownHostsLoaded KnownHosts.Model
     | KnownHostsMsg KnownHosts.Msg
@@ -595,10 +595,6 @@ handleInitProjectRoute :
 handleInitProjectRoute model session listeningSocket socketCmd slug subRoute =
     Just subRoute
         |> Project.init model.context model.session slug
-        |> Task.andThen
-            (\( ( subModel, subCmd ), externalMsgs ) ->
-                Task.succeed ( subModel, subCmd )
-            )
         |> transition model ProjectLoaded
         |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
         |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
@@ -864,12 +860,15 @@ updatePage page msg model =
                 in
                     modelAfterExternalMsg ! [ Cmd.map KnownHostsMsg newSubCmd, cmdAfterExternalMsg ]
 
-            ( ProjectLoaded ( subModel, subMsg ), _ ) ->
+            ( ProjectLoaded ( ( subModel, subMsg ), externalMsgs ), _ ) ->
                 let
                     pageState =
                         Loaded (Project subModel)
+
+                    modelUpdatedWithExternalMsgs =
+                        handleProjectExternalMsgs model externalMsgs
                 in
-                    { model
+                    { modelUpdatedWithExternalMsgs
                         | pageState = pageState
                         , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Project subModel) model.deviceWidth
                     }
