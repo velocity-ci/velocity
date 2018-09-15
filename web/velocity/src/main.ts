@@ -5,7 +5,8 @@ import * as parseGitUrl from 'git-url-parse';
 
 const flags = {
   session: localStorage.session || null,
-  apiUrlBase: process.env.ARCHITECT_ADDRESS
+  apiUrlBase: process.env.ARCHITECT_ADDRESS,
+  deviceWidthPx : 0
 };
 
 const app = require("./app/Main.elm").Main.fullscreen(flags);

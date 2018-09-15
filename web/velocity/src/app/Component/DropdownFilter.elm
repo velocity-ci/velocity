@@ -1,6 +1,11 @@
 module Component.DropdownFilter exposing (Context, Config, DropdownState, initialDropdownState, view, subscriptions)
 
 {- A stateless ItemFilter component. -}
+-- INTERNAL --
+
+import Data.Device as Device
+
+
 -- EXTERNAL --
 
 import Html exposing (..)
@@ -21,6 +26,7 @@ type alias Context a =
     , dropdownState : Dropdown.State
     , filterTerm : String
     , selectedItem : Maybe a
+    , deviceSize : Device.Size
     }
 
 
@@ -60,18 +66,30 @@ subscriptions { dropdownMsg } { dropdownState } =
 
 view : Config msg a -> Context a -> Html msg
 view config context =
-    Dropdown.dropdown
-        context.dropdownState
-        { options =
-            [ Dropdown.menuAttrs
-                [ onClick (config.noOpMsg)
-                , class "item-filter-dropdown"
-                ]
+    if Device.isSmall context.deviceSize then
+        select
+            [ class "form-control"
+            , onInput
+                (\itemLabel ->
+                    List.filter (\item -> (config.labelFn item) == itemLabel) context.items
+                        |> List.head
+                        |> config.selectItemMsg
+                )
             ]
-        , toggleMsg = config.dropdownMsg
-        , toggleButton = toggleButton context config
-        , items = viewDropdownItems config context
-        }
+            (viewChoiceItems context config)
+    else
+        Dropdown.dropdown
+            context.dropdownState
+            { options =
+                [ Dropdown.menuAttrs
+                    [ onClick (config.noOpMsg)
+                    , class "item-filter-dropdown"
+                    ]
+                ]
+            , toggleMsg = config.dropdownMsg
+            , toggleButton = toggleButton context config
+            , items = viewDropdownItems config context
+            }
 
 
 toggleButton : Context a -> Config msg a -> Dropdown.DropdownToggle msg
@@ -86,6 +104,19 @@ toggleButton { selectedItem } config =
             [ config.icon
             , text (" " ++ toggleText)
             ]
+
+
+viewChoiceItems : Context a -> Config msg a -> List (Html msg)
+viewChoiceItems { items, selectedItem } { labelFn } =
+    List.map
+        (\item ->
+            option
+                [ selected (selectedItem == Just item)
+                , value (labelFn item)
+                ]
+                [ text (labelFn item) ]
+        )
+        items
 
 
 viewDropdownItems : Config msg a -> Context a -> List (Dropdown.DropdownItem msg)

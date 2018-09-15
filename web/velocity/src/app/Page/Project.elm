@@ -216,15 +216,15 @@ leaveSubPageChannels subPage subRoute =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions : Device.Size -> Model -> Sub Msg
+subscriptions deviceSize model =
     case (getSubPage model.subPageState) of
         Commits subModel ->
-            Commits.subscriptions model.branches subModel
+            Commits.subscriptions deviceSize model.branches subModel
                 |> Sub.map CommitsMsg
 
         Commit subModel ->
-            Commit.subscriptions model.project subModel
+            Commit.subscriptions deviceSize model.project subModel
                 |> Sub.map CommitMsg
 
         _ ->
@@ -338,7 +338,7 @@ viewSubPage session deviceSize model =
                         Commits.viewBreadcrumbExtraItems project subModel
                             |> Html.map CommitsMsg
                 in
-                    Commits.view project branches subModel
+                    Commits.view project branches deviceSize subModel
                         |> Html.map CommitsMsg
                         |> pageFrame crumb
 

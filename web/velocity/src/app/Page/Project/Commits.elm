@@ -9,6 +9,7 @@ import Html.Events as UnstyledEvents
 import Html.Attributes as UnstyledAttribute
 import Css exposing (..)
 import Data.Commit as Commit exposing (Commit)
+import Data.Device as Device
 import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
@@ -119,8 +120,8 @@ branchFilterConfig =
     }
 
 
-branchFilterContext : List Branch -> Model -> DropdownFilter.Context Branch
-branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
+branchFilterContext : Device.Size -> List Branch -> Model -> DropdownFilter.Context Branch
+branchFilterContext deviceSize branches { dropdownState, branchFilterTerm, branch } =
     let
         items =
             branches
@@ -131,6 +132,7 @@ branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
         , dropdownState = dropdownState
         , filterTerm = branchFilterTerm
         , selectedItem = branch
+        , deviceSize = deviceSize
         }
 
 
@@ -138,9 +140,9 @@ branchFilterContext branches { dropdownState, branchFilterTerm, branch } =
 -- SUBSCRIPTIONS --
 
 
-subscriptions : List Branch -> Model -> Sub Msg
-subscriptions branches model =
-    branchFilterContext branches model
+subscriptions : Device.Size -> List Branch -> Model -> Sub Msg
+subscriptions deviceSize branches model =
+    branchFilterContext deviceSize branches model
         |> DropdownFilter.subscriptions branchFilterConfig
 
 
@@ -169,15 +171,15 @@ events projectSlug =
 -- VIEW --
 
 
-view : Project -> List Branch -> Model -> Html.Html Msg
-view project branches model =
+view : Project -> List Branch -> Device.Size -> Model -> Html.Html Msg
+view project branches deviceSize model =
     let
         commits =
             commitListToDict model.commits
                 |> viewCommitListContainer project
 
         branchFilter =
-            branchFilterContext branches model
+            branchFilterContext deviceSize branches model
                 |> DropdownFilter.view branchFilterConfig
                 |> fromUnstyled
 

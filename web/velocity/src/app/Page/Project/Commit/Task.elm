@@ -143,14 +143,14 @@ handleLoadError _ =
 -- SUBSCRIPTIONS --
 
 
-subscriptions : List Build -> Model -> Sub Msg
-subscriptions builds model =
+subscriptions : Device.Size -> List Build -> Model -> Sub Msg
+subscriptions deviceSize builds model =
     let
         buildModal =
             Modal.subscriptions model.formModalVisibility AnimateFormModal
 
         buildDropdown =
-            buildFilterContext model builds
+            buildFilterContext deviceSize model builds
                 |> DropdownFilter.subscriptions buildDropdownFilterConfig
 
         buildOutput =
@@ -235,12 +235,13 @@ buildDropdownFilterConfig =
     }
 
 
-buildFilterContext : Model -> List Build -> DropdownFilter.Context Build
-buildFilterContext { frame, buildDropdownState, buildFilterTerm, selected } builds =
+buildFilterContext : Device.Size -> Model -> List Build -> DropdownFilter.Context Build
+buildFilterContext deviceSize { frame, buildDropdownState, buildFilterTerm, selected } builds =
     { items = sortByDatetime .createdAt builds
     , dropdownState = buildDropdownState
     , filterTerm = buildFilterTerm
     , selectedItem = Maybe.andThen (Build.findBuild builds) selected
+    , deviceSize = deviceSize
     }
 
 
@@ -252,16 +253,16 @@ buildFilterContext { frame, buildDropdownState, buildFilterTerm, selected } buil
 view : Device.Size -> Project -> Commit -> Model -> List Build -> Html Msg
 view deviceSize project commit model builds =
     div []
-        [ viewTabFrame model builds commit
+        [ viewTabFrame deviceSize model builds commit
         , viewFormModal model.task model.form model.formModalVisibility
         ]
 
 
-viewHeader : Model -> List Build -> Html Msg
-viewHeader model builds =
+viewHeader : Device.Size -> Model -> List Build -> Html Msg
+viewHeader deviceSize model builds =
     div [ class "mb-4" ]
         [ viewTaskHeading model.task
-        , viewToolbar model builds
+        , viewToolbar deviceSize model builds
         ]
 
 
@@ -304,11 +305,11 @@ viewNoParametersAlert =
         ]
 
 
-viewToolbar : Model -> List Build -> Html Msg
-viewToolbar model builds =
+viewToolbar : Device.Size -> Model -> List Build -> Html Msg
+viewToolbar deviceSize model builds =
     let
         buildsDropdown =
-            buildFilterContext model builds
+            buildFilterContext deviceSize model builds
                 |> DropdownFilter.view buildDropdownFilterConfig
 
         shouldDisplayBuildsDropdown =
@@ -317,6 +318,7 @@ viewToolbar model builds =
         newBuildButton =
             button
                 [ class "btn btn-primary"
+                , classList [ "btn-block" => not (Device.isLarge deviceSize) ]
                 , onClick OpenFormModal
                 ]
                 [ text
@@ -341,11 +343,18 @@ viewToolbar model builds =
                 _ ->
                     text ""
     in
-        div [ class "d-flex" ]
-            [ Util.viewIf shouldDisplayBuildsDropdown <| div [ class "pr-4" ] [ buildsDropdown ]
-            , div [ class "flex-fill flex-grow-1 d-none d-sm-block" ] [ timeline ]
-            , div [ class "pl-4" ] [ newBuildButton ]
-            ]
+        if Device.isSmall deviceSize then
+            div []
+                [ Util.viewIf shouldDisplayBuildsDropdown buildsDropdown
+                , div [ class "py-5" ] [ timeline ]
+                , newBuildButton
+                ]
+        else
+            div [ class "d-flex" ]
+                [ Util.viewIf shouldDisplayBuildsDropdown <| div [ class "pr-4" ] [ buildsDropdown ]
+                , div [ class "flex-fill flex-grow-1 d-none d-sm-block" ] [ timeline ]
+                , div [ class "pl-4" ] [ newBuildButton ]
+                ]
 
 
 findBuild : List Build -> Build.Id -> Maybe Build
@@ -355,8 +364,8 @@ findBuild builds id =
         |> List.head
 
 
-viewTabFrame : Model -> List Build -> Commit -> Html Msg
-viewTabFrame model builds commit =
+viewTabFrame : Device.Size -> Model -> List Build -> Commit -> Html Msg
+viewTabFrame deviceSize model builds commit =
     if List.isEmpty builds then
         viewNoBuildsAlert model.task commit
     else
@@ -374,7 +383,7 @@ viewTabFrame model builds commit =
                         text ""
 
             BuildFrame (LoadingBuild _ _) ->
-                viewToolbar model builds
+                viewToolbar deviceSize model builds
 
 
 viewNoBuildsAlert : ProjectTask.Task -> Commit -> Html Msg

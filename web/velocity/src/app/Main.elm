@@ -63,6 +63,7 @@ type alias Model =
 type alias ProgramFlags =
     { apiUrlBase : String
     , session : Value
+    , deviceWidthPx : Int
     }
 
 
@@ -84,7 +85,7 @@ init flags location =
             (Route.fromLocation location)
 
         defaultDevice =
-            Device.size 0
+            Device.size flags.deviceWidthPx
 
         ( initialModel, initialCmd ) =
             setRoute maybeRoute
@@ -270,43 +271,43 @@ sidebarConfig =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions { userDropdown, sidebarDisplayType, deviceWidth, pageState, session } =
     let
-        session =
+        sessionSubs =
             Sub.map SetUser sessionChange
 
-        socket =
-            Socket.listen model.session.socket SocketMsg
+        socketSubs =
+            Socket.listen session.socket SocketMsg
 
-        userDropdown =
-            UserMenuDropdown.subscriptions userDropdownConfig model.userDropdown
+        dropdownSubs =
+            UserMenuDropdown.subscriptions userDropdownConfig userDropdown
 
-        resizes =
+        resizeSubs =
             Window.resizes (.width >> WindowWidthChange)
 
-        sidebar =
-            Sidebar.subscriptions sidebarConfig model.sidebarDisplayType
+        sidebarSubs =
+            Sidebar.subscriptions sidebarConfig sidebarDisplayType
 
-        page =
-            model.pageState
+        pageSubs =
+            pageState
                 |> getPage
-                |> pageSubscriptions
+                |> pageSubscriptions deviceWidth
     in
         Sub.batch
-            [ session
-            , socket
-            , page
-            , userDropdown
-            , resizes
-            , sidebar
+            [ sessionSubs
+            , socketSubs
+            , dropdownSubs
+            , resizeSubs
+            , sidebarSubs
+            , pageSubs
             ]
 
 
-pageSubscriptions : Page -> Sub Msg
-pageSubscriptions page =
+pageSubscriptions : Device.Size -> Page -> Sub Msg
+pageSubscriptions deviceSize page =
     case page of
         Project subModel ->
-            Project.subscriptions subModel
+            Project.subscriptions deviceSize subModel
                 |> Sub.map ProjectMsg
 
         Home subModel ->

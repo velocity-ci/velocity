@@ -3,6 +3,7 @@ module Data.Device
         ( Size
         , size
         , isLarge
+        , isSmall
         )
 
 
@@ -33,3 +34,8 @@ isLarge size =
 
         _ ->
             False
+
+
+isSmall : Size -> Bool
+isSmall size =
+    not (isLarge size)

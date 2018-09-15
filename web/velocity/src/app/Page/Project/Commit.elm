@@ -116,19 +116,19 @@ init context session project hash maybeRoute =
 -- SUBSCRIPTIONS --
 
 
-subscriptions : Project -> Model -> Sub Msg
-subscriptions project model =
+subscriptions : Device.Size -> Project -> Model -> Sub Msg
+subscriptions deviceSize project model =
     Sub.batch
-        [ subPageSubscriptions model
+        [ subPageSubscriptions deviceSize model
         ]
 
 
-subPageSubscriptions : Model -> Sub Msg
-subPageSubscriptions model =
+subPageSubscriptions : Device.Size -> Model -> Sub Msg
+subPageSubscriptions deviceSize model =
     case (getSubPage model.subPageState) of
         CommitTask subModel ->
             subModel
-                |> CommitTask.subscriptions model.builds
+                |> CommitTask.subscriptions deviceSize model.builds
                 |> Sub.map CommitTaskMsg
 
         _ ->
@@ -208,7 +208,7 @@ leaveSubPageChannels subPage subRoute =
 view : Project -> Session msg -> Device.Size -> Model -> Html Msg
 view project session deviceSize model =
     div []
-        [ viewSubPageHeader project model
+        [ viewSubPageHeader deviceSize project model
         , viewSubPage deviceSize project model
         ]
 
@@ -271,12 +271,12 @@ viewSubPage deviceSize project model =
                 ]
 
 
-viewSubPageHeader : Project -> Model -> Html Msg
-viewSubPageHeader project model =
+viewSubPageHeader : Device.Size -> Project -> Model -> Html Msg
+viewSubPageHeader deviceSize project model =
     case model.subPageState of
         Loaded (CommitTask subModel) ->
             taskBuilds model.builds (Just subModel.task)
-                |> CommitTask.viewHeader subModel
+                |> CommitTask.viewHeader deviceSize subModel
                 |> Html.map CommitTaskMsg
 
         TransitioningFrom (CommitTask subModel) route ->
@@ -284,7 +284,7 @@ viewSubPageHeader project model =
                 Just (CommitRoute.Task taskName _) ->
                     if taskName == subModel.task.name then
                         taskBuilds model.builds (Just subModel.task)
-                            |> CommitTask.viewHeader subModel
+                            |> CommitTask.viewHeader deviceSize subModel
                             |> Html.map CommitTaskMsg
                     else
                         text ""
