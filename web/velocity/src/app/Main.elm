@@ -1,9 +1,11 @@
 module Main exposing (main)
 
 import Context exposing (Context)
+import Data.AuthToken as AuthToken exposing (AuthToken)
 import Data.Session as Session exposing (Session)
 import Data.User as User exposing (User, Username)
 import Data.Device as Device
+import Data.Project
 import Navigation exposing (Location)
 import Views.Page as Page exposing (ActivePage)
 import Bootstrap.Dropdown as Dropdown
@@ -12,6 +14,7 @@ import Page.Home as Home
 import Page.Login as Login
 import Page.NotFound as NotFound
 import Page.Project as Project
+import Page.Project.Route as ProjectRoute
 import Page.KnownHosts as KnownHosts
 import Page.Users as Users
 import Page.Users as User
@@ -28,6 +31,8 @@ import Html exposing (Html, text, div)
 import Component.Sidebar as Sidebar
 import Window
 import Animation
+import Json.Encode as Encode
+import Dict exposing (Dict)
 
 
 type Page
@@ -435,24 +440,6 @@ handledChannelErrorToMsg err =
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
 setRoute maybeRoute model =
     let
-        transition successMsg task =
-            let
-                model_ =
-                    { model | pageState = TransitioningFrom (getPage model.pageState) }
-
-                handleResult result =
-                    case result of
-                        Err (Request.Errors.HandledError handledError) ->
-                            handledErrorToMsg handledError
-
-                        Err (Request.Errors.UnhandledError pageLoadError) ->
-                            LoadFailed pageLoadError
-
-                        Ok payload ->
-                            successMsg payload
-            in
-                model_ => Task.attempt handleResult task
-
         errored =
             pageErrored model
 
@@ -464,9 +451,6 @@ setRoute maybeRoute model =
 
         maybeToken =
             Maybe.map .token session.user
-
-        joinChannels =
-            Request.Channel.joinChannels socket maybeToken handledChannelErrorToMsg
     in
         case maybeRoute of
             Nothing ->
@@ -475,10 +459,10 @@ setRoute maybeRoute model =
             Just (Route.Home) ->
                 let
                     ( newModel, pageCmd ) =
-                        transition HomeLoaded (Home.init model.context model.session)
+                        transition model HomeLoaded (Home.init model.context model.session)
 
                     ( listeningSocket, socketCmd ) =
-                        joinChannels HomeMsg Home.initialEvents
+                        joinChannels socket maybeToken HomeMsg Home.initialEvents
                 in
                     case model.session.user of
                         Just user ->
@@ -494,7 +478,7 @@ setRoute maybeRoute model =
             Just (Route.Users) ->
                 case model.session.user of
                     Just user ->
-                        transition UsersLoaded (Users.init model.context model.session)
+                        transition model UsersLoaded (Users.init model.context model.session)
 
                     Nothing ->
                         model => Route.modifyUrl Route.Login
@@ -515,54 +499,125 @@ setRoute maybeRoute model =
             Just (Route.KnownHosts) ->
                 case model.session.user of
                     Just user ->
-                        transition KnownHostsLoaded (KnownHosts.init model.context model.session)
+                        transition model KnownHostsLoaded (KnownHosts.init model.context model.session)
 
                     Nothing ->
                         model => Route.modifyUrl Route.Login
 
             Just (Route.Project slug subRoute) ->
-                let
-                    ( listeningSocket, socketCmd ) =
-                        Project.initialEvents slug subRoute
-                            |> joinChannels ProjectMsg
+                handleProjectRoute model session slug subRoute
 
-                    transitionSubPage subModel =
-                        let
-                            ( ( newModel, newMsg ), _ ) =
-                                Project.update model.context model.session (Project.SetRoute (Just subRoute)) subModel
-                        in
-                            { model
-                                | pageState = Loaded (Project newModel)
-                                , session = { session | socket = listeningSocket }
-                            }
-                                ! [ Cmd.map ProjectMsg newMsg ]
 
-                    ( pageModel, pageCmd ) =
-                        Just subRoute
-                            |> Project.init model.context model.session slug
-                            |> transition ProjectLoaded
-                            |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
-                            |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
-                in
-                    case ( model.session.user, model.pageState ) of
-                        ( Just _, Loaded page ) ->
-                            case page of
-                                -- If we're on the product page for the same product as the new route just load sub-page
-                                -- Otherwise load the project page fresh
-                                Project subModel ->
-                                    if slug == subModel.project.slug then
-                                        transitionSubPage subModel
-                                    else
-                                        ( pageModel, pageCmd )
+joinChannels :
+    Socket Msg
+    -> Maybe AuthToken
+    -> (msg -> Msg)
+    -> Dict String (List ( String, Encode.Value -> msg ))
+    -> ( Socket Msg, Cmd (Socket.Msg Msg) )
+joinChannels socket maybeToken =
+    Request.Channel.joinChannels socket maybeToken handledChannelErrorToMsg
 
-                                _ ->
-                                    ( pageModel, pageCmd )
 
-                        ( Just _, TransitioningFrom _ ) ->
+transition :
+    Model
+    -> (b -> Msg)
+    -> Task.Task (Request.Errors.Error PageLoadError) b
+    -> ( Model, Cmd Msg )
+transition model successMsg task =
+    let
+        model_ =
+            { model | pageState = TransitioningFrom (getPage model.pageState) }
+
+        handleResult result =
+            case result of
+                Err (Request.Errors.HandledError handledError) ->
+                    handledErrorToMsg handledError
+
+                Err (Request.Errors.UnhandledError pageLoadError) ->
+                    LoadFailed pageLoadError
+
+                Ok payload ->
+                    successMsg payload
+    in
+        model_ => Task.attempt handleResult task
+
+
+handleProjectRoute : Model -> Session Msg -> Data.Project.Slug -> ProjectRoute.Route -> ( Model, Cmd Msg )
+handleProjectRoute model session slug subRoute =
+    let
+        ( listeningSocket, socketCmd ) =
+            Project.initialEvents slug subRoute
+                |> joinChannels session.socket (Maybe.map .token session.user) ProjectMsg
+
+        transitionSubPage subModel =
+            let
+                ( ( newModel, newMsg ), _ ) =
+                    Project.update model.context model.session (Project.SetRoute (Just subRoute)) subModel
+            in
+                { model
+                    | pageState = Loaded (Project newModel)
+                    , session = { session | socket = listeningSocket }
+                }
+                    ! [ Cmd.map ProjectMsg newMsg ]
+
+        ( pageModel, pageCmd ) =
+            handleInitProjectRoute model session listeningSocket socketCmd slug subRoute
+    in
+        case ( model.session.user, model.pageState ) of
+            ( Just _, Loaded page ) ->
+                case page of
+                    -- If we're on the project page for the same project as the new route just load sub-page
+                    -- Otherwise load the project page fresh
+                    Project subModel ->
+                        if slug == subModel.project.slug then
+                            transitionSubPage subModel
+                        else
                             ( pageModel, pageCmd )
 
-                        ( Nothing, _ ) ->
-                            model => Route.modifyUrl Route.Login
+                    _ ->
+                        ( pageModel, pageCmd )
+
+            ( Just _, TransitioningFrom _ ) ->
+                ( pageModel, pageCmd )
+
+            ( Nothing, _ ) ->
+                model => Route.modifyUrl Route.Login
+
+
+handleInitProjectRoute :
+    Model
+    -> Session Msg
+    -> Socket.Socket Msg
+    -> Cmd (Socket.Msg Msg)
+    -> Data.Project.Slug
+    -> ProjectRoute.Route
+    -> ( Model, Cmd Msg )
+handleInitProjectRoute model session listeningSocket socketCmd slug subRoute =
+    Just subRoute
+        |> Project.init model.context model.session slug
+        |> Task.andThen
+            (\( ( subModel, subCmd ), externalMsgs ) ->
+                Task.succeed ( subModel, subCmd )
+            )
+        |> transition model ProjectLoaded
+        |> Tuple.mapFirst (\m -> { m | session = { session | socket = listeningSocket } })
+        |> Tuple.mapSecond (\c -> Cmd.batch [ c, Cmd.map SocketMsg socketCmd ])
+
+
+handleProjectExternalMsgs : Model -> List Project.ExternalMsg -> Model
+handleProjectExternalMsgs =
+    List.foldl
+        (\msg model ->
+            case msg of
+                Project.SetSidebarSize size ->
+                    { model | sidebarDisplayType = Sidebar.initDisplayType model.deviceWidth (Just model.sidebarDisplayType) size }
+
+                Project.OpenSidebar ->
+                    { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+
+                Project.CloseSidebar ->
+                    { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
+        )
 
 
 pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
@@ -576,18 +631,7 @@ pageErrored model activePage errorMessage =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        ( updatedPageModel, pageCmd ) =
-            updatePage (getPage model.pageState) msg model
-
-        --
-        --        updatedSidebar =
-        --            updateSidebar (getPage updatedPageModel.pageState) model.pageWidth model.sidebarDisplayType
-    in
-        updatedPageModel
-            --        { updatedPageModel | sidebarDisplayType = updatedSidebar }
-            =>
-                pageCmd
+    updatePage (getPage model.pageState) msg model
 
 
 setRouteUpdate : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -626,19 +670,6 @@ updatePage page msg model =
         session =
             model.session
 
-        --        toPage toModel toMsg subUpdate subMsg subModel =
-        --            let
-        --                ( newModel, newCmd ) =
-        --                    subUpdate subMsg subModel
-        --
-        --                page =
-        --                    toModel newModel
-        --            in
-        --                { model
-        --                    | pageState = Loaded page
-        --                    , sidebarDisplayType = updateSidebar page model.pageWidth
-        --                }
-        --                    ! [ Cmd.map toMsg newCmd ]
         errored =
             pageErrored model
 
@@ -846,30 +877,11 @@ updatePage page msg model =
 
             ( ProjectMsg subMsg, Project subModel ) ->
                 let
-                    session =
-                        model.session
-
-                    socket =
-                        session.socket
-
                     ( ( newSubModel, newCmd ), externalMsgs ) =
                         Project.update model.context session subMsg subModel
 
                     externalUpdatedModel =
-                        List.foldl
-                            (\msg model ->
-                                case msg of
-                                    Project.SetSidebarSize size ->
-                                        { model | sidebarDisplayType = Sidebar.initDisplayType model.deviceWidth (Just model.sidebarDisplayType) size }
-
-                                    Project.OpenSidebar ->
-                                        { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
-
-                                    Project.CloseSidebar ->
-                                        { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
-                            )
-                            model
-                            externalMsgs
+                        handleProjectExternalMsgs model externalMsgs
 
                     ( listeningSocket, socketCmd ) =
                         Project.loadedEvents subMsg subModel

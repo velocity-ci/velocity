@@ -74,7 +74,12 @@ initialSubPage =
     Blank
 
 
-init : Context -> Session msg -> Project.Slug -> Maybe ProjectRoute.Route -> Task (Request.Errors.Error PageLoadError) ( Model, Cmd Msg )
+init :
+    Context
+    -> Session msg
+    -> Project.Slug
+    -> Maybe ProjectRoute.Route
+    -> Task (Request.Errors.Error PageLoadError) ( ( Model, Cmd Msg ), List ExternalMsg )
 init context session slug maybeRoute =
     let
         maybeAuthToken =
@@ -479,12 +484,13 @@ sidebarSize model =
             Sidebar.normalSize
 
 
-setRoute : Context -> Session msg -> Maybe ProjectRoute.Route -> Model -> ( Model, Cmd Msg )
+setRoute : Context -> Session msg -> Maybe ProjectRoute.Route -> Model -> ( ( Model, Cmd Msg ), List ExternalMsg )
 setRoute context session maybeRoute model =
     let
         transition toMsg task =
             { model | subPageState = TransitioningFrom (getSubPage model.subPageState) }
                 => Task.attempt toMsg task
+                => []
 
         errored =
             pageErrored model
@@ -493,10 +499,12 @@ setRoute context session maybeRoute model =
             Nothing ->
                 { model | subPageState = Loaded Blank }
                     => Cmd.none
+                    => []
 
             Just (ProjectRoute.Overview) ->
                 model
                     => Route.modifyUrl (Route.Project model.project.slug <| ProjectRoute.Commits Nothing Nothing)
+                    => []
 
             Just (ProjectRoute.Commits maybeBranch maybePage) ->
                 case session.user of
@@ -522,6 +530,7 @@ setRoute context session maybeRoute model =
                         in
                             { model | subPageState = Loaded (Commit newModel) }
                                 => Cmd.map CommitMsg newMsg
+                                => []
                 in
                     case ( session.user, model.subPageState ) of
                         ( Just _, Loaded page ) ->
@@ -558,18 +567,21 @@ setRoute context session maybeRoute model =
                     Just user ->
                         { model | subPageState = Loaded (Settings (Settings.initialModel)) }
                             => Cmd.none
+                            => []
 
                     Nothing ->
                         errored Page.Project "Uhoh"
 
 
-pageErrored : Model -> ActivePage -> String -> ( Model, Cmd msg )
+pageErrored : Model -> ActivePage -> String -> ( ( Model, Cmd msg ), List ExternalMsg )
 pageErrored model activePage errorMessage =
     let
         error =
             Errored.pageLoadError activePage errorMessage
     in
-        { model | subPageState = Loaded (Errored error) } => Cmd.none
+        { model | subPageState = Loaded (Errored error) }
+            => Cmd.none
+            => []
 
 
 update : Context -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), List ExternalMsg )
@@ -632,7 +644,6 @@ updateSubPage context session subPage msg model =
 
             ( SetRoute route, _ ) ->
                 setRoute context session route model
-                    => [ CloseSidebar ]
 
             ( SettingsMsg subMsg, Settings subModel ) ->
                 toPage Settings SettingsMsg (Settings.update context model.project session) subMsg subModel
@@ -655,7 +666,7 @@ updateSubPage context session subPage msg model =
             ( CommitLoaded (Ok ( subModel, subMsg )), _ ) ->
                 { model | subPageState = Loaded (Commit subModel) }
                     => Cmd.map CommitMsg subMsg
-                    => [ SetSidebarSize Sidebar.extraWideSize, OpenSidebar ]
+                    => [ SetSidebarSize Sidebar.extraWideSize ]
 
             ( CommitLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }

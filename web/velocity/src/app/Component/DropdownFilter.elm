@@ -68,7 +68,7 @@ view : Config msg a -> Context a -> Html msg
 view config context =
     if Device.isSmall context.deviceSize then
         select
-            [ class "form-control"
+            [ class "custom-select custom-select-lg"
             , onInput
                 (\itemLabel ->
                     List.filter (\item -> (config.labelFn item) == itemLabel) context.items

@@ -413,11 +413,7 @@ setRoute context session project maybeRoute model =
             Just (CommitRoute.Overview) ->
                 case session.user of
                     Just user ->
-                        { model_
-                            | subPageState =
-                                Overview.initialModel |> Overview |> Loaded
-                                --                            , sidebarDisplayType = CommitNavigation.show model.sidebarDisplayType
-                        }
+                        { model_ | subPageState = Overview.initialModel |> Overview |> Loaded }
                             => Cmd.none
 
                     Nothing ->
