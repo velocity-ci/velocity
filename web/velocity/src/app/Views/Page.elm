@@ -84,7 +84,11 @@ viewContent sidebarDisplayType content =
 viewNavbar : Sidebar.Config msg -> Styled.Html msg
 viewNavbar { toggleSidebarMsg } =
     nav
-        [ class "navbar navbar-light bg-light" ]
+        [ class "navbar navbar-light bg-light border-bottom"
+        , css
+            [ borderBottomColor (hex "d4dadf")
+            ]
+        ]
         [ viewNavbarToggle toggleSidebarMsg ]
 
 
@@ -119,10 +123,11 @@ sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
         , nav
             (List.concat
                 [ Sidebar.sidebarAnimationAttrs displayType
-                , [ class "d-flex"
+                , [ class "d-flex border-right"
                   , css
                         [ width (px <| Sidebar.sidebarWidth displayType)
                         , position fixed
+                        , borderRightColor (hex "d4dadf")
                         , top
                             (px
                                 (if Sidebar.isCollapsable displayType then

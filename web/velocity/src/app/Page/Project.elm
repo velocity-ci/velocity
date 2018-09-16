@@ -677,15 +677,12 @@ updateSubPage context session subPage msg model =
                 in
                     { externalUpdatedModel | subPageState = Loaded (Commit subModel) }
                         => Cmd.map CommitMsg subMsg
-                        => List.concat
-                            [ [ SetSidebarSize Sidebar.extraWideSize ]
-                            , externalMsgs
-                            ]
+                        => externalMsgs
 
             ( CommitLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
                     => Cmd.none
-                    => [ SetSidebarSize Sidebar.extraWideSize ]
+                    => [ SetSidebarSize Sidebar.normalSize ]
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
@@ -697,10 +694,7 @@ updateSubPage context session subPage msg model =
                 in
                     { externalUpdatedModel | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
-                        => List.concat
-                            [ [ SetSidebarSize Sidebar.extraWideSize ]
-                            , externalMsgs
-                            ]
+                        => externalMsgs
 
             ( BuildsMsg subMsg, Builds subModel ) ->
                 toPage Builds BuildsMsg (Builds.update context model.project session) subMsg subModel
@@ -878,6 +872,9 @@ handleCommitExternalMsgs model externalMsgs =
     , List.filterMap
         (\externalMsg ->
             case externalMsg of
+                Commit.SetSidebarSize size ->
+                    Just (SetSidebarSize size)
+
                 Commit.OpenSidebar ->
                     Just OpenSidebar
 

@@ -10,9 +10,7 @@ module Component.Sidebar
         , initDisplayType
         , fixedVisibleExtraWide
         , sidebarWidth
-        , containerMarginLeft
         , sidebarAnimationAttrs
-        , sidebarLeft
         , normalSize
         , extraWideSize
         , collapsableVisible
@@ -206,22 +204,6 @@ viewLogo newUrlMsg =
         ]
 
 
-containerMarginLeft : DisplayType -> Float
-containerMarginLeft sidebarType =
-    case sidebarType of
-        Collapsable _ _ ->
-            0.0
-
-        Fixed (FixedVisible Normal) ->
-            75
-
-        Fixed (FixedVisible ExtraWide) ->
-            308
-
-        Fixed FixedHidden ->
-            0
-
-
 sidebarWidth : DisplayType -> Float
 sidebarWidth sidebarType =
     case sidebarType of
@@ -239,30 +221,6 @@ sidebarWidth sidebarType =
 
         Fixed FixedHidden ->
             0
-
-
-sidebarLeft : DisplayType -> Float
-sidebarLeft sidebarType =
-    case sidebarType of
-        Collapsable _ ExtraWide ->
-            -308
-
-        Collapsable _ Normal ->
-            -75.0
-
-        --        Collapsable (Visible _) ExtraWide ->
-        --            0.0
-        --
-        --        Collapsable (Visible _) Normal ->
-        --            0.0
-        Fixed (FixedVisible Normal) ->
-            0.0
-
-        Fixed (FixedVisible ExtraWide) ->
-            0.0
-
-        Fixed FixedHidden ->
-            -1000.0
 
 
 isCollapsable : DisplayType -> Bool
@@ -295,12 +253,6 @@ collapsableVisible =
     Collapsable (Visible <| Animation.style animationFinishAttrs) ExtraWide
 
 
-
---collapsableHidden : DisplayType
---collapsableHidden =
---    Collapsable (Hidden <| Animation.style animationStartAttrs) ExtraWide
-
-
 animationStartAttrs : Size -> List Animation.Property
 animationStartAttrs size =
     case size of
@@ -319,19 +271,6 @@ animationFinishAttrs =
 animateLeft : Float -> List Animation.Property
 animateLeft left =
     [ Animation.left (Animation.px left) ]
-
-
-
---sidebarContainer : Config msg -> DisplayType -> Html.Html msg -> Styled.Html msg
---sidebarContainer config displayType content =
---    div []
---        [ div
---            [ css (collapsableOverlay displayType)
---            , onClick config.hideCollapsableSidebarMsg
---            ]
---            []
---        , sidebar config displayType content
---        ]
 
 
 sidebar : Config msg -> DisplayType -> Html.Html msg -> Styled.Html msg
@@ -359,7 +298,7 @@ collapsableOverlay displayType =
             , bottom (px 0)
             , zIndex (int 1)
               --            , backgroundColor (hex "000000")
-              --            , opacity (num 0.1)
+              --            , opacity (num 0.3)
             , width (pct 100)
             ]
 
@@ -431,11 +370,25 @@ initDisplayType deviceWidth displayType size =
         Fixed (FixedVisible size)
     else
         case displayType of
-            Just (Collapsable (Visible animationState) _) ->
-                Collapsable (Visible animationState) size
+            Just (Collapsable (Visible animationState) oldSize) ->
+                if oldSize == size then
+                    Collapsable (Visible animationState) size
+                else
+                    let
+                        animation =
+                            Animation.interrupt [ Animation.set animationFinishAttrs ] animationState
+                    in
+                        Collapsable (Visible animation) size
 
-            Just (Collapsable (Hidden animationState) _) ->
-                Collapsable (Hidden animationState) size
+            Just (Collapsable (Hidden animationState) oldSize) ->
+                if oldSize == size then
+                    Collapsable (Hidden animationState) size
+                else
+                    let
+                        animation =
+                            Animation.interrupt [ Animation.set (animationStartAttrs size) ] animationState
+                    in
+                        Collapsable (Hidden animation) size
 
             _ ->
                 Collapsable (Hidden (Animation.style (animationStartAttrs size))) Normal

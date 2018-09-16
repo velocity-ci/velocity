@@ -240,9 +240,14 @@ sidebarConfig =
 
 viewSidebar : Project -> Model -> Html Msg
 viewSidebar project model =
-    model
-        |> sidebarContext project
-        |> CommitNavigation.view sidebarConfig
+    case (getSubPage model.subPageState) of
+        Overview _ ->
+            text ""
+
+        _ ->
+            model
+                |> sidebarContext project
+                |> CommitNavigation.view sidebarConfig
 
 
 viewSubPage : Device.Size -> Project -> Model -> Html Msg
@@ -356,7 +361,8 @@ type Msg
 
 
 type ExternalMsg
-    = OpenSidebar
+    = SetSidebarSize Sidebar.Size
+    | OpenSidebar
     | CloseSidebar
 
 
@@ -414,7 +420,9 @@ setRoute context session project maybeRoute model =
                     Just user ->
                         { model_ | subPageState = Overview.initialModel |> Overview |> Loaded }
                             => Cmd.none
-                            => [ OpenSidebar ]
+                            => [ CloseSidebar
+                               , SetSidebarSize Sidebar.normalSize
+                               ]
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -433,7 +441,9 @@ setRoute context session project maybeRoute model =
                                     taskBuilds model.builds (Just task)
                                         |> CommitTask.init context session project.id model.commit.hash task maybeBuildId
                                         |> transition CommitTaskLoaded
-                                        => [ CloseSidebar ]
+                                        => [ CloseSidebar
+                                           , SetSidebarSize Sidebar.extraWideSize
+                                           ]
 
                                 Nothing ->
                                     errored Page.Project "Could not find task"
@@ -488,7 +498,7 @@ update context project session msg model =
 
             ( OverviewMsg subMsg, Overview subModel ) ->
                 toPage Overview OverviewMsg (Overview.update project session) subMsg subModel
-                    => [ OpenSidebar ]
+                    => []
 
             ( CommitTaskLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (CommitTask subModel) }

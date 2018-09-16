@@ -36,7 +36,7 @@ initialModel =
 view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
 view project commit tasks builds =
     div []
-        [--viewTaskList project commit tasks builds
+        [ viewTaskList project commit tasks builds
         ]
 
 
@@ -44,12 +44,14 @@ viewTaskList : Project -> Commit -> List ProjectTask.Task -> List Build -> Html 
 viewTaskList project commit tasks builds =
     let
         taskList =
-            List.map (viewTaskListItem project commit builds) tasks
+            tasks
+                |> List.filter (.name >> ProjectTask.nameToString >> String.isEmpty >> not)
+                |> List.sortBy (.name >> ProjectTask.nameToString)
+                |> List.map (viewTaskListItem project commit builds)
                 |> div [ class "list-group list-group-flush" ]
     in
-        div [ class "card mt-3" ]
-            [ h5 [ class "card-header" ] [ text "Tasks" ]
-            , taskList
+        div [ class "card my-2" ]
+            [ taskList
             ]
 
 
