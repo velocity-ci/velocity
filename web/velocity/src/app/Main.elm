@@ -104,7 +104,6 @@ init flags location =
     in
         initialModel
             ! [ initialCmd
-              , Task.perform WindowWidthChange Window.width
               ]
 
 

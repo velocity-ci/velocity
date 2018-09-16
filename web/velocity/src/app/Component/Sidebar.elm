@@ -104,30 +104,44 @@ subscriptions { animateMsg } displayType =
 
 show : DisplayType -> DisplayType
 show displayType =
-    case Debug.log "DISPLAY TYPE" displayType of
-        Collapsable (Hidden animationState) size ->
+    let
+        animateShow animationState size =
             let
                 animation =
                     Animation.interrupt [ Animation.to animationFinishAttrs ] animationState
             in
                 Collapsable (Visible animation) size
+    in
+        case displayType of
+            Collapsable (Hidden animationState) size ->
+                animateShow animationState size
 
-        _ ->
-            displayType
+            Collapsable (Visible animationState) size ->
+                animateShow animationState size
+
+            _ ->
+                displayType
 
 
 hide : DisplayType -> DisplayType
 hide displayType =
-    case displayType of
-        Collapsable (Visible animationState) size ->
+    let
+        animateHide animationState size =
             let
                 animation =
                     Animation.interrupt [ Animation.to (animationStartAttrs size) ] animationState
             in
                 Collapsable (Hidden animation) size
+    in
+        case displayType of
+            Collapsable (Visible animationState) size ->
+                animateHide animationState size
 
-        _ ->
-            displayType
+            Collapsable (Hidden animationState) size ->
+                animateHide animationState size
+
+            _ ->
+                displayType
 
 
 toggle : DisplayType -> DisplayType
