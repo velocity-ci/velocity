@@ -490,7 +490,6 @@ setRoute context session maybeRoute model =
         transition toMsg task =
             { model | subPageState = TransitioningFrom (getSubPage model.subPageState) }
                 => Task.attempt toMsg task
-                => []
 
         errored =
             pageErrored model
@@ -511,26 +510,30 @@ setRoute context session maybeRoute model =
                     Just user ->
                         Commits.init context session model.branches model.project maybeBranch maybePage
                             |> transition CommitsLoaded
+                            => []
 
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (ProjectRoute.Commit hash maybeRoute) ->
+            Just (ProjectRoute.Commit hash subRoute) ->
                 let
                     loadFreshPage =
-                        Just maybeRoute
+                        Just subRoute
                             |> Commit.init context session model.project hash
                             |> transition CommitLoaded
+                            => []
 
                     transitionSubPage subModel =
                         let
-                            ( ( newModel, newMsg ), externalMsgs ) =
-                                subModel
-                                    |> Commit.update context model.project session (Commit.SetRoute (Just maybeRoute))
+                            ( ( newModel, newMsg ), externalCommitMsgs ) =
+                                Commit.setRoute context session model.project (Just subRoute) subModel
+
+                            ( externalUpdatedModel, externalMsgs ) =
+                                handleCommitExternalMsgs model externalCommitMsgs
                         in
-                            { model | subPageState = Loaded (Commit newModel) }
+                            { externalUpdatedModel | subPageState = Loaded (Commit newModel) }
                                 => Cmd.map CommitMsg newMsg
-                                => []
+                                => externalMsgs
                 in
                     case ( session.user, model.subPageState ) of
                         ( Just _, Loaded page ) ->
@@ -558,6 +561,7 @@ setRoute context session maybeRoute model =
                         maybePage
                             |> Builds.init context session model.project.slug
                             |> transition BuildsLoaded
+                            => []
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -663,10 +667,17 @@ updateSubPage context session subPage msg model =
                 toPage Commits CommitsMsg (Commits.update context model.project session) subMsg subModel
                     => [ SetSidebarSize Sidebar.normalSize ]
 
-            ( CommitLoaded (Ok ( ( subModel, subMsg ), externalMsgs )), _ ) ->
-                { model | subPageState = Loaded (Commit subModel) }
-                    => Cmd.map CommitMsg subMsg
-                    => [ SetSidebarSize Sidebar.extraWideSize ]
+            ( CommitLoaded (Ok ( ( subModel, subMsg ), commitExternalMsgs )), _ ) ->
+                let
+                    ( externalUpdatedModel, externalMsgs ) =
+                        handleCommitExternalMsgs model commitExternalMsgs
+                in
+                    { externalUpdatedModel | subPageState = Loaded (Commit subModel) }
+                        => Cmd.map CommitMsg subMsg
+                        => List.concat
+                            [ [ SetSidebarSize Sidebar.extraWideSize ]
+                            , externalMsgs
+                            ]
 
             ( CommitLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
@@ -675,12 +686,18 @@ updateSubPage context session subPage msg model =
 
             ( CommitMsg subMsg, Commit subModel ) ->
                 let
-                    ( ( newSubModel, newCmd ), externalMsgs ) =
+                    ( ( newSubModel, newCmd ), commitExternalMsgs ) =
                         Commit.update context model.project session subMsg subModel
+
+                    ( externalUpdatedModel, externalMsgs ) =
+                        handleCommitExternalMsgs model commitExternalMsgs
                 in
-                    { model | subPageState = Loaded (Commit newSubModel) }
+                    { externalUpdatedModel | subPageState = Loaded (Commit newSubModel) }
                         ! [ Cmd.map CommitMsg newCmd ]
-                        => [ SetSidebarSize Sidebar.extraWideSize ]
+                        => List.concat
+                            [ [ SetSidebarSize Sidebar.extraWideSize ]
+                            , externalMsgs
+                            ]
 
             ( BuildsMsg subMsg, Builds subModel ) ->
                 toPage Builds BuildsMsg (Builds.update context model.project session) subMsg subModel
@@ -747,36 +764,40 @@ updateSubPage context session subPage msg model =
                             |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
 
-                    ( subPageState, subCmd ) =
+                    ( ( subPageState, subCmd ), ( updatedExternalModel, externalMsgs ) ) =
                         case ( page, maybeBuild ) of
                             ( Commit subModel, Just build ) ->
                                 let
                                     ( updatedSubPage, externalMsgs ) =
                                         Commit.update context model.project session (Commit.AddBuild build) subModel
                                 in
-                                    updatedSubPage
-                                        |> sendSubPageMsg Commit CommitMsg
+                                    ( sendSubPageMsg Commit CommitMsg updatedSubPage
+                                    , handleCommitExternalMsgs model externalMsgs
+                                    )
 
                             ( Builds subModel, Just build ) ->
                                 subModel
                                     |> Builds.update context model.project session (Builds.AddBuild build)
                                     |> sendSubPageMsg Builds BuildsMsg
+                                    => ( model, [] )
 
                             ( _, _ ) ->
-                                model.subPageState => Cmd.none
+                                model.subPageState
+                                    => Cmd.none
+                                    => ( model, [] )
 
                     modelCmd =
-                        { model | subPageState = subPageState }
+                        { updatedExternalModel | subPageState = subPageState }
                             ! [ subCmd ]
                 in
                     case maybeBuild of
                         Just build ->
                             Toasty.addToast ToastTheme.config ToastyMsg (Event.Created build) modelCmd
-                                => []
+                                => externalMsgs
 
                         Nothing ->
                             modelCmd
-                                => []
+                                => externalMsgs
 
             ( UpdateBuildEvent buildJson, page ) ->
                 let
@@ -785,26 +806,30 @@ updateSubPage context session subPage msg model =
                             |> Decode.decodeValue Build.decoder
                             |> Result.toMaybe
 
-                    ( subPageState, subCmd ) =
+                    ( ( subPageState, subCmd ), ( updatedExternalModel, externalMsgs ) ) =
                         case ( page, maybeBuild ) of
                             ( Commit subModel, Just build ) ->
                                 let
                                     ( updatedSubPage, externalMsgs ) =
                                         Commit.update context model.project session (Commit.UpdateBuild build) subModel
                                 in
-                                    updatedSubPage
-                                        |> sendSubPageMsg Commit CommitMsg
+                                    ( sendSubPageMsg Commit CommitMsg updatedSubPage
+                                    , handleCommitExternalMsgs model externalMsgs
+                                    )
 
                             ( Builds subModel, Just build ) ->
                                 subModel
                                     |> Builds.update context model.project session (Builds.UpdateBuild build)
                                     |> sendSubPageMsg Builds BuildsMsg
+                                    => ( model, [] )
 
                             ( _, _ ) ->
-                                model.subPageState => Cmd.none
+                                model.subPageState
+                                    => Cmd.none
+                                    => ( model, [] )
 
                     modelCmd =
-                        { model | subPageState = subPageState }
+                        { updatedExternalModel | subPageState = subPageState }
                             ! [ subCmd ]
 
                     modelCmdWithToast =
@@ -818,15 +843,15 @@ updateSubPage context session subPage msg model =
                     case Maybe.map .status maybeBuild of
                         Just (Build.Success) ->
                             modelCmdWithToast
-                                => []
+                                => externalMsgs
 
                         Just (Build.Failed) ->
                             modelCmdWithToast
-                                => []
+                                => externalMsgs
 
                         _ ->
                             modelCmd
-                                => []
+                                => externalMsgs
 
             ( DeleteBuildEvent buildJson, _ ) ->
                 model
@@ -842,6 +867,22 @@ updateSubPage context session subPage msg model =
                 (Debug.log "Fell through (project page)" model)
                     => Cmd.none
                     => []
+
+
+handleCommitExternalMsgs : Model -> List Commit.ExternalMsg -> ( Model, List ExternalMsg )
+handleCommitExternalMsgs model externalMsgs =
+    ( model
+    , List.filterMap
+        (\externalMsg ->
+            case externalMsg of
+                Commit.OpenSidebar ->
+                    Just OpenSidebar
+
+                Commit.CloseSidebar ->
+                    Just CloseSidebar
+        )
+        externalMsgs
+    )
 
 
 sendSubPageMsg :

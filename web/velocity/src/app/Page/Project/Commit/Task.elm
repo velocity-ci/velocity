@@ -446,6 +446,7 @@ type ExternalMsg
     = NoOp
     | AddBuild Build
     | UpdateBuild Build
+    | CloseSidebar
 
 
 buildFormConfig : BuildForm.Config Msg

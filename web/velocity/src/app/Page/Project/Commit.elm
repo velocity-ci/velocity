@@ -404,7 +404,6 @@ setRoute context session project maybeRoute model =
         transition toMsg task =
             { model_ | subPageState = TransitioningFrom (getSubPage model.subPageState) maybeRoute }
                 => Task.attempt toMsg task
-                => []
 
         errored =
             pageErrored model_
@@ -415,7 +414,7 @@ setRoute context session project maybeRoute model =
                     Just user ->
                         { model_ | subPageState = Overview.initialModel |> Overview |> Loaded }
                             => Cmd.none
-                            => []
+                            => [ OpenSidebar ]
 
                     Nothing ->
                         errored Page.Project "Uhoh"
@@ -434,6 +433,7 @@ setRoute context session project maybeRoute model =
                                     taskBuilds model.builds (Just task)
                                         |> CommitTask.init context session project.id model.commit.hash task maybeBuildId
                                         |> transition CommitTaskLoaded
+                                        => [ CloseSidebar ]
 
                                 Nothing ->
                                     errored Page.Project "Could not find task"
@@ -444,7 +444,7 @@ setRoute context session project maybeRoute model =
             _ ->
                 { model_ | subPageState = Loaded Blank }
                     => Cmd.none
-                    => []
+                    => [ CloseSidebar ]
 
 
 setSidebar : Maybe CommitRoute.Route -> Sidebar.DisplayType -> Sidebar.DisplayType
@@ -466,7 +466,6 @@ update context project session msg model =
                     subUpdate subMsg subModel
             in
                 ( { model | subPageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
-                    => []
 
         subPage =
             getSubPage model.subPageState
@@ -489,11 +488,12 @@ update context project session msg model =
 
             ( OverviewMsg subMsg, Overview subModel ) ->
                 toPage Overview OverviewMsg (Overview.update project session) subMsg subModel
+                    => [ OpenSidebar ]
 
             ( CommitTaskLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (CommitTask subModel) }
                     => Cmd.none
-                    => []
+                    => [ CloseSidebar ]
 
             ( CommitTaskLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
@@ -505,13 +505,15 @@ update context project session msg model =
                     builds =
                         List.filter (\b -> b.task.id == subModel.task.id) model.builds
 
-                    ( ( newModel, newCmd ), externalMsg ) =
+                    ( ( newModel, newCmd ), taskExternalMsg ) =
                         CommitTask.update context project model.commit builds session subMsg subModel
 
-                    model_ =
-                        case externalMsg of
+                    ( model_, externalMsgs ) =
+                        case taskExternalMsg of
                             CommitTask.AddBuild b ->
-                                { model | builds = addBuild model.builds b }
+                                ( { model | builds = addBuild model.builds b }
+                                , []
+                                )
 
                             CommitTask.UpdateBuild b ->
                                 let
@@ -525,14 +527,23 @@ update context project session msg model =
                                             )
                                             model.builds
                                 in
-                                    { model | builds = builds }
+                                    ( { model | builds = builds }
+                                    , []
+                                    )
+
+                            CommitTask.CloseSidebar ->
+                                ( model
+                                , [ CloseSidebar ]
+                                )
 
                             CommitTask.NoOp ->
-                                model
+                                ( model
+                                , []
+                                )
                 in
                     { model_ | subPageState = Loaded (CommitTask newModel) }
                         ! [ Cmd.map CommitTaskMsg newCmd ]
-                        => []
+                        => externalMsgs
 
             ( AddBuild build, _ ) ->
                 let
