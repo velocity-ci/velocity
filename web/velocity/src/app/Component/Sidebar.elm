@@ -417,11 +417,11 @@ initDisplayType deviceWidth displayType size =
         Fixed (FixedVisible size)
     else
         case displayType of
-            Just (Collapsable (Visible _) _) ->
-                Collapsable (Visible (Animation.style animationFinishAttrs)) size
+            Just (Collapsable (Visible animationState) _) ->
+                Collapsable (Visible animationState) size
 
-            Just (Collapsable (Hidden _) _) ->
-                Collapsable (Hidden (Animation.style (animationStartAttrs size))) size
+            Just (Collapsable (Hidden animationState) _) ->
+                Collapsable (Hidden animationState) size
 
             _ ->
                 Collapsable (Hidden (Animation.style (animationStartAttrs size))) Normal

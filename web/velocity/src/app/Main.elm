@@ -551,10 +551,13 @@ handleProjectRoute model session slug subRoute =
 
         transitionSubPage subModel =
             let
-                ( ( newModel, newMsg ), _ ) =
-                    Project.update model.context model.session (Project.SetRoute (Just subRoute)) subModel
+                ( ( newModel, newMsg ), externalProjectMsgs ) =
+                    Project.setRoute model.context model.session (Just subRoute) subModel
+
+                externalUpdatedModel =
+                    handleProjectExternalMsgs model externalProjectMsgs
             in
-                { model
+                { externalUpdatedModel
                     | pageState = Loaded (Project newModel)
                     , session = { session | socket = listeningSocket }
                 }

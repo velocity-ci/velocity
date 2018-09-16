@@ -37,6 +37,7 @@ import Views.Build
 import Views.Toast as ToastTheme
 import Views.Page as Page exposing (ActivePage)
 import Views.Helpers exposing (onClickPage)
+import Views.Spinner exposing (spinner)
 
 
 -- SUB PAGES --
@@ -304,9 +305,6 @@ viewSubpageProjectNavigation model =
 viewSubPage : Session msg -> Device.Size -> Model -> Html Msg
 viewSubPage session deviceSize model =
     let
-        page =
-            getSubPage model.subPageState
-
         project =
             model.project
 
@@ -319,21 +317,26 @@ viewSubPage session deviceSize model =
         pageFrame =
             frame project model
     in
-        case page of
-            Blank ->
+        case model.subPageState of
+            TransitioningFrom _ ->
+                div []
+                    [ div [ class "d-flex justify-content-center" ] [ spinner ]
+                    ]
+
+            Loaded Blank ->
                 Html.text ""
                     |> pageFrame (breadcrumb (text "") [])
 
-            Errored subModel ->
+            Loaded (Errored subModel) ->
                 Html.text "Errored"
                     |> pageFrame (breadcrumb (text "") [])
 
-            Builds subModel ->
+            Loaded (Builds subModel) ->
                 Builds.view project subModel
                     |> Html.map BuildsMsg
                     |> pageFrame (breadcrumb (text "") [])
 
-            Commits subModel ->
+            Loaded (Commits subModel) ->
                 let
                     crumb =
                         Commits.breadcrumb project
@@ -347,7 +350,7 @@ viewSubPage session deviceSize model =
                         |> Html.map CommitsMsg
                         |> pageFrame crumb
 
-            Commit subModel ->
+            Loaded (Commit subModel) ->
                 let
                     crumb =
                         Commit.breadcrumb project subModel.commit subModel.subPageState
@@ -357,7 +360,7 @@ viewSubPage session deviceSize model =
                         |> Html.map CommitMsg
                         |> pageFrame crumb
 
-            Settings subModel ->
+            Loaded (Settings subModel) ->
                 let
                     crumb =
                         Settings.breadcrumb project

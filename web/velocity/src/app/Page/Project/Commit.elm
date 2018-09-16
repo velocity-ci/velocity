@@ -444,7 +444,7 @@ setRoute context session project maybeRoute model =
             _ ->
                 { model_ | subPageState = Loaded Blank }
                     => Cmd.none
-                    => [ CloseSidebar ]
+                    => []
 
 
 setSidebar : Maybe CommitRoute.Route -> Sidebar.DisplayType -> Sidebar.DisplayType
@@ -493,7 +493,7 @@ update context project session msg model =
             ( CommitTaskLoaded (Ok subModel), _ ) ->
                 { model | subPageState = Loaded (CommitTask subModel) }
                     => Cmd.none
-                    => [ CloseSidebar ]
+                    => []
 
             ( CommitTaskLoaded (Err error), _ ) ->
                 { model | subPageState = Loaded (Errored error) }
@@ -530,11 +530,6 @@ update context project session msg model =
                                     ( { model | builds = builds }
                                     , []
                                     )
-
-                            CommitTask.CloseSidebar ->
-                                ( model
-                                , [ CloseSidebar ]
-                                )
 
                             CommitTask.NoOp ->
                                 ( model
