@@ -58,3 +58,7 @@ app.ports.scrollIntoView.subscribe(id => {
   }
 });
 
+
+app.ports.scrollTo.subscribe((x, y) => {
+  window.scrollTo(x, y);
+});

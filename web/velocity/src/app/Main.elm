@@ -642,7 +642,7 @@ setRouteUpdate maybeRoute model =
             setRoute maybeRoute { model | session = channelLeaveSession }
     in
         routeModel
-            ! [ routeCmd, channelLeaveCmd ]
+            ! [ routeCmd, channelLeaveCmd, Ports.scrollTo ( 0, 0 ) ]
 
 
 sidebarSize : Page -> Sidebar.Size
