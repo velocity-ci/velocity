@@ -7,27 +7,27 @@ import (
 	"go.uber.org/zap"
 )
 
-func (m *Manager) monitor(b *Builder) {
-	for {
-		message := BuilderRespMessage{}
-		err := b.ws.ReadJSON(&message)
-		if err != nil {
-			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
-			m.Delete(b)
-			b.ws.Close()
-			return
-		}
+// func (m *Manager) monitor(b *Builder) {
+// 	for {
+// 		message := BuilderRespMessage{}
+// 		err := b.ws.ReadJSON(&message)
+// 		if err != nil {
+// 			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
+// 			m.Delete(b)
+// 			b.ws.Close()
+// 			return
+// 		}
 
-		switch message.Type {
-		case "log":
-			m.builderLogMessage(message.Data.(*BuilderStreamLineMessage), b)
-			break
-		default:
-			velocity.GetLogger().Error("got invalid message type from builder", zap.String("message type", message.Type))
-		}
+// 		switch message.Type {
+// 		case "log":
+// 			m.builderLogMessage(message.Data.(*BuilderStreamLineMessage), b)
+// 			break
+// 		default:
+// 			velocity.GetLogger().Error("got invalid message type from builder", zap.String("message type", message.Type))
+// 		}
 
-	}
-}
+// 	}
+// }
 
 func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Builder) {
 	stream, err := m.streamManager.GetByID(sL.StreamID)

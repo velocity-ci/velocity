@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
-	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 )
 
 const (
@@ -33,61 +32,6 @@ func newBuildCommand(b *build.Build, steps []*build.Step, streams []*build.Strea
 			Streams: streams,
 		},
 	}
-}
-
-type KnownHostCtrl struct {
-	KnownHosts []*knownhost.KnownHost `json:"knownHosts"`
-}
-
-func newKnownHostsCommand(ks []*knownhost.KnownHost) *BuilderCtrlMessage {
-	return &BuilderCtrlMessage{
-		Command: CommandKnownHosts,
-		Payload: &KnownHostCtrl{
-			KnownHosts: ks,
-		},
-	}
-}
-
-func (c *BuilderCtrlMessage) UnmarshalJSON(b []byte) error {
-	var objMap map[string]*json.RawMessage
-	// We'll store the error (if any) so we can return it if necessary
-	err := json.Unmarshal(b, &objMap)
-	if err != nil {
-		return err
-	}
-
-	// Deserialize Command
-	err = json.Unmarshal(*objMap["command"], &c.Command)
-	if err != nil {
-		return err
-	}
-
-	// Deserialize Data by command
-	var rawData json.RawMessage
-	err = json.Unmarshal(*objMap["payload"], &rawData)
-	if err != nil {
-		return err
-	}
-
-	if c.Command == "build" {
-		d := BuildCtrl{}
-		err := json.Unmarshal(rawData, &d)
-		if err != nil {
-			return err
-		}
-		c.Payload = &d
-	} else if c.Command == "knownhosts" {
-		d := KnownHostCtrl{}
-		err := json.Unmarshal(rawData, &d)
-		if err != nil {
-			return err
-		}
-		c.Payload = &d
-	} else {
-		return fmt.Errorf("unsupported type in json.Unmarshal: %s", c.Command)
-	}
-
-	return nil
 }
 
 type BuilderStreamLineMessage struct {

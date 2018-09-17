@@ -10,7 +10,7 @@ import (
 
 // TODO: Debouncing
 type StreamWriter struct {
-	ws         *phoenix.PhoenixWSClient
+	ws         *phoenix.Client
 	StepNumber int
 
 	BuildID  string
@@ -22,7 +22,7 @@ type StreamWriter struct {
 }
 
 type Emitter struct {
-	ws      *phoenix.PhoenixWSClient
+	ws      *phoenix.Client
 	BuildID string
 	StepID  string
 	Streams []*build.Stream
@@ -65,7 +65,7 @@ func (e *Emitter) SetStepNumber(n int) {
 	e.StepNumber = n
 }
 
-func NewEmitter(ws *phoenix.PhoenixWSClient, b *build.Build) *Emitter {
+func NewEmitter(ws *phoenix.Client, b *build.Build) *Emitter {
 	return &Emitter{
 		ws:      ws,
 		BuildID: b.ID,

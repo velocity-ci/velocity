@@ -2,9 +2,6 @@ package phoenix
 
 import (
 	"encoding/json"
-
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
-	"go.uber.org/zap"
 )
 
 // Channel Event constants
@@ -94,7 +91,7 @@ func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
 		break
 
 	default:
-		velocity.GetLogger().Warn("no payload found for event", zap.String("event", m.Event))
+		m.Payload = rawData
 	}
 
 	return nil

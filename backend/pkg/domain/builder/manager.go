@@ -2,10 +2,16 @@ package builder
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
+
+	"github.com/velocity-ci/velocity/backend/pkg/builder"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
+
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
@@ -23,6 +29,7 @@ const (
 
 type Manager struct {
 	builders map[string]*Builder
+	lock     sync.Mutex
 
 	brokers []domain.Broker
 
@@ -66,22 +73,17 @@ func (m *Manager) CreateBuilder() *Builder {
 }
 
 func (m *Manager) Exists(id string) bool {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	if _, ok := m.builders[id]; ok {
 		return true
 	}
 	return false
 }
 
-func (m *Manager) WebsocketConnected(id string) bool {
-	if m.Exists(id) {
-		if m.builders[id].ws != nil {
-			return true
-		}
-	}
-	return false
-}
-
 func (m *Manager) GetAll(q *domain.PagingQuery) (r []*Builder, t int) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	t = 0
 
 	skipCounter := 0
@@ -100,6 +102,8 @@ func (m *Manager) GetAll(q *domain.PagingQuery) (r []*Builder, t int) {
 }
 
 func (m *Manager) GetReady(q *domain.PagingQuery) (r []*Builder, t int) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	t = 0
 
 	skipCounter := 0
@@ -120,6 +124,8 @@ func (m *Manager) GetReady(q *domain.PagingQuery) (r []*Builder, t int) {
 }
 
 func (m *Manager) GetBusy(q *domain.PagingQuery) (r []*Builder, t int) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	t = 0
 
 	skipCounter := 0
@@ -140,6 +146,8 @@ func (m *Manager) GetBusy(q *domain.PagingQuery) (r []*Builder, t int) {
 }
 
 func (m *Manager) Save(b *Builder) {
+	m.lock.Lock()
+	velocity.GetLogger().Debug("saved builder", zap.String("ID", b.ID))
 	var ev string
 	if m.Exists(b.ID) {
 		ev = EventUpdate
@@ -147,6 +155,7 @@ func (m *Manager) Save(b *Builder) {
 		ev = EventCreate
 	}
 	m.builders[b.ID] = b
+	m.lock.Unlock()
 	for _, b := range m.brokers {
 		b.EmitAll(&domain.Emit{
 			Topic:   "builders",
@@ -157,6 +166,8 @@ func (m *Manager) Save(b *Builder) {
 }
 
 func (m *Manager) GetByID(id string) (*Builder, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	if m.Exists(id) {
 		return m.builders[id], nil
 	}
@@ -164,22 +175,35 @@ func (m *Manager) GetByID(id string) (*Builder, error) {
 }
 
 func (m *Manager) Delete(b *Builder) {
-	if b.Command != nil && b.Command.Command == "build" {
-		build := b.Command.Payload.(*BuildCtrl).Build
-		build.Status = velocity.StateFailed
-		m.buildManager.Update(build)
-	}
-	delete(m.builders, b.ID)
+	// if b.Command != nil && b.Command.Command == "build" {
+	// 	build := b.Command.Payload.(*BuildCtrl).Build
+	// 	build.Status = velocity.StateFailed
+	// 	m.buildManager.Update(build)
+	// }
+	// delete(m.builders, b.ID)
 }
 
-func (m *Manager) StartBuild(builder *Builder, b *build.Build) {
-	builder.State = stateBusy
-	m.Save(builder)
+func (m *Manager) StartBuild(bu *Builder, b *build.Build) {
+	bu.State = stateBusy
+	m.Save(bu)
 
-	// Add knownhosts
+	// Set knownhosts
 	knownHosts, _ := m.knownHostManager.GetAll(domain.NewPagingQuery())
-	builder.Command = newKnownHostsCommand(knownHosts)
-	builder.ws.WriteJSON(builder.Command)
+	fmt.Printf("%+v\n", bu)
+	fmt.Printf("%+v\n", bu.WS)
+	fmt.Printf("%+v\n", bu.WS.Socket)
+	resp := bu.WS.Socket.Send(&phoenix.PhoenixMessage{
+		Event: builder.EventSetKnownHosts,
+		Topic: fmt.Sprintf("builder:%s", bu.ID),
+		Payload: &builder.KnownHostPayload{
+			KnownHosts: knownHosts,
+		},
+	}, true)
+	if resp.Status != phoenix.ResponseOK {
+		velocity.GetLogger().Error("could not set knownhosts on builder", zap.String("builder", bu.ID))
+	} else {
+		velocity.GetLogger().Info("set knownhosts on builder", zap.String("builder", bu.ID))
+	}
 
 	// Start build
 	b.Status = velocity.StateRunning
@@ -191,6 +215,18 @@ func (m *Manager) StartBuild(builder *Builder, b *build.Build) {
 		streams = append(streams, m.streamManager.GetStreamsForStep(s)...)
 	}
 
-	builder.Command = newBuildCommand(b, steps, streams)
-	builder.ws.WriteJSON(builder.Command)
+	resp = bu.WS.Socket.Send(&phoenix.PhoenixMessage{
+		Event: builder.EventStartBuild,
+		Topic: fmt.Sprintf("builder:%s", bu.ID),
+		Payload: &builder.BuildPayload{
+			Build:   b,
+			Steps:   steps,
+			Streams: streams,
+		},
+	}, true)
+	if resp.Status != phoenix.ResponseOK {
+		velocity.GetLogger().Error("could not start build on builder", zap.String("builder", bu.ID))
+	} else {
+		velocity.GetLogger().Info("started build on builder", zap.String("builder", bu.ID))
+	}
 }

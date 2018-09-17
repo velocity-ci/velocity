@@ -4,14 +4,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
-	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
-func runBuild(build *builder.BuildCtrl, ws *phoenix.PhoenixWSClient) {
-	emitter := NewEmitter(ws, build.Build)
+func (b *Builder) runBuild(build *BuildPayload) {
+	velocity.GetLogger().Info("running build", zap.String("buildID", build.Build.ID))
+
+	emitter := NewEmitter(b.ws, build.Build)
 
 	backupResolver := NewParameterResolver(build.Build.Parameters)
 
@@ -21,7 +22,6 @@ func runBuild(build *builder.BuildCtrl, ws *phoenix.PhoenixWSClient) {
 		bStep := build.Steps[i]
 		emitter.SetStepAndStreams(bStep, build.Streams)
 
-		// s := *step.VStep
 		if step.GetType() == "setup" {
 			step.(*velocity.Setup).Init(
 				&backupResolver,
@@ -41,4 +41,10 @@ func runBuild(build *builder.BuildCtrl, ws *phoenix.PhoenixWSClient) {
 	}
 	velocity.GetLogger().Info("completed build", zap.String("buildID", build.Build.ID))
 	os.Chdir("/opt/velocityci")
+}
+
+type BuildPayload struct {
+	Build   *build.Build    `json:"build"`
+	Steps   []*build.Step   `json:"steps"`
+	Streams []*build.Stream `json:"streams"`
 }

@@ -1,9 +1,14 @@
 package rest
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
@@ -138,10 +143,24 @@ func (h *builderHandler) connect(c echo.Context) error {
 		return nil
 	}
 
-	client := NewClient(ws)
-	h.broker.save(client)
+	phoenix.NewServer(ws, func(s *phoenix.Server, token *jwt.Token, topic string) error {
+		parts := strings.Split(topic, ":")
+		if len(parts) < 2 {
+			return fmt.Errorf("invalid topic %s", topic)
+		}
+		builder, err := h.builderManager.GetByID(parts[1])
+		if err != nil {
+			return err
+		}
+		if token.Claims.(*jwt.StandardClaims).Subject != builder.ID {
+			return fmt.Errorf("mismatched token %s != %s", token.Claims.(*jwt.StandardClaims).Subject, builder.ID)
+		}
 
-	go h.broker.monitor(client)
+		builder.WS = s
+
+		h.builderManager.Save(builder)
+		return nil
+	}, true)
 
 	return nil
 }

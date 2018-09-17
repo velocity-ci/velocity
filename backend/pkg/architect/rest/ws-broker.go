@@ -18,7 +18,7 @@ import (
 )
 
 type broker struct {
-	clients map[string]*Client
+	clients map[string]*phoenix.Server
 	lock    sync.RWMutex
 
 	branchManager *githistory.BranchManager
@@ -32,7 +32,7 @@ func NewBroker(
 	streamManager *build.StreamManager,
 ) *broker {
 	return &broker{
-		clients:       map[string]*Client{},
+		clients:       map[string]*phoenix.Server{},
 		lock:          sync.RWMutex{},
 		branchManager: branchManager,
 		stepManager:   stepManager,
@@ -40,53 +40,36 @@ func NewBroker(
 	}
 }
 
-func (m *broker) save(c *Client) {
+func (m *broker) save(c *phoenix.Server) {
 	m.lock.Lock()
 	m.clients[c.ID] = c
 	m.lock.Unlock()
 }
 
-func (m *broker) remove(c *Client) {
+func (m *broker) remove(c *phoenix.Server) {
 	m.lock.Lock()
 	delete(m.clients, c.ID)
 	m.lock.Unlock()
 }
 
-func (m *broker) monitor(c *Client) {
-	c.alive = true
-	for {
-		message := &phoenix.PhoenixMessage{}
-		err := c.ws.ReadJSON(message)
-		if err != nil {
-			c.alive = false
-			velocity.GetLogger().Error("could not read web client websocket message", zap.Error(err), zap.String("clientID", c.ID))
-			c.ws.Close()
-			m.remove(c)
-			return
-		}
-		c.HandleMessage(message)
-		m.save(c)
-	}
-}
-
 func (m *broker) EmitAll(message *domain.Emit) {
-	clientCount := 0
-	mess := m.handleEmit(message)
-	for _, c := range m.clients {
-		if !c.alive {
-			m.remove(c)
-			break
-		}
-		for _, s := range c.subscriptions {
-			if s == mess.Topic {
-				err := c.WriteJSON(mess)
-				clientCount++
-				if err != nil {
-					velocity.GetLogger().Error("could not write message to client websocket", zap.Error(err), zap.String("clientID", c.ID))
-				}
-			}
-		}
-	}
+	// clientCount := 0
+	// mess := m.handleEmit(message)
+	// for _, c := range m.clients {
+	// 	if !c.connected {
+	// 		m.remove(c)
+	// 		break
+	// 	}
+	// 	for _, s := range c.subscribedTopics {
+	// 		if s == mess.Topic {
+	// 			err := c.Send(mess, false)
+	// 			clientCount++
+	// 			if err != nil {
+	// 				velocity.GetLogger().Error("could not write message to client websocket", zap.Error(err), zap.String("clientID", c.ID))
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 func (m *broker) handleEmit(em *domain.Emit) *phoenix.PhoenixMessage {

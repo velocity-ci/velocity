@@ -53,11 +53,6 @@ func (a *Architect) Stop() error {
 	return a.Server.Shutdown(ctx)
 }
 
-type App interface {
-	Start()
-	Stop() error
-}
-
 func New() *Architect {
 	a := &Architect{
 		Server: echo.New(),

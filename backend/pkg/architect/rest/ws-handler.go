@@ -1,7 +1,9 @@
 package rest
 
 import (
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
@@ -17,15 +19,6 @@ func newWebsocketHandler(broker *broker) *websocketHandler {
 }
 
 func (h *websocketHandler) phxClient(c echo.Context) error {
-	// auth := c.Request().Header.Get("Authorization")
-	// if auth == "" {
-	// 	c.JSON(http.StatusUnauthorized, "")
-	// 	return nil
-	// }
-	// if auth != os.Getenv("BUILDER_TOKEN") {
-	// 	c.JSON(http.StatusUnauthorized, "")
-	// 	return nil
-	// }
 
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -33,9 +26,10 @@ func (h *websocketHandler) phxClient(c echo.Context) error {
 		return nil
 	}
 
-	client := NewClient(ws)
+	client := phoenix.NewServer(ws, func(*phoenix.Server, *jwt.Token, string) error {
+		return nil
+	}, false)
 	h.broker.save(client)
 
-	go h.broker.monitor(client)
 	return nil
 }

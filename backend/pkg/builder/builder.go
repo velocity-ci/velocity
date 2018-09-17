@@ -13,9 +13,13 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 
-	"github.com/velocity-ci/velocity/backend/pkg/architect"
 	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+)
+
+const (
+	EventStartBuild    = "build:start"
+	EventSetKnownHosts = "knownhosts:set"
 )
 
 type Builder struct {
@@ -28,7 +32,7 @@ type Builder struct {
 	token string
 
 	http *http.Client
-	ws   *phoenix.PhoenixWSClient
+	ws   *phoenix.Client
 }
 
 func (b *Builder) Stop() error {
@@ -89,11 +93,25 @@ func (b *Builder) connect() {
 	wsAddress := strings.Replace(b.baseArchitectAddress, "http", "ws", 1)
 	wsAddress = fmt.Sprintf("%s/v1/builders/ws", wsAddress)
 
-	ws, err := phoenix.NewPhoenixWSClient(wsAddress, map[string]func(*phoenix.PhoenixMessage) error{
-		"build:start": func(m *phoenix.PhoenixMessage) error {
+	ws, err := phoenix.NewClient(wsAddress, map[string]func(*phoenix.PhoenixMessage) error{
+		EventStartBuild: func(m *phoenix.PhoenixMessage) error {
+			p := BuildPayload{}
+			err := json.Unmarshal(m.Payload.(json.RawMessage), &p)
+			if err != nil {
+				return err
+			}
+			b.ws.Socket.ReplyOK(m)
+			b.runBuild(&p)
 			return nil
 		},
-		"knownhost:set": func(m *phoenix.PhoenixMessage) error {
+		EventSetKnownHosts: func(m *phoenix.PhoenixMessage) error {
+			p := KnownHostPayload{}
+			err := json.Unmarshal(m.Payload.(json.RawMessage), &p)
+			if err != nil {
+				return err
+			}
+			b.updateKnownHosts(&p)
+			b.ws.Socket.ReplyOK(m)
 			return nil
 		},
 	})
@@ -119,7 +137,7 @@ func (b *Builder) connect() {
 	b.ws.Wait(5)
 }
 
-func New() architect.App {
+func New() velocity.App {
 	return &Builder{run: true}
 }
 

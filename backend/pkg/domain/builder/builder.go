@@ -1,12 +1,10 @@
 package builder
 
-import "time"
+import (
+	"time"
 
-type Transport interface {
-	WriteJSON(interface{}) error
-	ReadJSON(interface{}) error
-	Close() error
-}
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
+)
 
 const (
 	stateReady = "ready"
@@ -21,6 +19,5 @@ type Builder struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	ws      Transport
-	Command *BuilderCtrlMessage
+	WS *phoenix.Server
 }
