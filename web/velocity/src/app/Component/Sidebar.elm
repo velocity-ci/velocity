@@ -1,51 +1,48 @@
 module Component.Sidebar
     exposing
-        ( view
-        , animate
-        , show
-        , hide
-        , toggle
-        , subscriptions
-        , Config
-        , initDisplayType
-        , fixedVisibleExtraWide
-        , sidebarWidth
-        , sidebarAnimationAttrs
-        , normalSize
-        , extraWideSize
-        , collapsableVisible
-        , isCollapsable
-        , DisplayType
+        ( Config
         , Direction(..)
-        , collapsableOverlay
+        , DisplayType
         , Size
+        , animate
+        , collapsableOverlay
+        , collapsableVisible
+        , extraWideSize
+        , fixedVisibleExtraWide
+        , hide
+        , initDisplayType
+        , isCollapsable
+        , normalSize
+        , show
+        , sidebarAnimationAttrs
+        , sidebarWidth
+        , subscriptions
+        , toggle
+        , view
         )
 
 -- INTERNAL
-
-import Data.Commit as Commit exposing (Commit)
-import Data.Task as Task exposing (Task)
-import Data.Project as Project exposing (Project)
-import Data.Build as Build exposing (Build)
-import Data.Device as Device
-import Route exposing (Route)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commit.Route as CommitRoute
-import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
-import Views.Helpers exposing (onClickPage)
-import Views.Build exposing (viewBuildStatusIconClasses, viewBuildTextClass)
-import Views.Style as Style
-import Util exposing ((=>))
-
-
 -- EXTERNAL
 
-import Html exposing (Html)
-import Html.Styled.Attributes as Attributes exposing (css, class, classList)
-import Html.Styled as Styled exposing (..)
-import Html.Styled.Events exposing (onClick)
-import Css exposing (..)
 import Animation
+import Css exposing (..)
+import Data.Build as Build exposing (Build)
+import Data.Commit as Commit exposing (Commit)
+import Data.Device as Device
+import Data.Project as Project exposing (Project)
+import Data.Task as Task exposing (Task)
+import Html exposing (Html)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as Attributes exposing (class, classList, css)
+import Html.Styled.Events exposing (onClick)
+import Page.Project.Commit.Route as CommitRoute
+import Page.Project.Route as ProjectRoute
+import Route exposing (Route)
+import Util exposing ((=>))
+import Views.Build exposing (viewBuildStatusIconClasses, viewBuildTextClass)
+import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
+import Views.Helpers exposing (onClickPage)
+import Views.Style as Style
 
 
 -- CONFIG --
@@ -108,45 +105,45 @@ subscriptions { animateMsg } displayType =
 
 
 show : Config msg -> DisplayType -> DisplayType
-show config displayType =
+show { direction } displayType =
     let
         animateShow animationState size =
             let
                 animation =
-                    Animation.interrupt [ Animation.to animationFinishAttrs ] animationState
+                    Animation.interrupt [ Animation.to (animationFinishAttrs direction) ] animationState
             in
-                Collapsable (Visible animation) size
+            Collapsable (Visible animation) size
     in
-        case displayType of
-            Collapsable (Hidden animationState) size ->
-                animateShow animationState size
+    case displayType of
+        Collapsable (Hidden animationState) size ->
+            animateShow animationState size
 
-            Collapsable (Visible animationState) size ->
-                animateShow animationState size
+        Collapsable (Visible animationState) size ->
+            animateShow animationState size
 
-            _ ->
-                displayType
+        _ ->
+            displayType
 
 
 hide : Config msg -> DisplayType -> DisplayType
-hide config displayType =
+hide { direction } displayType =
     let
         animateHide animationState size =
             let
                 animation =
-                    Animation.interrupt [ Animation.to (animationStartAttrs size) ] animationState
+                    Animation.interrupt [ Animation.to (animationStartAttrs direction size) ] animationState
             in
-                Collapsable (Hidden animation) size
+            Collapsable (Hidden animation) size
     in
-        case displayType of
-            Collapsable (Visible animationState) size ->
-                animateHide animationState size
+    case displayType of
+        Collapsable (Visible animationState) size ->
+            animateHide animationState size
 
-            Collapsable (Hidden animationState) size ->
-                animateHide animationState size
+        Collapsable (Hidden animationState) size ->
+            animateHide animationState size
 
-            _ ->
-                displayType
+        _ ->
+            displayType
 
 
 toggle : Config msg -> DisplayType -> DisplayType
@@ -170,14 +167,14 @@ animate config displayType msg =
                 animation =
                     Animation.update msg animationState
             in
-                Collapsable (Visible animation) size
+            Collapsable (Visible animation) size
 
         Collapsable (Hidden animationState) size ->
             let
                 animation =
                     Animation.update msg animationState
             in
-                Collapsable (Hidden animation) size
+            Collapsable (Hidden animation) size
 
         _ ->
             displayType
@@ -255,29 +252,48 @@ extraWideSize =
     ExtraWide
 
 
-collapsableVisible : DisplayType
-collapsableVisible =
-    Collapsable (Visible <| Animation.style animationFinishAttrs) ExtraWide
+collapsableVisible : Direction -> DisplayType
+collapsableVisible direction =
+    Collapsable (Visible <| Animation.style (animationFinishAttrs direction)) ExtraWide
 
 
-animationStartAttrs : Size -> List Animation.Property
-animationStartAttrs size =
-    case size of
-        Normal ->
-            animateLeft -75.0
+animationStartAttrs : Direction -> Size -> List Animation.Property
+animationStartAttrs direction size =
+    let
+        pxDistance =
+            case size of
+                Normal ->
+                    -75.0
 
-        ExtraWide ->
-            animateLeft -308.0
+                ExtraWide ->
+                    -308.0
+    in
+    case direction of
+        Left ->
+            animateLeft pxDistance
+
+        Right ->
+            animateRight pxDistance
 
 
-animationFinishAttrs : List Animation.Property
-animationFinishAttrs =
-    animateLeft 0.0
+animationFinishAttrs : Direction -> List Animation.Property
+animationFinishAttrs direction =
+    case direction of
+        Left ->
+            animateLeft 0.0
+
+        Right ->
+            animateRight 0.0
 
 
 animateLeft : Float -> List Animation.Property
 animateLeft left =
     [ Animation.left (Animation.px left) ]
+
+
+animateRight : Float -> List Animation.Property
+animateRight right =
+    [ Animation.right (Animation.px right) ]
 
 
 sidebar : Config msg -> DisplayType -> Html.Html msg -> Styled.Html msg
@@ -369,8 +385,8 @@ sizeWidth size =
             308
 
 
-initDisplayType : Device.Size -> Maybe DisplayType -> Size -> DisplayType
-initDisplayType deviceWidth displayType size =
+initDisplayType : Config msg -> Device.Size -> Maybe DisplayType -> Size -> DisplayType
+initDisplayType { direction } deviceWidth displayType size =
     if Device.isLarge deviceWidth then
         Fixed (FixedVisible size)
     else
@@ -381,9 +397,9 @@ initDisplayType deviceWidth displayType size =
                 else
                     let
                         animation =
-                            Animation.interrupt [ Animation.set animationFinishAttrs ] animationState
+                            Animation.interrupt [ Animation.set (animationFinishAttrs direction) ] animationState
                     in
-                        Collapsable (Visible animation) size
+                    Collapsable (Visible animation) size
 
             Just (Collapsable (Hidden animationState) oldSize) ->
                 if oldSize == size then
@@ -391,9 +407,9 @@ initDisplayType deviceWidth displayType size =
                 else
                     let
                         animation =
-                            Animation.interrupt [ Animation.set (animationStartAttrs size) ] animationState
+                            Animation.interrupt [ Animation.set (animationStartAttrs direction size) ] animationState
                     in
-                        Collapsable (Hidden animation) size
+                    Collapsable (Hidden animation) size
 
             _ ->
-                Collapsable (Hidden (Animation.style (animationStartAttrs size))) Normal
+                Collapsable (Hidden (Animation.style (animationStartAttrs direction size))) Normal

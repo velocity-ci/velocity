@@ -1,18 +1,18 @@
-module Views.Page exposing (frame, sidebar, sidebarFrame, ActivePage(..))
+module Views.Page exposing (ActivePage(..), frame, sidebar, sidebarFrame)
 
 {-| The frame around a typical page - that is, the header and footer.
 -}
 
-import Html exposing (Html)
-import Html.Styled.Attributes as Attributes exposing (id, css, class, classList)
-import Html.Styled as Styled exposing (..)
-import Html.Styled.Events exposing (onClick)
+import Component.Sidebar as Sidebar
 import Css exposing (..)
 import Data.User as User exposing (User)
+import Html exposing (Html)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as Attributes exposing (class, classList, css, id)
+import Html.Styled.Events exposing (onClick)
 import Route as Route
-import Views.Helpers exposing (onClickPage)
 import Util exposing ((=>))
-import Component.Sidebar as Sidebar
+import Views.Helpers exposing (onClickPage)
 
 
 {-| Determines which navbar link (if any) will be rendered as active.
@@ -32,6 +32,14 @@ type ActivePage
     | Users
 
 
+type alias SidebarConfigs msg =
+    ( Sidebar.Config msg, Sidebar.Config msg )
+
+
+type alias SidebarData =
+    ( Sidebar.DisplayType, Sidebar.DisplayType )
+
+
 {-| Take a page's Html and frame it with a header and footer.
 
 The caller provides the current user, so we can display in either
@@ -41,11 +49,11 @@ isLoading is for determining whether we should show a loading spinner
 in the header. (This comes up during slow page transitions.)
 
 -}
-frame : Bool -> Maybe User -> Sidebar.Config msg -> Sidebar.DisplayType -> ActivePage -> Html.Html msg -> Html.Html msg
-frame isLoading user sidebarConfig sidebarType page content =
+frame : Bool -> Maybe User -> SidebarConfigs msg -> SidebarData -> ActivePage -> Html.Html msg -> Html.Html msg
+frame isLoading user sidebarConfigs ( sidebarType, subSidebarType ) page content =
     div
         []
-        [ Util.viewIfStyled (Sidebar.isCollapsable sidebarType) (viewNavbar sidebarConfig)
+        [ Util.viewIfStyled (Sidebar.isCollapsable sidebarType || Sidebar.isCollapsable subSidebarType) (viewNavbar sidebarConfigs)
         , viewContent sidebarType content
         , viewFooter
         ]
@@ -61,35 +69,37 @@ viewContent sidebarDisplayType content =
             else
                 calc (pct 100) plus (px 0)
     in
-        div
-            [ css
-                [ paddingLeft (px (Sidebar.sidebarWidth sidebarDisplayType))
-                , width sidebarWidth
+    div
+        [ css
+            [ paddingLeft (px (Sidebar.sidebarWidth sidebarDisplayType))
+            , width sidebarWidth
+            ]
+        ]
+        [ div
+            (List.concat
+                [ Sidebar.sidebarAnimationAttrs sidebarDisplayType
+                , [ css
+                        [ position relative
+                        , width (pct 100)
+                        ]
+                  ]
                 ]
-            ]
-            [ div
-                (List.concat
-                    [ (Sidebar.sidebarAnimationAttrs sidebarDisplayType)
-                    , [ css
-                            [ position relative
-                            , width (pct 100)
-                            ]
-                      ]
-                    ]
-                )
-                [ fromUnstyled content ]
-            ]
+            )
+            [ fromUnstyled content ]
+        ]
 
 
-viewNavbar : Sidebar.Config msg -> Styled.Html msg
-viewNavbar { toggleSidebarMsg } =
+viewNavbar : SidebarConfigs msg -> Styled.Html msg
+viewNavbar ( sidebarConfig, subSidebarConfig ) =
     nav
-        [ class "navbar navbar-light bg-light border-bottom"
+        [ class "navbar navbar-light bg-light border-bottom d-flex"
         , css
             [ borderBottomColor (hex "d4dadf")
             ]
         ]
-        [ viewNavbarToggle toggleSidebarMsg ]
+        [ viewNavbarToggle sidebarConfig.toggleSidebarMsg
+        , viewNavbarToggle subSidebarConfig.toggleSidebarMsg
+        ]
 
 
 viewNavbarClose : msg -> Styled.Html msg
