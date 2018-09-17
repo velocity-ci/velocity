@@ -92,13 +92,23 @@ viewNavbar { toggleSidebarMsg } =
         [ viewNavbarToggle toggleSidebarMsg ]
 
 
-viewNavbarToggle : msg -> Styled.Html msg
-viewNavbarToggle showCollapsableSidebarMsg =
+viewNavbarClose : msg -> Styled.Html msg
+viewNavbarClose showCollapsableSidebarMsg =
     button
         [ class "navbar-toggler"
         , onClick showCollapsableSidebarMsg
         ]
-        [ span [ class "navbar-toggler-icon" ] []
+        [ i [ class "fa fa-arrow-left" ] []
+        ]
+
+
+viewNavbarToggle : msg -> Styled.Html msg
+viewNavbarToggle toggleNavbarMsg =
+    button
+        [ class "navbar-toggler"
+        , onClick toggleNavbarMsg
+        ]
+        [ span [ class "fa fa-bars" ] []
         ]
 
 
@@ -123,19 +133,12 @@ sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
         , nav
             (List.concat
                 [ Sidebar.sidebarAnimationAttrs displayType
-                , [ class "d-flex border-right"
+                , [ class "border-right"
                   , css
                         [ width (px <| Sidebar.sidebarWidth displayType)
                         , position fixed
                         , borderRightColor (hex "d4dadf")
-                        , top
-                            (px
-                                (if Sidebar.isCollapsable displayType then
-                                    56
-                                 else
-                                    0
-                                )
-                            )
+                        , top (px 0)
                         , bottom (px 0)
                         , zIndex (int 2)
                         , backgroundColor (rgb 7 71 166)
@@ -144,8 +147,16 @@ sidebarFrame displayType sidebarConfig sidebarContent subSidebarContent =
                   ]
                 ]
             )
-            [ fromUnstyled sidebarContent
-            , fromUnstyled subSidebarContent
+            [ div
+                [ class "navbar navbar-light bg-light border-bottom border-right-0"
+                , css
+                    [ borderBottomColor (hex "dee2e6") ]
+                ]
+                [ viewNavbarClose sidebarConfig.hideCollapsableSidebarMsg ]
+            , div [ class "d-flex align-items-stretch", css [ height (pct 100) ] ]
+                [ fromUnstyled sidebarContent
+                , fromUnstyled subSidebarContent
+                ]
             ]
         ]
         |> toUnstyled

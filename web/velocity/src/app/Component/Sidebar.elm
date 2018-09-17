@@ -16,6 +16,7 @@ module Component.Sidebar
         , collapsableVisible
         , isCollapsable
         , DisplayType
+        , Direction(..)
         , collapsableOverlay
         , Size
         )
@@ -56,6 +57,7 @@ type alias Config msg =
     , showCollapsableSidebarMsg : msg
     , toggleSidebarMsg : msg
     , newUrlMsg : String -> msg
+    , direction : Direction
     }
 
 
@@ -72,6 +74,11 @@ type FixedVisibility
 type Size
     = Normal
     | ExtraWide
+
+
+type Direction
+    = Left
+    | Right
 
 
 type CollapsableVisibility
@@ -100,8 +107,8 @@ subscriptions { animateMsg } displayType =
 -- UPDATE --
 
 
-show : DisplayType -> DisplayType
-show displayType =
+show : Config msg -> DisplayType -> DisplayType
+show config displayType =
     let
         animateShow animationState size =
             let
@@ -121,8 +128,8 @@ show displayType =
                 displayType
 
 
-hide : DisplayType -> DisplayType
-hide displayType =
+hide : Config msg -> DisplayType -> DisplayType
+hide config displayType =
     let
         animateHide animationState size =
             let
@@ -142,21 +149,21 @@ hide displayType =
                 displayType
 
 
-toggle : DisplayType -> DisplayType
-toggle displayType =
+toggle : Config msg -> DisplayType -> DisplayType
+toggle config displayType =
     case displayType of
         Collapsable (Visible _) _ ->
-            hide displayType
+            hide config displayType
 
         Collapsable (Hidden _) _ ->
-            show displayType
+            show config displayType
 
         _ ->
             displayType
 
 
-animate : DisplayType -> Animation.Msg -> DisplayType
-animate displayType msg =
+animate : Config msg -> DisplayType -> Animation.Msg -> DisplayType
+animate config displayType msg =
     case displayType of
         Collapsable (Visible animationState) size ->
             let
@@ -297,8 +304,6 @@ collapsableOverlay displayType =
             , right (px 0)
             , bottom (px 0)
             , zIndex (int 1)
-              --            , backgroundColor (hex "000000")
-              --            , opacity (num 0.3)
             , width (pct 100)
             ]
 

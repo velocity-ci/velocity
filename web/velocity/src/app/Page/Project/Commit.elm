@@ -457,16 +457,6 @@ setRoute context session project maybeRoute model =
                     => []
 
 
-setSidebar : Maybe CommitRoute.Route -> Sidebar.DisplayType -> Sidebar.DisplayType
-setSidebar maybeRoute displayType =
-    case maybeRoute of
-        Just (CommitRoute.Overview) ->
-            Sidebar.show displayType
-
-        _ ->
-            Sidebar.hide displayType
-
-
 update : Context -> Project -> Session msg -> Msg -> Model -> ( ( Model, Cmd Msg ), List ExternalMsg )
 update context project session msg model =
     let

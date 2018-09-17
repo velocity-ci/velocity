@@ -15,6 +15,7 @@ import Page.Project.Route as ProjectRoute
 import Page.Project.Commit.Route as CommitRoute
 import Views.Helpers exposing (onClickPage)
 import Views.Build exposing (viewBuildStatusIcon, viewBuildTextClass)
+import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
 
 
 -- MODEL --
@@ -36,7 +37,19 @@ initialModel =
 view : Project -> Commit -> List ProjectTask.Task -> List Build -> Html Msg
 view project commit tasks builds =
     div []
-        [ viewTaskList project commit tasks builds
+        [ viewCommitDetails commit
+        , hr [] []
+        , viewTaskList project commit tasks builds
+        ]
+
+
+viewCommitDetails : Commit -> Html Msg
+viewCommitDetails commit =
+    div [ class "mb-2" ]
+        [ div [ class "" ]
+            [ infoPanel commit
+            , branchList commit
+            ]
         ]
 
 
@@ -88,7 +101,7 @@ viewTaskListItem project commit builds task =
             , Route.href route
             , onClickPage NewUrl route
             ]
-            [ div [ class "" ] [ h5 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ] ]
+            [ div [ class "" ] [ h6 [ class "mb-1" ] [ text (ProjectTask.nameToString task.name) ] ]
             , p [ class "mb-1" ] [ text task.description ]
             ]
 

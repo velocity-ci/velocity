@@ -61,6 +61,7 @@ type alias Model =
     , pageState : PageState
     , userDropdown : UserMenuDropdown.State
     , sidebarDisplayType : Sidebar.DisplayType
+    , subSidebarDisplayType : Sidebar.DisplayType
     , deviceWidth : Device.Size
     }
 
@@ -92,13 +93,17 @@ init flags location =
         defaultDevice =
             Device.size flags.deviceWidthPx
 
+        defaultSidebarDisplayType =
+            Sidebar.initDisplayType defaultDevice Nothing Sidebar.normalSize
+
         ( initialModel, initialCmd ) =
             setRoute maybeRoute
                 { pageState = Loaded initialPage
                 , context = context
                 , session = session
                 , userDropdown = UserMenuDropdown.init
-                , sidebarDisplayType = Sidebar.initDisplayType defaultDevice Nothing Sidebar.normalSize
+                , sidebarDisplayType = defaultSidebarDisplayType
+                , subSidebarDisplayType = defaultSidebarDisplayType
                 , deviceWidth = defaultDevice
                 }
     in
@@ -271,11 +276,23 @@ sidebarConfig =
     , toggleSidebarMsg = ToggleSidebar
     , animateMsg = AnimateSidebar
     , newUrlMsg = NewUrl
+    , direction = Sidebar.Left
+    }
+
+
+subSidebarConfig : Sidebar.Config Msg
+subSidebarConfig =
+    { hideCollapsableSidebarMsg = HideSubSidebar
+    , showCollapsableSidebarMsg = ShowSubSidebar
+    , toggleSidebarMsg = ToggleSubSidebar
+    , animateMsg = AnimateSubSidebar
+    , newUrlMsg = NewUrl
+    , direction = Sidebar.Right
     }
 
 
 subscriptions : Model -> Sub Msg
-subscriptions { userDropdown, sidebarDisplayType, deviceWidth, pageState, session } =
+subscriptions { userDropdown, sidebarDisplayType, subSidebarDisplayType, deviceWidth, pageState, session } =
     let
         sessionSubs =
             Sub.map SetUser sessionChange
@@ -291,6 +308,9 @@ subscriptions { userDropdown, sidebarDisplayType, deviceWidth, pageState, sessio
 
         sidebarSubs =
             Sidebar.subscriptions sidebarConfig sidebarDisplayType
+
+        subSidebarSubs =
+            Sidebar.subscriptions subSidebarConfig subSidebarDisplayType
 
         pageSubs =
             pageState
@@ -371,6 +391,10 @@ type Msg
     | ShowSidebar
     | HideSidebar
     | ToggleSidebar
+    | AnimateSubSidebar Animation.Msg
+    | ShowSubSidebar
+    | HideSubSidebar
+    | ToggleSubSidebar
     | NoOp
 
 
@@ -415,25 +439,6 @@ handledChannelErrorToMsg err =
 
         _ ->
             NoOp
-
-
-
---setSidebar : Maybe Route -> Int -> Sidebar.DisplayType -> Sidebar.DisplayType
---setSidebar maybeRoute pageWidth displayType =
---    case maybeRoute of
---        Just (Route.Project _ projectRoute) ->
---            Project.setSidebar (Just projectRoute) pageWidth displayType
---
---        _ ->
---            Sidebar.initDisplayType pageWidth Sidebar.normalSize
---sidebarSize : Model -> Sidebar.Size
---sidebarSize model =
---    case getPage model.pageState of
---        Project subModel ->
---            Project.sidebarSize subModel
---
---        _ ->
---            Sidebar.normalSize
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -611,10 +616,10 @@ handleProjectExternalMsgs =
                     { model | sidebarDisplayType = Sidebar.initDisplayType model.deviceWidth (Just model.sidebarDisplayType) size }
 
                 Project.OpenSidebar ->
-                    { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+                    { model | sidebarDisplayType = Sidebar.show sidebarConfig model.sidebarDisplayType }
 
                 Project.CloseSidebar ->
-                    { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
+                    { model | sidebarDisplayType = Sidebar.hide sidebarConfig model.sidebarDisplayType }
         )
 
 
@@ -689,24 +694,41 @@ updatePage page msg model =
                 in
                     { model
                         | sidebarDisplayType = updateSidebar model.sidebarDisplayType page deviceWidth
+                        , subSidebarDisplayType = updateSidebar model.subSidebarDisplayType page deviceWidth
                         , deviceWidth = deviceWidth
                     }
                         => Cmd.none
 
             ( AnimateSidebar animateMsg, _ ) ->
-                { model | sidebarDisplayType = Sidebar.animate model.sidebarDisplayType animateMsg }
+                { model | sidebarDisplayType = Sidebar.animate sidebarConfig model.sidebarDisplayType animateMsg }
                     => Cmd.none
 
             ( ShowSidebar, _ ) ->
-                { model | sidebarDisplayType = Sidebar.show model.sidebarDisplayType }
+                { model | sidebarDisplayType = Sidebar.show sidebarConfig model.sidebarDisplayType }
                     => Cmd.none
 
             ( HideSidebar, _ ) ->
-                { model | sidebarDisplayType = Sidebar.hide model.sidebarDisplayType }
+                { model | sidebarDisplayType = Sidebar.hide sidebarConfig model.sidebarDisplayType }
                     => Cmd.none
 
             ( ToggleSidebar, _ ) ->
-                { model | sidebarDisplayType = Sidebar.toggle model.sidebarDisplayType }
+                { model | sidebarDisplayType = Sidebar.toggle sidebarConfig model.sidebarDisplayType }
+                    => Cmd.none
+
+            ( AnimateSubSidebar animateMsg, _ ) ->
+                { model | subSidebarDisplayType = Sidebar.animate subSidebarConfig model.subSidebarDisplayType animateMsg }
+                    => Cmd.none
+
+            ( ShowSubSidebar, _ ) ->
+                { model | subSidebarDisplayType = Sidebar.show subSidebarConfig model.subSidebarDisplayType }
+                    => Cmd.none
+
+            ( HideSubSidebar, _ ) ->
+                { model | subSidebarDisplayType = Sidebar.hide subSidebarConfig model.subSidebarDisplayType }
+                    => Cmd.none
+
+            ( ToggleSubSidebar, _ ) ->
+                { model | subSidebarDisplayType = Sidebar.toggle subSidebarConfig model.subSidebarDisplayType }
                     => Cmd.none
 
             ( SocketMsg msg, _ ) ->
@@ -756,6 +778,7 @@ updatePage page msg model =
                 { model
                     | pageState = Loaded (Errored error)
                     , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Errored error) model.deviceWidth
+                    , subSidebarDisplayType = updateSidebar model.subSidebarDisplayType (Errored error) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -788,6 +811,7 @@ updatePage page msg model =
                 { model
                     | pageState = Loaded (Home subModel)
                     , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Home subModel) model.deviceWidth
+                    , subSidebarDisplayType = updateSidebar model.subSidebarDisplayType (Home subModel) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -813,6 +837,7 @@ updatePage page msg model =
                 { model
                     | pageState = Loaded (Users subModel)
                     , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Users subModel) model.deviceWidth
+                    , subSidebarDisplayType = updateSidebar model.subSidebarDisplayType (Users subModel) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -841,6 +866,7 @@ updatePage page msg model =
                 { model
                     | pageState = Loaded (KnownHosts subModel)
                     , sidebarDisplayType = updateSidebar model.sidebarDisplayType (KnownHosts subModel) model.deviceWidth
+                    , subSidebarDisplayType = updateSidebar model.subSidebarDisplayType (KnownHosts subModel) model.deviceWidth
                 }
                     => Cmd.none
 
@@ -873,6 +899,7 @@ updatePage page msg model =
                     { modelUpdatedWithExternalMsgs
                         | pageState = pageState
                         , sidebarDisplayType = updateSidebar model.sidebarDisplayType (Project subModel) model.deviceWidth
+                        , subSidebarDisplayType = updateSidebar model.subSidebarDisplayType (Project subModel) model.deviceWidth
                     }
                         ! [ Cmd.map ProjectMsg subMsg ]
 
