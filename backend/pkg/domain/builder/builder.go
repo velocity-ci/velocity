@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	stateReady = "ready"
-	stateBusy  = "busy"
-	stateError = "error"
+	StateReady        = "ready"
+	StateBusy         = "busy"
+	StateError        = "error"
+	StateDisconnected = "disconnected"
 )
 
 type Builder struct {

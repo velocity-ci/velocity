@@ -1,18 +1,16 @@
 package rest
 
 import (
-	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
@@ -41,12 +39,24 @@ func newBuilderResponse(b *builder.Builder) *builderResponse {
 
 type builderHandler struct {
 	builderManager *builder.Manager
+	streamManager  *build.StreamManager
+	stepManager    *build.StepManager
+	buildManager   *build.BuildManager
 	broker         *broker
 }
 
-func newBuilderHandler(builderManager *builder.Manager, broker *broker) *builderHandler {
+func newBuilderHandler(
+	builderManager *builder.Manager,
+	streamManager *build.StreamManager,
+	stepManager *build.StepManager,
+	buildManager *build.BuildManager,
+	broker *broker,
+) *builderHandler {
 	return &builderHandler{
 		builderManager: builderManager,
+		streamManager:  streamManager,
+		stepManager:    stepManager,
+		buildManager:   buildManager,
 		broker:         broker,
 	}
 }
@@ -102,7 +112,6 @@ type registerBuilderResponse struct {
 func newRegisterBuilderResponse(b *builder.Builder) *registerBuilderResponse {
 	sessionDuration := time.Hour * 24 * 2
 	token, _ := auth.NewJWT(sessionDuration, auth.AudienceBuilder, b.ID)
-
 	return &registerBuilderResponse{
 		ID:    b.ID,
 		Token: token,
@@ -130,7 +139,7 @@ func (h *builderHandler) register(c echo.Context) error {
 		return nil
 	}
 
-	b := h.builderManager.CreateBuilder()
+	b := h.builderManager.Create()
 
 	c.JSON(http.StatusCreated, newRegisterBuilderResponse(b))
 	return nil
@@ -143,24 +152,18 @@ func (h *builderHandler) connect(c echo.Context) error {
 		return nil
 	}
 
-	phoenix.NewServer(ws, func(s *phoenix.Server, token *jwt.Token, topic string) error {
-		parts := strings.Split(topic, ":")
-		if len(parts) < 2 {
-			return fmt.Errorf("invalid topic %s", topic)
-		}
-		builder, err := h.builderManager.GetByID(parts[1])
-		if err != nil {
-			return err
-		}
-		if token.Claims.(*jwt.StandardClaims).Subject != builder.ID {
-			return fmt.Errorf("mismatched token %s != %s", token.Claims.(*jwt.StandardClaims).Subject, builder.ID)
-		}
+	builderMonitor := builder.NewMonitor(
+		h.builderManager,
+		h.streamManager,
+		h.stepManager,
+		h.buildManager,
+	)
 
-		builder.WS = s
-
-		h.builderManager.Save(builder)
-		return nil
-	}, true)
+	phoenix.NewServer(ws,
+		builderMonitor.Authenticate,
+		builderMonitor.GetCustomEvents(),
+		true,
+	)
 
 	return nil
 }

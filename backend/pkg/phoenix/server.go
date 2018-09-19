@@ -22,17 +22,21 @@ type Server struct {
 	authFunc func(*Server, *jwt.Token, string) error
 }
 
-func NewServer(ws *websocket.Conn, auth func(*Server, *jwt.Token, string) error, interlock bool) *Server {
+func NewServer(
+	ws *websocket.Conn,
+	auth func(*Server, *jwt.Token, string) error,
+	customEvents map[string]func(*PhoenixMessage) error,
+	interlock bool) *Server {
 	s := &Server{
 		ID:               uuid.NewV4().String(),
 		authFunc:         auth,
 		subscribedTopics: map[string]bool{},
 	}
 
-	s.Socket = NewSocket(ws, map[string]func(*PhoenixMessage) error{
-		PhxJoinEvent:  s.subscribe,
-		PhxLeaveEvent: s.unsubscribe,
-	}, interlock)
+	customEvents[PhxJoinEvent] = s.subscribe
+	customEvents[PhxLeaveEvent] = s.unsubscribe
+
+	s.Socket = NewSocket(ws, customEvents, interlock)
 	return s
 }
 
@@ -81,6 +85,7 @@ func (s *Server) subscribe(m *PhoenixMessage) error {
 	}
 	s.subscribedTopics[topic] = true
 	s.Socket.ReplyOK(m)
+
 	return nil
 }
 

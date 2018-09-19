@@ -1,57 +1,102 @@
 package builder
 
 import (
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/velocity-ci/velocity/backend/pkg/builder"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
-// func (m *Manager) monitor(b *Builder) {
-// 	for {
-// 		message := BuilderRespMessage{}
-// 		err := b.ws.ReadJSON(&message)
-// 		if err != nil {
-// 			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
-// 			m.Delete(b)
-// 			b.ws.Close()
-// 			return
-// 		}
+func NewMonitor(
+	builderManager *Manager,
+	streamManager *build.StreamManager,
+	stepManager *build.StepManager,
+	buildManager *build.BuildManager,
+) *Monitor {
+	return &Monitor{
+		builderManager: builderManager,
+		streamManager:  streamManager,
+		stepManager:    stepManager,
+		buildManager:   buildManager,
+	}
+}
 
-// 		switch message.Type {
-// 		case "log":
-// 			m.builderLogMessage(message.Data.(*BuilderStreamLineMessage), b)
-// 			break
-// 		default:
-// 			velocity.GetLogger().Error("got invalid message type from builder", zap.String("message type", message.Type))
-// 		}
+type Monitor struct {
+	builderManager *Manager
+	streamManager  *build.StreamManager
+	stepManager    *build.StepManager
+	buildManager   *build.BuildManager
+	builder        *Builder
+}
 
-// 	}
-// }
+func (m *Monitor) GetCustomEvents() map[string]func(*phoenix.PhoenixMessage) error {
+	return map[string]func(*phoenix.PhoenixMessage) error{
+		builder.EventNewStreamLines: m.newStreamLines,
+	}
+}
 
-func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Builder) {
-	stream, err := m.streamManager.GetByID(sL.StreamID)
+func (m *Monitor) Authenticate(s *phoenix.Server, token *jwt.Token, topic string) error {
+	parts := strings.Split(topic, ":")
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid topic %s", topic)
+	}
+	bldr, err := m.builderManager.GetByID(parts[1])
 	if err != nil {
-		velocity.GetLogger().Error("could not get stream", zap.String("streamID", sL.StreamID), zap.Error(err))
-		return
+		return err
+	}
+	if token.Claims.(*jwt.StandardClaims).Subject != bldr.ID {
+		return fmt.Errorf("mismatched token %s != %s", token.Claims.(*jwt.StandardClaims).Subject, bldr.ID)
 	}
 
+	bldr.WS = s
+	bldr.State = StateReady
+	m.builder = bldr
+
+	m.builderManager.Save(m.builder)
+	return nil
+}
+
+func (m *Monitor) newStreamLines(mess *phoenix.PhoenixMessage) error {
+	buildLogs := builder.BuildLogPayload{}
+	err := json.Unmarshal(mess.Payload.(json.RawMessage), &buildLogs)
+	if err != nil {
+		return err
+	}
+
+	// get stream
+	stream, err := m.streamManager.GetByID(buildLogs.StreamID)
+	if err != nil {
+		velocity.GetLogger().Error("could not get stream", zap.String("streamID", buildLogs.StreamID), zap.Error(err))
+		return err
+	}
+
+	lines := buildLogs.Lines
+	lastLine := lines[len(lines)-1]
 	// update stream
-	if stream.Status != sL.Status {
-		stream.Status = sL.Status
+	if stream.Status != lastLine.Status {
+		stream.Status = lastLine.Status
 		m.streamManager.Update(stream)
 	}
 
-	m.streamManager.CreateStreamLine(stream,
-		sL.LineNumber,
-		time.Now().UTC(),
-		sL.Output,
-	)
+	for _, line := range lines {
+		m.streamManager.CreateStreamLine(stream,
+			line.LineNumber,
+			line.Timestamp,
+			line.Output,
+		)
+	}
 
 	step, err := m.stepManager.GetByID(stream.Step.ID)
 	if err != nil {
 		velocity.GetLogger().Error("could not get step", zap.String("streamID", stream.Step.ID), zap.Error(err))
-		return
+		return err
 	}
 
 	// update step
@@ -80,12 +125,12 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 	b, err := m.buildManager.GetBuildByID(step.Build.ID)
 	if err != nil {
 		velocity.GetLogger().Error("could not get build", zap.String("buildID", step.Build.ID), zap.Error(err))
-		return
+		return err
 	}
 	steps := m.stepManager.GetStepsForBuild(b)
 
 	if b.StartedAt.IsZero() {
-		b.Status = sL.Status
+		b.Status = lastLine.Status
 		b.StartedAt = time.Now().UTC()
 		m.buildManager.Update(b)
 	}
@@ -96,8 +141,10 @@ func (m *Manager) builderLogMessage(sL *BuilderStreamLineMessage, builder *Build
 		b.CompletedAt = time.Now().UTC()
 		m.buildManager.Update(b)
 
-		builder.State = stateReady
-		m.Save(builder)
+		m.builder.State = StateReady
+		m.builderManager.Save(m.builder)
 	}
 
+	m.builder.WS.Socket.ReplyOK(mess)
+	return nil
 }

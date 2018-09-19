@@ -51,10 +51,14 @@ func (b *Builder) Start() {
 	}
 
 	if len(b.id) < 1 {
-		b.registerWithArchitect()
+		err := b.registerWithArchitect()
+		if err != nil {
+			velocity.GetLogger().Error("could not register builder", zap.Error(err))
+			return
+		}
 	}
 
-	velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress))
+	velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress), zap.String("builderID", b.id))
 	b.connect()
 }
 

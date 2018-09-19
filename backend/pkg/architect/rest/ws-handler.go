@@ -26,9 +26,14 @@ func (h *websocketHandler) phxClient(c echo.Context) error {
 		return nil
 	}
 
-	client := phoenix.NewServer(ws, func(*phoenix.Server, *jwt.Token, string) error {
-		return nil
-	}, false)
+	client := phoenix.NewServer(
+		ws,
+		func(*phoenix.Server, *jwt.Token, string) error {
+			return nil
+		},
+		map[string]func(*phoenix.PhoenixMessage) error{},
+		false,
+	)
 	h.broker.save(client)
 
 	return nil

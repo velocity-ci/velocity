@@ -52,7 +52,13 @@ func AddRoutes(
 	buildStreamHandler := newBuildStreamHandler(buildStepManager, buildStreamManager)
 
 	wsBroker := NewBroker(branchManager, buildStepManager, buildStreamManager)
-	builderHandler := newBuilderHandler(builderManager, wsBroker)
+	builderHandler := newBuilderHandler(
+		builderManager,
+		buildStreamManager,
+		buildStepManager,
+		buildManager,
+		wsBroker,
+	)
 	websocketHandler := newWebsocketHandler(wsBroker)
 	userManager.AddBroker(wsBroker)
 	knownHostManager.AddBroker(wsBroker)

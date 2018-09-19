@@ -1,6 +1,11 @@
 package builder
 
 import (
+	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"go.uber.org/zap"
@@ -19,6 +24,11 @@ type StreamWriter struct {
 
 	LineNumber int
 	status     string
+
+	buffer     []*BuildLogLine
+	bufferLock sync.Mutex
+
+	open bool
 }
 
 type Emitter struct {
@@ -41,14 +51,20 @@ func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 	if streamID == "" {
 		velocity.GetLogger().Error("could not find streamID", zap.String("stream name", streamName))
 	}
-	return &StreamWriter{
+
+	sw := &StreamWriter{
 		ws:         e.ws,
 		BuildID:    e.BuildID,
 		StepID:     e.StepID,
 		StreamID:   streamID,
 		StepNumber: e.StepNumber,
 		LineNumber: 0,
+		open:       true,
 	}
+
+	go sw.worker()
+
+	return sw
 }
 
 func (e *Emitter) SetStepAndStreams(step *build.Step, streams []*build.Stream) {
@@ -73,29 +89,20 @@ func NewEmitter(ws *phoenix.Client, b *build.Build) *Emitter {
 }
 
 func (w *StreamWriter) Write(p []byte) (n int, err error) {
-	// o := strings.TrimSpace(string(p))
-	// if !strings.HasSuffix(string(p), "\r") {
-	// 	w.LineNumber++
-	// 	o += "\n"
-	// }
+	o := strings.TrimSpace(string(p))
+	if !strings.HasSuffix(string(p), "\r") {
+		w.LineNumber++
+		o += "\n"
+	}
 
-	// lM := builder.BuilderStreamLineMessage{
-	// 	BuildID:    w.BuildID,
-	// 	StepID:     w.StepID,
-	// 	StreamID:   w.StreamID,
-	// 	LineNumber: w.LineNumber,
-	// 	Status:     w.status,
-	// 	Output:     o,
-	// }
-	// m := builder.BuilderRespMessage{
-	// 	Type: "log",
-	// 	Data: lM,
-	// }
-	// err = w.ws.WriteJSON(m)
+	l := &BuildLogLine{
+		Timestamp:  time.Now().UTC(),
+		LineNumber: w.LineNumber,
+		Status:     w.status,
+		Output:     o,
+	}
 
-	// if err != nil {
-	// 	return 0, err
-	// }
+	w.buffer = append(w.buffer, l)
 
 	return len(p), nil
 }
@@ -103,3 +110,30 @@ func (w *StreamWriter) Write(p []byte) (n int, err error) {
 func (w *StreamWriter) SetStatus(s string) {
 	w.status = s
 }
+
+func (w *StreamWriter) Close() {
+	w.open = false
+}
+
+func (w *StreamWriter) worker() {
+	for w.open {
+		if len(w.buffer) > 0 {
+			w.bufferLock.Lock()
+			w.ws.Socket.Send(&phoenix.PhoenixMessage{
+				Event: EventNewStreamLines,
+				Topic: fmt.Sprintf("stream:%s", w.StreamID),
+				Payload: &BuildLogPayload{
+					StreamID: w.StreamID,
+					Lines:    w.buffer,
+				},
+			}, false)
+			w.buffer = []*BuildLogLine{}
+			w.bufferLock.Unlock()
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+}
+
+const (
+	EventNewStreamLines = "streamLines:new"
+)

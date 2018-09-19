@@ -35,7 +35,6 @@ func NewSocket(ws *websocket.Conn, customEvents map[string]func(*PhoenixMessage)
 
 type Socket struct {
 	ws               *websocket.Conn
-	wsReadLock       sync.Mutex
 	wsWriteLock      sync.Mutex
 	connected        bool
 	healthy          bool
@@ -54,16 +53,20 @@ type Socket struct {
 	interlock bool
 }
 
+func (s Socket) IsConnected() bool {
+	return s.connected
+}
+
 func (s *Socket) getNewRef() uint64 {
 	s.refCounterLock.Lock()
+	defer s.refCounterLock.Unlock()
 	s.refCounter++
-	s.refCounterLock.Unlock()
 	return s.refCounter
 }
 
 func (s *Socket) worker() {
-	for s.healthy {
-		if len(s.messageQueue) > 0 {
+	for s.connected {
+		if s.healthy && len(s.messageQueue) > 0 {
 			s.wsWriteLock.Lock()
 			m := s.messageQueue[0]
 			s.ws.WriteJSON(m)
@@ -101,8 +104,8 @@ func (s *Socket) heartbeat() {
 			sent:    time.Now(),
 			message: &m,
 		}
-		s.lastHeartbeatRef = ref
 		s.mLock.Unlock()
+		s.lastHeartbeatRef = ref
 		s.wsWriteLock.Lock()
 		s.ws.WriteJSON(&m)
 		s.wsWriteLock.Unlock()
@@ -144,9 +147,8 @@ func (s *Socket) Send(m *PhoenixMessage, sync bool) *PhoenixReplyPayload {
 func (s *Socket) monitor() {
 	for s.connected {
 		m := &PhoenixMessage{}
-		s.wsReadLock.Lock()
 		err := s.ws.ReadJSON(m)
-		s.wsReadLock.Unlock()
+		velocity.GetLogger().Debug("RECIEVED MESSAGE", zap.String("message", m.Event))
 		if err != nil {
 			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
 			s.ws.Close()
@@ -184,7 +186,6 @@ func (s *Socket) ReplyOK(m *PhoenixMessage) {
 }
 
 func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
-	s.mLock.Lock()
 	if _, ok := s.sentUnacked[m.Ref]; ok {
 		if m.Ref == s.lastHeartbeatRef {
 			s.lastHeartbeatRef = 0
@@ -207,7 +208,6 @@ func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
 	} else {
 		velocity.GetLogger().Warn("message not unacked (interlock is disabled?)", zap.Uint64("ref", m.Ref), zap.String("event", m.Event), zap.String("topic", m.Topic))
 	}
-	s.mLock.Unlock()
 }
 
 func (s *Socket) handlePhxHeartbeatEvent(ref uint64) {

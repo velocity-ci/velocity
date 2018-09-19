@@ -53,23 +53,23 @@ func (m *broker) remove(c *phoenix.Server) {
 }
 
 func (m *broker) EmitAll(message *domain.Emit) {
-	// clientCount := 0
-	// mess := m.handleEmit(message)
-	// for _, c := range m.clients {
-	// 	if !c.connected {
-	// 		m.remove(c)
-	// 		break
-	// 	}
-	// 	for _, s := range c.subscribedTopics {
-	// 		if s == mess.Topic {
-	// 			err := c.Send(mess, false)
-	// 			clientCount++
-	// 			if err != nil {
-	// 				velocity.GetLogger().Error("could not write message to client websocket", zap.Error(err), zap.String("clientID", c.ID))
-	// 			}
-	// 		}
-	// 	}
-	// }
+	mess := m.handleEmit(message)
+	for _, c := range m.clients {
+		if !c.Socket.IsConnected() {
+			m.remove(c)
+			break
+		}
+		velocity.GetLogger().Debug("emit", zap.String("topic", mess.Topic), zap.String("client", c.ID))
+		c.Socket.Send(mess, false)
+		// for _, s := range c.subscribedTopics {
+		// 	if s == mess.Topic {
+		// 		err := c.Send(mess, false)
+		// 		if err != nil {
+		// 			velocity.GetLogger().Error("could not write message to client websocket", zap.Error(err), zap.String("clientID", c.ID))
+		// 		}
+		// 	}
+		// }
+	}
 }
 
 func (m *broker) handleEmit(em *domain.Emit) *phoenix.PhoenixMessage {

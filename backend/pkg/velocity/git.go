@@ -87,6 +87,8 @@ func cleanSSHAgent(r *GitRepository) {
 
 func initWorkspace(r *GitRepository) (string, error) {
 	dir, _ := getUniqueWorkspace(r)
+	GetLogger().Debug("build workspace", zap.String("directory", dir))
+
 	os.Chdir(dir)
 	shCmd := []string{"git", "init"}
 	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
