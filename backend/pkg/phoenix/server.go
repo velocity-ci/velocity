@@ -3,6 +3,7 @@ package phoenix
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
@@ -17,7 +18,8 @@ type Server struct {
 
 	Socket *Socket
 
-	subscribedTopics map[string]bool
+	// string:bool (set)
+	subscribedTopics sync.Map
 
 	authFunc func(*Server, *jwt.Token, string) error
 }
@@ -28,9 +30,8 @@ func NewServer(
 	customEvents map[string]func(*PhoenixMessage) error,
 	interlock bool) *Server {
 	s := &Server{
-		ID:               uuid.NewV4().String(),
-		authFunc:         auth,
-		subscribedTopics: map[string]bool{},
+		ID:       uuid.NewV4().String(),
+		authFunc: auth,
 	}
 
 	customEvents[PhxJoinEvent] = s.subscribe
@@ -49,6 +50,7 @@ func jwtKeyFunc(t *jwt.Token) (interface{}, error) {
 }
 
 func (s *Server) subscribe(m *PhoenixMessage) error {
+	velocity.GetLogger().Debug("got subscribe", zap.String("topic", m.Topic))
 	topic := m.Topic
 	ref := m.Ref
 	payload := m.Payload.(*PhoenixGuardianJoinPayload)
@@ -83,16 +85,16 @@ func (s *Server) subscribe(m *PhoenixMessage) error {
 		velocity.GetLogger().Warn("could not authenticate client to channel", zap.String("serverID", s.ID), zap.Error(err))
 		return err
 	}
-	s.subscribedTopics[topic] = true
+	s.subscribedTopics.Store(topic, true)
 	s.Socket.ReplyOK(m)
-
+	velocity.GetLogger().Debug("subscribed to", zap.String("topic", m.Topic))
 	return nil
 }
 
 func (s *Server) unsubscribe(m *PhoenixMessage) error {
 	topic := m.Topic
-	if _, ok := s.subscribedTopics[topic]; ok {
-		delete(s.subscribedTopics, topic)
+	if _, ok := s.subscribedTopics.Load(topic); ok {
+		s.subscribedTopics.Delete(topic)
 	}
 	s.Socket.ReplyOK(m)
 

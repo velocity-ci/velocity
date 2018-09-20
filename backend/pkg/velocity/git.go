@@ -3,7 +3,6 @@ package velocity
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"os"
 	"strings"
@@ -15,9 +14,46 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/go-cmd/cmd"
-	"github.com/gosimple/slug"
+	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"golang.org/x/crypto/ssh"
 )
+
+func runCmd(shCmd []string, writer io.Writer) error {
+	// c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
+
+	opts := cmd.Options{Buffered: false, Streaming: true}
+	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
+	stdout := []string{}
+	stderr := []string{}
+	go func() {
+		for line := range c.Stdout {
+			writer.Write([]byte(line))
+			stdout = append(stdout, line)
+		}
+	}()
+	go func() {
+		for line := range c.Stderr {
+			writer.Write([]byte(line))
+			stderr = append(stderr, line)
+		}
+	}()
+
+	GetLogger().Debug("running command", zap.Strings("cmd", shCmd))
+	go func() {
+		<-time.After(3 * time.Second)
+		GetLogger().Debug("3s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
+		if len(stdout) < 1 {
+			c.Stop()
+		}
+	}()
+	s := c.Start()
+
+	finalStatus := <-s
+
+	fmt.Printf("%+v\n", finalStatus)
+
+	return nil
+}
 
 type SSHKeyError string
 
@@ -41,15 +77,27 @@ type GitRepository struct {
 const WorkspaceDir = "/opt/velocityci/workspaces"
 
 func getUniqueWorkspace(r *GitRepository) (string, error) {
-	psuedoRandom := rand.NewSource(time.Now().UnixNano())
-	randNumber := rand.New(psuedoRandom)
-	dir := fmt.Sprintf("%s/_%s-%d", WorkspaceDir, slug.Make(r.Address), randNumber.Int63())
-	os.RemoveAll(dir)
-	err := os.MkdirAll(dir, os.ModePerm)
+	dir := fmt.Sprintf("%s/_%s-%s",
+		WorkspaceDir,
+		// slug.Make(r.Address),
+		auth.RandomString(8),
+		auth.RandomString(8),
+	)
+
+	GetLogger().Debug(dir)
+
+	err := os.RemoveAll(dir)
 	if err != nil {
 		GetLogger().Fatal("could not create unique workspace", zap.Error(err))
 		return "", err
 	}
+	GetLogger().Debug("Removed dir", zap.String("dir", dir))
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		GetLogger().Fatal("could not create unique workspace", zap.Error(err))
+		return "", err
+	}
+	GetLogger().Debug("Created dir", zap.String("dir", dir))
 
 	return dir, nil
 }
@@ -85,18 +133,19 @@ func cleanSSHAgent(r *GitRepository) {
 	}
 }
 
-func initWorkspace(r *GitRepository) (string, error) {
-	dir, _ := getUniqueWorkspace(r)
+func initWorkspace(r *GitRepository, writer io.Writer) (string, error) {
+	dir, err := getUniqueWorkspace(r)
+	if err != nil {
+		return "", err
+	}
 	GetLogger().Debug("build workspace", zap.String("directory", dir))
 
 	os.Chdir(dir)
 	shCmd := []string{"git", "init"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	<-c.Start()
+	runCmd(shCmd, writer)
 
 	shCmd = []string{"git", "remote", "add", "origin", r.Address}
-	c = cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	<-c.Start()
+	runCmd(shCmd, writer)
 
 	return dir, nil
 }
@@ -105,7 +154,9 @@ func Validate(r *GitRepository) (bool, error) {
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
 
-	dir, err := initWorkspace(r)
+	writer := &BlankWriter{}
+
+	dir, err := initWorkspace(r, writer)
 	if err != nil {
 		return false, err
 	}
@@ -146,7 +197,7 @@ func Clone(
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
 
-	dir, err := initWorkspace(r)
+	dir, err := initWorkspace(r, writer)
 	if err != nil {
 		return nil, err
 	}

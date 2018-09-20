@@ -116,7 +116,7 @@ func (w *StreamWriter) Close() {
 }
 
 func (w *StreamWriter) worker() {
-	for w.open {
+	for w.open || len(w.buffer) > 0 {
 		if len(w.buffer) > 0 {
 			w.bufferLock.Lock()
 			w.ws.Socket.Send(&phoenix.PhoenixMessage{

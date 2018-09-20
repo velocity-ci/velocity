@@ -42,6 +42,7 @@ func (dP DockerPush) GetDetails() string {
 
 func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 	writer := emitter.GetStreamWriter("push")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("\n%s\n## %s\n\x1b[0m", infoANSI, dP.Description)))
 

@@ -110,6 +110,7 @@ func (dR DockerRun) GetDetails() string {
 
 func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("run")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
 	writer.Write([]byte(fmt.Sprintf("%s## %s\x1b[0m", infoANSI, dR.Description)))
 

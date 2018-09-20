@@ -3,6 +3,7 @@ package velocity
 type StreamWriter interface {
 	Write(p []byte) (n int, err error)
 	SetStatus(s string)
+	Close()
 }
 
 // Emitter for forwarding bytes of output onwards
@@ -29,3 +30,5 @@ func (w BlankWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w BlankWriter) SetStatus(s string) {}
+
+func (w BlankWriter) Close() {}

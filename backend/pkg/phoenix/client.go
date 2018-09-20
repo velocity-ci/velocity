@@ -3,6 +3,7 @@ package phoenix
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -17,7 +18,8 @@ type wsMessage struct {
 }
 
 type Client struct {
-	subscribedTopics map[string]PhoenixGuardianJoinPayload
+	// string:PhoenixGuardianPayload
+	subscribedTopics sync.Map
 
 	customEvents map[string]func(*PhoenixMessage) error
 
@@ -29,9 +31,8 @@ type Client struct {
 
 func NewClient(address string, customEvents map[string]func(*PhoenixMessage) error) (*Client, error) {
 	ws := &Client{
-		address:          address,
-		subscribedTopics: map[string]PhoenixGuardianJoinPayload{},
-		customEvents:     customEvents,
+		address:      address,
+		customEvents: customEvents,
 	}
 
 	err := ws.dial()
@@ -62,12 +63,15 @@ func (c *Client) dial() error {
 	}
 	c.Socket = NewSocket(conn, c.customEvents, true)
 
-	for topic, payload := range c.subscribedTopics {
-		err := c.Subscribe(topic, payload.Token)
+	c.subscribedTopics.Range(func(topic, payload interface{}) bool {
+
+		err := c.Subscribe(topic.(string), payload.(PhoenixGuardianJoinPayload).Token)
 		if err != nil {
-			velocity.GetLogger().Warn("could not resubscribe", zap.String("topic", topic))
+			velocity.GetLogger().Warn("could not resubscribe", zap.String("topic", topic.(string)))
 		}
-	}
+		return true
+	})
+
 	return nil
 }
 
@@ -88,9 +92,9 @@ func (c *Client) Subscribe(topic, token string) error {
 
 	velocity.GetLogger().Debug("subscribed to", zap.String("topic", topic))
 
-	c.subscribedTopics[topic] = PhoenixGuardianJoinPayload{
+	c.subscribedTopics.Store(topic, PhoenixGuardianJoinPayload{
 		Token: token,
-	}
+	})
 
 	return nil
 }

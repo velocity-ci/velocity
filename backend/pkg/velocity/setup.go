@@ -63,10 +63,11 @@ func makeVelocityDirs() error {
 }
 
 func (s *Setup) Execute(emitter Emitter, t *Task) error {
-
 	t.RunID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
+	GetLogger().Debug("set run id", zap.String("runID", t.RunID))
 
 	writer := emitter.GetStreamWriter("setup")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
 
 	// Clone repository if necessary
