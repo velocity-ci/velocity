@@ -129,8 +129,8 @@ func (w *StreamWriter) worker() {
 			}, false)
 			w.buffer = []*BuildLogLine{}
 			w.bufferLock.Unlock()
-			time.Sleep(500 * time.Millisecond)
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 

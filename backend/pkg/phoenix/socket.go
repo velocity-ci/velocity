@@ -179,6 +179,7 @@ func (s *Socket) monitor() {
 		}
 
 		go s.handleMessage(m)
+		time.Sleep(10 * time.Millisecond)
 	}
 	velocity.GetLogger().Debug("monitor ended", zap.String("remote", s.ws.RemoteAddr().String()))
 }
