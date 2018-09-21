@@ -19,6 +19,10 @@
         },
         "environment": [
             {
+                "Name": "DEBUG",
+                "Value": "${debug}"
+            },
+            {
                 "Name": "JWT_SECRET",
                 "Value": "${jwt_secret}"
             },

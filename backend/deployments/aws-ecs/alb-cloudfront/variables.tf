@@ -26,3 +26,7 @@ variable "admin_password" {
   type    = "string"
   default = ""
 }
+
+variable "debug" {
+  default = "false"
+}

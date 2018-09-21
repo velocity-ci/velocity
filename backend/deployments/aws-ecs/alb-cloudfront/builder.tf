@@ -8,6 +8,8 @@ data "template_file" "ecs_def_builder" {
 
     logs_group  = "${var.cluster_name}.velocityci-container-logs"
     logs_region = "${data.aws_region.current.name}"
+
+    debug = "${var.debug}"
   }
 }
 

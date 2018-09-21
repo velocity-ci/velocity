@@ -24,6 +24,10 @@
         },
         "environment": [
             {
+                "Name": "DEBUG",
+                "Value": "${debug}"
+            },
+            {
                 "Name": "ARCHITECT_ADDRESS",
                 "Value": "${architect_address}"
             },

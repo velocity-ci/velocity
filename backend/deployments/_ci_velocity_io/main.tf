@@ -21,11 +21,13 @@ module "velocityci" {
   region = "${var.region}"
 
   domain           = "${var.domain}"
-  velocity_version = "a7af32a"
+  velocity_version = "ae4c138"
 
   cluster_name = "${data.aws_ecs_cluster.org.cluster_name}"
 
   jwt_secret     = "${var.jwt_secret}"
   builder_secret = "${var.builder_secret}"
   admin_password = "${var.admin_password}"
+
+  debug = "true"
 }
