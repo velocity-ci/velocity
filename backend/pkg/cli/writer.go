@@ -44,3 +44,7 @@ func (w *StreamWriter) Write(p []byte) (n int, err error) {
 func (w *StreamWriter) SetStatus(s string) {
 	w.status = s
 }
+
+func (w *StreamWriter) Close() {
+	return
+}

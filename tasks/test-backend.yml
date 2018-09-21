@@ -1,0 +1,17 @@
+description: "Tests the Backend source"
+name: test-backend
+
+steps:
+  - type: run
+    description: Install dependencies
+    image: vjftw/go-dep:1.10
+    mountPoint: /go/src/github.com/velocity-ci/velocity
+    workingDir: backend
+    command: scripts/install-deps.sh
+
+  - type: run
+    description: Run tests
+    image: golang:1.10
+    mountPoint: /go/src/github.com/velocity-ci/velocity
+    workingDir: backend
+    command: scripts/test-unit.sh

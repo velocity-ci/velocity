@@ -5,12 +5,15 @@ import (
 	"os"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
+	"github.com/velocity-ci/velocity/backend/pkg/auth"
+	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/builder"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 )
 
 type builderResponse struct {
@@ -36,11 +39,25 @@ func newBuilderResponse(b *builder.Builder) *builderResponse {
 
 type builderHandler struct {
 	builderManager *builder.Manager
+	streamManager  *build.StreamManager
+	stepManager    *build.StepManager
+	buildManager   *build.BuildManager
+	broker         *broker
 }
 
-func newBuilderHandler(builderManager *builder.Manager) *builderHandler {
+func newBuilderHandler(
+	builderManager *builder.Manager,
+	streamManager *build.StreamManager,
+	stepManager *build.StepManager,
+	buildManager *build.BuildManager,
+	broker *broker,
+) *builderHandler {
 	return &builderHandler{
 		builderManager: builderManager,
+		streamManager:  streamManager,
+		stepManager:    stepManager,
+		buildManager:   buildManager,
+		broker:         broker,
 	}
 }
 
@@ -84,6 +101,23 @@ func getBuilderByID(c echo.Context, bM *builder.Manager) *builder.Builder {
 	return b
 }
 
+type registerBuilderRequest struct {
+	Secret string `json:"secret"`
+}
+type registerBuilderResponse struct {
+	ID    string `json:"id"`
+	Token string `json:"token"`
+}
+
+func newRegisterBuilderResponse(b *builder.Builder) *registerBuilderResponse {
+	sessionDuration := time.Hour * 24 * 2
+	token, _ := auth.NewJWT(sessionDuration, auth.AudienceBuilder, b.ID)
+	return &registerBuilderResponse{
+		ID:    b.ID,
+		Token: token,
+	}
+}
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -92,24 +126,44 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (h *builderHandler) connect(c echo.Context) error {
-	auth := c.Request().Header.Get("Authorization")
-	if auth == "" {
-		c.JSON(http.StatusUnauthorized, "")
+func (h *builderHandler) register(c echo.Context) error {
+	rB := new(registerBuilderRequest)
+	if err := c.Bind(rB); err != nil {
+		c.JSON(http.StatusBadRequest, "invalid payload")
+		c.Logger().Warn(err)
 		return nil
 	}
-	if auth != os.Getenv("BUILDER_SECRET") {
+
+	if rB.Secret != os.Getenv("BUILDER_SECRET") {
 		c.JSON(http.StatusUnauthorized, "")
 		return nil
 	}
 
+	b := h.builderManager.Create()
+
+	c.JSON(http.StatusCreated, newRegisterBuilderResponse(b))
+	return nil
+}
+
+func (h *builderHandler) connect(c echo.Context) error {
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		velocity.GetLogger().Error("could not upgrade builder http connection", zap.Error(err))
-
 		return nil
 	}
 
-	h.builderManager.CreateBuilder(ws)
+	builderMonitor := builder.NewMonitor(
+		h.builderManager,
+		h.streamManager,
+		h.stepManager,
+		h.buildManager,
+	)
+
+	phoenix.NewServer(ws,
+		builderMonitor.Authenticate,
+		builderMonitor.GetCustomEvents(),
+		true,
+	)
+
 	return nil
 }

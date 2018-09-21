@@ -184,7 +184,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 	} else if dOutput.State == "success" {
 		for paramName, val := range dOutput.Exports {
 			r = append(r, Parameter{
-				Name:     paramName,
+				Name:     getExportedParameterName(p.Exports, paramName),
 				Value:    val,
 				IsSecret: dOutput.Secret,
 			})
@@ -194,6 +194,14 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 	}
 
 	return r, nil
+}
+
+func getExportedParameterName(pMapping map[string]string, exportedParam string) string {
+	if val, ok := pMapping[exportedParam]; ok {
+		return val
+	}
+
+	return exportedParam
 }
 
 func (p *DerivedParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {

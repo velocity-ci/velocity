@@ -142,12 +142,12 @@
   version = "v0.3.2"
 
 [[projects]]
-  digest = "1:c5ab735fa81936e20761026748691a9a03680634bb02ebf4518dc1a0aca3d883"
+  digest = "1:302f0381f15e444dec05d6abba0c219264a69e6e16f1ef87ff4f72b22d0c80bf"
   name = "github.com/go-cmd/cmd"
   packages = ["."]
   pruneopts = ""
-  revision = "bcc8acb0e40f18e9f14dd57d35bc76e06541fb12"
-  version = "v1.0.2"
+  revision = "b84ca4f2247327f07f46331c260675cba1a1dc7a"
+  version = "v1.0.3"
 
 [[projects]]
   digest = "1:68d892747cfa2f0638a70b8193bc12c83d9474d93c78f41e4b45a305b2f21e24"
@@ -178,12 +178,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:eaa18118b73be68b0be2410a9797fe172f5e386243b6bff16fd5da4d22c9d966"
+  digest = "1:09ee320e3d7c26151f91f835c6d9198ccb311f555f429f61bf9d441abf77e0cd"
   name = "github.com/gosimple/slug"
   packages = ["."]
   pruneopts = ""
-  revision = "e9f42fa127660e552d0ad2b589868d403a9be7c6"
-  version = "v1.1.1"
+  revision = "91d42f4c3433698e88e87b17a3efbfe40b67c323"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:78f6688d5303263ee19fcb093ecd4b3d7bc01551990a5367878d33e02edba0a0"

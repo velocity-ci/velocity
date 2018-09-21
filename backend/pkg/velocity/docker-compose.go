@@ -107,6 +107,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	// Create writers
 	for _, serviceName := range serviceOrder {
 		writers[serviceName] = emitter.GetStreamWriter(serviceName)
+		defer writers[serviceName].Close()
 	}
 
 	for _, serviceName := range serviceOrder {

@@ -25,6 +25,7 @@ func (p *Plugin) Execute(emitter Emitter, t *Task) error {
 	}
 
 	writer := emitter.GetStreamWriter("plugin")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
 
 	bin, err := getBinary(p.Use)

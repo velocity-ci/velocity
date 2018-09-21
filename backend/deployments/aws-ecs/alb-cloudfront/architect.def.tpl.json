@@ -1,0 +1,43 @@
+[
+    {
+        "name": "velocityci_architect",
+        "image": "civelocity/architect:${version}",
+        "memoryReservation": 128,
+        "essential": true,
+        "portMappings": [
+            {
+                "containerPort": 80
+            }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "${logs_group}",
+                "awslogs-region": "${logs_region}",
+                "awslogs-stream-prefix": "architect"
+            }
+        },
+        "environment": [
+            {
+                "Name": "DEBUG",
+                "Value": "${debug}"
+            },
+            {
+                "Name": "JWT_SECRET",
+                "Value": "${jwt_secret}"
+            },
+            {
+                "Name": "BUILDER_SECRET",
+                "Value": "${builder_secret}"
+            },
+            {
+                "Name": "ADMIN_PASSWORD",
+                "Value": "${admin_password}"
+            },
+            {
+                "Name": "PORT",
+                "Value": "80"
+            }
+        ]
+    }
+]

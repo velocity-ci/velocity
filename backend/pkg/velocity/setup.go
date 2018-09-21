@@ -63,16 +63,16 @@ func makeVelocityDirs() error {
 }
 
 func (s *Setup) Execute(emitter Emitter, t *Task) error {
-
 	t.RunID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
+	GetLogger().Debug("set run id", zap.String("runID", t.RunID))
 
 	writer := emitter.GetStreamWriter("setup")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
 
 	// Clone repository if necessary
 	if s.repository != nil {
-		// repo, err := Clone(s.repository, false, true, t.Git.Submodule, writer)
-		repo, err := Clone(s.repository, writer, &CloneOptions{Bare: false, Full: false, Submodule: true, Commit: s.commitHash})
+		repo, err := Clone(s.repository, writer, &CloneOptions{Bare: false, Full: true, Submodule: true, Commit: s.commitHash})
 		if err != nil {
 			GetLogger().Error("could not clone repository", zap.Error(err))
 			writer.SetStatus(StateFailed)
@@ -95,7 +95,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 
 	// Resolve parameters
 	parameters := map[string]Parameter{}
-	for k, v := range getGitParams() {
+	for k, v := range getBasicParams() {
 		parameters[k] = v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
@@ -155,12 +155,14 @@ func (s Setup) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func getGitParams() map[string]Parameter {
+func getBasicParams() map[string]Parameter {
 	path, _ := os.Getwd()
 
 	repo := &RawRepository{Directory: path}
 
 	rawCommit, _ := repo.GetCurrentCommitInfo()
+
+	buildTimestamp := time.Now().UTC()
 
 	return map[string]Parameter{
 		"GIT_COMMIT_LONG_SHA": {
@@ -171,10 +173,6 @@ func getGitParams() map[string]Parameter {
 			Value:    rawCommit.SHA[:7],
 			IsSecret: false,
 		},
-		// "GIT_BRANCH": {
-		// 	Value:    branch,
-		// 	IsSecret: false,
-		// },
 		"GIT_DESCRIBE": {
 			Value:    repo.GetDescribe(),
 			IsSecret: false,
@@ -187,8 +185,20 @@ func getGitParams() map[string]Parameter {
 			Value:    rawCommit.Message,
 			IsSecret: false,
 		},
-		"GIT_COMMIT_TIMESTAMP": {
-			Value:    rawCommit.AuthorDate.String(),
+		"GIT_COMMIT_TIMESTAMP_RFC3339": {
+			Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
+			IsSecret: false,
+		},
+		"GIT_COMMIT_TIMESTAMP_RFC822": {
+			Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
+			IsSecret: false,
+		},
+		"BUILD_TIMESTAMP_RFC3339": {
+			Value:    buildTimestamp.Format(time.RFC3339),
+			IsSecret: false,
+		},
+		"BUILD_TIMESTAMP_RFC822": {
+			Value:    buildTimestamp.Format(time.RFC822),
 			IsSecret: false,
 		},
 	}

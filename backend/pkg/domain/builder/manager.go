@@ -2,15 +2,17 @@ package builder
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"go.uber.org/zap"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain/knownhost"
+	uuid "github.com/satori/go.uuid"
+
+	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
-	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 )
 
 // Event constants
@@ -22,28 +24,15 @@ const (
 
 type Manager struct {
 	builders map[string]*Builder
+	mux      sync.Mutex
 
 	brokers []domain.Broker
-
-	buildManager     *build.BuildManager
-	stepManager      *build.StepManager
-	streamManager    *build.StreamManager
-	knownHostManager *knownhost.Manager
 }
 
-func NewManager(
-	buildManager *build.BuildManager,
-	knownhostManager *knownhost.Manager,
-	stepManager *build.StepManager,
-	streamManager *build.StreamManager,
-) *Manager {
+func NewManager() *Manager {
 	return &Manager{
-		buildManager:     buildManager,
-		knownHostManager: knownhostManager,
-		brokers:          []domain.Broker{},
-		stepManager:      stepManager,
-		streamManager:    streamManager,
-		builders:         map[string]*Builder{},
+		brokers:  []domain.Broker{},
+		builders: map[string]*Builder{},
 	}
 }
 
@@ -51,18 +40,15 @@ func (m *Manager) AddBroker(b domain.Broker) {
 	m.brokers = append(m.brokers, b)
 }
 
-func (m *Manager) CreateBuilder(t Transport) *Builder {
+func (m *Manager) Create() *Builder {
 	b := &Builder{
 		ID:        uuid.NewV4().String(),
-		State:     stateReady,
+		Token:     user.GenerateRandomString(64),
+		State:     StateDisconnected,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
-
-		ws: t,
 	}
 	m.Save(b)
-
-	go m.monitor(b)
 
 	return b
 }
@@ -70,15 +56,6 @@ func (m *Manager) CreateBuilder(t Transport) *Builder {
 func (m *Manager) Exists(id string) bool {
 	if _, ok := m.builders[id]; ok {
 		return true
-	}
-	return false
-}
-
-func (m *Manager) WebsocketConnected(id string) bool {
-	if m.Exists(id) {
-		if m.builders[id].ws != nil {
-			return true
-		}
 	}
 	return false
 }
@@ -113,7 +90,7 @@ func (m *Manager) GetReady(q *domain.PagingQuery) (r []*Builder, t int) {
 			skipCounter++
 			break
 		}
-		if v.State == stateReady {
+		if v.State == StateReady {
 			r = append(r, v)
 		}
 	}
@@ -133,7 +110,7 @@ func (m *Manager) GetBusy(q *domain.PagingQuery) (r []*Builder, t int) {
 			skipCounter++
 			break
 		}
-		if v.State == stateBusy {
+		if v.State == StateBusy {
 			r = append(r, v)
 		}
 	}
@@ -142,6 +119,8 @@ func (m *Manager) GetBusy(q *domain.PagingQuery) (r []*Builder, t int) {
 }
 
 func (m *Manager) Save(b *Builder) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
 	var ev string
 	if m.Exists(b.ID) {
 		ev = EventUpdate
@@ -149,8 +128,9 @@ func (m *Manager) Save(b *Builder) {
 		ev = EventCreate
 	}
 	m.builders[b.ID] = b
-	for _, b := range m.brokers {
-		b.EmitAll(&domain.Emit{
+	velocity.GetLogger().Debug("saved builder", zap.String("ID", b.ID))
+	for _, br := range m.brokers {
+		br.EmitAll(&domain.Emit{
 			Topic:   "builders",
 			Event:   ev,
 			Payload: b,
@@ -166,33 +146,10 @@ func (m *Manager) GetByID(id string) (*Builder, error) {
 }
 
 func (m *Manager) Delete(b *Builder) {
-	if b.Command.Command == "build" {
-		build := b.Command.Payload.(*BuildCtrl).Build
-		build.Status = velocity.StateFailed
-		m.buildManager.Update(build)
-	}
-	delete(m.builders, b.ID)
-}
-
-func (m *Manager) StartBuild(builder *Builder, b *build.Build) {
-	builder.State = stateBusy
-	m.Save(builder)
-
-	// Add knownhosts
-	knownHosts, _ := m.knownHostManager.GetAll(domain.NewPagingQuery())
-	builder.Command = newKnownHostsCommand(knownHosts)
-	builder.ws.WriteJSON(builder.Command)
-
-	// Start build
-	b.Status = velocity.StateRunning
-	m.buildManager.Update(b)
-
-	steps := m.stepManager.GetStepsForBuild(b)
-	streams := []*build.Stream{}
-	for _, s := range steps {
-		streams = append(streams, m.streamManager.GetStreamsForStep(s)...)
-	}
-
-	builder.Command = newBuildCommand(b, steps, streams)
-	builder.ws.WriteJSON(builder.Command)
+	// if b.Command != nil && b.Command.Command == "build" {
+	// 	build := b.Command.Payload.(*BuildCtrl).Build
+	// 	build.Status = velocity.StateFailed
+	// 	m.buildManager.Update(build)
+	// }
+	// delete(m.builders, b.ID)
 }

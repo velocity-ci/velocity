@@ -18,7 +18,7 @@ data "template_file" "ecs_def_architect" {
 
 resource "aws_ecs_task_definition" "architect" {
   family                = "velocity_architect"
-  container_definitions = "${data.template_file.ecs_def_architect.rendered}" 
+  container_definitions = "${data.template_file.ecs_def_architect.rendered}"
 }
 
 resource "aws_ecs_service" "architect" {

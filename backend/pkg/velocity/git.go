@@ -3,7 +3,6 @@ package velocity
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"os"
 	"strings"
@@ -15,9 +14,55 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/go-cmd/cmd"
-	"github.com/gosimple/slug"
+	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"golang.org/x/crypto/ssh"
 )
+
+func runCmd(shCmd []string, writer io.Writer) cmd.Status {
+	opts := cmd.Options{Buffered: false, Streaming: true}
+	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
+	stdout := []string{}
+	stderr := []string{}
+	go func() {
+		for line := range c.Stdout {
+			writer.Write([]byte(line))
+			stdout = append(stdout, line)
+		}
+	}()
+	go func() {
+		for line := range c.Stderr {
+			writer.Write([]byte(line))
+			stderr = append(stderr, line)
+		}
+	}()
+
+	GetLogger().Debug("running command", zap.Strings("cmd", shCmd))
+	go func() {
+		<-time.After(5 * time.Second)
+		if !c.Status().Complete && (len(stdout) < 1 && len(stderr) < 1) {
+			GetLogger().Debug("5s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
+			c.Stop()
+		}
+	}()
+	s := c.Start()
+
+	finalStatus := <-s
+	time.Sleep(10 * time.Millisecond)
+	close(c.Stdout)
+	close(c.Stderr)
+	finalStatus.Stdout = stdout
+	finalStatus.Stderr = stderr
+
+	GetLogger().Debug("completed cmd",
+		zap.String("cmd", strings.Join(shCmd, " ")),
+		zap.Int("exited", finalStatus.Exit),
+		zap.Strings("stdout", finalStatus.Stdout),
+		zap.Strings("stderr", finalStatus.Stderr),
+		zap.Float64("runtime (s)", finalStatus.Runtime),
+	)
+
+	return finalStatus
+}
 
 type SSHKeyError string
 
@@ -41,15 +86,27 @@ type GitRepository struct {
 const WorkspaceDir = "/opt/velocityci/workspaces"
 
 func getUniqueWorkspace(r *GitRepository) (string, error) {
-	psuedoRandom := rand.NewSource(time.Now().UnixNano())
-	randNumber := rand.New(psuedoRandom)
-	dir := fmt.Sprintf("%s/_%s-%d", WorkspaceDir, slug.Make(r.Address), randNumber.Int63())
-	os.RemoveAll(dir)
-	err := os.MkdirAll(dir, os.ModePerm)
+	dir := fmt.Sprintf("%s/_%s-%s",
+		WorkspaceDir,
+		// slug.Make(r.Address),
+		auth.RandomString(8),
+		auth.RandomString(8),
+	)
+
+	GetLogger().Debug(dir)
+
+	err := os.RemoveAll(dir)
 	if err != nil {
 		GetLogger().Fatal("could not create unique workspace", zap.Error(err))
 		return "", err
 	}
+	GetLogger().Debug("Removed dir", zap.String("dir", dir))
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		GetLogger().Fatal("could not create unique workspace", zap.Error(err))
+		return "", err
+	}
+	GetLogger().Debug("Created dir", zap.String("dir", dir))
 
 	return dir, nil
 }
@@ -85,16 +142,19 @@ func cleanSSHAgent(r *GitRepository) {
 	}
 }
 
-func initWorkspace(r *GitRepository) (string, error) {
-	dir, _ := getUniqueWorkspace(r)
+func initWorkspace(r *GitRepository, writer io.Writer) (string, error) {
+	dir, err := getUniqueWorkspace(r)
+	if err != nil {
+		return "", err
+	}
+	GetLogger().Debug("build workspace", zap.String("directory", dir))
+
 	os.Chdir(dir)
 	shCmd := []string{"git", "init"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	<-c.Start()
+	runCmd(shCmd, writer)
 
 	shCmd = []string{"git", "remote", "add", "origin", r.Address}
-	c = cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	<-c.Start()
+	runCmd(shCmd, writer)
 
 	return dir, nil
 }
@@ -103,7 +163,9 @@ func Validate(r *GitRepository) (bool, error) {
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
 
-	dir, err := initWorkspace(r)
+	writer := &BlankWriter{}
+
+	dir, err := initWorkspace(r, writer)
 	if err != nil {
 		return false, err
 	}
@@ -115,8 +177,7 @@ func Validate(r *GitRepository) (bool, error) {
 	os.Chdir(dir)
 
 	shCmd := []string{"git", "ls-remote"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	s := runCmd(shCmd, writer)
 
 	if s.Exit != 0 {
 		err := fmt.Errorf(strings.Join(s.Stderr, " "))
@@ -144,7 +205,7 @@ func Clone(
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
 
-	dir, err := initWorkspace(r)
+	dir, err := initWorkspace(r, writer)
 	if err != nil {
 		return nil, err
 	}
@@ -176,29 +237,7 @@ func Clone(
 	}
 	defer deferFunc(r)
 
-	opts := cmd.Options{Buffered: false, Streaming: true}
-	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
-	stdOut := []string{}
-	stdErr := []string{}
-	go func() {
-		for {
-			select {
-			case line := <-c.Stdout:
-				writer.Write([]byte(line))
-				stdOut = append(stdOut, line)
-			case line := <-c.Stderr:
-				writer.Write([]byte(line))
-				stdErr = append(stdErr, line)
-			}
-		}
-	}()
-	s := <-c.Start()
-	for len(c.Stdout) > 0 || len(c.Stderr) > 0 {
-		time.Sleep(10 * time.Millisecond)
-	}
-	s.Stdout = stdOut
-	s.Stderr = stdErr
-
+	s := runCmd(shCmd, writer)
 	if err := handleStatusError(s); err != nil {
 		os.RemoveAll(dir)
 		return nil, err
@@ -214,8 +253,8 @@ func (r *RawRepository) GetBranches() (b []string) {
 	defer r.done()
 
 	shCmd := []string{"git", "branch", "--remote"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 	for _, line := range s.Stdout {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "origin/")
@@ -240,8 +279,8 @@ func (r *RawRepository) RevParse(obj string) string {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "rev-parse", obj}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	return strings.TrimSpace(s.Stdout[0])
 }
@@ -282,8 +321,8 @@ func (r *RawRepository) GetCommitInfo(sha string) (*RawCommit, error) {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%GK%n%s`, sha}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	if len(s.Stdout) < 6 {
 		GetLogger().Error("unexpected commit info output", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
@@ -306,8 +345,8 @@ func (r *RawRepository) GetCurrentCommitInfo() (*RawCommit, error) {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "rev-parse", "HEAD"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	GetLogger().Debug("git rev-parse HEAD", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
 
@@ -318,8 +357,8 @@ func (r *RawRepository) GetDescribe() string {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "describe", "--always"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	return strings.TrimSpace(s.Stdout[0])
 }
@@ -329,8 +368,8 @@ func (r *RawRepository) Clean() error {
 	defer r.done()
 
 	shCmd := []string{"git", "clean", "-fd"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	return handleStatusError(s)
 }
@@ -358,8 +397,8 @@ func (r *RawRepository) Checkout(ref string) error {
 	}
 
 	shCmd := []string{"git", "checkout", "--force", ref}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	if err := handleStatusError(s); err != nil {
 		return err
@@ -381,8 +420,8 @@ func (r *RawRepository) GetDefaultBranch() (string, error) {
 	defer deferFunc(r.GitRepository)
 
 	shCmd := []string{"git", "remote", "show", "origin"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	if err := handleStatusError(s); err != nil {
 		return "", err
