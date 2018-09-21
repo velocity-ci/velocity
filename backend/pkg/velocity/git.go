@@ -39,20 +39,27 @@ func runCmd(shCmd []string, writer io.Writer) cmd.Status {
 	GetLogger().Debug("running command", zap.Strings("cmd", shCmd))
 	go func() {
 		<-time.After(3 * time.Second)
-		GetLogger().Debug("3s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
-		if len(stdout) < 1 {
+		if !c.Status().Complete && len(stdout) < 1 {
+			GetLogger().Debug("3s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
 			c.Stop()
 		}
 	}()
 	s := c.Start()
 
 	finalStatus := <-s
+	time.Sleep(10 * time.Millisecond)
 	close(c.Stdout)
 	close(c.Stderr)
 	finalStatus.Stdout = stdout
 	finalStatus.Stderr = stderr
 
-	fmt.Printf("%+v\n", finalStatus)
+	GetLogger().Debug("completed cmd",
+		zap.String("cmd", strings.Join(shCmd, " ")),
+		zap.Int("exited", finalStatus.Exit),
+		zap.Strings("stdout", finalStatus.Stdout),
+		zap.Strings("stderr", finalStatus.Stderr),
+		zap.Float64("runtime (s)", finalStatus.Runtime),
+	)
 
 	return finalStatus
 }
