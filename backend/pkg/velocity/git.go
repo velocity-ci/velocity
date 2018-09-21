@@ -18,9 +18,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func runCmd(shCmd []string, writer io.Writer) error {
-	// c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-
+func runCmd(shCmd []string, writer io.Writer) cmd.Status {
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
 	stdout := []string{}
@@ -49,10 +47,14 @@ func runCmd(shCmd []string, writer io.Writer) error {
 	s := c.Start()
 
 	finalStatus := <-s
+	close(c.Stdout)
+	close(c.Stderr)
+	finalStatus.Stdout = stdout
+	finalStatus.Stderr = stderr
 
 	fmt.Printf("%+v\n", finalStatus)
 
-	return nil
+	return finalStatus
 }
 
 type SSHKeyError string
@@ -168,8 +170,7 @@ func Validate(r *GitRepository) (bool, error) {
 	os.Chdir(dir)
 
 	shCmd := []string{"git", "ls-remote"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	s := runCmd(shCmd, writer)
 
 	if s.Exit != 0 {
 		err := fmt.Errorf(strings.Join(s.Stderr, " "))
@@ -229,29 +230,7 @@ func Clone(
 	}
 	defer deferFunc(r)
 
-	opts := cmd.Options{Buffered: false, Streaming: true}
-	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
-	stdOut := []string{}
-	stdErr := []string{}
-	go func() {
-		for {
-			select {
-			case line := <-c.Stdout:
-				writer.Write([]byte(line))
-				stdOut = append(stdOut, line)
-			case line := <-c.Stderr:
-				writer.Write([]byte(line))
-				stdErr = append(stdErr, line)
-			}
-		}
-	}()
-	s := <-c.Start()
-	for len(c.Stdout) > 0 || len(c.Stderr) > 0 {
-		time.Sleep(10 * time.Millisecond)
-	}
-	s.Stdout = stdOut
-	s.Stderr = stdErr
-
+	s := runCmd(shCmd, writer)
 	if err := handleStatusError(s); err != nil {
 		os.RemoveAll(dir)
 		return nil, err
@@ -267,8 +246,8 @@ func (r *RawRepository) GetBranches() (b []string) {
 	defer r.done()
 
 	shCmd := []string{"git", "branch", "--remote"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 	for _, line := range s.Stdout {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "origin/")
@@ -293,8 +272,8 @@ func (r *RawRepository) RevParse(obj string) string {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "rev-parse", obj}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	return strings.TrimSpace(s.Stdout[0])
 }
@@ -335,8 +314,8 @@ func (r *RawRepository) GetCommitInfo(sha string) (*RawCommit, error) {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "show", "-s", `--format=%H%n%aI%n%aE%n%aN%n%GK%n%s`, sha}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	if len(s.Stdout) < 6 {
 		GetLogger().Error("unexpected commit info output", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
@@ -359,8 +338,8 @@ func (r *RawRepository) GetCurrentCommitInfo() (*RawCommit, error) {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "rev-parse", "HEAD"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	GetLogger().Debug("git rev-parse HEAD", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
 
@@ -371,8 +350,8 @@ func (r *RawRepository) GetDescribe() string {
 	r.init()
 	defer r.done()
 	shCmd := []string{"git", "describe", "--always"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	return strings.TrimSpace(s.Stdout[0])
 }
@@ -382,8 +361,8 @@ func (r *RawRepository) Clean() error {
 	defer r.done()
 
 	shCmd := []string{"git", "clean", "-fd"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	return handleStatusError(s)
 }
@@ -411,8 +390,8 @@ func (r *RawRepository) Checkout(ref string) error {
 	}
 
 	shCmd := []string{"git", "checkout", "--force", ref}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	if err := handleStatusError(s); err != nil {
 		return err
@@ -434,8 +413,8 @@ func (r *RawRepository) GetDefaultBranch() (string, error) {
 	defer deferFunc(r.GitRepository)
 
 	shCmd := []string{"git", "remote", "show", "origin"}
-	c := cmd.NewCmd(shCmd[0], shCmd[1:len(shCmd)]...)
-	s := <-c.Start()
+	writer := &BlankWriter{}
+	s := runCmd(shCmd, writer)
 
 	if err := handleStatusError(s); err != nil {
 		return "", err
