@@ -64,6 +64,8 @@ func (m *Monitor) Authenticate(s *phoenix.Server, token *jwt.Token, topic string
 }
 
 func (m *Monitor) newStreamLines(mess *phoenix.PhoenixMessage) error {
+	m.builder.WS.Socket.ReplyOK(mess)
+
 	buildLogs := builder.BuildLogPayload{}
 	err := json.Unmarshal(mess.Payload.(json.RawMessage), &buildLogs)
 	if err != nil {
@@ -79,6 +81,7 @@ func (m *Monitor) newStreamLines(mess *phoenix.PhoenixMessage) error {
 
 	lines := buildLogs.Lines
 	lastLine := lines[len(lines)-1]
+	velocity.GetLogger().Debug("got stream lines", zap.Int("amount", len(lines)), zap.String("streamID", stream.ID))
 	// update stream
 	if stream.Status != lastLine.Status {
 		stream.Status = lastLine.Status
@@ -145,6 +148,5 @@ func (m *Monitor) newStreamLines(mess *phoenix.PhoenixMessage) error {
 		m.builderManager.Save(m.builder)
 	}
 
-	m.builder.WS.Socket.ReplyOK(mess)
 	return nil
 }

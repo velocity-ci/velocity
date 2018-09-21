@@ -59,16 +59,7 @@ func (m *broker) EmitAll(message *domain.Emit) {
 			m.remove(c)
 			break
 		}
-		velocity.GetLogger().Debug("emit", zap.String("topic", mess.Topic), zap.String("client", c.ID))
 		c.Socket.Send(mess, false)
-		// for _, s := range c.subscribedTopics {
-		// 	if s == mess.Topic {
-		// 		err := c.Send(mess, false)
-		// 		if err != nil {
-		// 			velocity.GetLogger().Error("could not write message to client websocket", zap.Error(err), zap.String("clientID", c.ID))
-		// 		}
-		// 	}
-		// }
 	}
 }
 

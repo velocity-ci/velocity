@@ -72,7 +72,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 
 	// Clone repository if necessary
 	if s.repository != nil {
-		repo, err := Clone(s.repository, writer, &CloneOptions{Bare: false, Full: false, Submodule: true, Commit: s.commitHash})
+		repo, err := Clone(s.repository, writer, &CloneOptions{Bare: false, Full: true, Submodule: true, Commit: s.commitHash})
 		if err != nil {
 			GetLogger().Error("could not clone repository", zap.Error(err))
 			writer.SetStatus(StateFailed)

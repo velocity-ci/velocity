@@ -38,9 +38,9 @@ func runCmd(shCmd []string, writer io.Writer) cmd.Status {
 
 	GetLogger().Debug("running command", zap.Strings("cmd", shCmd))
 	go func() {
-		<-time.After(3 * time.Second)
-		if !c.Status().Complete && len(stdout) < 1 {
-			GetLogger().Debug("3s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
+		<-time.After(5 * time.Second)
+		if !c.Status().Complete && (len(stdout) < 1 && len(stderr) < 1) {
+			GetLogger().Debug("5s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
 			c.Stop()
 		}
 	}()
