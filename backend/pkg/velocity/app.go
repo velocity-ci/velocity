@@ -46,6 +46,7 @@ func runCmd(writer io.Writer, shCmd []string, env []string) cmd.Status {
 	finalStatus := <-s
 	close(c.Stdout)
 	close(c.Stderr)
+	time.Sleep(10 * time.Millisecond)
 	finalStatus.Stdout = stdout
 	finalStatus.Stderr = stderr
 
