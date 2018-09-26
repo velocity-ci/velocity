@@ -1,0 +1,47 @@
+description: "Builds and publishes Web"
+name: publish-web
+
+parameters:
+  - name: docker_hub_username
+    secret: true
+  - name: docker_hub_password
+    secret: true
+
+docker:
+  registries:
+    - use: https://github.com/velocity-ci/registry.docker-hub/releases/download/0.1.1/docker-hub
+      arguments:
+        username: ${docker_hub_username}
+        password: ${docker_hub_password}
+
+steps: 
+  - type: run
+    description: install node dependencies
+    image: node:8
+    workingDir: ./web/velocity
+    command: yarn install
+
+  - type: run
+    description: install elm dependencies
+    image: node:8
+    workingDir: ./web/velocity
+    command: node_modules/.bin/elm-package install -y
+
+  - type: run
+    description: build elm
+    image: node:8
+    workingDir: ./web/velocity
+    command: sh -c "NODE_ENV=prod ARCHITECT_ADDRESS=__ARCHITECT_ADDRESS__ node_modules/.bin/webpack"
+
+  - type: build
+    description: Build release image
+    dockerfile: docker/Dockerfile
+    context: ./web
+    tags:
+      - civelocity/web:${GIT_DESCRIBE}
+      - civelocity/web:latest
+
+  - type: push
+    tags:
+      - civelocity/web:${GIT_DESCRIBE}
+      - civelocity/web:latest
