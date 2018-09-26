@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -214,7 +213,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 		State         string `json:"state"`
 	}
 
-	bin, err := getBinary(registry.Use)
+	bin, err := getBinary(registry.Use, writer)
 	if err != nil {
 		return r, err
 	}
@@ -228,15 +227,13 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 		extraEnv = append(extraEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	cmd := exec.Command(bin)
-	cmd.Env = append(os.Environ(), extraEnv...)
-
-	cmdOutBytes, err := cmd.Output()
-	if err != nil {
+	s := runCmd(BlankWriter{}, []string{bin}, append(os.Environ(), extraEnv...))
+	if s.Error != nil {
 		return r, err
 	}
+
 	var dOutput registryAuthConfig
-	json.Unmarshal(cmdOutBytes, &dOutput)
+	json.Unmarshal([]byte(s.Stdout[0]), &dOutput)
 
 	if dOutput.State != "success" {
 		return r, fmt.Errorf("registry auth error: %s", dOutput.Error)
