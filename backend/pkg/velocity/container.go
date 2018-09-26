@@ -165,7 +165,8 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 		defer pullResp.Close()
 		handleOutput(pullResp, sR.params, sR.writer)
 
-		sR.writer.Write([]byte(fmt.Sprintf("pulled image: %s", sR.image)))
+		fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> pulled image: %s"), sR.image)
+
 	}
 }
 
@@ -186,7 +187,8 @@ func findImageLocally(imageName string, cli *client.Client, ctx context.Context)
 }
 
 func (sR *serviceRunner) Create() {
-	sR.writer.Write([]byte(fmt.Sprintf("%s created", getContainerName(sR.name))))
+	fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s created"), getContainerName(sR.name))
+
 	createResp, err := sR.dockerCli.ContainerCreate(
 		sR.context,
 		sR.containerConfig,
@@ -201,7 +203,7 @@ func (sR *serviceRunner) Create() {
 }
 
 func (sR *serviceRunner) Run(stop chan string) {
-	sR.writer.Write([]byte(fmt.Sprintf("%s running", getContainerName(sR.name))))
+	fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s running"), getContainerName(sR.name))
 	err := sR.dockerCli.ContainerStart(
 		sR.context,
 		sR.containerID,
@@ -243,8 +245,7 @@ func (sR *serviceRunner) Stop() {
 	}
 
 	sR.exitCode = container.State.ExitCode
-	sR.writer.Write([]byte(fmt.Sprintf("%s container exited: %d", sR.containerID, sR.exitCode)))
-	// sR.writer.Write([]byte(fmt.Sprintf("container %s status: %s", sR.containerID, container.State.Status)))
+	fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s container exited: %d"), getContainerName(sR.name), sR.exitCode)
 
 	if !sR.removing {
 		sR.removing = true
@@ -256,7 +257,8 @@ func (sR *serviceRunner) Stop() {
 		if err != nil {
 			GetLogger().Error("could not remove container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 		}
-		sR.writer.Write([]byte(fmt.Sprintf("%s removed", getContainerName(sR.name))))
+		fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s removed"), getContainerName(sR.name))
+
 	}
 }
 
