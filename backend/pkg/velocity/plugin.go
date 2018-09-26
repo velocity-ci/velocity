@@ -28,7 +28,7 @@ func (p *Plugin) Execute(emitter Emitter, t *Task) error {
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
 
-	bin, err := getBinary(p.Use)
+	bin, err := getBinary(p.Use, writer)
 	if err != nil {
 		return err
 	}

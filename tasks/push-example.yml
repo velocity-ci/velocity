@@ -9,7 +9,7 @@ parameters:
 
 docker:
   registries:
-    - use: https://github.com/velocity-ci/registry-docker-hub/releases/download/v0.0.1/registry-docker-hub
+    - use: https://github.com/velocity-ci/registry-docker-hub/releases/download/v0.1.1/registry-docker-hub
       arguments:
         username: ${docker_hub_username}
         password: ${docker_hub_password}
