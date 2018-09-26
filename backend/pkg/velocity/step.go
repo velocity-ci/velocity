@@ -3,6 +3,8 @@ package velocity
 import (
 	"fmt"
 	"time"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 type Step interface {
@@ -15,12 +17,6 @@ type Step interface {
 	GetOutputStreams() []string
 	UnmarshalYamlInterface(map[interface{}]interface{}) error
 }
-
-const (
-	successANSI = "\x1b[1m\x1b[49m\x1b[32m"
-	errorANSI   = "\x1b[1m\x1b[49m\x1b[31m"
-	infoANSI    = "\x1b[1m\x1b[49m\x1b[34m"
-)
 
 // Step state constants
 const (
@@ -83,7 +79,8 @@ func (bS *BaseStep) SetParams(params map[string]Parameter) {
 
 func (bS *BaseStep) GetRunID() string {
 	if bS.runID == "" {
-		bS.runID = time.Now().Format("060102150405")
+		// bS.runID = time.Now().Format("060102150405")
+		bS.runID = uuid.NewV4().String()
 	}
 
 	return bS.runID

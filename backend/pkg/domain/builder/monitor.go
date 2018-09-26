@@ -139,7 +139,7 @@ func (m *Monitor) newStreamLines(mess *phoenix.PhoenixMessage) error {
 	}
 
 	// if last step and got success/fail check if other streams are success/fail
-	if step.Number == (len(steps)-1) && step.Status == velocity.StateSuccess || step.Status == velocity.StateFailed {
+	if (b.Status == velocity.StateRunning) && step.Number == (len(steps)-1) && step.Status == velocity.StateSuccess || step.Status == velocity.StateFailed {
 		b.Status = step.Status
 		b.CompletedAt = time.Now().UTC()
 		m.buildManager.Update(b)
