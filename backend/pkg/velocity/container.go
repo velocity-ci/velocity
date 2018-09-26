@@ -3,7 +3,6 @@ package velocity
 import (
 	"bufio"
 	"context"
-	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -78,17 +77,15 @@ type serviceRunner struct {
 
 func getContainerName(serviceName string) string {
 	return fmt.Sprintf(
-		"vci-%s-%x",
+		"vci-%s",
 		serviceName,
-		md5.Sum([]byte(serviceName)),
 	)
 }
 
 func getImageName(serviceName string) string {
 	return fmt.Sprintf(
-		"vci-%s-%x",
+		"vci-%s",
 		serviceName,
-		md5.Sum([]byte(serviceName)),
 	)
 }
 
@@ -152,28 +149,23 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 		sR.containerConfig.Image = getImageName(sR.name)
 	} else {
 		// check if image exists locally before pulling
-		if findImageLocally(sR.image, sR.dockerCli, sR.context) != nil {
-			sR.image = resolvePullImage(sR.image)
-			sR.containerConfig.Image = resolvePullImage(sR.image)
-			authToken := getAuthToken(sR.image, dockerRegistries)
-			pullResp, err := sR.dockerCli.ImagePull(
-				sR.context,
-				sR.image,
-				types.ImagePullOptions{
-					RegistryAuth: authToken,
-				},
-			)
-			if err != nil {
-				GetLogger().Error("could not pull image", zap.String("err", err.Error()))
-			}
-			defer pullResp.Close()
-			handleOutput(pullResp, sR.params, sR.writer)
-
-			sR.writer.Write([]byte(fmt.Sprintf("Pulled: %s", sR.image)))
-		} else {
-			sR.writer.Write([]byte(fmt.Sprintf("Got locally: %s", sR.image)))
+		sR.image = resolvePullImage(sR.image)
+		sR.containerConfig.Image = resolvePullImage(sR.image)
+		authToken := getAuthToken(sR.image, dockerRegistries)
+		pullResp, err := sR.dockerCli.ImagePull(
+			sR.context,
+			sR.image,
+			types.ImagePullOptions{
+				RegistryAuth: authToken,
+			},
+		)
+		if err != nil {
+			GetLogger().Error("could not pull image", zap.String("err", err.Error()))
 		}
+		defer pullResp.Close()
+		handleOutput(pullResp, sR.params, sR.writer)
 
+		sR.writer.Write([]byte(fmt.Sprintf("pulled image: %s", sR.image)))
 	}
 }
 
@@ -194,7 +186,7 @@ func findImageLocally(imageName string, cli *client.Client, ctx context.Context)
 }
 
 func (sR *serviceRunner) Create() {
-	sR.writer.Write([]byte(fmt.Sprintf("Creating container: %s", getContainerName(sR.name))))
+	sR.writer.Write([]byte(fmt.Sprintf("%s created", getContainerName(sR.name))))
 	createResp, err := sR.dockerCli.ContainerCreate(
 		sR.context,
 		sR.containerConfig,
@@ -209,7 +201,7 @@ func (sR *serviceRunner) Create() {
 }
 
 func (sR *serviceRunner) Run(stop chan string) {
-	sR.writer.Write([]byte(fmt.Sprintf("Running container: %s (%s)", getContainerName(sR.name), sR.containerID)))
+	sR.writer.Write([]byte(fmt.Sprintf("%s running", getContainerName(sR.name))))
 	err := sR.dockerCli.ContainerStart(
 		sR.context,
 		sR.containerID,
@@ -251,8 +243,8 @@ func (sR *serviceRunner) Stop() {
 	}
 
 	sR.exitCode = container.State.ExitCode
-	sR.writer.Write([]byte(fmt.Sprintf("Container %s exited: %d", sR.containerID, sR.exitCode)))
-	sR.writer.Write([]byte(fmt.Sprintf("container %s status: %s", sR.containerID, container.State.Status)))
+	sR.writer.Write([]byte(fmt.Sprintf("%s container exited: %d", sR.containerID, sR.exitCode)))
+	// sR.writer.Write([]byte(fmt.Sprintf("container %s status: %s", sR.containerID, container.State.Status)))
 
 	if !sR.removing {
 		sR.removing = true
@@ -264,7 +256,7 @@ func (sR *serviceRunner) Stop() {
 		if err != nil {
 			GetLogger().Error("could not remove container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 		}
-		sR.writer.Write([]byte(fmt.Sprintf("Removed container: %s (%s)", getContainerName(sR.name), sR.containerID)))
+		sR.writer.Write([]byte(fmt.Sprintf("%s removed", getContainerName(sR.name))))
 	}
 }
 

@@ -22,36 +22,6 @@ type TaskGit struct {
 	Submodule bool `json:"submodule"`
 }
 
-type TaskDocker struct {
-	Registries []DockerRegistry `json:"registries" yaml:"registries"`
-}
-
-type DockerRegistry struct {
-	Address            string            `json:"address"`
-	Use                string            `json:"use" yaml:"use"`
-	Arguments          map[string]string `json:"arguments" yaml:"arguments"`
-	AuthorizationToken string            `json:"authToken"`
-}
-
-func (d *DockerRegistry) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-
-	switch x := y["use"].(type) {
-	case interface{}:
-		d.Use = x.(string)
-		break
-	}
-
-	d.Arguments = map[string]string{}
-	switch x := y["arguments"].(type) {
-	case map[interface{}]interface{}:
-		for k, v := range x {
-			d.Arguments[k.(string)] = v.(string)
-		}
-		break
-	}
-	return nil
-}
-
 func (t *Task) String() string {
 	j, _ := json.Marshal(t)
 	return string(j)

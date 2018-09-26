@@ -174,12 +174,14 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	if !success {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateFailed)
-			writers[serviceName].Write([]byte(fmt.Sprintf("%s\n### FAILED \x1b[0m", errorANSI)))
+			fmt.Fprintf(writers[serviceName], colorFmt(ansiError, "-> %s error"), serviceName)
+
 		}
 	} else {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateSuccess)
-			writers[serviceName].Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
+			fmt.Fprintf(writers[serviceName], colorFmt(ansiSuccess, "-> %s success"), serviceName)
+
 		}
 	}
 
