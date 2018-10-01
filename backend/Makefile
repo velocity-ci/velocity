@@ -1,42 +1,20 @@
 GIT_VERSION = $(shell git describe --always)
 AWS_DEFAULT_REGION ?= eu-west-1
 
-.PHONY: test dep-install build-architect build-builder build-cli build-all
+.PHONY: test install
 
 install:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	vjftw/go-dep:1.10 \
+	vjftw/go-dep:1.11 \
 	scripts/install-deps.sh
-
-build-architect:
-	docker build -t civelocity/architect:${GIT_VERSION} -f build/docker/architect/Dockerfile .
-	docker tag civelocity/architect:${GIT_VERSION} civelocity/architect:latest
-
-build-builder:
-	docker build -t civelocity/builder:${GIT_VERSION} -f build/docker/builder/Dockerfile .
-	docker tag civelocity/builder:${GIT_VERSION} civelocity/builder:latest
-
-build-cli:
-	@docker run --rm -it \
-	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
-	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	golang:1.10 \
-	scripts/build-cli.sh
-
-build: build-architect build-builder build-cli
-
-publish:
-	docker push civelocity/architect:${GIT_VERSION}
-	docker push civelocity/builder:${GIT_VERSION}
-	# TODO: CLI publishing
 
 test:
 	@docker run --rm -it \
 	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
 	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	golang:1.10 \
+	golang:1.11 \
 	scripts/test-unit.sh
 
 download-test-repo:
