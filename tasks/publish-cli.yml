@@ -5,7 +5,7 @@ steps:
 
   - type: run
     description: Builds CLI releases
-    image: golang:1.9
+    image: golang:1.11
     command: scripts/build-cli.sh
     workingDir: backend
     mountPoint: /go/src/github.com/velocity-ci/velocity
