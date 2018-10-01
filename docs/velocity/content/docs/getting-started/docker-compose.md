@@ -6,7 +6,7 @@ title = "Getting Started with Docker Compose"
 Docker Compose is the quickest way to get up and running to try Velocity CI out!
 
 1. Create a `docker-compose.yml` with the following contents.
-<script src="http://gist-it.appspot.com/https://github.com/velocity-ci/velocity/blob/master/docs/velocity/content/docs/getting-started/docker-compose.yml"></script>
+<script src="https://gist-it.appspot.com/https://github.com/velocity-ci/velocity/blob/master/docs/velocity/content/docs/getting-started/docker-compose.yml"></script>
 
 2. Run ```docker-compose up```
 3. Open http://localhost:4200 in your web browser and log in with the following credentials:
