@@ -1,6 +1,22 @@
 GIT_VERSION = $(shell git describe --always)
 AWS_DEFAULT_REGION ?= eu-west-1
 
+.PHONY: test install
+
+install:
+	@docker run --rm -it \
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+	vjftw/go-dep:1.11 \
+	scripts/install-deps.sh
+
+test:
+	@docker run --rm -it \
+	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
+	--workdir /go/src/github.com/velocity-ci/velocity/backend \
+	golang:1.11 \
+	scripts/test-unit.sh
+
 download-test-repo:
 	curl -L https://s3-eu-west-1.amazonaws.com/velocityci.data/test/velocity-gogs-test-data.tar.gz > velocity-gogs-test-data.tar.gz
 	tar -xvzf velocity-gogs-test-data.tar.gz
