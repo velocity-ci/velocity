@@ -1,6 +1,6 @@
 +++
 date = "2012-08-15T22:32:09+01:00"
-title = "Getting Started with Docker Compose"
+title = "Getting started with Docker Compose"
 +++
 
 Docker Compose is the quickest way to get up and running to try Velocity CI out!
@@ -19,5 +19,6 @@ password: velocity_local1234
 
 Alternatively, you can do 1. and 2. in one bash line:
 ```
-curl -LO https://raw.githubusercontent.com/velocity-ci/velocity/master/docs/velocity/content/docs/getting-started/docker-compose.yml && docker-compose up
+curl -LO https://raw.githubusercontent.com/velocity-ci/velocity/master/docs/velocity/content/docs/getting-started/docker-compose.yml \
+&& docker-compose up
 ```

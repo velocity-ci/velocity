@@ -4,11 +4,12 @@
     <div class="row flex-xl-nowrap">
         {{ partial "docs-nav.html" . }}
         <main class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content" role="main">
-            <h2>{{ .Title}}</h2>
+            <h1 class="display-4">{{ .Title}}</h1>
+            <aside>
+                {{.TableOfContents}}
+            </aside>
             <p>{{ .Content }}</p>
         </main>
     </div>
 </div>
-
-
 {{ end }}
