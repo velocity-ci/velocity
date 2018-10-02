@@ -19,5 +19,5 @@ password: velocity_local1234
 
 Alternatively, you can do 1. and 2. in one bash line:
 ```
-curl -LO https://github.com/velocity-ci/velocity/blob/master/docs/velocity/content/docs/getting-started/docker-compose.yml && docker-compose up
+curl -LO https://raw.githubusercontent.com/velocity-ci/velocity/master/docs/velocity/content/docs/getting-started/docker-compose.yml && docker-compose up
 ```
