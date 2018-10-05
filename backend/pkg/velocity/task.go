@@ -2,8 +2,14 @@ package velocity
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"go.uber.org/zap"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type Task struct {
@@ -13,6 +19,9 @@ type Task struct {
 	Docker      TaskDocker        `json:"docker" yaml:"docker"`
 	Parameters  []ParameterConfig `json:"parameters" yaml:"parameters"`
 	Steps       []Step            `json:"steps" yaml:"steps"`
+
+	ValidationErrors   []string `json:"validationErrors" yaml:"-"`
+	ValidationWarnings []string `json:"validationWarnings" yaml:"-"`
 
 	RunID              string               `json:"-" yaml:"-"`
 	ResolvedParameters map[string]Parameter `json:"-" yaml:"-"`
@@ -125,20 +134,19 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var taskMap map[string]interface{}
 	err := unmarshal(&taskMap)
 	if err != nil {
-		GetLogger().Error("could not unmarshal task", zap.Error(err))
+		// GetLogger().Error("could not unmarshal task", zap.Error(err))
 		return err
 	}
 
-	switch x := taskMap["name"].(type) {
-	case string:
-		t.Name = x
-		break
-	}
+	t.ValidationErrors = []string{}
+	t.ValidationWarnings = []string{}
 
 	switch x := taskMap["description"].(type) {
 	case string:
 		t.Description = x
 		break
+	default:
+		t.ValidationWarnings = append(t.ValidationWarnings, "missing 'description'")
 	}
 
 	t.Git = TaskGit{
@@ -163,7 +171,11 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				switch z := r.(type) {
 				case map[interface{}]interface{}:
 					d := DockerRegistry{}
-					d.UnmarshalYamlInterface(z)
+					err := d.UnmarshalYamlInterface(z)
+					if err != nil {
+						t.ValidationErrors = append(t.ValidationErrors, err.Error())
+						// return err
+					}
 					t.Docker.Registries = append(t.Docker.Registries, d)
 				}
 			}
@@ -186,11 +198,13 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				}
 				s, err := DetermineStepFromInterface(m)
 				if err != nil {
-					GetLogger().Error("could not determine step from interface", zap.Error(err))
+					// GetLogger().Error("could not determine step from interface", zap.Error(err))
+					t.ValidationErrors = append(t.ValidationErrors, err.Error())
 				} else {
 					err = s.UnmarshalYamlInterface(y)
 					if err != nil {
-						GetLogger().Error("could not unmarshal yaml step", zap.Error(err))
+						// GetLogger().Error("could not unmarshal yaml step", zap.Error(err))
+						t.ValidationErrors = append(t.ValidationErrors, err.Error())
 					} else {
 						t.Steps = append(t.Steps, s)
 					}
@@ -202,4 +216,77 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return nil
+}
+
+func findProjectRoot(cwd string) (string, error) {
+	files, err := ioutil.ReadDir(cwd)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		if f.IsDir() && f.Name() == ".git" {
+			return cwd, nil
+		}
+	}
+
+	return findProjectRoot(filepath.Dir(cwd))
+}
+
+func findTasksDirectory(projectRoot string) (string, error) {
+	// fmt.Printf("checking %s for tasks directory.\n", cwd)
+	files, err := ioutil.ReadDir(projectRoot)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		if f.IsDir() && f.Name() == "tasks" {
+			return filepath.Join(projectRoot, "tasks"), nil
+		}
+
+	}
+	return "", fmt.Errorf("could not find tasks in project root: %s", projectRoot)
+}
+
+func GetTasksFromCurrentDir() ([]Task, error) {
+	tasks := []Task{}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return tasks, err
+	}
+
+	projectRoot, err := findProjectRoot(cwd)
+	if err != nil {
+		return tasks, err
+	}
+
+	tasksDir, err := findTasksDirectory(projectRoot)
+	if err != nil {
+		return tasks, err
+	}
+
+	GetLogger().Debug("looking for tasks in", zap.String("dir", tasksDir))
+	err = filepath.Walk(tasksDir, func(path string, f os.FileInfo, err error) error {
+		if !f.IsDir() && (strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml")) {
+			// fmt.Printf("-> reading %s\n", path)
+			taskYml, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			var t Task
+			relativePath, err := filepath.Rel(tasksDir, path)
+			if err != nil {
+				return err
+			}
+			t.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
+			err = yaml.Unmarshal(taskYml, &t)
+			if err != nil {
+				return err
+			}
+			tasks = append(tasks, t)
+		}
+		return nil
+	})
+
+	return tasks, err
 }

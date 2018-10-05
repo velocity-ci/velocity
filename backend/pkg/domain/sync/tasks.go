@@ -2,10 +2,7 @@ package sync
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/githistory"
@@ -13,7 +10,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/domain/task"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func syncTasks(
@@ -68,24 +64,23 @@ func syncTasks(
 
 			if _, err := os.Stat(fmt.Sprintf("%s/tasks/", repo.Directory)); err == nil {
 				os.Chdir(repo.Directory)
-				filepath.Walk(fmt.Sprintf("%s/tasks/", repo.Directory), func(path string, f os.FileInfo, err error) error {
-					if !f.IsDir() && strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml") {
-						taskYml, _ := ioutil.ReadFile(fmt.Sprintf("%s/tasks/%s", repo.Directory, f.Name()))
-						var t velocity.Task
-						err := yaml.Unmarshal(taskYml, &t)
-						if err != nil {
-							velocity.GetLogger().Error("error", zap.Error(err))
-						} else {
-							taskManager.Create(c, &t, velocity.NewSetup())
-							velocity.GetLogger().Info("created task",
-								zap.String("project", p.Slug),
-								zap.String("sha", c.Hash),
-								zap.String("task", t.Name),
-							)
-						}
+				tasks, err := velocity.GetTasksFromCurrentDir()
+				if err != nil {
+					return err
+				}
+				for _, task := range tasks {
+					if len(task.ValidationErrors) > 0 {
+						velocity.GetLogger().Warn("skipping task because of validation errors", zap.String("task", task.Name), zap.Strings(task.ValidationErrors))
+						continue
 					}
-					return nil
-				})
+					taskManager.Create(c, &task, velocity.NewSetup())
+					velocity.GetLogger().Info("created task",
+						zap.String("project", p.Slug),
+						zap.String("sha", c.Hash),
+						zap.String("task", task.Name),
+					)
+
+				}
 			}
 		} else if !branchManager.HasCommit(b, c) {
 			velocity.GetLogger().Info("added commit to branch",
