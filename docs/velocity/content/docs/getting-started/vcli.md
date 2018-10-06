@@ -5,6 +5,10 @@ title = "Getting started with vcli (Velocity CLI)"
 
 # Installation
 
+```
+bash <(curl -s https://raw.githubusercontent.com/velocity-ci/velocity/master/backend/deployments/vcli/install.sh)
+```
+
 # Usage
 
 # Example
