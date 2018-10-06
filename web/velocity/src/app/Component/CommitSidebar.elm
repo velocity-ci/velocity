@@ -55,7 +55,7 @@ type alias Context =
     , builds : List Build
     , commit : Commit
     , tasks : List Task
-    , selected : Maybe Task.Name
+    , selected : Maybe Task.Slug
     , displayType : DisplayType
     }
 
@@ -409,11 +409,11 @@ latestTaskBuild { builds } task =
 
 {-| Determine if a task is currently selected
 -}
-isSelected : Maybe Task.Name -> Task -> Bool
-isSelected maybeTaskName task =
-    case maybeTaskName of
+isSelected : Maybe Task.Slug -> Task -> Bool
+isSelected maybeTaskSlug task =
+    case maybeTaskSlug of
         Just selected ->
-            selected == task.name
+            selected == task.slug
 
         Nothing ->
             False
@@ -426,6 +426,6 @@ taskToRoute { project, commit } =
 
 taskRoute : Project -> Commit -> Task -> Route
 taskRoute project commit task =
-    CommitRoute.Task task.name Nothing
+    CommitRoute.Task task.slug Nothing
         |> ProjectRoute.Commit commit.hash
         |> Route.Project project.slug
