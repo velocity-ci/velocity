@@ -79,6 +79,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			return err
 		}
 		os.Chdir(repo.Directory)
+		t.ProjectRoot = repo.Directory
 	}
 
 	if err := makeVelocityDirs(); err != nil {
@@ -87,7 +88,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 
 	// Resolve parameters
 	parameters := map[string]Parameter{}
-	for k, v := range getBasicParams() {
+	for k, v := range GetBasicParams() {
 		parameters[k] = v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
@@ -121,7 +122,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}
 	for _, registry := range t.Docker.Registries {
-		r, err := dockerLogin(registry, writer, t.RunID, parameters, t.Docker.Registries)
+		r, err := dockerLogin(registry, writer, t, parameters)
 		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
 			fmt.Fprintf(writer, colorFmt(ansiError, "-> could not login to Docker registry: %s"), err)
@@ -148,10 +149,23 @@ func (s Setup) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func getBasicParams() map[string]Parameter {
-	path, _ := os.Getwd()
+func GetBasicParams() map[string]Parameter {
+	cwd, err := os.Getwd()
+	if err != nil {
+		// return
+		GetLogger().Error("could not get cwd", zap.Error(err))
+	}
+	projectRoot, err := findProjectRoot(cwd)
+	if err != nil {
+		// return
+		GetLogger().Error("could not find project root", zap.Error(err))
+	}
 
-	repo := &RawRepository{Directory: path}
+	repo := &RawRepository{Directory: projectRoot}
+
+	if repo.IsDirty() {
+		// pass in writer to output dirty warning
+	}
 
 	rawCommit, _ := repo.GetCurrentCommitInfo()
 

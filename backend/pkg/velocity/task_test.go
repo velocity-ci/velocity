@@ -12,7 +12,6 @@ func TestTaskConfigUnmarshal(t *testing.T) {
 	taskConfigYaml := `
 ---
 description: "Hello Velocity"
-name: hello-velocity
 
 `
 	var taskConfig velocity.Task
@@ -21,13 +20,14 @@ name: hello-velocity
 	assert.Nil(t, err)
 
 	expectedTaskConfig := velocity.Task{
-		Name:        "hello-velocity",
 		Description: "Hello Velocity",
 		Steps:       []velocity.Step{},
 		Docker: velocity.TaskDocker{
 			Registries: []velocity.DockerRegistry{},
 		},
-		Parameters: []velocity.ParameterConfig{},
+		Parameters:         []velocity.ParameterConfig{},
+		ValidationErrors:   []string{},
+		ValidationWarnings: []string{},
 	}
 
 	assert.Equal(t, expectedTaskConfig, taskConfig)

@@ -23,6 +23,7 @@ type Task struct {
 	ValidationErrors   []string `json:"validationErrors" yaml:"-"`
 	ValidationWarnings []string `json:"validationWarnings" yaml:"-"`
 
+	ProjectRoot        string               `json:"-" yaml:"-"`
 	RunID              string               `json:"-" yaml:"-"`
 	ResolvedParameters map[string]Parameter `json:"-" yaml:"-"`
 }
@@ -201,6 +202,7 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 					// GetLogger().Error("could not determine step from interface", zap.Error(err))
 					t.ValidationErrors = append(t.ValidationErrors, err.Error())
 				} else {
+					s.SetProjectRoot(t.ProjectRoot)
 					err = s.UnmarshalYamlInterface(y)
 					if err != nil {
 						// GetLogger().Error("could not unmarshal yaml step", zap.Error(err))
@@ -225,6 +227,7 @@ func findProjectRoot(cwd string) (string, error) {
 	}
 	for _, f := range files {
 		if f.IsDir() && f.Name() == ".git" {
+			GetLogger().Debug("found project root", zap.String("dir", cwd))
 			return cwd, nil
 		}
 	}
@@ -279,6 +282,7 @@ func GetTasksFromCurrentDir() ([]Task, error) {
 				return err
 			}
 			t.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
+			t.ProjectRoot = projectRoot
 			err = yaml.Unmarshal(taskYml, &t)
 			if err != nil {
 				return err

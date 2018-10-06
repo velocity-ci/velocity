@@ -3,4 +3,4 @@ name: compose-example
 
 steps:
   - type: compose
-    composeFile: tasks/example.compose.yml
+    composeFile: examples/docker-compose/example.compose.yml

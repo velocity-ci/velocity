@@ -2,6 +2,7 @@ package velocity
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -58,8 +59,10 @@ func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	authConfigs := getAuthConfigsMap(t.Docker.Registries)
 
+	buildContext := filepath.Join(dB.ProjectRoot, dB.Context)
+
 	err := buildContainer(
-		dB.Context,
+		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
 		t.ResolvedParameters,

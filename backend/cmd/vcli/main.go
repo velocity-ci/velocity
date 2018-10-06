@@ -31,12 +31,18 @@ func main() {
 			Usage:   "List tasks",
 			Action:  vcli.List,
 		},
-		// {
-		// 	Name:    "run",
-		// 	Aliases: []string{"r"},
-		// 	Usage:   "Run a given task by name",
-		// 	Action:  vcli.Run,
-		// },
+		{
+			Name:    "run",
+			Aliases: []string{"r"},
+			Usage:   "Run a given task",
+			Action:  vcli.Run,
+		},
+		{
+			Name:    "info",
+			Aliases: []string{"i"},
+			Usage:   "Print out information about the current project",
+			Action:  vcli.Info,
+		},
 	}
 
 	app.Flags = []cli.Flag{

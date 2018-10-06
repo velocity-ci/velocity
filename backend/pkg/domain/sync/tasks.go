@@ -70,7 +70,11 @@ func syncTasks(
 				}
 				for _, task := range tasks {
 					if len(task.ValidationErrors) > 0 {
-						velocity.GetLogger().Warn("skipping task because of validation errors", zap.String("task", task.Name), zap.Strings(task.ValidationErrors))
+						velocity.GetLogger().Warn(
+							"skipping task because of validation errors",
+							zap.String("task", task.Name),
+							zap.Strings("validationErrors", task.ValidationErrors),
+						)
 						continue
 					}
 					taskManager.Create(c, &task, velocity.NewSetup())
