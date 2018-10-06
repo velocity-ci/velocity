@@ -272,9 +272,6 @@ func buildContainer(
 ) error {
 	GetLogger().Debug("building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 
-	cwd, _ := os.Getwd()
-	buildContext = fmt.Sprintf("%s/%s", cwd, buildContext)
-
 	excludes, err := readDockerignore(buildContext)
 	if err != nil {
 		return err

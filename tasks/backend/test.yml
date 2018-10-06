@@ -1,5 +1,4 @@
 description: "Tests the Backend source"
-name: test-backend
 
 steps:
   - type: run

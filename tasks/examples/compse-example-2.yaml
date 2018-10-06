@@ -3,4 +3,4 @@ name: compose-example-streams
 
 steps:
   - type: compose
-    composeFile: tasks/example.compose.2.yml
+    composeFile: examples/docker-compose/example.compose.2.yml

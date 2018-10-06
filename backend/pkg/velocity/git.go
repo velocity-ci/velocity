@@ -385,3 +385,18 @@ func (r *RawRepository) GetDefaultBranch() (string, error) {
 
 	return defaultBranch, nil
 }
+
+func (r *RawRepository) IsDirty() bool {
+	r.init()
+	defer r.done()
+
+	shCmd := []string{"git", "status", "--porcelain"}
+	writer := &BlankWriter{}
+	s := runCmd(writer, shCmd, []string{})
+
+	if len(s.Stdout) > 0 {
+		return true
+	}
+
+	return false
+}

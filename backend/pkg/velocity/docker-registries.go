@@ -43,7 +43,7 @@ func (d *DockerRegistry) UnmarshalYamlInterface(y map[interface{}]interface{}) e
 	return nil
 }
 
-func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parameters map[string]Parameter, authConfigs []DockerRegistry) (r DockerRegistry, _ error) {
+func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task, parameters map[string]Parameter) (r DockerRegistry, _ error) {
 
 	type registryAuthConfig struct {
 		Username      string `json:"username"`
@@ -53,7 +53,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parame
 		State         string `json:"state"`
 	}
 
-	bin, err := getBinary(registry.Use, writer)
+	bin, err := getBinary(task.ProjectRoot, registry.Use, writer)
 	if err != nil {
 		return r, err
 	}

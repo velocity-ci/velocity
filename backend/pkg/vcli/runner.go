@@ -1,4 +1,4 @@
-package cli
+package vcli
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func (r *runner) Run(taskName string) {
 	r.run = true
 	defer r.wg.Done()
 	defer func() { r.run = false }()
-	tasks := getTasksFromDirectory("./tasks/")
+	tasks, _ := velocity.GetTasksFromCurrentDir()
 
 	var t *velocity.Task
 	// find Task requested

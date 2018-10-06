@@ -227,16 +227,16 @@ sidebarContext project model =
     }
 
 
-selectedTask : Model -> Maybe ProjectTask.Name
+selectedTask : Model -> Maybe ProjectTask.Slug
 selectedTask model =
     case (model.subPageState) of
         Loaded (CommitTask subModel) ->
-            Just subModel.task.name
+            Just subModel.task.slug
 
         TransitioningFrom _ fromRoute ->
             case fromRoute of
-                Just (CommitRoute.Task taskName _) ->
-                    Just taskName
+                Just (CommitRoute.Task taskSlug _) ->
+                    Just taskSlug
 
                 _ ->
                     Nothing
@@ -290,7 +290,7 @@ viewSubPageHeader project model =
         TransitioningFrom (CommitTask subModel) route ->
             case route of
                 Just (CommitRoute.Task taskName _) ->
-                    if taskName == subModel.task.name then
+                    if taskName == subModel.task.slug then
                         taskBuilds model.builds (Just subModel.task)
                             |> CommitTask.viewHeader subModel
                             |> Html.map CommitTaskMsg
@@ -451,13 +451,13 @@ setRoute context session project maybeRoute model =
                     Nothing ->
                         errored Page.Project "Uhoh"
 
-            Just (CommitRoute.Task name maybeBuildId) ->
+            Just (CommitRoute.Task slug maybeBuildId) ->
                 case session.user of
                     Just user ->
                         let
                             maybeTask =
                                 model.tasks
-                                    |> List.filter (\t -> t.name == name)
+                                    |> List.filter (\t -> t.slug == slug)
                                     |> List.head
                         in
                             case maybeTask of
