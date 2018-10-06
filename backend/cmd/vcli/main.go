@@ -23,6 +23,7 @@ func main() {
 	app.Name = "Velocity CLI"
 	app.Usage = "Runs Velocity CI tasks locally"
 	app.Version = BuildVersion
+	app.EnableBashCompletion = true
 
 	app.Commands = []cli.Command{
 		{

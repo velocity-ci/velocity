@@ -3,6 +3,7 @@ package velocity
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -43,13 +44,8 @@ func (s Setup) GetDetails() string {
 	return ""
 }
 
-func makeVelocityDirs() error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	os.MkdirAll(fmt.Sprintf("%s/.velocityci/plugins", wd), os.ModePerm)
+func makeVelocityDirs(projectRoot string) error {
+	os.MkdirAll(filepath.Join(projectRoot, ".velocityci/plugins"), os.ModePerm)
 
 	return nil
 }
@@ -82,7 +78,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		t.ProjectRoot = repo.Directory
 	}
 
-	if err := makeVelocityDirs(); err != nil {
+	if err := makeVelocityDirs(t.ProjectRoot); err != nil {
 		return err
 	}
 

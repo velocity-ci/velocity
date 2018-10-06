@@ -237,17 +237,31 @@ func findProjectRoot(cwd string) (string, error) {
 
 func findTasksDirectory(projectRoot string) (string, error) {
 	// fmt.Printf("checking %s for tasks directory.\n", cwd)
-	files, err := ioutil.ReadDir(projectRoot)
-	if err != nil {
-		return "", err
-	}
-	for _, f := range files {
-		if f.IsDir() && f.Name() == "tasks" {
-			return filepath.Join(projectRoot, "tasks"), nil
-		}
+	tasksDir := "tasks"
 
+	// check for tasks setting in velocity.yml
+	repoConfigPath := filepath.Join(projectRoot, ".velocity.yml")
+	if f, err := os.Stat(repoConfigPath); !os.IsNotExist(err) {
+		if !f.IsDir() {
+			var repoConfig RepositoryConfig
+			repoYaml, _ := ioutil.ReadFile(repoConfigPath)
+			err = yaml.Unmarshal(repoYaml, &repoConfig)
+			if err == nil {
+				if repoConfig.Project.TasksPath != "" {
+					tasksDir = repoConfig.Project.TasksPath
+				}
+			}
+		}
 	}
-	return "", fmt.Errorf("could not find tasks in project root: %s", projectRoot)
+
+	tasksPath := filepath.Join(projectRoot, tasksDir)
+	if f, err := os.Stat(tasksPath); !os.IsNotExist(err) {
+		if f.IsDir() {
+			return tasksPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find tasks in: %s", filepath.Join(projectRoot, tasksDir))
 }
 
 func GetTasksFromCurrentDir() ([]Task, error) {
