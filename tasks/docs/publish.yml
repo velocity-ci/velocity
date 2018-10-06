@@ -1,0 +1,25 @@
+description: "Builds and publishes CLI"
+
+parameters:
+  - use: https://github.com/velocity-ci/parameter.aws-credentials/releases/download/0.1.1/aws-credentials
+    arguments:
+      roleName: velocity-site
+
+steps: 
+
+  - type: run
+    description: Builds static site
+    image: publysher/hugo
+    workingDir: docs/velocity
+    command: hugo
+
+  - description: Upload static site to S3
+    type: run
+    image: anigeo/awscli:latest 
+    workingDir: docs/velocity
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+      AWS_DEFAULT_REGION: eu-west-1
+    command: s3 cp public/. s3://velocityci.io --acl public-read --recursive --cache-control max-age=120
