@@ -220,7 +220,7 @@ func (t *Task) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func findProjectRoot(cwd string) (string, error) {
+func findProjectRoot(cwd string, attempted []string) (string, error) {
 	files, err := ioutil.ReadDir(cwd)
 	if err != nil {
 		return "", err
@@ -232,7 +232,11 @@ func findProjectRoot(cwd string) (string, error) {
 		}
 	}
 
-	return findProjectRoot(filepath.Dir(cwd))
+	if filepath.Dir(cwd) == cwd {
+		return "", fmt.Errorf("could not find project root. Tried: %v", append(attempted, cwd))
+	}
+
+	return findProjectRoot(filepath.Dir(cwd), append(attempted, cwd))
 }
 
 func findTasksDirectory(projectRoot string) (string, error) {
@@ -272,7 +276,7 @@ func GetTasksFromCurrentDir() ([]Task, error) {
 		return tasks, err
 	}
 
-	projectRoot, err := findProjectRoot(cwd)
+	projectRoot, err := findProjectRoot(cwd, []string{})
 	if err != nil {
 		return tasks, err
 	}

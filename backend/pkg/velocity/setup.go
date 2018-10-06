@@ -2,6 +2,7 @@ package velocity
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -84,7 +85,11 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 
 	// Resolve parameters
 	parameters := map[string]Parameter{}
-	for k, v := range GetBasicParams() {
+	basicParams, err := GetBasicParams(writer)
+	if err != nil {
+		return err
+	}
+	for k, v := range basicParams {
 		parameters[k] = v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
@@ -145,64 +150,63 @@ func (s Setup) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func GetBasicParams() map[string]Parameter {
+func GetBasicParams(writer io.Writer) (map[string]Parameter, error) {
+	params := map[string]Parameter{}
 	cwd, err := os.Getwd()
 	if err != nil {
-		// return
-		GetLogger().Error("could not get cwd", zap.Error(err))
+		return params, err
 	}
-	projectRoot, err := findProjectRoot(cwd)
+	projectRoot, err := findProjectRoot(cwd, []string{})
 	if err != nil {
-		// return
-		GetLogger().Error("could not find project root", zap.Error(err))
+		return params, err
 	}
 
 	repo := &RawRepository{Directory: projectRoot}
 
 	if repo.IsDirty() {
-		// pass in writer to output dirty warning
+		fmt.Fprintf(writer, colorFmt(ansiWarn, "-> Project files are dirty. Build repeatability is not guaranteed."))
 	}
 
 	rawCommit, _ := repo.GetCurrentCommitInfo()
 
 	buildTimestamp := time.Now().UTC()
 
-	return map[string]Parameter{
-		"GIT_COMMIT_LONG_SHA": {
-			Value:    rawCommit.SHA,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_SHORT_SHA": {
-			Value:    rawCommit.SHA[:7],
-			IsSecret: false,
-		},
-		"GIT_DESCRIBE": {
-			Value:    repo.GetDescribe(),
-			IsSecret: false,
-		},
-		"GIT_COMMIT_AUTHOR": {
-			Value:    rawCommit.AuthorEmail,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_MESSAGE": {
-			Value:    rawCommit.Message,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_TIMESTAMP_RFC3339": {
-			Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
-			IsSecret: false,
-		},
-		"GIT_COMMIT_TIMESTAMP_RFC822": {
-			Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
-			IsSecret: false,
-		},
-		"BUILD_TIMESTAMP_RFC3339": {
-			Value:    buildTimestamp.Format(time.RFC3339),
-			IsSecret: false,
-		},
-		"BUILD_TIMESTAMP_RFC822": {
-			Value:    buildTimestamp.Format(time.RFC822),
-			IsSecret: false,
-		},
+	params["GIT_COMMIT_LONG_SHA"] = Parameter{
+		Value:    rawCommit.SHA,
+		IsSecret: false,
 	}
+	params["GIT_COMMIT_SHORT_SHA"] = Parameter{
+		Value:    rawCommit.SHA[:7],
+		IsSecret: false,
+	}
+	params["GIT_DESCRIBE"] = Parameter{
+		Value:    repo.GetDescribe(),
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_AUTHOR"] = Parameter{
+		Value:    rawCommit.AuthorEmail,
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_MESSAGE"] = Parameter{
+		Value:    rawCommit.Message,
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_TIMESTAMP_RFC3339"] = Parameter{
+		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_TIMESTAMP_RFC822"] = Parameter{
+		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
+		IsSecret: false,
+	}
+	params["BUILD_TIMESTAMP_RFC3339"] = Parameter{
+		Value:    buildTimestamp.Format(time.RFC3339),
+		IsSecret: false,
+	}
+	params["BUILD_TIMESTAMP_RFC822"] = Parameter{
+		Value:    buildTimestamp.Format(time.RFC822),
+		IsSecret: false,
+	}
+
+	return params, nil
 }

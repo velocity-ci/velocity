@@ -91,7 +91,12 @@ func RunCompletion(c *cli.Context) {
 }
 
 func Info(c *cli.Context) error {
-	basicParams := velocity.GetBasicParams()
+	emitter := NewEmitter()
+
+	basicParams, err := velocity.GetBasicParams(emitter.GetStreamWriter("setup"))
+	if err != nil {
+		return err
+	}
 	for key, val := range basicParams {
 		fmt.Printf("%s: %s\n", key, val.Value)
 	}
