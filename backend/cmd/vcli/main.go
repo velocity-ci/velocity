@@ -33,10 +33,11 @@ func main() {
 			Action:  vcli.List,
 		},
 		{
-			Name:    "run",
-			Aliases: []string{"r"},
-			Usage:   "Run a given task",
-			Action:  vcli.Run,
+			Name:         "run",
+			Aliases:      []string{"r"},
+			Usage:        "Run a given task",
+			Action:       vcli.Run,
+			BashComplete: vcli.RunCompletion,
 		},
 		{
 			Name:    "info",

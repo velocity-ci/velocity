@@ -80,6 +80,16 @@ func List(c *cli.Context) error {
 	return nil
 }
 
+func RunCompletion(c *cli.Context) {
+	if c.NArg() > 0 {
+		return
+	}
+	tasks, _ := velocity.GetTasksFromCurrentDir()
+	for _, t := range tasks {
+		fmt.Println(t.Name)
+	}
+}
+
 func Info(c *cli.Context) error {
 	basicParams := velocity.GetBasicParams()
 	for key, val := range basicParams {
