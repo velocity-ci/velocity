@@ -11,8 +11,7 @@ import (
 func TestDockerRunUnmarshal(t *testing.T) {
 	taskConfigYaml := `
 ---
-name: docker-run
-
+description: Runs a docker container
 steps:
   - type: run
     description: Hello Docker
@@ -24,8 +23,7 @@ steps:
 	assert.Nil(t, err)
 
 	expectedTaskConfig := velocity.Task{
-		Name:        "docker-run",
-		Description: "",
+		Description: "Runs a docker container",
 		Steps: []velocity.Step{
 			&velocity.DockerRun{
 				BaseStep: velocity.BaseStep{
@@ -42,7 +40,9 @@ steps:
 		Docker: velocity.TaskDocker{
 			Registries: []velocity.DockerRegistry{},
 		},
-		Parameters: []velocity.ParameterConfig{},
+		Parameters:         []velocity.ParameterConfig{},
+		ValidationErrors:   []string{},
+		ValidationWarnings: []string{},
 	}
 
 	assert.Equal(t, expectedTaskConfig, taskConfig)

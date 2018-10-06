@@ -31,7 +31,7 @@ func (b *Builder) runBuild(build *BuildPayload) {
 				build.Build.Task.Commit.Hash,
 			)
 		}
-
+		step.SetProjectRoot(vT.ProjectRoot)
 		err := step.Execute(emitter, vT)
 		if err != nil {
 			break

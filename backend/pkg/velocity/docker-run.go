@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -121,7 +120,6 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	for k, v := range dR.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
-	cwd, _ := os.Getwd()
 
 	// Only used for Docker-based CLI. Unsupported right now.
 	// if os.Getenv("SIB_CWD") != "" {
@@ -140,7 +138,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s", cwd, dR.MountPoint),
+			fmt.Sprintf("%s:%s", dR.ProjectRoot, dR.MountPoint),
 		},
 	}
 

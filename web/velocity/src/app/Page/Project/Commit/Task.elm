@@ -183,7 +183,7 @@ leaveChannels : Model -> Maybe CommitRoute.Route -> List String
 leaveChannels model route =
     let
         isTask task =
-            model.task.name == task
+            model.task.slug == task
 
         isBuild routeBuild =
             case ( routeBuild, model.selected ) of
@@ -405,7 +405,7 @@ viewNoBuildsAlert task commit =
 
 breadcrumb : Project -> Commit -> ProjectTask.Task -> List ( Route.Route, String )
 breadcrumb project commit task =
-    [ ( CommitRoute.Task task.name Nothing |> ProjectRoute.Commit commit.hash |> Route.Project project.slug
+    [ ( CommitRoute.Task task.slug Nothing |> ProjectRoute.Commit commit.hash |> Route.Project project.slug
       , ProjectTask.nameToString task.name
       )
     ]
@@ -457,6 +457,9 @@ update context project commit builds session msg model =
 
         taskName =
             model.task.name
+
+        taskSlug =
+            model.task.slug
 
         maybeAuthToken =
             Maybe.map .token session.user
@@ -513,7 +516,7 @@ update context project commit builds session msg model =
                 let
                     cmdFromAuth authToken =
                         authToken
-                            |> Request.Commit.createBuild context projectSlug commitHash taskName (BuildForm.submitParams model.form)
+                            |> Request.Commit.createBuild context projectSlug commitHash taskSlug (BuildForm.submitParams model.form)
                             |> Task.attempt BuildCreated
 
                     cmd =
@@ -538,7 +541,7 @@ update context project commit builds session msg model =
             BuildCreated (Ok build) ->
                 let
                     route =
-                        CommitRoute.Task model.task.name (Just build.id)
+                        CommitRoute.Task model.task.slug (Just build.id)
                             |> ProjectRoute.Commit commit.hash
                             |> Route.Project project.slug
                 in
@@ -592,7 +595,7 @@ update context project commit builds session msg model =
 
                     route =
                         toBuild
-                            |> CommitRoute.Task model.task.name
+                            |> CommitRoute.Task model.task.slug
                             |> ProjectRoute.Commit commitHash
                             |> Route.Project project.slug
                 in

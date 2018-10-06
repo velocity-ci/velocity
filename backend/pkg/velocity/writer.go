@@ -39,6 +39,7 @@ func (w BlankWriter) Close() {}
 
 const (
 	ansiSuccess = "\x1b[1m\x1b[49m\x1b[32m"
+	ansiWarn    = "\x1b[1m\x1b[49m\x1b[33m"
 	ansiError   = "\x1b[1m\x1b[49m\x1b[31m"
 	ansiInfo    = "\x1b[1m\x1b[49m\x1b[34m"
 )

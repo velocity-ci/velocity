@@ -2,7 +2,9 @@ package velocity
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -43,13 +45,8 @@ func (s Setup) GetDetails() string {
 	return ""
 }
 
-func makeVelocityDirs() error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	os.MkdirAll(fmt.Sprintf("%s/.velocityci/plugins", wd), os.ModePerm)
+func makeVelocityDirs(projectRoot string) error {
+	os.MkdirAll(filepath.Join(projectRoot, ".velocityci/plugins"), os.ModePerm)
 
 	return nil
 }
@@ -79,15 +76,20 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 			return err
 		}
 		os.Chdir(repo.Directory)
+		t.ProjectRoot = repo.Directory
 	}
 
-	if err := makeVelocityDirs(); err != nil {
+	if err := makeVelocityDirs(t.ProjectRoot); err != nil {
 		return err
 	}
 
 	// Resolve parameters
 	parameters := map[string]Parameter{}
-	for k, v := range getBasicParams() {
+	basicParams, err := GetBasicParams(writer)
+	if err != nil {
+		return err
+	}
+	for k, v := range basicParams {
 		parameters[k] = v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
@@ -121,7 +123,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}
 	for _, registry := range t.Docker.Registries {
-		r, err := dockerLogin(registry, writer, t.RunID, parameters, t.Docker.Registries)
+		r, err := dockerLogin(registry, writer, t, parameters)
 		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
 			fmt.Fprintf(writer, colorFmt(ansiError, "-> could not login to Docker registry: %s"), err)
@@ -148,51 +150,63 @@ func (s Setup) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func getBasicParams() map[string]Parameter {
-	path, _ := os.Getwd()
+func GetBasicParams(writer io.Writer) (map[string]Parameter, error) {
+	params := map[string]Parameter{}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return params, err
+	}
+	projectRoot, err := findProjectRoot(cwd, []string{})
+	if err != nil {
+		return params, err
+	}
 
-	repo := &RawRepository{Directory: path}
+	repo := &RawRepository{Directory: projectRoot}
+
+	if repo.IsDirty() {
+		fmt.Fprintf(writer, colorFmt(ansiWarn, "-> Project files are dirty. Build repeatability is not guaranteed."))
+	}
 
 	rawCommit, _ := repo.GetCurrentCommitInfo()
 
 	buildTimestamp := time.Now().UTC()
 
-	return map[string]Parameter{
-		"GIT_COMMIT_LONG_SHA": {
-			Value:    rawCommit.SHA,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_SHORT_SHA": {
-			Value:    rawCommit.SHA[:7],
-			IsSecret: false,
-		},
-		"GIT_DESCRIBE": {
-			Value:    repo.GetDescribe(),
-			IsSecret: false,
-		},
-		"GIT_COMMIT_AUTHOR": {
-			Value:    rawCommit.AuthorEmail,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_MESSAGE": {
-			Value:    rawCommit.Message,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_TIMESTAMP_RFC3339": {
-			Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
-			IsSecret: false,
-		},
-		"GIT_COMMIT_TIMESTAMP_RFC822": {
-			Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
-			IsSecret: false,
-		},
-		"BUILD_TIMESTAMP_RFC3339": {
-			Value:    buildTimestamp.Format(time.RFC3339),
-			IsSecret: false,
-		},
-		"BUILD_TIMESTAMP_RFC822": {
-			Value:    buildTimestamp.Format(time.RFC822),
-			IsSecret: false,
-		},
+	params["GIT_COMMIT_LONG_SHA"] = Parameter{
+		Value:    rawCommit.SHA,
+		IsSecret: false,
 	}
+	params["GIT_COMMIT_SHORT_SHA"] = Parameter{
+		Value:    rawCommit.SHA[:7],
+		IsSecret: false,
+	}
+	params["GIT_DESCRIBE"] = Parameter{
+		Value:    repo.GetDescribe(),
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_AUTHOR"] = Parameter{
+		Value:    rawCommit.AuthorEmail,
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_MESSAGE"] = Parameter{
+		Value:    rawCommit.Message,
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_TIMESTAMP_RFC3339"] = Parameter{
+		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_TIMESTAMP_RFC822"] = Parameter{
+		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
+		IsSecret: false,
+	}
+	params["BUILD_TIMESTAMP_RFC3339"] = Parameter{
+		Value:    buildTimestamp.Format(time.RFC3339),
+		IsSecret: false,
+	}
+	params["BUILD_TIMESTAMP_RFC822"] = Parameter{
+		Value:    buildTimestamp.Format(time.RFC822),
+		IsSecret: false,
+	}
+
+	return params, nil
 }

@@ -105,19 +105,14 @@ func (p DerivedParameter) GetInfo() string {
 	return p.Use
 }
 
-func getBinary(u string, writer io.Writer) (binaryLocation string, _ error) {
+func getBinary(projectRoot, u string, writer io.Writer) (binaryLocation string, _ error) {
 
 	parsedURL, err := url.Parse(u)
 	if err != nil {
 		return "", err
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", wd, slug.Make(parsedURL.Path))
+	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", projectRoot, slug.Make(parsedURL.Path))
 
 	if _, err := os.Stat(binaryLocation); os.IsNotExist(err) {
 		GetLogger().Debug("downloading binary", zap.String("from", u), zap.String("to", binaryLocation))
@@ -154,7 +149,7 @@ func getBinary(u string, writer io.Writer) (binaryLocation string, _ error) {
 func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) (r []Parameter, _ error) {
 
 	// Download binary from use:
-	bin, err := getBinary(p.Use, writer)
+	bin, err := getBinary(t.ProjectRoot, p.Use, writer)
 	if err != nil {
 		return r, err
 	}

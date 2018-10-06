@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -58,11 +57,7 @@ func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
 }
 
 func (dC *DockerCompose) parseDockerComposeFile() error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	dockerComposeYml, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, dC.ComposeFile))
+	dockerComposeYml, err := ioutil.ReadFile(filepath.Join(dC.ProjectRoot, dC.ComposeFile))
 	if err != nil {
 		return err
 	}
@@ -195,7 +190,6 @@ func (dC *DockerCompose) String() string {
 
 func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
 	env := []string{}
-	projectRoot, _ := os.Getwd()
 	for k, v := range s.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -210,8 +204,8 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, 
 			guestMount := parts[1:]
 			volumes[parts[1]] = struct{}{}
 			if !filepath.IsAbs(hostMount) { // no absolute paths allowed.
-				hostMount = filepath.Join(projectRoot, filepath.Dir(dC.ComposeFile), hostMount)
-				if strings.Contains(hostMount, projectRoot) { // no further up from project root
+				hostMount = filepath.Join(dC.ProjectRoot, filepath.Dir(dC.ComposeFile), hostMount)
+				if strings.Contains(hostMount, dC.ProjectRoot) { // no further up from project root
 					binds = append(binds, strings.Join(append([]string{hostMount}, guestMount...), ":"))
 				}
 			}

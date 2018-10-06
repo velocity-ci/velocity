@@ -16,6 +16,7 @@ type Step interface {
 	SetParams(map[string]Parameter) error
 	GetOutputStreams() []string
 	UnmarshalYamlInterface(map[interface{}]interface{}) error
+	SetProjectRoot(string)
 }
 
 // Step state constants
@@ -46,11 +47,13 @@ const (
 )
 
 type BaseStep struct {
-	Type          string               `json:"type" yaml:"type"`
-	Description   string               `json:"description" yaml:"description"`
-	OutputStreams []string             `json:"outputStreams" yaml:"-"`
-	Params        map[string]Parameter `json:"params" yaml:"-"`
-	runID         string
+	Type          string   `json:"type" yaml:"type"`
+	Description   string   `json:"description" yaml:"description"`
+	OutputStreams []string `json:"outputStreams" yaml:"-"`
+
+	Params      map[string]Parameter `json:"params" yaml:"-"`
+	runID       string
+	ProjectRoot string
 }
 
 func newBaseStep(t string, streams []string) BaseStep {
@@ -79,11 +82,14 @@ func (bS *BaseStep) SetParams(params map[string]Parameter) {
 
 func (bS *BaseStep) GetRunID() string {
 	if bS.runID == "" {
-		// bS.runID = time.Now().Format("060102150405")
 		bS.runID = uuid.NewV4().String()
 	}
 
 	return bS.runID
+}
+
+func (bS *BaseStep) SetProjectRoot(path string) {
+	bS.ProjectRoot = path
 }
 
 func (s *BaseStep) UnmarshalYamlInterface(y map[interface{}]interface{}) error {

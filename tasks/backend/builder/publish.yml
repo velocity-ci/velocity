@@ -1,5 +1,4 @@
-description: "Builds and publishes Architect"
-name: publish-architect
+description: "Builds and publishes Builder"
 
 parameters:
   - name: docker_hub_username
@@ -17,12 +16,12 @@ docker:
 steps: 
   - type: build
     description: Build release image
-    dockerfile: build/docker/architect/Dockerfile
+    dockerfile: build/docker/builder/Dockerfile
     context: ./backend
     tags:
-      - civelocity/architect:${GIT_DESCRIBE}
-      - civelocity/architect:latest
+      - civelocity/builder:${GIT_DESCRIBE}
+      - civelocity/builder:latest
   - type: push
     tags:
-      - civelocity/architect:${GIT_DESCRIBE}
-      - civelocity/architect:latest
+      - civelocity/builder:${GIT_DESCRIBE}
+      - civelocity/builder:latest
