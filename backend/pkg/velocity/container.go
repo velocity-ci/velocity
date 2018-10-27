@@ -15,6 +15,7 @@ import (
 
 	"github.com/docker/docker/api/types/network"
 	"go.uber.org/zap"
+	"golang.org/x/net/http/httpproxy"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -186,8 +187,28 @@ func findImageLocally(imageName string, cli *client.Client, ctx context.Context)
 	return fmt.Errorf("could not find image: %s", imageName)
 }
 
+func respectProxyEnv(env []string) []string {
+	config := httpproxy.FromEnvironment()
+	if len(config.HTTPProxy) > 1 {
+		env = append(env, fmt.Sprintf("HTTP_PROXY=%s", config.HTTPProxy))
+		env = append(env, fmt.Sprintf("http_proxy=%s", config.HTTPProxy))
+	}
+	if len(config.HTTPSProxy) > 1 {
+		env = append(env, fmt.Sprintf("HTTPS_PROXY=%s", config.HTTPSProxy))
+		env = append(env, fmt.Sprintf("https_proxy=%s", config.HTTPSProxy))
+	}
+	if len(config.NoProxy) > 1 {
+		env = append(env, fmt.Sprintf("NO_PROXY=%s", config.NoProxy))
+		env = append(env, fmt.Sprintf("no_proxy=%s", config.NoProxy))
+	}
+
+	return env
+}
+
 func (sR *serviceRunner) Create() {
 	fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s created"), getContainerName(sR.name))
+
+	sR.containerConfig.Env = respectProxyEnv(sR.containerConfig.Env)
 
 	createResp, err := sR.dockerCli.ContainerCreate(
 		sR.context,
