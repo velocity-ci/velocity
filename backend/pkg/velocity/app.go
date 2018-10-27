@@ -17,7 +17,7 @@ type App interface {
 func runCmd(writer io.Writer, shCmd []string, env []string) cmd.Status {
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
-	c.Env = env
+	c.Env = respectProxyEnv(env)
 	stdout := []string{}
 	stderr := []string{}
 	go func() {

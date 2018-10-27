@@ -363,6 +363,8 @@
   packages = [
     "context",
     "context/ctxhttp",
+    "http/httpproxy",
+    "idna",
     "proxy",
   ]
   pruneopts = ""
@@ -378,6 +380,29 @@
   ]
   pruneopts = ""
   revision = "cc7307a45468e49eaf2997c890f14aa03a26917b"
+
+[[projects]]
+  digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
+  name = "golang.org/x/text"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+  ]
+  pruneopts = ""
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   digest = "1:ff079e6ffd8ee0e5f39d98d357fef55fd460304c3eece24cb8f5e62318e9747a"
@@ -429,6 +454,7 @@
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/ssh",
     "golang.org/x/crypto/ssh/agent",
+    "golang.org/x/net/http/httpproxy",
     "gopkg.in/go-playground/validator.v9",
     "gopkg.in/go-playground/validator.v9/translations/en",
     "gopkg.in/yaml.v2",
