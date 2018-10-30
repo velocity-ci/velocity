@@ -1,7 +1,7 @@
-module Data.PaginatedList exposing (PaginatedList, Paginated, decoder, results, updateResults, total)
+module Data.PaginatedList exposing (Paginated, PaginatedList, decoder, results, total, updateResults)
 
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (decode, required, optional)
+import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 
 
 type alias PaginatedList a =
@@ -34,10 +34,10 @@ updateResults paginatedList updateFn =
             updateFn (results paginatedList)
 
         totalDiff =
-            (total paginatedList) - List.length newResults
+            total paginatedList - List.length newResults
     in
         Paginated
-            { total = (total paginatedList) - totalDiff
+            { total = total paginatedList - totalDiff
             , results = newResults
             }
 

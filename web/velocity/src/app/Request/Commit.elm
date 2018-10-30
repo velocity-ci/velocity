@@ -1,20 +1,20 @@
-module Request.Commit exposing (list, get, tasks, task, builds, createBuild)
+module Request.Commit exposing (builds, createBuild, get, list, task, tasks)
 
 import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
-import Data.Project as Project exposing (Project)
-import Data.Commit as Commit exposing (Commit)
-import Data.Task as Task exposing (Task)
 import Data.Branch as Branch exposing (Branch)
 import Data.Build as Build exposing (Build)
+import Data.Commit as Commit exposing (Commit)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
-import Json.Encode as Encode
-import Request.Helpers exposing (apiUrl)
-import Request.Errors
-import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
-import Util exposing ((=>))
+import Data.Project as Project exposing (Project)
+import Data.Task as Task exposing (Task)
 import Http
+import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
+import Json.Encode as Encode
+import Request.Errors
+import Request.Helpers exposing (apiUrl)
 import Task as ElmTask
+import Util exposing ((=>))
 
 
 baseUrl : String
@@ -205,7 +205,7 @@ createBuild context projectSlug hash taskName params token =
                                     ]
                             )
             in
-                if (List.length params) > 0 then
+                if List.length params > 0 then
                     Encode.list enc
                 else
                     Encode.list []

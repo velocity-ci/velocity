@@ -1,36 +1,33 @@
 module Component.BuildForm
     exposing
-        ( Context
+        ( ChoiceFormField
         , Config
-        , init
+        , Context
         , Field(..)
         , InputFormField
-        , ChoiceFormField
+        , firstId
+        , init
+        , submitParams
         , updateInput
         , updateSelect
-        , submitParams
         , view
         , viewSubmitButton
-        , firstId
         )
 
 -- EXTERNAL --
-
-import Validate exposing (..)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onSubmit, on, onInput, onClick)
-import Html.Events.Extra exposing (targetSelectedIndex)
-import Json.Decode as Decode
-import Bootstrap.Button as Button
-
-
 -- INTERNAL --
 
-import Util exposing ((=>))
-import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
-import Views.Form as Form
+import Bootstrap.Button as Button
 import Component.Form exposing (validClasses)
+import Data.Task as ProjectTask exposing (Parameter(..), Step(..))
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (on, onClick, onInput, onSubmit)
+import Html.Events.Extra exposing (targetSelectedIndex)
+import Json.Decode as Decode
+import Util exposing ((=>))
+import Validate exposing (..)
+import Views.Form as Form
 
 
 -- MODEL --
@@ -102,7 +99,7 @@ newField parameter =
             let
                 options =
                     param.default
-                        :: (List.map Just param.options)
+                        :: List.map Just param.options
                         |> List.filterMap identity
 
                 value =
@@ -165,7 +162,7 @@ updateSelect field maybeIndex context =
                         let
                             value =
                                 f.options
-                                    |> List.indexedMap (,)
+                                    |> List.indexedMap (\a b -> ( a, b ))
                                     |> List.filter (\( i, _ ) -> i == index)
                                     |> List.head
                                     |> Maybe.map Tuple.second

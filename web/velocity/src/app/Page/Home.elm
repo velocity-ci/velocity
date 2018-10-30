@@ -1,60 +1,56 @@
 module Page.Home
     exposing
-        ( view
-        , update
+        ( ExternalMsg(..)
         , Model
         , Msg
-        , ExternalMsg(..)
-        , init
         , channelName
-        , leaveChannels
+        , init
         , initialEvents
+        , leaveChannels
         , subscriptions
+        , update
+        , view
         )
 
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
 -- EXTERNAL
-
-import Http
-import Html exposing (..)
-import Html.Attributes exposing (class, href, id, placeholder, attribute, classList, style, disabled)
-import Html.Events exposing (onClick)
-import Task exposing (Task)
-import Navigation exposing (newUrl)
-import Dict exposing (Dict)
-import Time.DateTime as DateTime
-import Json.Encode as Encode
-import Json.Decode as Decode
-import Bootstrap.Modal as Modal
-import Bootstrap.Button as Button
-import Json.Decode as Decode exposing (decodeString)
-
-
 -- INTERNAL
 
-import Context exposing (Context)
-import Component.ProjectForm as ProjectForm
-import Component.KnownHostForm as KnownHostForm
+import Bootstrap.Button as Button
+import Bootstrap.Modal as Modal
 import Component.Form as Form
-import Data.Session as Session exposing (Session)
-import Data.Project as Project exposing (Project, addProject)
+import Component.KnownHostForm as KnownHostForm
+import Component.ProjectForm as ProjectForm
+import Context exposing (Context)
+import Data.GitUrl as GitUrl exposing (GitUrl)
 import Data.KnownHost as KnownHost exposing (KnownHost, addKnownHost)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
-import Data.GitUrl as GitUrl exposing (GitUrl)
+import Data.Project as Project exposing (Project, addProject)
+import Data.Session as Session exposing (Session)
+import Dict exposing (Dict)
+import Dom
+import Html exposing (..)
+import Html.Attributes exposing (attribute, class, classList, disabled, href, id, placeholder, style)
+import Html.Events exposing (onClick)
+import Http
+import Json.Decode as Decode exposing (decodeString)
+import Json.Encode as Encode
+import Navigation exposing (newUrl)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, sortByDatetime)
 import Page.Project.Route as ProjectRoute
+import Ports
+import Request.Errors
+import Request.KnownHost
+import Request.Project
+import Route
+import Task exposing (Task)
+import Time.DateTime as DateTime
+import Util exposing ((=>), onClickStopPropagation, viewIf)
 import Views.Helpers exposing (onClickPage)
 import Views.Page as Page
-import Util exposing ((=>), onClickStopPropagation, viewIf)
-import Request.Project
-import Request.KnownHost
-import Request.Errors
-import Route
-import Dom
-import Ports
 
 
 -- MODEL --
@@ -181,7 +177,7 @@ viewToolbar =
     div [ class "btn-toolbar d-flex flex-row-reverse" ]
         [ button
             [ class "btn btn-primary btn-lg"
-            , style [ "border-radius" => "25px" ]
+            , (\( a, b ) -> style a b) ("border-radius" => "25px")
             , onClick ShowNewProjectModal
             ]
             [ i [ class "fa fa-plus" ] [] ]

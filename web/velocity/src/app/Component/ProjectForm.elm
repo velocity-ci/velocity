@@ -1,44 +1,41 @@
 module Component.ProjectForm
     exposing
-        ( Context
-        , Config
+        ( Config
+        , Context
         , Field(..)
+        , errorsDecoder
         , init
-        , view
-        , viewSubmitButton
+        , isSshAddress
+        , isUnknownHost
+        , isUntouched
+        , serverErrorToFormError
+        , submitValues
         , update
         , updateGitUrl
         , validate
-        , submitValues
-        , errorsDecoder
-        , serverErrorToFormError
-        , isUnknownHost
-        , isSshAddress
-        , isUntouched
+        , view
+        , viewSubmitButton
         )
 
 -- EXTERNAL
+-- INTERNAL
 
+import Bootstrap.Button as Button
+import Component.Form as BaseForm exposing (..)
+import Data.GitUrl as GitUrl exposing (GitUrl)
+import Data.KnownHost as KnownHost exposing (KnownHost)
+import Data.Project as Project exposing (Project)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Validate exposing (..)
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
-import Bootstrap.Button as Button
-import Regex exposing (Regex)
-
-
--- INTERNAL
-
-import Data.GitUrl as GitUrl exposing (GitUrl)
-import Data.Project as Project exposing (Project)
-import Data.KnownHost as KnownHost exposing (KnownHost)
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
-import Util exposing ((=>))
-import Views.Form as Form
+import Regex exposing (Regex)
 import Request.Errors
-import Component.Form as BaseForm exposing (..)
+import Util exposing ((=>))
+import Validate exposing (..)
+import Views.Form as Form
 
 
 -- MODEL --
@@ -193,7 +190,7 @@ view { setNameMsg, setRepositoryMsg, setPrivateKeyMsg, submitMsg } context =
             validClasses combinedErrors
 
         globalErrors =
-            List.filter (\e -> (Tuple.first e) == Form) combinedErrors
+            List.filter (\e -> Tuple.first e == Form) combinedErrors
 
         errors field =
             if field.dirty then
@@ -342,11 +339,11 @@ privateKeyValidator ( privateKey, maybeGitUrl ) =
 validate : Validator (Error Field) ProjectForm
 validate =
     Validate.all
-        [ (.name >> .value) >> (ifBelowLength 3) (Name => "Name must be over 2 characters.")
-        , (.name >> .value) >> (ifAboveLength 128) (Name => "Name must be less than 129 characters.")
-        , (.repository >> .value) >> (ifBelowLength 8) (Repository => "Repository must be over 7 characters.")
-        , (.repository >> .value) >> (ifAboveLength 128) (Repository => "Repository must less than 129 characters.")
-        , (\f -> ( f.privateKey, f.gitUrl )) >> (ifInvalid privateKeyValidator) (PrivateKey => "Private key must be over 7 characters.")
+        [ (.name >> .value) >> ifBelowLength 3 (Name => "Name must be over 2 characters.")
+        , (.name >> .value) >> ifAboveLength 128 (Name => "Name must be less than 129 characters.")
+        , (.repository >> .value) >> ifBelowLength 8 (Repository => "Repository must be over 7 characters.")
+        , (.repository >> .value) >> ifAboveLength 128 (Repository => "Repository must less than 129 characters.")
+        , (\f -> ( f.privateKey, f.gitUrl )) >> ifInvalid privateKeyValidator (PrivateKey => "Private key must be over 7 characters.")
         ]
 
 

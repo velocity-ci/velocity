@@ -1,9 +1,9 @@
-module Page.Project.Commit.Route exposing (Route(..), routeToPieces, route)
+module Page.Project.Commit.Route exposing (Route(..), route, routeToPieces)
 
-import UrlParser as Url exposing (parseHash, s, (</>), (<?>), string, stringParam, intParam, oneOf, Parser)
-import Data.Task as Task
 import Data.Build as Build
 import Data.Commit as Commit
+import Data.Task as Task
+import UrlParser as Url exposing ((</>), (<?>), Parser, intParam, oneOf, parseHash, s, string, stringParam)
 import Util exposing ((=>))
 
 
@@ -16,7 +16,7 @@ route : Parser (Route -> b) b
 route =
     oneOf
         [ Url.map Overview (s "overview")
-        , Url.map Task (s "tasks" </> Task.nameParser <?> (Build.idQueryParser "build"))
+        , Url.map Task (s "tasks" </> Task.nameParser <?> Build.idQueryParser "build")
         ]
 
 

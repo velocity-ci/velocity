@@ -1,40 +1,39 @@
-module Page.Project.Commit exposing (..)
+module Page.Project.Commit exposing (ExternalMsg(..), Model, Msg(..), SubPage(..), SubPageState(..), breadcrumb, frame, getSubPage, hasExtraWideSidebar, init, initialEvents, initialSubPage, leaveChannels, leaveSubPageChannels, loadedEvents, mapEvents, pageErrored, selectedTask, setRoute, sidebarConfig, sidebarContext, subPageSubscriptions, subscriptions, taskBuilds, update, view, viewCommitDetailsIcon, viewSidebar, viewSubPage, viewSubPageHeader)
 
+import Animation
+import Component.CommitNavigation as CommitNavigation
+import Component.DropdownFilter as DropdownFilter
+import Component.Sidebar as Sidebar
 import Context exposing (Context)
+import Data.Build as Build exposing (Build, addBuild)
+import Data.Commit as Commit exposing (Commit)
+import Data.Device as Device
+import Data.PaginatedList as PaginatedList
+import Data.Project as Project exposing (Project)
+import Data.Session as Session exposing (Session)
+import Data.Task as ProjectTask
+import Dict exposing (Dict)
+import Dom
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
-import Data.Device as Device
-import Data.Commit as Commit exposing (Commit)
-import Data.Session as Session exposing (Session)
-import Data.Project as Project exposing (Project)
-import Data.Task as ProjectTask
-import Data.Build as Build exposing (Build, addBuild)
-import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Page.Project.Commits as Commits
-import Request.Commit
-import Util exposing ((=>))
-import Task exposing (Task)
-import Views.Page as Page
-import Route exposing (Route)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commit.Route as CommitRoute
-import Navigation
-import Views.Page as Page exposing (ActivePage)
-import Views.Helpers exposing (onClickPage)
-import Page.Project.Commit.Overview as Overview
-import Page.Project.Commit.Task as CommitTask
-import Data.PaginatedList as PaginatedList
 import Json.Encode as Encode
-import Dict exposing (Dict)
-import Page.Helpers exposing (sortByDatetime, formatDateTime)
+import Navigation
+import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
+import Page.Helpers exposing (formatDateTime, sortByDatetime)
+import Page.Project.Commit.Overview as Overview
+import Page.Project.Commit.Route as CommitRoute
+import Page.Project.Commit.Task as CommitTask
+import Page.Project.Commits as Commits
+import Page.Project.Route as ProjectRoute
+import Request.Commit
+import Route exposing (Route)
+import Task exposing (Task)
+import Util exposing ((=>))
+import Views.Helpers exposing (onClickPage)
+import Views.Page as Page exposing (ActivePage)
 import Views.Spinner exposing (spinner)
-import Component.DropdownFilter as DropdownFilter
-import Component.CommitNavigation as CommitNavigation
-import Dom
 import Window
-import Animation
-import Component.Sidebar as Sidebar
 
 
 -- SUB PAGES --
@@ -117,7 +116,7 @@ subscriptions deviceSize project model =
 
 subPageSubscriptions : Device.Size -> Model -> Sub Msg
 subPageSubscriptions deviceSize model =
-    case (getSubPage model.subPageState) of
+    case getSubPage model.subPageState of
         CommitTask subModel ->
             subModel
                 |> CommitTask.subscriptions deviceSize model.builds
@@ -217,7 +216,7 @@ sidebarContext project model =
 
 selectedTask : Model -> Maybe ProjectTask.Name
 selectedTask model =
-    case (model.subPageState) of
+    case model.subPageState of
         Loaded (CommitTask subModel) ->
             Just subModel.task.name
 
@@ -240,7 +239,7 @@ sidebarConfig =
 
 viewSidebar : Project -> Model -> Html Msg
 viewSidebar project model =
-    case (getSubPage model.subPageState) of
+    case getSubPage model.subPageState of
         Overview _ ->
             text ""
 
@@ -536,8 +535,9 @@ update context project session msg model =
                                 , []
                                 )
                 in
-                    { model_ | subPageState = Loaded (CommitTask newModel) }
-                        ! [ Cmd.map CommitTaskMsg newCmd ]
+                    ( { model_ | subPageState = Loaded (CommitTask newModel) }
+                    , Cmd.map CommitTaskMsg newCmd
+                    )
                         => externalMsgs
 
             ( AddBuild build, _ ) ->
@@ -573,7 +573,7 @@ update context project session msg model =
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through (commit page)" model)
+                Debug.log "Fell through (commit page)" model
                     => Cmd.none
                     => []
 

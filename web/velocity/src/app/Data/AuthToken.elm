@@ -1,8 +1,8 @@
-module Data.AuthToken exposing (AuthToken, encode, decoder, withAuthorization, tokenToString)
+module Data.AuthToken exposing (AuthToken, decoder, encode, tokenToString, withAuthorization)
 
-import Json.Encode as Encode exposing (Value)
+import HttpBuilder exposing (RequestBuilder, withHeader)
 import Json.Decode as Decode exposing (Decoder)
-import HttpBuilder exposing (withHeader, RequestBuilder)
+import Json.Encode as Encode exposing (Value)
 
 
 type AuthToken

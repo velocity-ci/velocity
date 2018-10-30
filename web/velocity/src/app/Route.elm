@@ -1,13 +1,13 @@
-module Route exposing (Route(..), href, styledHref, modifyUrl, fromLocation, routeToString)
+module Route exposing (Route(..), fromLocation, href, modifyUrl, routeToString, styledHref)
 
-import UrlParser as Url exposing (parsePath, s, (</>), string, oneOf, Parser)
-import Navigation exposing (Location)
+import Data.Project as Project
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Html.Styled
 import Html.Styled.Attributes as StyledAttr
-import Data.Project as Project
+import Navigation exposing (Location)
 import Page.Project.Route as ProjectRoute
+import UrlParser as Url exposing ((</>), Parser, oneOf, parsePath, s, string)
 import Util exposing ((=>))
 
 

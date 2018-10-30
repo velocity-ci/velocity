@@ -1,28 +1,25 @@
-module Page.Project.Builds exposing (..)
+module Page.Project.Builds exposing (Model, Msg(..), init, pageLink, pagination, perPage, update, view)
 
 -- EXTERNAL --
-
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Task exposing (Task)
-import Navigation
-
-
 -- INTERNAL --
 
 import Context exposing (Context)
 import Data.Build as Build exposing (Build)
-import Data.Project as Project exposing (Project)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
+import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Navigation
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Request.Project
-import Util exposing ((=>))
-import Route
 import Page.Project.Route as ProjectRoute
-import Views.Page as Page
+import Request.Project
+import Route
+import Task exposing (Task)
+import Util exposing ((=>))
 import Views.Build exposing (viewBuildHistoryTable)
 import Views.Helpers exposing (onClickPage)
+import Views.Page as Page
 
 
 -- MODEL --

@@ -1,9 +1,9 @@
-module Data.Project exposing (Project, decoder, idParser, slugParser, idToString, slugToString, decodeId, Id(..), Slug(..), addProject)
+module Data.Project exposing (Id(..), Project, Slug(..), addProject, decodeId, decoder, idParser, idToString, slugParser, slugToString)
 
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
-import Time.DateTime as DateTime exposing (DateTime)
 import Data.Helpers exposing (stringToDateTime)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, optional, required)
+import Time.DateTime as DateTime exposing (DateTime)
 import UrlParser
 
 

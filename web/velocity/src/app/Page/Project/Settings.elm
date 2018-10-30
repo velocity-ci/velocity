@@ -1,20 +1,19 @@
-module Page.Project.Settings exposing (..)
+module Page.Project.Settings exposing (ConfirmDeleteState(..), Model, Msg(..), breadcrumb, initialModel, update, view, viewDangerArea, viewDeleteConfirmation, viewPreDeleteConfirmation)
 
 import Context exposing (Context)
-import Html exposing (Html)
-import Html.Styled.Attributes as Attributes exposing (css, class, classList, type_, value)
-import Html.Styled as Styled exposing (..)
-import Html.Styled.Events exposing (onClick, onInput)
 import Css exposing (..)
-import Data.Session as Session exposing (Session)
 import Data.Project as Project exposing (Project)
-import Util exposing ((=>))
-import Route exposing (Route)
+import Data.Session as Session exposing (Session)
+import Html exposing (Html)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as Attributes exposing (class, classList, css, type_, value)
+import Html.Styled.Events exposing (onClick, onInput)
 import Page.Project.Route as ProjectRoute
-import Request.Project
 import Request.Errors
-import Route
+import Request.Project
+import Route exposing (Route)
 import Task
+import Util exposing ((=>))
 
 
 -- MODEL --
@@ -115,7 +114,7 @@ viewDeleteConfirmation projectName confirmValue submitting =
                     [ class "form-control"
                     , type_ "text"
                     , value confirmValue
-                    , onInput ((Open False) >> SetDeleteState)
+                    , onInput (Open False >> SetDeleteState)
                     , Attributes.disabled submitting
                     ]
                     []

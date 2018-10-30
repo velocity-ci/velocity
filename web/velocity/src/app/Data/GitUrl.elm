@@ -3,7 +3,7 @@ module Data.GitUrl exposing (GitUrl, decoder)
 -- EXTERNAL --
 
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
+import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, optional, required)
 
 
 -- MODEL --

@@ -1,24 +1,23 @@
-module Page.KnownHosts exposing (..)
+module Page.KnownHosts exposing (ExternalMsg(..), Model, Msg(..), init, knownHostFormConfig, subscriptions, update, view, viewFormModal, viewKnownHostList, viewKnownHostListItem, viewToolbar)
 
+import Bootstrap.Modal as Modal
+import Component.Form as Form
+import Component.KnownHostForm as KnownHostForm
 import Context exposing (Context)
 import Data.KnownHost as KnownHost exposing (KnownHost)
-import Data.Session as Session exposing (Session)
 import Data.PaginatedList as PaginatedList exposing (Paginated(..))
-import Task exposing (Task)
-import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Request.KnownHost
-import Request.Errors
-import Views.Page as Page
-import Http
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Util exposing ((=>))
+import Http
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
-import Component.KnownHostForm as KnownHostForm
-import Bootstrap.Modal as Modal
+import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
+import Request.Errors
+import Request.KnownHost
+import Task exposing (Task)
 import Util exposing ((=>), onClickStopPropagation, viewIf)
-import Component.Form as Form
+import Views.Page as Page
 
 
 -- MODEL --
@@ -87,7 +86,7 @@ viewToolbar =
     div [ class "btn-toolbar d-flex flex-row-reverse" ]
         [ button
             [ class "btn btn-primary btn-lg"
-            , style [ "border-radius" => "25px" ]
+            , (\( a, b ) -> style a b) ("border-radius" => "25px")
             , onClick ShowFormModal
             ]
             [ i [ class "fa fa-plus" ] [] ]

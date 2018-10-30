@@ -1,16 +1,16 @@
-module Request.KnownHost exposing (list, create)
+module Request.KnownHost exposing (create, list)
 
 import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.KnownHost as KnownHost exposing (KnownHost)
-import Json.Encode as Encode
-import Request.Helpers exposing (apiUrl)
-import Request.Errors
-import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
-import Util exposing ((=>))
-import Http
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
+import Http
+import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
+import Json.Encode as Encode
+import Request.Errors
+import Request.Helpers exposing (apiUrl)
 import Task exposing (Task)
+import Util exposing ((=>))
 
 
 baseUrl : String

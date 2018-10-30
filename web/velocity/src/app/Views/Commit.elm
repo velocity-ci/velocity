@@ -1,10 +1,10 @@
-module Views.Commit exposing (..)
+module Views.Commit exposing (branch, branchList, commitTimeInformation, infoPanel, truncateCommitMessage)
 
+import Data.Branch as Branch exposing (Branch)
+import Data.Commit as Commit exposing (Commit)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Data.Commit as Commit exposing (Commit)
-import Data.Branch as Branch exposing (Branch)
-import Page.Helpers exposing (formatTime, formatDateTime)
+import Page.Helpers exposing (formatDateTime, formatTime)
 
 
 commitTimeInformation : Commit -> Html msg
@@ -31,16 +31,16 @@ branchList commit =
 branch : Branch.Name -> Html msg
 branch branch =
     li [ class "list-inline-item" ]
-        [ span [ class "badge badge-secondary", style [ ( "white-space", "pre-line" ) ] ]
+        [ span [ class "badge badge-secondary", style "white-space" "pre-line" ]
             [ i [ class "fa fa-code-fork" ] []
-            , text (" " ++ (Branch.nameToString (Just branch)))
+            , text (" " ++ Branch.nameToString (Just branch))
             ]
         ]
 
 
 truncateCommitMessage : Commit -> String
 truncateCommitMessage commit =
-    if (String.length commit.message) > 48 then
-        (String.slice 0 44 commit.message) ++ "..."
+    if String.length commit.message > 48 then
+        String.slice 0 44 commit.message ++ "..."
     else
         commit.message

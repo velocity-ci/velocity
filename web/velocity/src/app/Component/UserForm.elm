@@ -1,44 +1,40 @@
 module Component.UserForm
     exposing
-        ( Context
-        , Config
-        , update
-        , username
+        ( Config
+        , Context
+        , errorsDecoder
+        , init
         , password
         , passwordConfirm
-        , submitValues
         , serverErrorToFormError
-        , errorsDecoder
-        , viewSubmitButton
+        , submitValues
+        , update
+        , username
         , view
-        , init
+        , viewSubmitButton
         )
 
 -- EXTERNAL --
-
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput, onSubmit)
-import Validate exposing (..)
-import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
-import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
-import Bootstrap.Button as Button
-
-
 -- INTERNAL --
 
+import Bootstrap.Button as Button
 import Component.Form as BaseForm
     exposing
         ( FormField
-        , newField
-        , updateInput
-        , resetServerErrorsForField
         , ifBelowLength
+        , newField
         , optionalError
+        , resetServerErrorsForField
+        , updateInput
         )
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput, onSubmit)
+import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
+import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
 import Util exposing ((=>))
+import Validate exposing (..)
 import Views.Form as Form
-import Validate exposing (ifBlank)
 
 
 type Field
@@ -290,9 +286,9 @@ passwordValidator ( a, b ) =
 validate : Validator ( Field, String ) UserForm
 validate =
     Validate.all
-        [ (.username >> .value) >> (ifBelowLength 3) (Username => "Username must be over 2 characters.")
-        , (.password >> .value) >> (ifBelowLength 3) (Password => "Password must be over 2 characters.")
-        , (\f -> ( f.password, f.passwordConfirm )) >> (ifInvalid passwordValidator) (PasswordConfirm => "Passwords do not match")
+        [ (.username >> .value) >> ifBelowLength 3 (Username => "Username must be over 2 characters.")
+        , (.password >> .value) >> ifBelowLength 3 (Password => "Password must be over 2 characters.")
+        , (\f -> ( f.password, f.passwordConfirm )) >> ifInvalid passwordValidator (PasswordConfirm => "Passwords do not match")
         ]
 
 

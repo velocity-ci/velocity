@@ -1,17 +1,17 @@
-module Request.User exposing (login, create, delete, list, storeSession)
+module Request.User exposing (create, delete, list, login, storeSession)
 
 import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.User as User exposing (User)
 import Http
 import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
-import Json.Encode as Encode
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Ports
-import Request.Helpers exposing (apiUrl)
 import Request.Errors
-import Util exposing ((=>))
+import Request.Helpers exposing (apiUrl)
 import Task exposing (Task)
+import Util exposing ((=>))
 
 
 storeSession : User -> Cmd msg

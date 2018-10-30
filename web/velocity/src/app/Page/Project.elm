@@ -1,43 +1,42 @@
-module Page.Project exposing (..)
+module Page.Project exposing (ExternalMsg(..), Model, Msg(..), SubPage(..), SubPageState(..), channelName, frame, getSubPage, handleCommitExternalMsgs, hasExtraWideSidebar, init, initialEvents, initialSubPage, leaveChannels, leaveSubPageChannels, loadedEvents, pageErrored, sendSubPageMsg, setRoute, sidebarConfig, sidebarSize, subscriptions, toastView, topNav, update, updateProjectNavigation, updateSubPage, view, viewBreadcrumb, viewBreadcrumbItem, viewProjectNavigation, viewSubPage, viewSubpageProjectNavigation)
 
+import Bootstrap.Popover as Popover
+import Component.ProjectNavigation as ProjectNavigation exposing (ActiveSubPage(..))
+import Component.Sidebar as Sidebar
 import Context exposing (Context)
-import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Request.Project
-import Request.Errors
-import Task exposing (Task)
-import Data.Device as Device
-import Data.Session as Session exposing (Session)
-import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
+import Data.Build as Build exposing (Build, addBuild)
+import Data.Device as Device
 import Data.Event as Event exposing (Event)
+import Data.PaginatedList as PaginatedList exposing (PaginatedList)
+import Data.Project as Project exposing (Project)
+import Data.Session as Session exposing (Session)
 import Data.Task as ProjectTask
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Views.Page as Page
-import Util exposing ((=>), viewIf)
 import Http
-import Route exposing (Route)
-import Navigation exposing (newUrl)
-import Data.PaginatedList as PaginatedList exposing (PaginatedList)
-import Json.Encode as Encode
 import Json.Decode as Decode
-import Dict exposing (Dict)
-import Data.Build as Build exposing (Build, addBuild)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commits as Commits
-import Page.Project.Settings as Settings
-import Page.Project.Commit as Commit
-import Page.Project.Builds as Builds
+import Json.Encode as Encode
+import Navigation exposing (newUrl)
+import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (sortByDatetime)
-import Bootstrap.Popover as Popover
-import Component.Sidebar as Sidebar
-import Component.ProjectNavigation as ProjectNavigation exposing (ActiveSubPage(..))
+import Page.Project.Builds as Builds
+import Page.Project.Commit as Commit
+import Page.Project.Commits as Commits
+import Page.Project.Route as ProjectRoute
+import Page.Project.Settings as Settings
+import Request.Errors
+import Request.Project
+import Route exposing (Route)
+import Task exposing (Task)
 import Toasty
+import Util exposing ((=>), viewIf)
 import Views.Build
-import Views.Toast as ToastTheme
-import Views.Page as Page exposing (ActivePage)
 import Views.Helpers exposing (onClickPage)
+import Views.Page as Page exposing (ActivePage)
 import Views.Spinner exposing (spinner)
+import Views.Toast as ToastTheme
 
 
 -- SUB PAGES --
@@ -124,7 +123,7 @@ init context session slug maybeRoute =
 
 channelName : Project.Slug -> String
 channelName projectSlug =
-    "project:" ++ (Project.slugToString projectSlug)
+    "project:" ++ Project.slugToString projectSlug
 
 
 initialEvents : Project.Slug -> ProjectRoute.Route -> Dict String (List ( String, Encode.Value -> Msg ))
@@ -224,7 +223,7 @@ leaveSubPageChannels subPage subRoute =
 
 subscriptions : Device.Size -> Model -> Sub Msg
 subscriptions deviceSize model =
-    case (getSubPage model.subPageState) of
+    case getSubPage model.subPageState of
         Commits subModel ->
             Commits.subscriptions deviceSize model.branches subModel
                 |> Sub.map CommitsMsg
@@ -572,7 +571,7 @@ setRoute context session maybeRoute model =
             Just (ProjectRoute.Settings) ->
                 case session.user of
                     Just user ->
-                        { model | subPageState = Loaded (Settings (Settings.initialModel)) }
+                        { model | subPageState = Loaded (Settings Settings.initialModel) }
                             => Cmd.none
                             => []
 
@@ -692,8 +691,9 @@ updateSubPage context session subPage msg model =
                     ( externalUpdatedModel, externalMsgs ) =
                         handleCommitExternalMsgs model commitExternalMsgs
                 in
-                    { externalUpdatedModel | subPageState = Loaded (Commit newSubModel) }
-                        ! [ Cmd.map CommitMsg newCmd ]
+                    ( { externalUpdatedModel | subPageState = Loaded (Commit newSubModel) }
+                    , Cmd.map CommitMsg newCmd
+                    )
                         => externalMsgs
 
             ( BuildsMsg subMsg, Builds subModel ) ->
@@ -784,8 +784,9 @@ updateSubPage context session subPage msg model =
                                     => ( model, [] )
 
                     modelCmd =
-                        { updatedExternalModel | subPageState = subPageState }
-                            ! [ subCmd ]
+                        ( { updatedExternalModel | subPageState = subPageState }
+                        , subCmd
+                        )
                 in
                     case maybeBuild of
                         Just build ->
@@ -826,8 +827,9 @@ updateSubPage context session subPage msg model =
                                     => ( model, [] )
 
                     modelCmd =
-                        { updatedExternalModel | subPageState = subPageState }
-                            ! [ subCmd ]
+                        ( { updatedExternalModel | subPageState = subPageState }
+                        , subCmd
+                        )
 
                     modelCmdWithToast =
                         case maybeBuild of
@@ -861,7 +863,7 @@ updateSubPage context session subPage msg model =
 
             ( _, _ ) ->
                 -- Disregard incoming messages that arrived for the wrong sub page
-                (Debug.log "Fell through (project page)" model)
+                Debug.log "Fell through (project page)" model
                     => Cmd.none
                     => []
 

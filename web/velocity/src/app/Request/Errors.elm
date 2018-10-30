@@ -1,11 +1,11 @@
 module Request.Errors
     exposing
         ( Error(..)
-        , HttpError
         , HandledError(..)
+        , HttpError
         , handleHttpError
-        , withDefaultError
         , mapUnhandledError
+        , withDefaultError
         )
 
 import Http

@@ -1,9 +1,9 @@
 module Data.Device
     exposing
         ( Size
-        , size
         , isLarge
         , isSmall
+        , size
         )
 
 

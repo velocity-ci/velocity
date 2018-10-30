@@ -1,41 +1,38 @@
-module Page.Project.Commit.Task exposing (..)
+module Page.Project.Commit.Task exposing (BuildType(..), ExternalMsg(..), Frame(..), FromBuild, Model, Msg(..), Stream(..), ToBuild, breadcrumb, buildDropdownFilterConfig, buildFilterContext, buildFormConfig, events, findBuild, handleLoadError, init, initialModel, leaveChannels, mapEvents, maybeBuildToModel, subscriptions, update, view, viewFormModal, viewHeader, viewNoBuildsAlert, viewNoParametersAlert, viewTabFrame, viewTaskHeading, viewToolbar)
 
 -- EXTERNAL --
-
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput, on, onSubmit)
-import Task exposing (Task)
-import Dict exposing (Dict)
-import Json.Encode as Encode
-import Bootstrap.Modal as Modal
-import Navigation
-import Dom
-
-
 -- INTERNAL --
 
-import Context exposing (Context)
-import Component.BuildLog as BuildLog
+import Bootstrap.Modal as Modal
 import Component.BuildForm as BuildForm
+import Component.BuildLog as BuildLog
 import Component.DropdownFilter as DropdownFilter
-import Data.Device as Device
+import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken)
+import Data.Build as Build exposing (Build)
+import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput, Id)
 import Data.Commit as Commit exposing (Commit)
+import Data.Device as Device
 import Data.Project as Project exposing (Project)
 import Data.Session as Session exposing (Session)
-import Data.Build as Build exposing (Build)
-import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
-import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
+import Data.Task as ProjectTask exposing (Parameter(..), Step(..))
+import Dict exposing (Dict)
+import Dom
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (on, onClick, onInput, onSubmit)
+import Json.Encode as Encode
+import Navigation
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commit.Route as CommitRoute
-import Util exposing ((=>))
-import Views.Page as Page
 import Page.Helpers exposing (formatDateTime, sortByDatetime)
+import Page.Project.Commit.Route as CommitRoute
+import Page.Project.Route as ProjectRoute
 import Request.Commit
 import Request.Errors
 import Route
+import Task exposing (Task)
+import Util exposing ((=>))
+import Views.Page as Page
 
 
 -- MODEL --
@@ -228,8 +225,8 @@ buildDropdownFilterConfig =
     , termMsg = BuildFilterTermMsg
     , noOpMsg = NoOp_
     , selectItemMsg = SelectBuild
-    , labelFn = (.createdAt >> formatDateTime)
-    , icon = (strong [] [ text "Build: " ])
+    , labelFn = .createdAt >> formatDateTime
+    , icon = strong [] [ text "Build: " ]
     , showFilter = True
     , showAllItemsItem = False
     }

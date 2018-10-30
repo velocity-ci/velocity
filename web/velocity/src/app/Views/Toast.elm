@@ -1,11 +1,11 @@
 module Views.Toast exposing (config, genericToast)
 
-import Html exposing (Html)
-import Html.Styled.Attributes as Attributes exposing (style, css, class, classList)
-import Html.Attributes as UnstyledAttribute
-import Html.Styled as Styled exposing (..)
 import Css exposing (..)
 import Data.Event as Event exposing (Event)
+import Html exposing (Html)
+import Html.Attributes as UnstyledAttribute
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as Attributes exposing (class, classList, css, style)
 import Toasty
 
 
@@ -24,26 +24,22 @@ config =
 
 containerAttrs : List (Html.Attribute msg)
 containerAttrs =
-    [ UnstyledAttribute.style
-        [ ( "position", "fixed" )
-        , ( "top", "0" )
-        , ( "right", "0" )
-        , ( "width", "100%" )
-        , ( "max-width", "300px" )
-        , ( "list-style-type", "none" )
-        , ( "padding", "0" )
-        , ( "margin", "0" )
-        ]
+    [ UnstyledAttribute.style "position" "fixed"
+    , UnstyledAttribute.style "top" "0"
+    , UnstyledAttribute.style "right" "0"
+    , UnstyledAttribute.style "width" "100%"
+    , UnstyledAttribute.style "max-width" "300px"
+    , UnstyledAttribute.style "list-style-type" "none"
+    , UnstyledAttribute.style "padding" "0"
+    , UnstyledAttribute.style "margin" "0"
     ]
 
 
 itemAttrs : List (Html.Attribute msg)
 itemAttrs =
-    [ UnstyledAttribute.style
-        [ ( "margin", "1em 1em 0 1em" )
-        , ( "max-height", "100px" )
-        , ( "transition", "max-height 0.6s, margin-top 0.6s" )
-        ]
+    [ UnstyledAttribute.style "margin" "1em 1em 0 1em"
+    , UnstyledAttribute.style "max-height" "100px"
+    , UnstyledAttribute.style "transition" "max-height 0.6s, margin-top 0.6s"
     ]
 
 
@@ -56,10 +52,8 @@ transitionInAttrs =
 transitionOutAttrs : List (Html.Attribute msg)
 transitionOutAttrs =
     [ UnstyledAttribute.class "animated fadeOutRightBig"
-    , UnstyledAttribute.style
-        [ ( "max-height", "0" )
-        , ( "margin-top", "0" )
-        ]
+    , UnstyledAttribute.style "max-height" "0"
+    , UnstyledAttribute.style "margin-top" "0"
     ]
 
 
@@ -90,7 +84,7 @@ genericToast variantClass title message =
                 , marginBottom (Css.em 0)
                 ]
             ]
-            [ if (String.isEmpty message) then
+            [ if String.isEmpty message then
                 text ""
               else
                 text message

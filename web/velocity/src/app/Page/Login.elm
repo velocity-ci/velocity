@@ -1,22 +1,22 @@
-module Page.Login exposing (view, update, Model, Msg, initialModel, ExternalMsg(..))
+module Page.Login exposing (ExternalMsg(..), Model, Msg, initialModel, update, view)
 
 {-| The login page.
 -}
 
+import Component.Form exposing (ifBelowLength, validClasses)
 import Context exposing (Context)
-import Route exposing (Route)
+import Data.Session as Session exposing (Session)
+import Data.User as User exposing (User)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Views.Form as Form
-import Validate exposing (..)
-import Data.Session as Session exposing (Session)
-import Request.User exposing (storeSession)
 import Request.Errors
-import Util exposing ((=>))
-import Data.User as User exposing (User)
-import Component.Form exposing (ifBelowLength, validClasses)
+import Request.User exposing (storeSession)
+import Route exposing (Route)
 import Task
+import Util exposing ((=>))
+import Validate exposing (..)
+import Views.Form as Form
 
 
 -- MODEL --
@@ -69,7 +69,7 @@ initialModel =
 
 view : Session msg -> Model -> Html Msg
 view session model =
-    div [ class "d-flex justify-content-center", style [ "height" => "100vh" ] ]
+    div [ class "d-flex justify-content-center", (\( a, b ) -> style a b) ("height" => "100vh") ]
         [ div [ class "card col-8 align-self-center" ]
             [ div [ class "card-body" ]
                 [ viewGlobalError model.globalError
@@ -180,7 +180,7 @@ update context msg model =
         SetUsername username ->
             let
                 newModel =
-                    { model | username = username |> (updateInput Username) }
+                    { model | username = username |> updateInput Username }
             in
                 { newModel | errors = validate newModel }
                     => Cmd.none
@@ -189,7 +189,7 @@ update context msg model =
         SetPassword password ->
             let
                 newModel =
-                    { model | password = password |> (updateInput Password) }
+                    { model | password = password |> updateInput Password }
             in
                 { newModel | errors = validate newModel }
                     => Cmd.none
@@ -227,6 +227,6 @@ validate =
     Validate.all
         [ (.username >> .value) >> ifBlank (Username => "username can't be blank.")
         , (.password >> .value) >> ifBlank (Password => "password can't be blank.")
-        , (.username >> .value) >> (ifBelowLength 3) (Username => "username must be over 2 characters.")
-        , (.password >> .value) >> (ifBelowLength 3) (Password => "password must be over 2 characters.")
+        , (.username >> .value) >> ifBelowLength 3 (Username => "username must be over 2 characters.")
+        , (.password >> .value) >> ifBelowLength 3 (Password => "password must be over 2 characters.")
         ]

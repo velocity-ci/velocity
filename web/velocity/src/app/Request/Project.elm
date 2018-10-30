@@ -1,27 +1,27 @@
 module Request.Project
     exposing
-        ( list
-        , create
-        , get
-        , sync
-        , delete
-        , branches
+        ( branches
         , builds
+        , create
+        , delete
+        , get
+        , list
+        , sync
         )
 
 import Context exposing (Context)
 import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
-import Data.Project as Project exposing (Project)
 import Data.Branch as Branch exposing (Branch)
-import Data.PaginatedList as PaginatedList exposing (PaginatedList)
 import Data.Build as Build exposing (Build)
-import Json.Encode as Encode
-import Request.Helpers exposing (apiUrl)
-import Request.Errors
-import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
-import Util exposing ((=>))
+import Data.PaginatedList as PaginatedList exposing (PaginatedList)
+import Data.Project as Project exposing (Project)
 import Http
+import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
+import Json.Encode as Encode
+import Request.Errors
+import Request.Helpers exposing (apiUrl)
 import Task exposing (Task)
+import Util exposing ((=>))
 
 
 baseUrl : String

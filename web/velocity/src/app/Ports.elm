@@ -1,7 +1,7 @@
-port module Ports exposing (..)
+port module Ports exposing (onGitUrlParsed, onScrolledToBottom, onSessionChange, parseGitUrl, scrollIntoView, scrollTo, storeSession)
 
-import Json.Encode exposing (Value)
 import Dom exposing (Id)
+import Json.Encode exposing (Value)
 
 
 port storeSession : Maybe String -> Cmd msg

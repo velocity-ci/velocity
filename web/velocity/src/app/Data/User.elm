@@ -4,19 +4,19 @@ module Data.User
         , Username
         , decoder
         , encode
-        , usernameToString
+        , usernameDecoder
         , usernameParser
         , usernameToHtml
-        , usernameDecoder
+        , usernameToString
         )
 
+import Data.AuthToken as AuthToken exposing (AuthToken)
+import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, required)
 import Json.Encode as Encode exposing (Value)
-import Data.AuthToken as AuthToken exposing (AuthToken)
 import UrlParser
 import Util exposing ((=>))
-import Html exposing (Html)
 
 
 type alias User =

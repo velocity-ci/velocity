@@ -1,17 +1,14 @@
-module Component.ProjectNavigation exposing (State, Config, ActiveSubPage(..), view)
+module Component.ProjectNavigation exposing (ActiveSubPage(..), Config, State, view)
 
 -- EXTERNAL --
+-- INTERNAL --
 
+import Bootstrap.Popover as Popover
 import Css exposing (..)
+import Data.Project as Project exposing (Project)
 import Html exposing (Html)
 import Html.Styled as Styled exposing (..)
 import Html.Styled.Attributes as StyledAttributes exposing (..)
-import Bootstrap.Popover as Popover
-
-
--- INTERNAL --
-
-import Data.Project as Project exposing (Project)
 import Page.Project.Route as ProjectRoute
 import Route exposing (Route)
 import Views.Helpers exposing (styledOnClickPage)
@@ -131,12 +128,11 @@ tooltipLink config isActive route content ( popMsg, popState ) =
             ++ (Popover.onHover popState popMsg |> List.map StyledAttributes.fromUnstyled)
         )
         [ a
-            ([ class "nav-link text-center h4"
-             , Route.styledHref route
-             , classList [ ( "active", isActive ) ]
-             , styledOnClickPage config.newUrlMsg route
-             ]
-            )
+            [ class "nav-link text-center h4"
+            , Route.styledHref route
+            , classList [ ( "active", isActive ) ]
+            , styledOnClickPage config.newUrlMsg route
+            ]
             content
         ]
 

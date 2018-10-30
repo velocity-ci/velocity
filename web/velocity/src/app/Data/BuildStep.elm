@@ -1,15 +1,14 @@
-module Data.BuildStep exposing (..)
+module Data.BuildStep exposing (BuildStep, Id(..), Status(..), decoder, idParser, idToString, statusDecoder)
 
-import Data.Project as Project
-import Data.Commit as Commit
-import Data.Task as Task
 import Data.BuildStream as BuildStream exposing (BuildStream)
+import Data.Commit as Commit
+import Data.Helpers exposing (stringToDateTime)
+import Data.Project as Project
+import Data.Task as Task
 import Json.Decode as Decode exposing (Decoder, int, string)
-import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
-import UrlParser
-import Data.Helpers exposing (stringToDateTime)
+import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, optional, required)
 import Time.DateTime as DateTime exposing (DateTime)
-import Data.Helpers exposing (stringToDateTime)
+import UrlParser
 
 
 type alias BuildStep =

@@ -1,6 +1,6 @@
 module Views.Spinner exposing (spinner)
 
-import Html exposing (Html, Attribute, i)
+import Html exposing (Attribute, Html, i)
 import Html.Attributes exposing (class, style)
 import Util exposing ((=>))
 

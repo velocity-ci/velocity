@@ -1,27 +1,24 @@
-module Component.BuildTimeline exposing (..)
+module Component.BuildTimeline exposing (Config, Point, PopoverUpdate(..), State, StepPopovers, TimelinePopovers, addCompletedPoint, addCreatedPoint, addStepPoints, duration, endTime, eventPosition, mapPoints, pluralizeOrDrop, pointAndNext, pointContainerStyle, pointPercentage, pointStyle, points, ratio, shouldShowDuration, startTime, stepToPoint, toFixed, updatePopovers, view, viewDuration, viewPoint, viewPoints, viewTimeline)
 
 -- EXTERNAL --
-
-import Time.DateTime as DateTime exposing (DateTime, DateTimeDelta)
-import String exposing (padRight, split, join)
-import Html exposing (Html)
-import Html.Styled.Attributes as Attributes exposing (css, class, classList)
-import Html.Styled exposing (..)
-import Html.Styled.Events exposing (onClick)
-import Css exposing (..)
-import Bootstrap.Popover as Popover
-import Dict exposing (Dict)
-import Array exposing (Array)
-
-
 -- INTERNAL --
 
+import Array exposing (Array)
+import Bootstrap.Popover as Popover
+import Css exposing (..)
 import Data.Build as Build exposing (Build)
+import Data.BuildOutput as BuildOutput exposing (Step)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.Task as ProjectTask exposing (Task)
-import Data.BuildOutput as BuildOutput exposing (Step)
-import Util exposing ((=>))
+import Dict exposing (Dict)
+import Html exposing (Html)
+import Html.Styled exposing (..)
+import Html.Styled.Attributes as Attributes exposing (class, classList, css)
+import Html.Styled.Events exposing (onClick)
 import Page.Helpers exposing (formatTimeSeconds)
+import String exposing (join, padRight, split)
+import Time.DateTime as DateTime exposing (DateTime, DateTimeDelta)
+import Util exposing ((=>))
 import Views.Build
 
 
@@ -290,8 +287,8 @@ viewDuration state =
             , span []
                 [ text " Ran for "
                 , text (pluralizeOrDrop "hour" hours)
-                , text (pluralizeOrDrop "min" (Basics.rem minutes 60))
-                , text (pluralizeOrDrop "sec" (Basics.rem seconds 60))
+                , text (pluralizeOrDrop "min" (remainderBy 60 minutes))
+                , text (pluralizeOrDrop "sec" (remainderBy 60 seconds))
                 ]
             ]
 
@@ -303,10 +300,10 @@ pluralizeOrDrop word amount =
             ""
 
         1 ->
-            (toString amount) ++ " " ++ word ++ " "
+            toString amount ++ " " ++ word ++ " "
 
         _ ->
-            (toString amount) ++ " " ++ word ++ "s "
+            toString amount ++ " " ++ word ++ "s "
 
 
 mapPoints : State -> List ( Point, Maybe Point )
@@ -490,7 +487,7 @@ pointContainerStyle =
 
 eventPosition : Float -> Float -> Float -> Float
 eventPosition ratio start point =
-    ((point - start) * ratio)
+    (point - start) * ratio
 
 
 
@@ -501,7 +498,7 @@ toFixed : Int -> Float -> String
 toFixed precision value =
     let
         power =
-            toFloat 10 ^ (toFloat precision)
+            toFloat 10 ^ toFloat precision
 
         pad num =
             case num of

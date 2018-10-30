@@ -1,36 +1,33 @@
 module Component.KnownHostForm
     exposing
-        ( Context
-        , Config
-        , init
+        ( Config
+        , Context
         , Field(..)
-        , update
         , errorsDecoder
-        , view
-        , viewSubmitButton
+        , init
+        , isUntouched
         , serverErrorToFormError
         , submitValues
-        , isUntouched
+        , update
+        , view
+        , viewSubmitButton
         )
 
 -- EXTERNAL
+-- INTERNAL
 
+import Bootstrap.Button as Button
+import Component.Form as BaseForm exposing (..)
+import Data.GitUrl as GitUrl exposing (GitUrl)
+import Data.Project as Project exposing (Project)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Validate exposing (..)
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional)
-import Bootstrap.Button as Button
-
-
--- INTERNAL
-
-import Data.Project as Project exposing (Project)
-import Data.GitUrl as GitUrl exposing (GitUrl)
 import Util exposing ((=>))
+import Validate exposing (..)
 import Views.Form as Form
-import Component.Form as BaseForm exposing (..)
 
 
 -- MODEL --
@@ -234,7 +231,7 @@ viewSubmitButton { submitMsg } context =
 validate : Validator ( Field, String ) KnownHostForm
 validate =
     Validate.all
-        [ (.scannedKey >> .value) >> (ifBelowLength 8) (ScannedKey => "Scanned key must be over 7 characters.")
+        [ (.scannedKey >> .value) >> ifBelowLength 8 (ScannedKey => "Scanned key must be over 7 characters.")
         ]
 
 

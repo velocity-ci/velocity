@@ -1,10 +1,10 @@
-module Data.Branch exposing (decoder, Branch, Name(..), nameParser, nameToString, selectDecoder, allBranchName)
+module Data.Branch exposing (Branch, Name(..), allBranchName, decoder, nameParser, nameToString, selectDecoder)
 
 import Html.Events exposing (targetValue)
-import Json.Decode as Decode exposing (Decoder)
-import UrlParser
 import Http
-import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required, optional)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, optional, required)
+import UrlParser
 
 
 type alias Branch =
@@ -53,7 +53,7 @@ allBranchName =
 nameParser : UrlParser.Parser (Maybe Name -> a) a
 nameParser =
     UrlParser.custom "NAME" <|
-        (\s ->
+        \s ->
             let
                 maybeBranch =
                     if s == allBranchName then
@@ -64,7 +64,6 @@ nameParser =
                             |> Maybe.map Name
             in
                 Ok maybeBranch
-        )
 
 
 nameToString : Maybe Name -> String

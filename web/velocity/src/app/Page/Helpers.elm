@@ -1,15 +1,15 @@
 module Page.Helpers
     exposing
         ( formatDate
+        , formatDateTime
         , formatTime
         , formatTimeSeconds
-        , formatDateTime
         , sortByDatetime
         )
 
-import Validate exposing (Validator, ifInvalid)
-import Time.DateTime as DateTime exposing (DateTime)
 import Time.Date as Date exposing (Date)
+import Time.DateTime as DateTime exposing (DateTime)
+import Validate exposing (Validator, ifInvalid)
 
 
 -- DATES --
@@ -44,7 +44,7 @@ formatTimeSeconds dateTime =
 
 formatDateTime : DateTime -> String
 formatDateTime dateTime =
-    (formatDate (DateTime.date dateTime)) ++ " " ++ (formatTime dateTime)
+    formatDate (DateTime.date dateTime) ++ " " ++ formatTime dateTime
 
 
 sortByDatetime : (a -> DateTime) -> List a -> List a

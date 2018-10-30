@@ -1,16 +1,13 @@
-module Component.UserMenuDropdown exposing (Config, State, init, view, subscriptions)
+module Component.UserMenuDropdown exposing (Config, State, init, subscriptions, view)
 
 -- EXTERNAL --
-
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Bootstrap.Dropdown as Dropdown
-import Bootstrap.Button as Button
-
-
 -- INTERNAL --
 
+import Bootstrap.Button as Button
+import Bootstrap.Dropdown as Dropdown
 import Data.Project as Project exposing (Project)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Page.Project.Route as ProjectRoute
 import Route exposing (Route)
 import Views.Helpers exposing (onClickPage)

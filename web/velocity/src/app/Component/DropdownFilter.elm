@@ -1,20 +1,17 @@
-module Component.DropdownFilter exposing (Context, Config, DropdownState, initialDropdownState, view, subscriptions)
+module Component.DropdownFilter exposing (Config, Context, DropdownState, initialDropdownState, subscriptions, view)
 
 {- A stateless ItemFilter component. -}
 -- INTERNAL --
-
-import Data.Device as Device
-
-
 -- EXTERNAL --
 
-import Html exposing (..)
-import Html.Events exposing (onWithOptions, onInput)
-import Html.Attributes exposing (..)
-import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Button as Button
+import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
+import Data.Device as Device
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onInput, onWithOptions)
 import Json.Decode as Decode
 
 
@@ -71,7 +68,7 @@ view config context =
             [ class "custom-select custom-select-lg"
             , onInput
                 (\itemLabel ->
-                    List.filter (\item -> (config.labelFn item) == itemLabel) context.items
+                    List.filter (\item -> config.labelFn item == itemLabel) context.items
                         |> List.head
                         |> config.selectItemMsg
                 )
@@ -82,7 +79,7 @@ view config context =
             context.dropdownState
             { options =
                 [ Dropdown.menuAttrs
-                    [ onClick (config.noOpMsg)
+                    [ onClick config.noOpMsg
                     , class "item-filter-dropdown"
                     ]
                 ]
@@ -131,7 +128,7 @@ viewDropdownItems config context =
         noItemSelectedItems existing =
             if config.showAllItemsItem then
                 [ Dropdown.divider
-                , (noItemSelected config context)
+                , noItemSelected config context
                 , Dropdown.divider
                 ]
                     ++ existing
@@ -185,7 +182,7 @@ viewItem config selectedItem maybeItem =
 
 viewForm : (String -> msg) -> Context a -> Html msg
 viewForm msg { filterTerm } =
-    Form.form [ class "px-2 py-0 filter-list-select", style [ ( "width", "400px" ) ] ]
+    Form.form [ class "px-2 py-0 filter-list-select", style "width" "400px" ]
         [ Form.group []
             [ Input.text
                 [ Input.placeholder "Filter items"

@@ -1,29 +1,26 @@
-module Page.Users exposing (..)
+module Page.Users exposing (ExternalMsg(..), Model, Msg(..), init, initialModel, subscriptions, update, userFormConfig, view, viewDeleteModal, viewFormModal, viewToolbar, viewUserList, viewUserListItem)
 
 -- EXTERNAL --
+-- INTERNAL --
 
-import Http
+import Bootstrap.Button as Button
+import Bootstrap.Modal as Modal
+import Component.Form as Form
+import Component.UserForm as UserForm
+import Context exposing (Context)
+import Data.Session as Session exposing (Session)
+import Data.User as User exposing (Username)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
-import Task exposing (Task)
-import Bootstrap.Modal as Modal
-import Bootstrap.Button as Button
+import Http
 import Json.Decode exposing (decodeString)
-
-
--- INTERNAL --
-
-import Context exposing (Context)
-import Data.User as User exposing (Username)
-import Data.Session as Session exposing (Session)
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Request.Errors
 import Request.User
-import Views.Page as Page
+import Task exposing (Task)
 import Util exposing ((=>), viewIf)
-import Component.Form as Form
-import Component.UserForm as UserForm
+import Views.Page as Page
 
 
 -- MODEL --
@@ -96,7 +93,7 @@ viewToolbar =
         [ button
             [ onClick ShowFormModal
             , class "btn btn-primary btn-lg"
-            , style [ "border-radius" => "25px" ]
+            , (\( a, b ) -> style a b) ("border-radius" => "25px")
             ]
             [ i [ class "fa fa-plus" ] [] ]
         ]

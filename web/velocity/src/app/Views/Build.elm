@@ -1,19 +1,19 @@
-module Views.Build exposing (..)
+module Views.Build exposing (buildCardClassList, buildStepBorderColourClassList, genericToast, headerBackgroundColourClassList, streamBadgeClass, toast, viewBuildHistoryTable, viewBuildHistoryTableHeaderRow, viewBuildHistoryTableRow, viewBuildStatusIcon, viewBuildStatusIconClasses, viewBuildStepBorderClass, viewBuildStepStatusIcon, viewBuildTextClass)
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Ansi.Log
 import Data.Build as Build exposing (Build, Status(..))
-import Data.Project as Project exposing (Project)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (BuildStreamOutput)
 import Data.Commit as Commit exposing (Commit)
-import Data.Task as ProjectTask
 import Data.Event as Event exposing (Event(..))
-import Route exposing (Route)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commit.Route as CommitRoute
+import Data.Project as Project exposing (Project)
+import Data.Task as ProjectTask
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Page.Helpers exposing (formatDateTime)
-import Ansi.Log
+import Page.Project.Commit.Route as CommitRoute
+import Page.Project.Route as ProjectRoute
+import Route exposing (Route)
 import Util exposing ((=>))
 import Views.Helpers exposing (onClickPage)
 import Views.Toast as Toast

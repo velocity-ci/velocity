@@ -1,17 +1,17 @@
-module Request.Build exposing (..)
+module Request.Build exposing (steps, streamOutput, streams)
 
+import Array exposing (Array)
 import Context exposing (Context)
+import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
 import Data.Build as Build exposing (Build)
 import Data.BuildStep as BuildStep exposing (BuildStep)
 import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput)
 import Data.PaginatedList as PaginatedList exposing (PaginatedList)
-import Data.AuthToken as AuthToken exposing (AuthToken, withAuthorization)
-import Request.Helpers exposing (apiUrl)
-import Request.Errors
-import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Http
-import Array exposing (Array)
+import HttpBuilder exposing (RequestBuilder, withBody, withExpect, withQueryParams)
 import Json.Decode as Decode
+import Request.Errors
+import Request.Helpers exposing (apiUrl)
 import Task exposing (Task)
 
 

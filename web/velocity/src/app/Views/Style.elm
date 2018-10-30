@@ -1,4 +1,4 @@
-module Views.Style exposing (..)
+module Views.Style exposing (textOverflowMixin)
 
 import Css exposing (..)
 

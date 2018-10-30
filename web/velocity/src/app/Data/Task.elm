@@ -1,8 +1,8 @@
-module Data.Task exposing (..)
+module Data.Task exposing (BuildStep, ChoiceParameter, CloneStep, ComposeStep, DerivedParameter, Id(..), Name(..), Parameter(..), PushStep, RunStep, Step(..), StringParameter, Task, basicParameterDecoder, buildStepDecoder, choiceParameterDecoder, cloneStepDecoder, composeStepDecoder, decodeId, decodeName, decoder, derivedParameterDecoder, idEquals, idToString, nameParser, nameToString, parameterDecoder, pushStepDecoder, runStepDecoder, stepDecoder, stepName, stringParameterDecoder)
 
+import Data.Commit as Commit exposing (Commit)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Data.Commit as Commit exposing (Commit)
 import UrlParser
 
 

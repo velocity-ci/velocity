@@ -1,4 +1,4 @@
-module Data.KnownHost exposing (KnownHost, decoder, addKnownHost)
+module Data.KnownHost exposing (KnownHost, addKnownHost, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, required)

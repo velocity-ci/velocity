@@ -1,12 +1,12 @@
 module Request.Channel exposing (joinChannels, leaveChannels)
 
-import Phoenix.Socket as Socket exposing (Socket)
-import Phoenix.Channel as Channel exposing (Channel)
+import Data.AuthToken as AuthToken exposing (AuthToken)
+import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Dict exposing (Dict)
-import Request.Errors exposing (HandledError(..), Error(..))
-import Data.AuthToken as AuthToken exposing (AuthToken)
+import Phoenix.Channel as Channel exposing (Channel)
+import Phoenix.Socket as Socket exposing (Socket)
+import Request.Errors exposing (Error(..), HandledError(..))
 import Util exposing ((=>))
 
 
@@ -39,7 +39,9 @@ leaveChannels toMsg channels socket =
                 ( leaveSocket, leaveCmd ) =
                     Socket.leave channel socket
             in
-                leaveSocket ! [ cmd, Cmd.map toMsg leaveCmd ]
+                ( leaveSocket
+                , Cmd.batch [ cmd, Cmd.map toMsg leaveCmd ]
+                )
     in
         List.foldl leaveChannel ( socket, Cmd.none ) channels
 
@@ -88,8 +90,9 @@ joinChannel toMsg maybeAuthToken errorHandler ( channelName, events ) ( socket, 
         foldEvent ( event, msg ) s =
             Socket.on event channel.name (msg >> toMsg) s
     in
-        List.foldl foldEvent channelSocket events
-            ! [ cmd, socketCmd ]
+        ( List.foldl foldEvent channelSocket events
+        , Cmd.batch [ cmd, socketCmd ]
+        )
 
 
 

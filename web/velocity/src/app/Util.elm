@@ -1,15 +1,15 @@
-module Util exposing ((=>), pair, onClickStopPropagation, viewIf, viewIfStyled, appendErrors, capitalize)
+module Util exposing ((=>), appendErrors, capitalize, onClickStopPropagation, pair, viewIf, viewIfStyled)
 
-import Json.Decode as Decode
-import Html.Events exposing (onWithOptions, defaultOptions)
-import Html exposing (Attribute, Html)
-import Html.Styled
 import Char
+import Html exposing (Attribute, Html)
+import Html.Events exposing (defaultOptions, onWithOptions)
+import Html.Styled
+import Json.Decode as Decode
 
 
 (=>) : a -> b -> ( a, b )
 (=>) =
-    (,)
+    \a b -> ( a, b )
 
 
 {-| infixl 0 means the (=>) operator has the same precedence as (<|) and (|>),

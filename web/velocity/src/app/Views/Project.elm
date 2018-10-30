@@ -1,10 +1,10 @@
 module Views.Project exposing (badge)
 
-import Html exposing (Html)
-import Html.Styled.Attributes as Attributes exposing (attribute, css, class, classList, src)
-import Html.Styled as Styled exposing (..)
 import Css exposing (..)
 import Data.Project exposing (Project)
+import Html exposing (Html)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as Attributes exposing (attribute, class, classList, css, src)
 
 
 badge : Project -> Html.Html msg

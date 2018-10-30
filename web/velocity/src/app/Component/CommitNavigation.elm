@@ -1,33 +1,30 @@
 module Component.CommitNavigation
     exposing
-        ( view
+        ( Config
         , Context
-        , Config
+        , view
         )
 
 -- INTERNAL
-
-import Data.Commit as Commit exposing (Commit)
-import Data.Task as Task exposing (Task)
-import Data.Project as Project exposing (Project)
-import Data.Build as Build exposing (Build)
-import Route exposing (Route)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commit.Route as CommitRoute
-import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
-import Views.Helpers exposing (onClickPage)
-import Views.Build exposing (viewBuildStatusIconClasses, viewBuildTextClass)
-import Views.Style as Style
-import Util exposing ((=>))
-
-
 -- EXTERNAL
 
-import Html exposing (Html)
-import Html.Styled.Attributes as Attributes exposing (css, class, classList)
-import Html.Styled as Styled exposing (..)
-import Html.Styled.Events exposing (onClick)
 import Css exposing (..)
+import Data.Build as Build exposing (Build)
+import Data.Commit as Commit exposing (Commit)
+import Data.Project as Project exposing (Project)
+import Data.Task as Task exposing (Task)
+import Html exposing (Html)
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as Attributes exposing (class, classList, css)
+import Html.Styled.Events exposing (onClick)
+import Page.Project.Commit.Route as CommitRoute
+import Page.Project.Route as ProjectRoute
+import Route exposing (Route)
+import Util exposing ((=>))
+import Views.Build exposing (viewBuildStatusIconClasses, viewBuildTextClass)
+import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
+import Views.Helpers exposing (onClickPage)
+import Views.Style as Style
 
 
 -- CONFIG

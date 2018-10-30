@@ -69,24 +69,24 @@ viewContent sidebarDisplayType content =
             else
                 calc (pct 100) plus (px 0)
     in
-    div
-        [ css
-            [ paddingLeft (px (Sidebar.sidebarWidth sidebarDisplayType))
-            , width sidebarWidth
-            ]
-        ]
-        [ div
-            (List.concat
-                [ Sidebar.sidebarAnimationAttrs sidebarDisplayType
-                , [ css
-                        [ position relative
-                        , width (pct 100)
-                        ]
-                  ]
+        div
+            [ css
+                [ paddingLeft (px (Sidebar.sidebarWidth sidebarDisplayType))
+                , width sidebarWidth
                 ]
-            )
-            [ fromUnstyled content ]
-        ]
+            ]
+            [ div
+                (List.concat
+                    [ Sidebar.sidebarAnimationAttrs sidebarDisplayType
+                    , [ css
+                            [ position relative
+                            , width (pct 100)
+                            ]
+                      ]
+                    ]
+                )
+                [ fromUnstyled content ]
+            ]
 
 
 viewNavbar : SidebarConfigs msg -> Styled.Html msg

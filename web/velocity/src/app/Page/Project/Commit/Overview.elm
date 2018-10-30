@@ -1,21 +1,21 @@
-module Page.Project.Commit.Overview exposing (..)
+module Page.Project.Commit.Overview exposing (Model, Msg(..), initialModel, maybeBuildFromTask, taskBuilds, update, view, viewCommitDetails, viewTaskList, viewTaskListItem)
 
+import Data.Build as Build exposing (Build)
+import Data.Commit as Commit exposing (Commit)
+import Data.Project as Project exposing (Project)
+import Data.Session as Session exposing (Session)
+import Data.Task as ProjectTask
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Data.Commit as Commit exposing (Commit)
-import Data.Session as Session exposing (Session)
-import Data.Project as Project exposing (Project)
-import Data.Task as ProjectTask
-import Data.Build as Build exposing (Build)
-import Page.Helpers exposing (formatDateTime)
 import Navigation
-import Util exposing ((=>))
-import Route
-import Page.Project.Route as ProjectRoute
+import Page.Helpers exposing (formatDateTime)
 import Page.Project.Commit.Route as CommitRoute
-import Views.Helpers exposing (onClickPage)
+import Page.Project.Route as ProjectRoute
+import Route
+import Util exposing ((=>))
 import Views.Build exposing (viewBuildStatusIcon, viewBuildTextClass)
 import Views.Commit exposing (branchList, infoPanel, truncateCommitMessage)
+import Views.Helpers exposing (onClickPage)
 
 
 -- MODEL --

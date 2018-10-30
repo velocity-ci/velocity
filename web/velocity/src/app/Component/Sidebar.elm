@@ -112,17 +112,17 @@ show { direction } displayType =
                 animation =
                     Animation.interrupt [ Animation.to (animationFinishAttrs direction) ] animationState
             in
-            Collapsable (Visible animation) size
+                Collapsable (Visible animation) size
     in
-    case displayType of
-        Collapsable (Hidden animationState) size ->
-            animateShow animationState size
+        case displayType of
+            Collapsable (Hidden animationState) size ->
+                animateShow animationState size
 
-        Collapsable (Visible animationState) size ->
-            animateShow animationState size
+            Collapsable (Visible animationState) size ->
+                animateShow animationState size
 
-        _ ->
-            displayType
+            _ ->
+                displayType
 
 
 hide : Config msg -> DisplayType -> DisplayType
@@ -133,17 +133,17 @@ hide { direction } displayType =
                 animation =
                     Animation.interrupt [ Animation.to (animationStartAttrs direction size) ] animationState
             in
-            Collapsable (Hidden animation) size
+                Collapsable (Hidden animation) size
     in
-    case displayType of
-        Collapsable (Visible animationState) size ->
-            animateHide animationState size
+        case displayType of
+            Collapsable (Visible animationState) size ->
+                animateHide animationState size
 
-        Collapsable (Hidden animationState) size ->
-            animateHide animationState size
+            Collapsable (Hidden animationState) size ->
+                animateHide animationState size
 
-        _ ->
-            displayType
+            _ ->
+                displayType
 
 
 toggle : Config msg -> DisplayType -> DisplayType
@@ -167,14 +167,14 @@ animate config displayType msg =
                 animation =
                     Animation.update msg animationState
             in
-            Collapsable (Visible animation) size
+                Collapsable (Visible animation) size
 
         Collapsable (Hidden animationState) size ->
             let
                 animation =
                     Animation.update msg animationState
             in
-            Collapsable (Hidden animation) size
+                Collapsable (Hidden animation) size
 
         _ ->
             displayType
@@ -268,12 +268,12 @@ animationStartAttrs direction size =
                 ExtraWide ->
                     -308.0
     in
-    case direction of
-        Left ->
-            animateLeft pxDistance
+        case direction of
+            Left ->
+                animateLeft pxDistance
 
-        Right ->
-            animateRight pxDistance
+            Right ->
+                animateRight pxDistance
 
 
 animationFinishAttrs : Direction -> List Animation.Property
@@ -399,7 +399,7 @@ initDisplayType { direction } deviceWidth displayType size =
                         animation =
                             Animation.interrupt [ Animation.set (animationFinishAttrs direction) ] animationState
                     in
-                    Collapsable (Visible animation) size
+                        Collapsable (Visible animation) size
 
             Just (Collapsable (Hidden animationState) oldSize) ->
                 if oldSize == size then
@@ -409,7 +409,7 @@ initDisplayType { direction } deviceWidth displayType size =
                         animation =
                             Animation.interrupt [ Animation.set (animationStartAttrs direction size) ] animationState
                     in
-                    Collapsable (Hidden animation) size
+                        Collapsable (Hidden animation) size
 
             _ ->
                 Collapsable (Hidden (Animation.style (animationStartAttrs direction size))) Normal

@@ -1,10 +1,10 @@
-module Data.Commit exposing (..)
+module Data.Commit exposing (Commit, Hash(..), compare, decodeHash, decoder, hashParser, hashToString, truncateHash)
 
 import Data.Branch as Branch exposing (Branch)
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (decode, required, optional)
-import Time.DateTime as DateTime exposing (DateTime)
 import Data.Helpers exposing (stringToDateTime)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
+import Time.DateTime as DateTime exposing (DateTime)
 import UrlParser
 
 

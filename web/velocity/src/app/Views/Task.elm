@@ -1,9 +1,9 @@
-module Views.Task exposing (..)
+module Views.Task exposing (viewBuildStep, viewCloneStep, viewComposeStep, viewPushStep, viewRunStep, viewStepContents)
 
+import Data.Task as ProjectTask exposing (BuildStep, CloneStep, ComposeStep, Parameter(..), PushStep, RunStep, Step(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput, on, onSubmit)
-import Data.Task as ProjectTask exposing (BuildStep, RunStep, CloneStep, ComposeStep, PushStep, Step(..), Parameter(..))
+import Html.Events exposing (on, onClick, onInput, onSubmit)
 
 
 viewComposeStep : ComposeStep -> Html msg

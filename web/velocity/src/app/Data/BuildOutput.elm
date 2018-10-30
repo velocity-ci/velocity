@@ -1,14 +1,11 @@
-module Data.BuildOutput exposing (..)
+module Data.BuildOutput exposing (Step, TaskStep, joinSteps)
 
 -- EXTERNAL --
-
-import Array
-
-
 -- INTERNAL --
 
-import Data.Task as ProjectTask exposing (Step(..), Parameter(..))
+import Array
 import Data.BuildStep as BuildStep exposing (BuildStep)
+import Data.Task as ProjectTask exposing (Parameter(..), Step(..))
 
 
 type alias TaskStep =

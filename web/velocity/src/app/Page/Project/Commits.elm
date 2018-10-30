@@ -1,43 +1,42 @@
-module Page.Project.Commits exposing (..)
+module Page.Project.Commits exposing (Model, Msg(..), branchFilterConfig, branchFilterContext, breadcrumb, channelName, commitListToDict, events, init, loadCommits, pageLink, pagination, perPage, refreshButton, subscriptions, update, view, viewBreadcrumbExtraItems, viewCommitList, viewCommitListContainer, viewCommitListItem)
 
+import Bootstrap.Button as Button
+import Component.DropdownFilter as DropdownFilter
 import Context exposing (Context)
-import Html exposing (Html)
-import Html.Styled as Styled exposing (..)
-import Html.Styled.Attributes as StyledAttribute exposing (css, class, classList)
-import Html.Styled.Events exposing (onClick, on, targetValue)
-import Html.Events as UnstyledEvents
-import Html.Attributes as UnstyledAttribute
 import Css exposing (..)
+import Data.AuthToken as AuthToken exposing (AuthToken)
+import Data.Branch as Branch exposing (Branch)
 import Data.Commit as Commit exposing (Commit)
 import Data.Device as Device
-import Data.Session as Session exposing (Session)
+import Data.PaginatedList as PaginatedList exposing (Paginated(..), PaginatedList)
 import Data.Project as Project exposing (Project)
-import Data.Branch as Branch exposing (Branch)
-import Data.PaginatedList as PaginatedList exposing (PaginatedList, Paginated(..))
+import Data.Session as Session exposing (Session)
+import Dict exposing (Dict)
+import Dom
+import Html exposing (Html)
+import Html.Attributes as UnstyledAttribute
+import Html.Events as UnstyledEvents
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as StyledAttribute exposing (class, classList, css)
+import Html.Styled.Events exposing (on, onClick, targetValue)
+import Http
+import Json.Encode as Encode
+import Navigation
 import Page.Errored as Errored exposing (PageLoadError, pageLoadError)
 import Page.Helpers exposing (formatDate, formatTime, sortByDatetime)
-import Data.AuthToken as AuthToken exposing (AuthToken)
-import Request.Project
+import Page.Project.Commit.Route as CommitRoute
+import Page.Project.Route as ProjectRoute
 import Request.Commit
 import Request.Errors
-import Util exposing ((=>))
-import Task exposing (Task)
-import Views.Page as Page
-import Http
-import Dict exposing (Dict)
-import Time.DateTime as DateTime exposing (DateTime)
-import Time.Date as Date exposing (Date)
-import Page.Helpers exposing (formatDate)
+import Request.Project
 import Route exposing (Route)
-import Page.Project.Route as ProjectRoute
-import Page.Project.Commit.Route as CommitRoute
-import Navigation
+import Task exposing (Task)
+import Time.Date as Date exposing (Date)
+import Time.DateTime as DateTime exposing (DateTime)
+import Util exposing ((=>))
+import Views.Commit exposing (branchList, commitTimeInformation)
 import Views.Helpers exposing (styledOnClickPage)
-import Views.Commit exposing (commitTimeInformation, branchList)
-import Json.Encode as Encode
-import Component.DropdownFilter as DropdownFilter
-import Dom
-import Bootstrap.Button as Button
+import Views.Page as Page
 import Views.Style as Style
 
 
@@ -113,8 +112,8 @@ branchFilterConfig =
     , termMsg = BranchFilterTermMsg
     , noOpMsg = NoOp
     , selectItemMsg = FilterBranch
-    , labelFn = (.name >> Just >> Branch.nameToString)
-    , icon = (toUnstyled <| i [ class "fa fa-code-fork" ] [])
+    , labelFn = .name >> Just >> Branch.nameToString
+    , icon = toUnstyled <| i [ class "fa fa-code-fork" ] []
     , showFilter = True
     , showAllItemsItem = True
     }
@@ -126,7 +125,7 @@ branchFilterContext deviceSize branches { dropdownState, branchFilterTerm, branc
         items =
             branches
                 |> List.filter .active
-                |> List.sortBy (branchFilterConfig.labelFn)
+                |> List.sortBy branchFilterConfig.labelFn
     in
         { items = items
         , dropdownState = dropdownState
@@ -152,7 +151,7 @@ subscriptions deviceSize branches model =
 
 channelName : Project.Slug -> String
 channelName projectSlug =
-    "project:" ++ (Project.slugToString projectSlug)
+    "project:" ++ Project.slugToString projectSlug
 
 
 events : Project.Slug -> Dict String (List ( String, Encode.Value -> Msg ))
@@ -164,7 +163,7 @@ events projectSlug =
             , ( "commit:deleted", always RefreshCommitList )
             ]
     in
-        Dict.singleton (channelName projectSlug) (pageEvents)
+        Dict.singleton (channelName projectSlug) pageEvents
 
 
 
@@ -313,8 +312,8 @@ refreshButton project model =
             project.synchronising || model.submitting
 
         iconClassList =
-            [ ("fa fa-refresh" => True)
-            , ("fa-spin fa-fw" => submitting)
+            [ "fa fa-refresh" => True
+            , "fa-spin fa-fw" => submitting
             ]
     in
         Button.button

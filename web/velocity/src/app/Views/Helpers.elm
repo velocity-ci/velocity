@@ -1,9 +1,9 @@
 module Views.Helpers exposing (onClickPage, styledOnClickPage)
 
-import Html.Events exposing (onWithOptions, defaultOptions)
-import Html.Styled.Attributes as StyledAttribute
-import Html.Styled
 import Html exposing (Attribute)
+import Html.Events exposing (defaultOptions, onWithOptions)
+import Html.Styled
+import Html.Styled.Attributes as StyledAttribute
 import Json.Decode exposing (Decoder)
 import Route exposing (Route)
 
@@ -31,7 +31,7 @@ onPreventDefaultClick message =
 preventDefault2 : Decoder Bool
 preventDefault2 =
     Json.Decode.map2
-        (invertedOr)
+        invertedOr
         (Json.Decode.field "ctrlKey" Json.Decode.bool)
         (Json.Decode.field "metaKey" Json.Decode.bool)
 

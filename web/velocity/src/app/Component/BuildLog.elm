@@ -1,51 +1,47 @@
-module Component.BuildLog exposing (..)
+module Component.BuildLog exposing (BuildStepId, BuildStreamId, BuildStreamIndex, LineNumber, Log, LogStep, LogStepStream, LogStepStreamLine, Model, Msg(..), StepInfoModal, ViewStepLine, decodeBuildStreamOutput, events, filterSubscriptions, flattenStepLines, init, initialModel, insertStream, leaveChannels, linesArrayToDict, loadBuildStreams, logStepKey, logStepStream, logStepSubscriptions, mapStream, modalSubscriptions, onClickPreventDefault, outputToLogLine, resolveLogStepStream, scrollTo, scrollToBottom, scrolledToBottom, sortLines, streamChannelName, streamKey, subscriptions, timelineConfig, timelinePopovers, toggleLogStepVisibility, toggleLogVisibility, toggleStepCollapse, update, updateLog, updateLogStep, updateLogStepDropdown, updateLogStepStream, updateLogStepStreamLine, view, viewBuildInformation, viewLine, viewLineAnsi, viewStepButtonToolbar, viewStepCollapseToggle, viewStepContainer, viewStepInfoButton, viewStepInfoModal, viewStepLog, viewStepLogTable, viewStepStreamFilter, viewStepStreamFilterItem, viewTimeline)
 
 {- A stateful BuildOutput component.
    I plan to convert this to a stateless component soon.
 -}
 -- INTERNAL
+-- EXTERNAL
 
+import Ansi.Log
+import Array exposing (Array)
+import Bootstrap.Button as Button
+import Bootstrap.Dropdown as Dropdown
+import Bootstrap.Modal as Modal
+import Bootstrap.Popover as Popover
+import Component.BuildTimeline as BuildTimeline
 import Context exposing (Context)
-import Component.BuildTimeline
+import Css exposing (..)
+import Data.AuthToken as AuthToken exposing (AuthToken)
 import Data.Build as Build exposing (Build)
 import Data.BuildOutput as BuildOutput exposing (..)
 import Data.BuildStep as BuildStep exposing (BuildStep)
-import Data.BuildStream as BuildStream exposing (Id, BuildStream, BuildStreamOutput)
-import Data.AuthToken as AuthToken exposing (AuthToken)
+import Data.BuildStream as BuildStream exposing (BuildStream, BuildStreamOutput, Id)
 import Data.Task as ProjectTask
-import Request.Build
-import Request.Errors
-import Util exposing ((=>))
-import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
-import Views.Build exposing (..)
-import Views.Task
-import Ports
-import Component.BuildTimeline as BuildTimeline
-
-
--- EXTERNAL
-
+import Dict exposing (Dict)
+import Dom
+import Dom.Scroll as Scroll
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
-import Html.Styled.Attributes as StyledAttributes exposing (css, class, classList)
 import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes as StyledAttributes exposing (class, classList, css)
 import Html.Styled.Events exposing (onClick)
-import Css exposing (..)
-import Array exposing (Array)
-import Dict exposing (Dict)
+import Html.Styled.Lazy exposing (lazy)
+import Json.Decode as Decode
+import Json.Encode as Encode
+import Page.Helpers exposing (formatDateTime, formatTimeSeconds)
+import Ports
+import Request.Build
+import Request.Errors
 import Task exposing (Task)
 import Time.DateTime as DateTime exposing (DateTime)
-import Ansi.Log
-import Json.Encode as Encode
-import Json.Decode as Decode
-import Dom.Scroll as Scroll
-import Html.Styled.Lazy exposing (lazy)
-import Bootstrap.Dropdown as Dropdown
-import Bootstrap.Button as Button
-import Bootstrap.Modal as Modal
-import Bootstrap.Popover as Popover
-import Dom
+import Util exposing ((=>))
+import Views.Build exposing (..)
+import Views.Task
 
 
 -- MODEL
@@ -273,7 +269,7 @@ logStepSubscriptions logStep =
 
 streamChannelName : BuildStream -> String
 streamChannelName stream =
-    "stream:" ++ (BuildStream.idToString stream.id)
+    "stream:" ++ BuildStream.idToString stream.id
 
 
 events : Model -> Dict String (List ( String, Encode.Value -> Msg ))
@@ -338,8 +334,9 @@ update msg model =
                     else
                         []
             in
-                { model | log = log }
-                    ! scrollCmds
+                ( { model | log = log }
+                , Cmd.batch scrollCmds
+                )
 
         ScrolledToBottom isScrolled ->
             { model | autoScrollMessages = isScrolled }
@@ -382,8 +379,9 @@ update msg model =
                 => Cmd.none
 
         ClickPopover popover ->
-            model
-                ! (case popover of
+            ( model
+            , Cmd.batch
+                (case popover of
                     BuildTimeline.Queued ->
                         []
 
@@ -392,7 +390,8 @@ update msg model =
 
                     BuildTimeline.Completed ->
                         scrollToBottom
-                  )
+                )
+            )
 
         NoOp ->
             model => Cmd.none
@@ -584,7 +583,7 @@ viewStepButtonToolbar maybeBuildStep logStep =
                 |> Maybe.withDefault False
 
         showStreamFilter =
-            (Dict.size logStep.streams) > 1 && not logStep.collapsed
+            Dict.size logStep.streams > 1 && not logStep.collapsed
     in
         div []
             [ Util.viewIfStyled showStreamFilter (viewStepStreamFilter logStep)
@@ -663,7 +662,7 @@ viewStepStreamFilter logStep =
         streamItems =
             logStep.streams
                 |> Dict.values
-                |> List.indexedMap (,)
+                |> List.indexedMap (\a b -> ( a, b ))
                 |> List.sortBy (Tuple.second >> .buildStream >> .name)
                 |> List.map (viewStepStreamFilterItem logStep)
     in
@@ -740,7 +739,7 @@ viewLine { timestamp, streamName, ansi, streamIndex } =
 viewLineAnsi : Array Ansi.Log.Line -> Styled.Html Msg
 viewLineAnsi lines =
     lines
-        |> Array.get ((Array.length lines) - 2)
+        |> Array.get (Array.length lines - 2)
         |> Maybe.map (Ansi.Log.viewLine >> fromUnstyled)
         |> Maybe.withDefault (text "")
 

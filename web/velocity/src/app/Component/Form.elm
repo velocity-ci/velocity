@@ -1,26 +1,26 @@
 module Component.Form
     exposing
         ( Context
-        , FormField
         , Error
-        , updateInput
-        , newField
-        , submitting
-        , submit
-        , optionalError
+        , FormField
         , allErrors
-        , globalErrors
-        , updateServerErrors
-        , resetServerErrorsForField
-        , ifBelowLength
-        , ifAboveLength
-        , validClasses
         , getFieldErrors
+        , globalErrors
+        , ifAboveLength
+        , ifBelowLength
+        , newField
+        , optionalError
+        , resetServerErrorsForField
+        , submit
+        , submitting
+        , updateInput
+        , updateServerErrors
+        , validClasses
         )
 
-import Request.Errors
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline as Pipeline exposing (optional)
+import Request.Errors
 import Validate exposing (Validator, ifInvalid)
 
 
@@ -97,7 +97,7 @@ allErrors { errors, serverErrors } =
 
 globalErrors : field -> List (Error field) -> List (Error field)
 globalErrors globalField errors =
-    List.filter (\e -> (Tuple.first e) == globalField) errors
+    List.filter (\e -> Tuple.first e == globalField) errors
 
 
 
