@@ -3,6 +3,7 @@ module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, 
 import Api
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Browser exposing (Document)
+import Browser.Events
 import Browser.Navigation as Nav
 import Context exposing (Context)
 import Element exposing (..)
@@ -112,6 +113,7 @@ type Msg
     | GotHomeMsg Home.Msg
     | GotLoginMsg Login.Msg
     | GotSession Session
+    | WindowResized Int Int
 
 
 toSession : App -> Session
@@ -203,6 +205,11 @@ updatePage msg page =
         ( ChangedRoute route, _ ) ->
             changeRouteTo route page
 
+        ( WindowResized width height, _ ) ->
+            ( updateContext (Context.windowResize { width = width, height = height } (toContext page)) page
+            , Cmd.none
+            )
+
         ( GotHomeMsg subMsg, Home home ) ->
             Home.update subMsg home
                 |> updateWith Home GotHomeMsg page
@@ -219,6 +226,22 @@ updatePage msg page =
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
+
+
+updateContext : Context -> App -> App
+updateContext context page =
+    case page of
+        Redirect session _ ->
+            Redirect session context
+
+        NotFound session _ ->
+            NotFound session context
+
+        Home home ->
+            Home { home | context = context }
+
+        Login login ->
+            Login { login | context = context }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -245,28 +268,31 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    Sub.batch
+        [ pageSubscriptions model
+        , Browser.Events.onResize WindowResized
+        ]
+
+
+pageSubscriptions : Model -> Sub Msg
+pageSubscriptions model =
     case model of
         ApplicationStarted page ->
-            pageSubscriptions page
+            case page of
+                NotFound _ _ ->
+                    Sub.none
+
+                Redirect _ _ ->
+                    Session.changes GotSession (Session.navKey (toSession page))
+
+                Home home ->
+                    Sub.map GotHomeMsg (Home.subscriptions home)
+
+                Login login ->
+                    Sub.map GotLoginMsg (Login.subscriptions login)
 
         InitError _ ->
             Sub.none
-
-
-pageSubscriptions : App -> Sub Msg
-pageSubscriptions page =
-    case page of
-        NotFound _ _ ->
-            Sub.none
-
-        Redirect _ _ ->
-            Session.changes GotSession (Session.navKey (toSession page))
-
-        Home home ->
-            Sub.map GotHomeMsg (Home.subscriptions home)
-
-        Login login ->
-            Sub.map GotLoginMsg (Login.subscriptions login)
 
 
 
@@ -275,7 +301,7 @@ pageSubscriptions page =
 
 main : Program Value Model Msg
 main =
-    Api.application Viewer.decoder Context.fromBaseUrl <|
+    Api.application Viewer.decoder Context.fromBaseUrlAndDimensions <|
         { onUrlChange = ChangedUrl
         , onUrlRequest = ClickedLink
         , view = view

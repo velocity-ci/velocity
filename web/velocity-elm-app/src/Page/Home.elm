@@ -52,62 +52,28 @@ view : Model -> { title : String, content : Element Msg }
 view model =
     { title = "Home"
     , content =
-        wrappedRow
-            [ width fill
-            , height fill
-            , padding 10
-            , spacing 10
-            ]
-            [ el
-                [ width (px 100)
-                , height (px 100)
-                , Border.width 1
-                , Border.color (rgba255 92 184 92 1)
+        row [ width fill, height fill ]
+            [ wrappedRow
+                [ padding 20
+                , spacing 10
+                , width fill
                 , alignTop
                 ]
-                (text "box")
-            , el
-                [ width (px 100)
-                , height (px 100)
-                , Border.width 1
-                , Border.color (rgba255 92 184 92 1)
-                , alignTop
-                ]
-                (text "box")
-            , el
-                [ width (px 100)
-                , height (px 100)
-                , Border.width 1
-                , Border.color (rgba255 92 184 92 1)
-                , alignTop
-                ]
-                (text "box")
-            , el
-                [ width (px 100)
-                , height (px 100)
-                , Border.width 1
-                , Border.color (rgba255 92 184 92 1)
-                , alignTop
-                ]
-                (text "box")
-            , el
-                [ width (px 100)
-                , height (px 100)
-                , Border.width 1
-                , Border.color (rgba255 92 184 92 1)
-                , alignTop
-                ]
-                (text "box")
-            , el
-                [ width (px 100)
-                , height (px 100)
-                , Border.width 1
-                , Border.color (rgba255 92 184 92 1)
-                , alignTop
-                ]
-                (text "box")
+                (List.range 0 20 |> List.map (always viewBox))
             ]
     }
+
+
+viewBox : Element msg
+viewBox =
+    el
+        [ width (px 200)
+        , height (px 200)
+        , Border.width 1
+        , Border.color (rgba255 92 184 92 1)
+        , Border.rounded 10
+        ]
+        (text "box")
 
 
 

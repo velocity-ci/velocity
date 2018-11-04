@@ -8,7 +8,9 @@ const app = Elm.Main.init({
     node: document.getElementById('root'),
     flags: {
         viewer: localStorage.getItem(storageKey),
-        baseUrl: process.env.ARCHITECT_ADDRESS
+        baseUrl: process.env.ARCHITECT_ADDRESS,
+        width: window.innerWidth,
+        height: window.innerHeight
     }
 });
 

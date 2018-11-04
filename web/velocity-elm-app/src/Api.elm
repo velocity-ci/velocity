@@ -130,7 +130,7 @@ port storeCache : Maybe Value -> Cmd msg
 
 application :
     Decoder (Cred -> viewer)
-    -> (BaseUrl -> context)
+    -> (BaseUrl -> { width : Int, height : Int } -> context)
     ->
         { init : Maybe viewer -> Result Decode.Error context -> Url -> Nav.Key -> ( model, Cmd msg )
         , onUrlChange : Url -> msg
@@ -140,20 +140,29 @@ application :
         , view : model -> Browser.Document msg
         }
     -> Program Value model msg
-application viewerDecoder contextFromBaseUrl config =
+application viewerDecoder toContext config =
     let
         init flags url navKey =
             let
                 maybeViewer =
-                    flags
-                        |> Decode.decodeValue (Decode.field "viewer" Decode.string)
+                    Decode.decodeValue (Decode.field "viewer" Decode.string) flags
                         |> Result.andThen (Decode.decodeString (storageDecoder viewerDecoder))
                         |> Result.toMaybe
 
+                baseUrlResult =
+                    Decode.decodeValue (Decode.field "baseUrl" Decode.string) flags
+                        |> Result.map (Endpoint.fromString >> BaseUrl)
+
+                deviceDimensionResult =
+                    Decode.decodeValue
+                        (Decode.map2 (\width height -> { width = width, height = height })
+                            (Decode.field "width" Decode.int)
+                            (Decode.field "height" Decode.int)
+                        )
+                        flags
+
                 contextResult =
-                    flags
-                        |> Decode.decodeValue (Decode.field "baseUrl" Decode.string)
-                        |> Result.map (Endpoint.fromString >> BaseUrl >> contextFromBaseUrl)
+                    Result.map2 toContext baseUrlResult deviceDimensionResult
             in
             config.init maybeViewer contextResult url navKey
     in
