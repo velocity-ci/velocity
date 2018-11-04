@@ -59,18 +59,18 @@ viewCurrentPage currentPage =
         viewPage page toMsg config =
             let
                 { title, body } =
-                    Page.view (Session.viewer (toSession currentPage)) page config
+                    Page.view (Session.viewer (toSession currentPage)) page config toMsg
             in
             { title = title
-            , body = [ Element.layout [] (Element.map toMsg body) ]
+            , body = body
             }
     in
     case currentPage of
         Redirect _ _ ->
-            viewPage Page.Other (\_ -> Ignored) Blank.view
+            viewPage Page.Other (always Ignored) Blank.view
 
         NotFound _ _ ->
-            viewPage Page.Other (\_ -> Ignored) NotFound.view
+            viewPage Page.Other (always Ignored) NotFound.view
 
         Home home ->
             viewPage Page.Home GotHomeMsg (Home.view home)
@@ -301,7 +301,7 @@ pageSubscriptions model =
 
 main : Program Value Model Msg
 main =
-    Api.application Viewer.decoder Context.fromBaseUrlAndDimensions <|
+    Api.application Viewer.decoder Context.start <|
         { onUrlChange = ChangedUrl
         , onUrlRequest = ClickedLink
         , view = view

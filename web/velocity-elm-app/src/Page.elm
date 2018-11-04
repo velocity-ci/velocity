@@ -7,10 +7,16 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Html exposing (Html)
 import Route exposing (Route)
 import Session exposing (Session)
 import Username exposing (Username)
 import Viewer exposing (Viewer)
+
+
+maxWidth : Int
+maxWidth =
+    1980
 
 
 {-| Determines which navbar link (if any) will be rendered as active.
@@ -39,11 +45,38 @@ isLoading is for determining whether we should show a loading spinner
 in the header. (This comes up during slow page transitions.)
 
 -}
-view : Maybe Viewer -> Page -> { title : String, content : Element msg } -> { title : String, body : Element msg }
-view maybeViewer page { title, content } =
+view :
+    Maybe Viewer
+    -> Page
+    -> { title : String, content : Element msg }
+    -> (msg -> msg2)
+    -> { title : String, body : List (Html msg2) }
+view maybeViewer page { title, content } toMsg =
     { title = title ++ " - Conduit"
-    , body = Element.column [ width fill, height fill ] (viewHeader page maybeViewer :: content :: [ viewFooter ])
+    , body =
+        [ Element.layout
+            []
+            (Element.column
+                [ width fill
+                , height fill
+                ]
+                [ viewHeader page maybeViewer
+                , viewBody content toMsg
+                , viewFooter
+                ]
+            )
+        ]
     }
+
+
+viewBody : Element msg -> (msg -> msg2) -> Element msg2
+viewBody content toMsg =
+    row
+        [ width (fill |> maximum maxWidth)
+        , centerX
+        , paddingXY 20 0
+        ]
+        [ Element.map toMsg content ]
 
 
 viewHeader : Page -> Maybe Viewer -> Element msg
@@ -51,7 +84,6 @@ viewHeader page maybeViewer =
     row
         [ width fill
         , height (px 55)
-        , padding 20
         , Border.shadow
             { offset = ( 0, 2 )
             , size = 2
@@ -59,14 +91,20 @@ viewHeader page maybeViewer =
             , color = rgba255 245 245 245 1
             }
         ]
-        [ el [ alignLeft ] viewBrand
-        , row
-            [ centerY
-            , alignRight
-            , spacing 10
+        [ row
+            [ width (fill |> maximum maxWidth)
+            , centerX
+            , paddingXY 20 0
             ]
-          <|
-            viewMenu page maybeViewer
+            [ el [ alignLeft ] viewBrand
+            , row
+                [ centerY
+                , alignRight
+                , spacing 10
+                ]
+              <|
+                viewMenu page maybeViewer
+            ]
         ]
 
 
@@ -107,10 +145,20 @@ viewFooter =
     column
         [ width fill
         , height (px 50)
-        , Background.color (rgb 0 0.5 0)
-        , Border.color (rgb 0 0.7 0)
+        , Border.shadow
+            { offset = ( 2, 2 )
+            , size = 2
+            , blur = 2
+            , color = rgba255 245 245 245 1
+            }
         ]
-        [ Element.el [ centerY ] (text "Footer") ]
+        [ Element.el
+            [ centerY
+            , centerX
+            , width (fill |> maximum maxWidth)
+            ]
+            (text "")
+        ]
 
 
 navbarLink : Page -> Route -> Element msg -> Element msg

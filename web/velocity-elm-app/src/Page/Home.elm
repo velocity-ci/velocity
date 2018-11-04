@@ -9,6 +9,7 @@ import Context exposing (Context)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 import Html.Events exposing (onClick)
 import Loading
@@ -25,6 +26,7 @@ import Username exposing (Username)
 type alias Model =
     { session : Session
     , context : Context
+    , projects : List Int
     }
 
 
@@ -37,7 +39,10 @@ type Status a
 
 init : Session -> Context -> ( Model, Cmd Msg )
 init session context =
-    ( { session = session, context = context }
+    ( { session = session
+      , context = context
+      , projects = List.range 0 20
+      }
     , Cmd.batch
         [ Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
         ]
@@ -52,23 +57,80 @@ view : Model -> { title : String, content : Element Msg }
 view model =
     { title = "Home"
     , content =
-        row [ width fill, height fill ]
-            [ wrappedRow
-                [ padding 20
-                , spacing 10
-                , width fill
-                , alignTop
+        column
+            [ width fill
+            , height fill
+            , paddingXY 0 10
+            , centerX
+            ]
+            [ el
+                [ paddingEach { top = 10, right = 0, bottom = 0, left = 0 }
+                , Font.size 16
+                , Font.color (rgba255 36 41 46 0.7)
                 ]
-                (List.range 0 20 |> List.map (always viewBox))
+                (text "Projects")
+            , column
+                [ width fill
+                , height fill
+                ]
+                (viewBoxRows (Context.device model.context) model.projects)
             ]
     }
+
+
+splitProjectsToRows : Int -> List a -> List (List a)
+splitProjectsToRows i list =
+    case List.take i list of
+        [] ->
+            []
+
+        listHead ->
+            listHead :: splitProjectsToRows i (List.drop i list)
+
+
+rowAmount : Device -> Int
+rowAmount device =
+    case ( device.class, device.orientation ) of
+        ( Phone, Portrait ) ->
+            1
+
+        ( Phone, Landscape ) ->
+            3
+
+        ( Tablet, Portrait ) ->
+            3
+
+        ( Tablet, Landscape ) ->
+            6
+
+        ( Desktop, _ ) ->
+            7
+
+        ( BigDesktop, _ ) ->
+            9
+
+
+viewBoxRows : Device -> List a -> List (Element msg)
+viewBoxRows device projects =
+    projects
+        |> splitProjectsToRows (rowAmount device)
+        |> List.map
+            (\i ->
+                row
+                    [ spacing 20
+                    , paddingXY 0 10
+                    , width fill
+                    , height (fillPortion 1 |> minimum 150 |> maximum 250)
+                    ]
+                    (List.map (always viewBox) i)
+            )
 
 
 viewBox : Element msg
 viewBox =
     el
-        [ width (px 200)
-        , height (px 200)
+        [ width (fillPortion 1)
+        , height (fillPortion 1 |> minimum 150 |> maximum 250)
         , Border.width 1
         , Border.color (rgba255 92 184 92 1)
         , Border.rounded 10

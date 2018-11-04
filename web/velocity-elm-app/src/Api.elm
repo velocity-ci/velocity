@@ -1,4 +1,16 @@
-port module Api exposing (BaseUrl, Cred, application, decodeErrors, login, logout, storeCredWith, username, viewerChanges)
+port module Api exposing
+    ( BaseUrl
+    , Cred
+    , application
+    , decodeErrors
+    , get
+    , login
+    , logout
+    , storeCredWith
+    , toEndpoint
+    , username
+    , viewerChanges
+    )
 
 {-| This module is responsible for communicating to the Conduit API.
 It exposes an opaque Endpoint type which is guaranteed to point to the correct URL.
@@ -26,6 +38,11 @@ This is just another endpoint which is good because it means only Endpoint can a
 -}
 type BaseUrl
     = BaseUrl Endpoint
+
+
+toEndpoint : BaseUrl -> Endpoint
+toEndpoint (BaseUrl endpoint) =
+    endpoint
 
 
 {-| The authentication credentials for the Viewer (that is, the currently logged-in user.)

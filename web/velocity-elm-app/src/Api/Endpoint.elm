@@ -1,8 +1,8 @@
-module Api.Endpoint exposing (Endpoint, fromString, login, request)
+module Api.Endpoint exposing (Endpoint, fromString, login, projects, request)
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
-import Url.Builder exposing (QueryParameter)
+import Url.Builder exposing (QueryParameter, int, string)
 import Username exposing (Username)
 
 
@@ -65,6 +65,11 @@ url baseUrl paths queryParams =
 login : Endpoint -> Endpoint
 login baseUrl =
     url baseUrl [ "auth" ] []
+
+
+projects : Int -> Endpoint -> Endpoint
+projects amount baseUrl =
+    url baseUrl [ "projects" ] [ int "amount" amount ]
 
 
 

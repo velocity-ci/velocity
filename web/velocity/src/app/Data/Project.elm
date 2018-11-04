@@ -2,9 +2,10 @@ module Data.Project exposing (Id(..), Project, Slug(..), addProject, decodeId, d
 
 import Data.Helpers exposing (stringToDateTime)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (custom, decode, hardcoded, optional, required)
+import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, optional, required)
 import Time.DateTime as DateTime exposing (DateTime)
 import UrlParser
+import Iso8601
 
 
 type alias Project =
@@ -25,13 +26,13 @@ type alias Project =
 
 decoder : Decoder Project
 decoder =
-    decode Project
+    Decode.succeed Project
         |> required "id" decodeId
         |> required "slug" decodeSlug
         |> required "name" Decode.string
         |> required "repository" Decode.string
-        |> required "createdAt" stringToDateTime
-        |> required "updatedAt" stringToDateTime
+        |> required "createdAt" Iso8601.decoder
+        |> required "updatedAt" Iso8601.decoder
         |> required "synchronising" Decode.bool
         |> required "logo" (Decode.maybe Decode.string)
 
