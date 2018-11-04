@@ -6,9 +6,11 @@ module Page.Login exposing (Model, Msg, init, subscriptions, toContext, toSessio
 import Api exposing (Cred)
 import Browser.Navigation as Nav
 import Context exposing (Context)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
+import Element.Input as Input
 import Http
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline exposing (optional)
@@ -60,7 +62,7 @@ type Problem
 
 
 type alias Form =
-    { email : String
+    { username : String
     , password : String
     }
 
@@ -71,7 +73,7 @@ init session context =
       , context = context
       , problems = []
       , form =
-            { email = ""
+            { username = ""
             , password = ""
             }
       }
@@ -83,26 +85,18 @@ init session context =
 -- VIEW
 
 
-view : Model -> { title : String, content : Html Msg }
+view : Model -> { title : String, content : Element Msg }
 view model =
     { title = "Login"
     , content =
-        div [ class "cred-page" ]
-            [ div [ class "container page" ]
-                [ div [ class "row" ]
-                    [ div [ class "col-md-6 offset-md-3 col-xs-12" ]
-                        [ h1 [ class "text-xs-center" ] [ text "Sign in" ]
-                        , ul [ class "error-messages" ]
-                            (List.map viewProblem model.problems)
-                        , viewForm model.form
-                        ]
-                    ]
-                ]
+        Element.row []
+            [ Element.row [] (List.map viewProblem model.problems)
+            , viewForm model.form
             ]
     }
 
 
-viewProblem : Problem -> Html msg
+viewProblem : Problem -> Element msg
 viewProblem problem =
     let
         errorMessage =
@@ -113,33 +107,29 @@ viewProblem problem =
                 ServerError str ->
                     str
     in
-    li [] [ text errorMessage ]
+    text errorMessage
 
 
-viewForm : Form -> Html Msg
+viewForm : Form -> Element Msg
 viewForm form =
-    Html.form [ onSubmit SubmittedForm ]
-        [ fieldset [ class "form-group" ]
-            [ input
-                [ class "form-control form-control-lg"
-                , placeholder "Email"
-                , onInput EnteredEmail
-                , value form.email
-                ]
-                []
-            ]
-        , fieldset [ class "form-group" ]
-            [ input
-                [ class "form-control form-control-lg"
-                , type_ "password"
-                , placeholder "Password"
-                , onInput EnteredPassword
-                , value form.password
-                ]
-                []
-            ]
-        , button [ class "btn btn-lg btn-primary pull-xs-right" ]
-            [ text "Sign in" ]
+    Element.column []
+        [ Input.username []
+            { onChange = EnteredUsername
+            , placeholder = Just (Input.placeholder [] (text "Username"))
+            , text = form.username
+            , label = Input.labelLeft [] (text "Username")
+            }
+        , Input.currentPassword []
+            { onChange = EnteredPassword
+            , placeholder = Just (Input.placeholder [] (text "Password"))
+            , text = form.password
+            , label = Input.labelLeft [] (text "Password")
+            , show = True
+            }
+        , Input.button []
+            { onPress = Just SubmittedForm
+            , label = text "Sign in"
+            }
         ]
 
 
@@ -149,7 +139,7 @@ viewForm form =
 
 type Msg
     = SubmittedForm
-    | EnteredEmail String
+    | EnteredUsername String
     | EnteredPassword String
     | CompletedLogin (Result Http.Error Viewer)
     | GotSession Session
@@ -170,8 +160,8 @@ update msg model =
                     , Cmd.none
                     )
 
-        EnteredEmail email ->
-            updateForm (\form -> { form | email = email }) model
+        EnteredUsername username ->
+            updateForm (\form -> { form | username = username }) model
 
         EnteredPassword password ->
             updateForm (\form -> { form | password = password }) model
@@ -260,8 +250,8 @@ validateField (Trimmed form) field =
     List.map (InvalidEntry field) <|
         case field of
             Email ->
-                if String.isEmpty form.email then
-                    [ "email can't be blank." ]
+                if String.isEmpty form.username then
+                    [ "username can't be blank." ]
 
                 else
                     []
@@ -280,7 +270,7 @@ Instead, trim only on submit.
 trimFields : Form -> TrimmedForm
 trimFields form =
     Trimmed
-        { email = String.trim form.email
+        { username = String.trim form.username
         , password = String.trim form.password
         }
 
@@ -292,14 +282,11 @@ trimFields form =
 login : Context -> TrimmedForm -> Http.Request Viewer
 login context (Trimmed form) =
     let
-        user =
+        body =
             Encode.object
-                [ ( "email", Encode.string form.email )
+                [ ( "username", Encode.string form.username )
                 , ( "password", Encode.string form.password )
                 ]
-
-        body =
-            Encode.object [ ( "user", user ) ]
                 |> Http.jsonBody
     in
     Api.login (Context.baseUrl context) body Viewer.decoder

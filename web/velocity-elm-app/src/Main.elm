@@ -5,8 +5,10 @@ import Api.Endpoint as Endpoint exposing (Endpoint)
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Context exposing (Context)
-import Html exposing (Html, div, h1, img, text)
-import Html.Attributes exposing (src)
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Page
 import Page.Blank as Blank
@@ -25,10 +27,10 @@ import Viewer exposing (Viewer)
 
 type Model
     = InitError String
-    | ApplicationStarted Application
+    | ApplicationStarted App
 
 
-type Application
+type App
     = Redirect Session Context
     | NotFound Session Context
     | Home Home.Model
@@ -50,7 +52,7 @@ init maybeViewer contextResult url navKey =
 -- VIEW
 
 
-viewCurrentPage : Application -> Document Msg
+viewCurrentPage : App -> Document Msg
 viewCurrentPage currentPage =
     let
         viewPage page toMsg config =
@@ -59,7 +61,7 @@ viewCurrentPage currentPage =
                     Page.view (Session.viewer (toSession currentPage)) page config
             in
             { title = title
-            , body = List.map (Html.map toMsg) body
+            , body = [ Element.layout [] (Element.map toMsg body) ]
             }
     in
     case currentPage of
@@ -85,8 +87,15 @@ view model =
         InitError error ->
             { title = "Context Error"
             , body =
-                [ Html.h1 [] [ text "Error Starting Application" ]
-                , Html.pre [] [ text error ]
+                [ layout
+                    [ Font.family
+                        [ Font.typeface "Open Sans"
+                        , Font.sansSerif
+                        ]
+                    , width fill
+                    , height fill
+                    ]
+                    (textColumn [ alignLeft ] [ paragraph [] [ text error ] ])
                 ]
             }
 
@@ -105,7 +114,7 @@ type Msg
     | GotSession Session
 
 
-toSession : Application -> Session
+toSession : App -> Session
 toSession page =
     case page of
         Redirect session _ ->
@@ -121,7 +130,7 @@ toSession page =
             Login.toSession login
 
 
-toContext : Application -> Context
+toContext : App -> Context
 toContext page =
     case page of
         Redirect _ context ->
@@ -137,7 +146,7 @@ toContext page =
             Login.toContext login
 
 
-changeRouteTo : Maybe Route -> Application -> ( Application, Cmd Msg )
+changeRouteTo : Maybe Route -> App -> ( App, Cmd Msg )
 changeRouteTo maybeRoute currentPage =
     let
         session =
@@ -161,11 +170,16 @@ changeRouteTo maybeRoute currentPage =
                 |> updateWith Home GotHomeMsg currentPage
 
         Just Route.Login ->
-            Login.init session context
-                |> updateWith Login GotLoginMsg currentPage
+            case Session.viewer session of
+                Just _ ->
+                    changeRouteTo (Just Route.Home) currentPage
+
+                _ ->
+                    Login.init session context
+                        |> updateWith Login GotLoginMsg currentPage
 
 
-updatePage : Msg -> Application -> ( Application, Cmd Msg )
+updatePage : Msg -> App -> ( App, Cmd Msg )
 updatePage msg page =
     case ( msg, page ) of
         ( Ignored, _ ) ->
@@ -174,22 +188,9 @@ updatePage msg page =
         ( ClickedLink urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
-                    case url.fragment of
-                        Nothing ->
-                            -- If we got a link that didn't include a fragment,
-                            -- it's from one of those (href "") attributes that
-                            -- we have to include to make the RealWorld CSS work.
-                            --
-                            -- In an application doing path routing instead of
-                            -- fragment-based routing, this entire
-                            -- `case url.fragment of` expression this comment
-                            -- is inside would be unnecessary.
-                            ( page, Cmd.none )
-
-                        Just _ ->
-                            ( page
-                            , Nav.pushUrl (Session.navKey (toSession page)) (Url.toString url)
-                            )
+                    ( page
+                    , Nav.pushUrl (Session.navKey (toSession page)) (Url.toString url)
+                    )
 
                 Browser.External href ->
                     ( page
@@ -231,11 +232,41 @@ update msg model =
             ( model, Cmd.none )
 
 
-updateWith : (subPage -> Application) -> (subPageMsg -> Msg) -> Application -> ( subPage, Cmd subPageMsg ) -> ( Application, Cmd Msg )
+updateWith : (subPage -> App) -> (subPageMsg -> Msg) -> App -> ( subPage, Cmd subPageMsg ) -> ( App, Cmd Msg )
 updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
     ( toPage pageModel
     , Cmd.map toMsg pageCmd
     )
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model of
+        ApplicationStarted page ->
+            pageSubscriptions page
+
+        InitError _ ->
+            Sub.none
+
+
+pageSubscriptions : App -> Sub Msg
+pageSubscriptions page =
+    case page of
+        NotFound _ _ ->
+            Sub.none
+
+        Redirect _ _ ->
+            Session.changes GotSession (Session.navKey (toSession page))
+
+        Home home ->
+            Sub.map GotHomeMsg (Home.subscriptions home)
+
+        Login login ->
+            Sub.map GotLoginMsg (Login.subscriptions login)
 
 
 
@@ -244,12 +275,11 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 
 main : Program Value Model Msg
 main =
-    Api.application Viewer.decoder
-        Context.fromBaseUrl
+    Api.application Viewer.decoder Context.fromBaseUrl <|
         { onUrlChange = ChangedUrl
         , onUrlRequest = ClickedLink
         , view = view
         , init = init
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         }

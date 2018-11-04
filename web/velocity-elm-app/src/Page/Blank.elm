@@ -1,10 +1,10 @@
 module Page.Blank exposing (view)
 
-import Html exposing (Html)
+import Element exposing (Element)
 
 
-view : { title : String, content : Html msg }
+view : { title : String, content : Element msg }
 view =
     { title = ""
-    , content = Html.text ""
+    , content = Element.text ""
     }

@@ -53,7 +53,7 @@ url baseUrl paths queryParams =
     -- NOTE: Url.Builder takes care of percent-encoding special URL characters.
     -- See https://package.elm-lang.org/packages/elm/url/latest/Url#percentEncode
     Url.Builder.crossOrigin (unwrap baseUrl)
-        ("api" :: paths)
+        ("v1" :: paths)
         queryParams
         |> Endpoint
 
@@ -64,7 +64,7 @@ url baseUrl paths queryParams =
 
 login : Endpoint -> Endpoint
 login baseUrl =
-    url baseUrl [ "users", "login" ] []
+    url baseUrl [ "auth" ] []
 
 
 

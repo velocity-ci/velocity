@@ -7,9 +7,6 @@ all of them. One source of truth!
 
 -}
 
-import Html exposing (Attribute, Html)
-import Html.Attributes as Attr
-
 
 type Image
     = Image String
@@ -43,6 +40,6 @@ image filename =
 -- USING IMAGES
 
 
-src : Image -> Attribute msg
+src : Image -> String
 src (Image url) =
-    Attr.src url
+    url

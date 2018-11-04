@@ -146,7 +146,7 @@ application viewerDecoder contextFromBaseUrl config =
             let
                 maybeViewer =
                     flags
-                        |> Decode.decodeValue (Decode.field "cred" Decode.string)
+                        |> Decode.decodeValue (Decode.field "viewer" Decode.string)
                         |> Result.andThen (Decode.decodeString (storageDecoder viewerDecoder))
                         |> Result.toMaybe
 
@@ -247,7 +247,7 @@ delete url cred body decoder =
 
 login : BaseUrl -> Http.Body -> Decoder (Cred -> a) -> Http.Request a
 login (BaseUrl baseUrl) body decoder =
-    post (Endpoint.login baseUrl) Nothing body (Decode.field "user" (decoderFromCred decoder))
+    post (Endpoint.login baseUrl) Nothing body (decoderFromCred decoder)
 
 
 

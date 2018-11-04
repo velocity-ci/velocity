@@ -6,8 +6,10 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession
 import Api exposing (Cred)
 import Browser.Dom as Dom
 import Context exposing (Context)
-import Html exposing (..)
-import Html.Attributes exposing (attribute, class, classList, href, id, placeholder)
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Input as Input
 import Html.Events exposing (onClick)
 import Loading
 import Session exposing (Session)
@@ -46,10 +48,65 @@ init session context =
 -- VIEW
 
 
-view : Model -> { title : String, content : Html Msg }
+view : Model -> { title : String, content : Element Msg }
 view model =
     { title = "Home"
-    , content = text "Hello world"
+    , content =
+        wrappedRow
+            [ width fill
+            , height fill
+            , padding 10
+            , spacing 10
+            ]
+            [ el
+                [ width (px 100)
+                , height (px 100)
+                , Border.width 1
+                , Border.color (rgba255 92 184 92 1)
+                , alignTop
+                ]
+                (text "box")
+            , el
+                [ width (px 100)
+                , height (px 100)
+                , Border.width 1
+                , Border.color (rgba255 92 184 92 1)
+                , alignTop
+                ]
+                (text "box")
+            , el
+                [ width (px 100)
+                , height (px 100)
+                , Border.width 1
+                , Border.color (rgba255 92 184 92 1)
+                , alignTop
+                ]
+                (text "box")
+            , el
+                [ width (px 100)
+                , height (px 100)
+                , Border.width 1
+                , Border.color (rgba255 92 184 92 1)
+                , alignTop
+                ]
+                (text "box")
+            , el
+                [ width (px 100)
+                , height (px 100)
+                , Border.width 1
+                , Border.color (rgba255 92 184 92 1)
+                , alignTop
+                ]
+                (text "box")
+            , el
+                [ width (px 100)
+                , height (px 100)
+                , Border.width 1
+                , Border.color (rgba255 92 184 92 1)
+                , alignTop
+                ]
+                (text "box")
+            ]
     }
 
 

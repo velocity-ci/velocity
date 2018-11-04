@@ -1,8 +1,7 @@
-module Route exposing (Route(..), fromUrl, href, replaceUrl)
+module Route exposing (Route(..), fromUrl, link, replaceUrl)
 
 import Browser.Navigation as Nav
-import Html exposing (Attribute)
-import Html.Attributes as Attr
+import Element exposing (Attribute, Element)
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
 import Username exposing (Username)
@@ -32,9 +31,12 @@ parser =
 -- PUBLIC HELPERS
 
 
-href : Route -> Attribute msg
-href targetRoute =
-    Attr.href (routeToString targetRoute)
+link : List (Attribute msg) -> Element msg -> Route -> Element msg
+link attrs label targetRoute =
+    Element.link attrs
+        { url = routeToString targetRoute
+        , label = label
+        }
 
 
 replaceUrl : Nav.Key -> Route -> Cmd msg
@@ -44,11 +46,7 @@ replaceUrl key route =
 
 fromUrl : Url -> Maybe Route
 fromUrl url =
-    -- The RealWorld spec treats the fragment like a path.
-    -- This makes it *literally* the path, so we can proceed
-    -- with parsing as if it had been a normal path all along.
-    { url | path = Maybe.withDefault "" url.fragment, fragment = Nothing }
-        |> Parser.parse parser
+    Parser.parse parser url
 
 
 
@@ -71,7 +69,5 @@ routeToString page =
 
                 Logout ->
                     [ "logout" ]
-
-
     in
-    "#/" ++ String.join "/" pieces
+    "/" ++ String.join "/" pieces

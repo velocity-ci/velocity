@@ -256,11 +256,7 @@ module.exports = {
     // Watcher doesn't work well if you mistype casing in a path so we use
     // a plugin that prints an error when you attempt to do this.
     // See https://github.com/facebook/create-react-app/issues/240
-    new CaseSensitivePathsPlugin(),
-
-    new webpack.EnvironmentPlugin({
-        ARCHITECT_ADDRESS: 'http://localhost/v1'
-    })
+    new CaseSensitivePathsPlugin()
   ],
 
   // Some libraries import Node modules but don't use them in the browser.
