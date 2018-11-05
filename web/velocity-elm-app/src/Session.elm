@@ -1,8 +1,12 @@
-module Session exposing (Session, fromViewer, changes, viewer, cred, navKey)
+module Session exposing (InitError, Session, cred, fromViewer, navKey, viewer)
 
+import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
+import Http
+import Project exposing (Project)
+import Task exposing (Task)
 import Viewer exposing (Viewer)
-import Api exposing (Cred)
+
 
 
 -- TYPES
@@ -49,21 +53,40 @@ navKey session =
 
 
 -- CHANGES
+--changes : (Session -> msg) -> Session -> Sub msg
+--changes toMsg session =
+--    Api.viewerChanges
+--        (\maybeViewer ->
+--            case maybeViewer of
+--                Just viewerVal ->
+--                    toMsg (LoggedIn navKey viewerVal)
+--
+--                Nothing ->
+--                    toMsg (Guest navKey)
+--        )
+--        Viewer.decoder
 
 
-changes : (Session -> msg) -> Nav.Key -> Sub msg
-changes toMsg key =
-    Api.viewerChanges (\maybeViewer -> toMsg (fromViewer key maybeViewer)) Viewer.decoder
+type InitError
+    = HttpError Http.Error
 
 
-fromViewer : Nav.Key -> Maybe Viewer -> Session
-fromViewer key maybeViewer =
+fromViewer : Nav.Key -> BaseUrl -> Maybe Viewer -> Task InitError Session
+fromViewer key baseUrl maybeViewer =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
     -- decode that String as JSON.
+    -- If the person is logged in we will attempt to get a
     case maybeViewer of
         Just viewerVal ->
-            LoggedIn key viewerVal
+            let
+                credVal =
+                    Viewer.cred viewerVal
+            in
+            Project.list (Just credVal) baseUrl
+                |> Http.toTask
+                |> Task.mapError HttpError
+                |> Task.map (\_ -> LoggedIn key viewerVal)
 
         Nothing ->
-            Guest key
+            Task.succeed (Guest key)

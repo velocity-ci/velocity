@@ -18,6 +18,7 @@ import Page.Login as Login
 import Page.NotFound as NotFound
 import Route exposing (Route)
 import Session exposing (Session)
+import Task exposing (Task)
 import Url exposing (Url)
 import Viewer exposing (Viewer)
 
@@ -28,6 +29,7 @@ import Viewer exposing (Viewer)
 
 type Model
     = InitError String
+    | Initialising Context
     | ApplicationStarted App
 
 
@@ -42,8 +44,11 @@ init : Maybe Viewer -> Result Decode.Error Context -> Url -> Nav.Key -> ( Model,
 init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
-            changeRouteTo (Route.fromUrl url) (Redirect (Session.fromViewer navKey maybeViewer) context)
-                |> Tuple.mapFirst ApplicationStarted
+            ( Initialising context
+            , Session.fromViewer navKey (Context.baseUrl context) maybeViewer
+                |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
+                |> Task.attempt StartApplication
+            )
 
         Err error ->
             ( InitError (Decode.errorToString error), Cmd.none )
@@ -85,6 +90,11 @@ view model =
         ApplicationStarted currentPage ->
             viewCurrentPage currentPage
 
+        Initialising _ ->
+            { title = "Loading"
+            , body = [ layout [] (text "Loading") ]
+            }
+
         InitError error ->
             { title = "Context Error"
             , body =
@@ -107,12 +117,13 @@ view model =
 
 type Msg
     = Ignored
+    | StartApplication (Result Session.InitError ( App, Cmd Msg ))
     | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
     | GotHomeMsg Home.Msg
     | GotLoginMsg Login.Msg
-    | GotSession Session
+    | GotSession (Result Session.InitError Session)
     | WindowResized Int Int
 
 
@@ -218,11 +229,10 @@ updatePage msg page =
             Login.update subMsg login
                 |> updateWith Login GotLoginMsg page
 
-        ( GotSession session, Redirect _ _ ) ->
-            ( Redirect session (toContext page)
-            , Route.replaceUrl (Session.navKey session) Route.Home
-            )
-
+        --        ( GotSession session, Redirect _ _ ) ->
+        --            ( Redirect session (toContext page)
+        --            , Route.replaceUrl (Session.navKey session) Route.Home
+        --            )
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
@@ -251,6 +261,16 @@ update msg model =
             updatePage msg page
                 |> Tuple.mapFirst ApplicationStarted
 
+        Initialising _ ->
+            case msg of
+                StartApplication (Ok ( app, cmd )) ->
+                    ( ApplicationStarted app
+                    , cmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
         InitError _ ->
             ( model, Cmd.none )
 
@@ -268,34 +288,39 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ pageSubscriptions model
-        , Browser.Events.onResize WindowResized
-        ]
-
-
-pageSubscriptions : Model -> Sub Msg
-pageSubscriptions model =
-    case model of
-        ApplicationStarted page ->
-            case page of
-                NotFound _ _ ->
-                    Sub.none
-
-                Redirect _ _ ->
-                    Session.changes GotSession (Session.navKey (toSession page))
-
-                Home home ->
-                    Sub.map GotHomeMsg (Home.subscriptions home)
-
-                Login login ->
-                    Sub.map GotLoginMsg (Login.subscriptions login)
-
-        InitError _ ->
-            Sub.none
+    Sub.none
 
 
 
+--    Sub.batch
+--        [ pageSubscriptions model
+--        , Browser.Events.onResize WindowResized
+--        ]
+--
+--
+--pageSubscriptions : Model -> Sub (Cmd Msg)
+--pageSubscriptions model =
+--    case model of
+--        ApplicationStarted page ->
+--            case page of
+--                NotFound _ _ ->
+--                    Sub.none
+--
+--                Redirect session context ->
+--                    Session.changes GotSession (Context.baseUrl context) session
+--
+--                Home home ->
+--                    Sub.map GotHomeMsg (Home.subscriptions home)
+--
+--                Login login ->
+--                    Sub.map GotLoginMsg (Login.subscriptions login)
+--
+--        Initialising _ ->
+--            Sub.none
+--
+--        InitError _ ->
+--            Sub.none
+--
 ---- PROGRAM ----
 
 

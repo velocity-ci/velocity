@@ -142,7 +142,7 @@ type Msg
     | EnteredUsername String
     | EnteredPassword String
     | CompletedLogin (Result Http.Error Viewer)
-    | GotSession Session
+    | GotSession (Result Session.InitError Session)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -181,10 +181,13 @@ update msg model =
             , Viewer.store viewer
             )
 
-        GotSession session ->
+        GotSession (Ok session) ->
             ( { model | session = session }
             , Route.replaceUrl (Session.navKey session) Route.Home
             )
+
+        GotSession (Err _) ->
+            ( model, Cmd.none )
 
 
 {-| Helper function for `update`. Updates the form and returns Cmd.none.
@@ -199,12 +202,13 @@ updateForm transform model =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : Model -> Sub (Cmd Msg)
 subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
+    Sub.none
 
 
 
+--    Session.changes GotSession (Context.baseUrl model.context) model.session
 -- FORM
 
 

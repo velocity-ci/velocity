@@ -143,15 +143,18 @@ viewBox =
 
 
 type Msg
-    = GotSession Session
+    = GotSession (Result Session.InitError Session)
     | PassedSlowLoadThreshold
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotSession session ->
+        GotSession (Ok session) ->
             ( { model | session = session }, Cmd.none )
+
+        GotSession (Err _) ->
+            ( model, Cmd.none )
 
         PassedSlowLoadThreshold ->
             let
@@ -175,12 +178,13 @@ scrollToTop =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : Model -> Sub (Cmd Msg)
 subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
+    Sub.none
 
 
 
+--    Session.changes GotSession (Context.baseUrl model.context) model.session
 -- EXPORT
 
 
