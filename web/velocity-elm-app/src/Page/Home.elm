@@ -143,17 +143,21 @@ viewBox =
 
 
 type Msg
-    = GotSession (Result Session.InitError Session)
+    = UpdateSession (Task Session.InitError Session)
+    | UpdatedSession (Result Session.InitError Session)
     | PassedSlowLoadThreshold
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotSession (Ok session) ->
+        UpdateSession task ->
+            ( model, Task.attempt UpdatedSession task )
+
+        UpdatedSession (Ok session) ->
             ( { model | session = session }, Cmd.none )
 
-        GotSession (Err _) ->
+        UpdatedSession (Err _) ->
             ( model, Cmd.none )
 
         PassedSlowLoadThreshold ->
@@ -178,13 +182,12 @@ scrollToTop =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub (Cmd Msg)
+subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Session.changes UpdateSession (Context.baseUrl model.context) model.session
 
 
 
---    Session.changes GotSession (Context.baseUrl model.context) model.session
 -- EXPORT
 
 

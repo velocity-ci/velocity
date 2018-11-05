@@ -123,7 +123,8 @@ type Msg
     | ClickedLink Browser.UrlRequest
     | GotHomeMsg Home.Msg
     | GotLoginMsg Login.Msg
-    | GotSession (Result Session.InitError Session)
+    | UpdateSession (Task Session.InitError Session)
+    | UpdatedSession (Result Session.InitError Session)
     | WindowResized Int Int
 
 
@@ -173,21 +174,34 @@ changeRouteTo maybeRoute currentPage =
             ( NotFound session context, Cmd.none )
 
         Just Route.Root ->
-            ( currentPage, Route.replaceUrl (Session.navKey session) Route.Home )
+            ( currentPage
+            , Route.replaceUrl (Session.navKey session) Route.Home
+            )
 
         Just Route.Logout ->
-            ( currentPage, Api.logout )
+            ( Redirect session context
+            , Cmd.batch [ Api.logout, Route.replaceUrl (Session.navKey session) Route.Login ]
+            )
 
         Just Route.Home ->
-            Home.init session context
-                |> updateWith Home GotHomeMsg currentPage
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
+
+                Just _ ->
+                    Home.init session context
+                        |> updateWith Home GotHomeMsg currentPage
 
         Just Route.Login ->
             case Session.viewer session of
                 Just _ ->
-                    changeRouteTo (Just Route.Home) currentPage
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Home
+                    )
 
-                _ ->
+                Nothing ->
                     Login.init session context
                         |> updateWith Login GotLoginMsg currentPage
 
@@ -229,10 +243,17 @@ updatePage msg page =
             Login.update subMsg login
                 |> updateWith Login GotLoginMsg page
 
-        --        ( GotSession session, Redirect _ _ ) ->
-        --            ( Redirect session (toContext page)
-        --            , Route.replaceUrl (Session.navKey session) Route.Home
-        --            )
+        ( UpdateSession task, _ ) ->
+            ( page, Task.attempt UpdatedSession task )
+
+        ( UpdatedSession (Ok session), Redirect _ _ ) ->
+            ( Redirect session (toContext page)
+            , Route.replaceUrl (Session.navKey session) Route.Home
+            )
+
+        ( UpdatedSession (Err _), _ ) ->
+            ( page, Cmd.none )
+
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
@@ -288,38 +309,37 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+        [ pageSubscriptions model
+        , Browser.Events.onResize WindowResized
+        ]
+
+
+pageSubscriptions : Model -> Sub Msg
+pageSubscriptions model =
+    case model of
+        ApplicationStarted page ->
+            case page of
+                NotFound _ _ ->
+                    Sub.none
+
+                Redirect session context ->
+                    Session.changes UpdateSession (Context.baseUrl context) session
+
+                Home home ->
+                    Sub.map GotHomeMsg (Home.subscriptions home)
+
+                Login login ->
+                    Sub.map GotLoginMsg (Login.subscriptions login)
+
+        Initialising _ ->
+            Sub.none
+
+        InitError _ ->
+            Sub.none
 
 
 
---    Sub.batch
---        [ pageSubscriptions model
---        , Browser.Events.onResize WindowResized
---        ]
---
---
---pageSubscriptions : Model -> Sub (Cmd Msg)
---pageSubscriptions model =
---    case model of
---        ApplicationStarted page ->
---            case page of
---                NotFound _ _ ->
---                    Sub.none
---
---                Redirect session context ->
---                    Session.changes GotSession (Context.baseUrl context) session
---
---                Home home ->
---                    Sub.map GotHomeMsg (Home.subscriptions home)
---
---                Login login ->
---                    Sub.map GotLoginMsg (Login.subscriptions login)
---
---        Initialising _ ->
---            Sub.none
---
---        InitError _ ->
---            Sub.none
 --
 ---- PROGRAM ----
 

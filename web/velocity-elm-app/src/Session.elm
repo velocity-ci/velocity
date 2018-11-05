@@ -1,4 +1,4 @@
-module Session exposing (InitError, Session, cred, fromViewer, navKey, viewer)
+module Session exposing (InitError, Session, changes, cred, fromViewer, navKey, viewer)
 
 import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
@@ -13,7 +13,7 @@ import Viewer exposing (Viewer)
 
 
 type Session
-    = LoggedIn Nav.Key Viewer
+    = LoggedIn Nav.Key Viewer (List Project)
     | Guest Nav.Key
 
 
@@ -24,7 +24,7 @@ type Session
 viewer : Session -> Maybe Viewer
 viewer session =
     case session of
-        LoggedIn _ val ->
+        LoggedIn _ val _ ->
             Just val
 
         Guest _ ->
@@ -34,7 +34,7 @@ viewer session =
 cred : Session -> Maybe Cred
 cred session =
     case session of
-        LoggedIn _ val ->
+        LoggedIn _ val _ ->
             Just (Viewer.cred val)
 
         Guest _ ->
@@ -44,7 +44,7 @@ cred session =
 navKey : Session -> Nav.Key
 navKey session =
     case session of
-        LoggedIn key _ ->
+        LoggedIn key _ _ ->
             key
 
         Guest key ->
@@ -53,18 +53,11 @@ navKey session =
 
 
 -- CHANGES
---changes : (Session -> msg) -> Session -> Sub msg
---changes toMsg session =
---    Api.viewerChanges
---        (\maybeViewer ->
---            case maybeViewer of
---                Just viewerVal ->
---                    toMsg (LoggedIn navKey viewerVal)
---
---                Nothing ->
---                    toMsg (Guest navKey)
---        )
---        Viewer.decoder
+
+
+changes : (Task InitError Session -> msg) -> BaseUrl -> Session -> Sub msg
+changes toMsg baseUrl session =
+    Api.viewerChanges (fromViewer (navKey session) baseUrl >> toMsg) Viewer.decoder
 
 
 type InitError
@@ -86,7 +79,7 @@ fromViewer key baseUrl maybeViewer =
             Project.list (Just credVal) baseUrl
                 |> Http.toTask
                 |> Task.mapError HttpError
-                |> Task.map (\_ -> LoggedIn key viewerVal)
+                |> Task.map (LoggedIn key viewerVal)
 
         Nothing ->
             Task.succeed (Guest key)

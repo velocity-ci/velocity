@@ -71,7 +71,7 @@ username (Cred val _) =
 
 credHeader : Cred -> Http.Header
 credHeader (Cred _ str) =
-    Http.header "authorization" ("Token " ++ str)
+    Http.header "Authorization" ("Bearer " ++ str)
 
 
 {-| It's important that this is never exposed!

@@ -17,6 +17,7 @@ import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
 import Route exposing (Route)
 import Session exposing (Session)
+import Task exposing (Task)
 import Viewer exposing (Viewer)
 
 
@@ -142,7 +143,8 @@ type Msg
     | EnteredUsername String
     | EnteredPassword String
     | CompletedLogin (Result Http.Error Viewer)
-    | GotSession (Result Session.InitError Session)
+    | UpdateSession (Task Session.InitError Session)
+    | UpdatedSession (Result Session.InitError Session)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -181,12 +183,13 @@ update msg model =
             , Viewer.store viewer
             )
 
-        GotSession (Ok session) ->
-            ( { model | session = session }
-            , Route.replaceUrl (Session.navKey session) Route.Home
-            )
+        UpdateSession task ->
+            ( model, Task.attempt UpdatedSession task )
 
-        GotSession (Err _) ->
+        UpdatedSession (Ok session) ->
+            ( { model | session = session }, Cmd.none )
+
+        UpdatedSession (Err _) ->
             ( model, Cmd.none )
 
 
@@ -202,13 +205,12 @@ updateForm transform model =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub (Cmd Msg)
+subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Session.changes UpdateSession (Context.baseUrl model.context) model.session
 
 
 
---    Session.changes GotSession (Context.baseUrl model.context) model.session
 -- FORM
 
 
