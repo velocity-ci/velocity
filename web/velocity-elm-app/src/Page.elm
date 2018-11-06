@@ -16,7 +16,7 @@ import Viewer exposing (Viewer)
 
 maxWidth : Int
 maxWidth =
-    1980
+    1280
 
 
 {-| Determines which navbar link (if any) will be rendered as active.
@@ -55,7 +55,11 @@ view maybeViewer page { title, content } toMsg =
     { title = title ++ " - Conduit"
     , body =
         [ Element.layout
-            []
+            [ Font.family
+                [ Font.typeface "Roboto"
+                , Font.sansSerif
+                ]
+            ]
             (Element.column
                 [ width fill
                 , height fill

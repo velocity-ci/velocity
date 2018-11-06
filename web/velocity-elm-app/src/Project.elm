@@ -1,4 +1,4 @@
-module Project exposing (Project, decoder, list)
+module Project exposing (Project, decoder, list, name, repository, thumbnailSrc)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -49,6 +49,25 @@ internalsDecoder =
         |> required "updatedAt" Iso8601.decoder
         |> required "synchronising" Decode.bool
         |> required "logo" (Decode.maybe Decode.string)
+
+
+
+-- INFO --
+
+
+name : Project -> String
+name (Project project) =
+    project.name
+
+
+thumbnailSrc : Project -> Maybe String
+thumbnailSrc (Project project) =
+    project.logo
+
+
+repository : Project -> String
+repository (Project project) =
+    project.repository
 
 
 

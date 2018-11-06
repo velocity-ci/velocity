@@ -29,7 +29,7 @@ import Viewer exposing (Viewer)
 
 type Model
     = InitError String
-    | Initialising Context
+    | Initialising Context Nav.Key
     | ApplicationStarted App
 
 
@@ -44,7 +44,7 @@ init : Maybe Viewer -> Result Decode.Error Context -> Url -> Nav.Key -> ( Model,
 init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
-            ( Initialising context
+            ( Initialising context navKey
             , Session.fromViewer navKey (Context.baseUrl context) maybeViewer
                 |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
                 |> Task.attempt StartApplication
@@ -90,7 +90,7 @@ view model =
         ApplicationStarted currentPage ->
             viewCurrentPage currentPage
 
-        Initialising _ ->
+        Initialising _ _ ->
             { title = "Loading"
             , body = [ layout [] (text "Loading") ]
             }
@@ -180,7 +180,7 @@ changeRouteTo maybeRoute currentPage =
 
         Just Route.Logout ->
             ( Redirect session context
-            , Cmd.batch [ Api.logout, Route.replaceUrl (Session.navKey session) Route.Login ]
+            , Api.logout
             )
 
         Just Route.Home ->
@@ -248,7 +248,12 @@ updatePage msg page =
 
         ( UpdatedSession (Ok session), Redirect _ _ ) ->
             ( Redirect session (toContext page)
-            , Route.replaceUrl (Session.navKey session) Route.Home
+            , case Session.viewer session of
+                Just _ ->
+                    Route.replaceUrl (Session.navKey session) Route.Home
+
+                Nothing ->
+                    Route.replaceUrl (Session.navKey session) Route.Login
             )
 
         ( UpdatedSession (Err _), _ ) ->
@@ -279,14 +284,31 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
         ApplicationStarted page ->
-            updatePage msg page
-                |> Tuple.mapFirst ApplicationStarted
-
-        Initialising _ ->
             case msg of
                 StartApplication (Ok ( app, cmd )) ->
                     ( ApplicationStarted app
                     , cmd
+                    )
+
+                StartApplication (Err err) ->
+                    ( InitError (Session.errorToString err)
+                    , Cmd.none
+                    )
+
+                _ ->
+                    updatePage msg page
+                        |> Tuple.mapFirst ApplicationStarted
+
+        Initialising _ _ ->
+            case msg of
+                StartApplication (Ok ( app, cmd )) ->
+                    ( ApplicationStarted app
+                    , cmd
+                    )
+
+                StartApplication (Err err) ->
+                    ( InitError (Session.errorToString err)
+                    , Cmd.none
                     )
 
                 _ ->
@@ -332,7 +354,7 @@ pageSubscriptions model =
                 Login login ->
                     Sub.map GotLoginMsg (Login.subscriptions login)
 
-        Initialising _ ->
+        Initialising _ _ ->
             Sub.none
 
         InitError _ ->

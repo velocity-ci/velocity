@@ -13,6 +13,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html.Events exposing (onClick)
 import Loading
+import Project exposing (Project)
 import Session exposing (Session)
 import Task exposing (Task)
 import Url.Builder
@@ -26,7 +27,6 @@ import Username exposing (Username)
 type alias Model =
     { session : Session
     , context : Context
-    , projects : List Int
     }
 
 
@@ -37,11 +37,15 @@ type Status a
     | Failed
 
 
+type Panel
+    = BlankPanel
+    | ProjectPanel Project
+
+
 init : Session -> Context -> ( Model, Cmd Msg )
 init session context =
     ( { session = session
       , context = context
-      , projects = List.range 0 20
       }
     , Cmd.batch
         [ Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
@@ -73,19 +77,29 @@ view model =
                 [ width fill
                 , height fill
                 ]
-                (viewBoxRows (Context.device model.context) model.projects)
+                (viewBoxRows (Context.device model.context) (Session.projects model.session))
             ]
     }
 
 
-splitProjectsToRows : Int -> List a -> List (List a)
+splitProjectsToRows : Int -> List Panel -> List (List Panel)
 splitProjectsToRows i list =
     case List.take i list of
         [] ->
             []
 
         listHead ->
-            listHead :: splitProjectsToRows i (List.drop i list)
+            let
+                head =
+                    if List.length listHead < i then
+                        List.range 1 (i - List.length listHead)
+                            |> List.map (always BlankPanel)
+                            |> List.append listHead
+
+                    else
+                        listHead
+            in
+            head :: splitProjectsToRows i (List.drop i list)
 
 
 rowAmount : Device -> Int
@@ -95,24 +109,25 @@ rowAmount device =
             1
 
         ( Phone, Landscape ) ->
-            3
+            2
 
         ( Tablet, Portrait ) ->
-            3
+            2
 
         ( Tablet, Landscape ) ->
-            6
+            2
 
         ( Desktop, _ ) ->
-            7
+            3
 
         ( BigDesktop, _ ) ->
-            9
+            3
 
 
-viewBoxRows : Device -> List a -> List (Element msg)
+viewBoxRows : Device -> List Project -> List (Element msg)
 viewBoxRows device projects =
     projects
+        |> List.map ProjectPanel
         |> splitProjectsToRows (rowAmount device)
         |> List.map
             (\i ->
@@ -122,23 +137,101 @@ viewBoxRows device projects =
                     , width fill
                     , height (fillPortion 1 |> minimum 150 |> maximum 250)
                     ]
-                    (List.map (always viewBox) i)
+                    (List.map viewPanel i)
             )
 
 
-viewBox : Element msg
-viewBox =
-    el
-        [ width (fillPortion 1)
-        , height (fillPortion 1 |> minimum 150 |> maximum 250)
-        , Border.width 1
-        , Border.color (rgba255 92 184 92 1)
-        , Border.rounded 10
-        ]
-        (text "box")
+viewPanel : Panel -> Element msg
+viewPanel panel =
+    case panel of
+        BlankPanel ->
+            el
+                [ width (fillPortion 1)
+                , height (fillPortion 1 |> minimum 150 |> maximum 250)
+                ]
+                (text "")
+
+        ProjectPanel project ->
+            row
+                [ width (fillPortion 1)
+                , height (fillPortion 1 |> minimum 150 |> maximum 250)
+                , Border.width 2
+                , Border.color (rgba255 245 245 245 1)
+                , Border.rounded 10
+                , mouseOver
+                    [ Background.gradient
+                        { angle = 90
+                        , steps =
+                            [ rgba255 0 0 0 0
+                            , rgba255 0 0 0 0
+                            , rgba255 0 0 0 0
+                            , rgba255 245 245 245 1
+                            ]
+                        }
+                    ]
+                ]
+                [ el
+                    [ width (fillPortion 1)
+                    , height fill
+                    , Border.rounded 25
+                    , case Project.thumbnailSrc project of
+                        Just thumbnail ->
+                            Background.image thumbnail
+
+                        Nothing ->
+                            Background.color (rgba255 92 184 92 1)
+                    ]
+                    (text "")
+                , column
+                    [ width (fillPortion 2)
+                    , height fill
+                    , padding 10
+                    , spaceEvenly
+                    ]
+                    [ el
+                        [ alignTop
+                        , alignLeft
+                        , Font.medium
+                        , Font.size 20
+                        , Font.letterSpacing -0.5
+                        , width fill
+                        , Font.color (rgba 0 0 0 0.8)
+                        , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
+                        , Border.color (rgba255 245 245 245 1)
+                        , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
+                        , clip
+                        ]
+                        (text <| Project.name project)
+                    , paragraph
+                        [ paddingXY 0 10
+                        , alignTop
+                        , alignLeft
+                        , Font.size 15
+                        , Font.light
+                        , width fill
+                        , clipX
+                        ]
+                        [ text <| Project.repository project
+                        ]
+                    , paragraph
+                        [ alignBottom
+                        , alignLeft
+                        , Font.size 13
+                        , Font.light
+                        ]
+                        [ text "Last updated 2 weeks ago"
+                        ]
+                    ]
+                ]
 
 
 
+--
+--
+--viewProjectThumbnail : Project -> Element msg
+--viewProjectThumbnail project =
+--    case project.logo of
+--        Just logo ->
 -- UPDATE
 
 

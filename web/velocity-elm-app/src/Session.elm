@@ -1,4 +1,4 @@
-module Session exposing (InitError, Session, changes, cred, fromViewer, navKey, viewer)
+module Session exposing (InitError, Session, changes, cred, errorToString, fromViewer, navKey, projects, viewer)
 
 import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
@@ -17,6 +17,10 @@ type Session
     | Guest Nav.Key
 
 
+type InitError
+    = HttpError Http.Error
+
+
 
 -- INFO
 
@@ -29,6 +33,16 @@ viewer session =
 
         Guest _ ->
             Nothing
+
+
+projects : Session -> List Project
+projects session =
+    case session of
+        LoggedIn _ _ projects_ ->
+            projects_
+
+        Guest _ ->
+            []
 
 
 cred : Session -> Maybe Cred
@@ -51,6 +65,25 @@ navKey session =
             key
 
 
+errorToString : InitError -> String
+errorToString (HttpError httpError) =
+    case httpError of
+        Http.BadUrl error ->
+            "Bad URL: " ++ error
+
+        Http.NetworkError ->
+            "Network Error"
+
+        Http.BadStatus _ ->
+            "Bad Status"
+
+        Http.BadPayload payload _ ->
+            "Bad Payload: " ++ payload
+
+        Http.Timeout ->
+            "Timeout"
+
+
 
 -- CHANGES
 
@@ -58,10 +91,6 @@ navKey session =
 changes : (Task InitError Session -> msg) -> BaseUrl -> Session -> Sub msg
 changes toMsg baseUrl session =
     Api.viewerChanges (fromViewer (navKey session) baseUrl >> toMsg) Viewer.decoder
-
-
-type InitError
-    = HttpError Http.Error
 
 
 fromViewer : Nav.Key -> BaseUrl -> Maybe Viewer -> Task InitError Session

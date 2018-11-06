@@ -90,7 +90,7 @@ view : Model -> { title : String, content : Element Msg }
 view model =
     { title = "Login"
     , content =
-        Element.row []
+        Element.column [ width fill, height fill ]
             [ Element.row [] (List.map viewProblem model.problems)
             , viewForm model.form
             ]
@@ -113,24 +113,52 @@ viewProblem problem =
 
 viewForm : Form -> Element Msg
 viewForm form =
-    Element.column []
-        [ Input.username []
-            { onChange = EnteredUsername
-            , placeholder = Just (Input.placeholder [] (text "Username"))
-            , text = form.username
-            , label = Input.labelLeft [] (text "Username")
-            }
-        , Input.currentPassword []
-            { onChange = EnteredPassword
-            , placeholder = Just (Input.placeholder [] (text "Password"))
-            , text = form.password
-            , label = Input.labelLeft [] (text "Password")
-            , show = True
-            }
-        , Input.button []
-            { onPress = Just SubmittedForm
-            , label = text "Sign in"
-            }
+    Element.column
+        [ width (fill |> maximum 400)
+        , height fill
+        , centerX
+        , spacingXY 0 20
+        , paddingXY 0 20
+        , Font.size 15
+        , Font.color (rgba255 92 184 92 1)
+        ]
+        [ row [ width fill ]
+            [ Input.username []
+                { onChange = EnteredUsername
+                , placeholder = Nothing
+                , text = form.username
+                , label = Input.labelAbove [ alignLeft ] (text "Username")
+                }
+            ]
+        , row [ width fill ]
+            [ Input.currentPassword []
+                { onChange = EnteredPassword
+                , placeholder = Nothing
+                , text = form.password
+                , label = Input.labelAbove [ alignLeft ] (text "Password")
+                , show = True
+                }
+            ]
+        , row
+            [ width fill
+            , paddingEach { top = 10, left = 0, right = 0, bottom = 0 }
+            ]
+            [ Input.button
+                [ width fill
+                , Border.width 1
+                , Border.color (rgba255 92 184 92 1)
+                , Border.rounded 10
+                , height (px 45)
+                , mouseOver
+                    [ Background.color (rgba255 92 184 92 0.6)
+                    , Border.color (rgba255 92 184 92 1)
+                    , Font.color (rgb 255 255 255)
+                    ]
+                ]
+                { onPress = Just SubmittedForm
+                , label = text "Sign in"
+                }
+            ]
         ]
 
 
@@ -187,7 +215,9 @@ update msg model =
             ( model, Task.attempt UpdatedSession task )
 
         UpdatedSession (Ok session) ->
-            ( { model | session = session }, Cmd.none )
+            ( { model | session = session }
+            , Route.replaceUrl (Session.navKey session) Route.Home
+            )
 
         UpdatedSession (Err _) ->
             ( model, Cmd.none )
