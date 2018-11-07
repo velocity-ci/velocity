@@ -4,6 +4,7 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession
 -}
 
 import Api exposing (Cred)
+import Asset
 import Browser.Dom as Dom
 import Context exposing (Context)
 import Element exposing (..)
@@ -38,7 +39,8 @@ type Status a
 
 
 type Panel
-    = BlankPanel
+    = AddProjectPanel
+    | BlankPanel
     | ProjectPanel Project
 
 
@@ -67,17 +69,11 @@ view model =
             , paddingXY 0 10
             , centerX
             ]
-            [ el
-                [ paddingEach { top = 10, right = 0, bottom = 0, left = 0 }
-                , Font.size 16
-                , Font.color (rgba255 36 41 46 0.7)
-                ]
-                (text "Projects")
-            , column
+            [ column
                 [ width fill
                 , height fill
                 ]
-                (viewBoxRows (Context.device model.context) (Session.projects model.session))
+                (viewPanels (Context.device model.context) (Session.projects model.session))
             ]
     }
 
@@ -124,10 +120,12 @@ rowAmount device =
             3
 
 
-viewBoxRows : Device -> List Project -> List (Element msg)
-viewBoxRows device projects =
-    projects
+viewPanels : Device -> List Project -> List (Element msg)
+viewPanels device projects =
+    List.concat
+        [ projects, projects, projects ]
         |> List.map ProjectPanel
+        |> (::) AddProjectPanel
         |> splitProjectsToRows (rowAmount device)
         |> List.map
             (\i ->
@@ -145,93 +143,146 @@ viewPanel : Panel -> Element msg
 viewPanel panel =
     case panel of
         BlankPanel ->
-            el
-                [ width (fillPortion 1)
-                , height (fillPortion 1 |> minimum 150 |> maximum 250)
-                ]
-                (text "")
+            viewBlankPanel
+
+        AddProjectPanel ->
+            viewNewPanel
 
         ProjectPanel project ->
-            row
-                [ width (fillPortion 1)
-                , height (fillPortion 1 |> minimum 150 |> maximum 250)
-                , Border.width 2
+            viewProjectPanel project
+
+
+viewBlankPanel : Element msg
+viewBlankPanel =
+    el
+        [ width (fillPortion 2)
+        , height (px 150)
+        ]
+        (text "")
+
+
+viewNewPanel : Element msg
+viewNewPanel =
+    column
+        [ width (fillPortion 2)
+        , height (px 150)
+        , Border.width 0
+        , Border.color (rgba255 245 245 245 1)
+        , Border.rounded 10
+        ]
+        [ row
+            [ height (px 70)
+            , width shrink
+            , padding 20
+            , centerY
+            , centerX
+            , Background.color (rgba255 245 245 245 1)
+            , Border.rounded 360
+            ]
+            [ image
+                [ centerX
+                , centerY
+                , height (px 30)
+                , width (px 30)
+                , moveUp 0
+                ]
+                { src = Asset.src Asset.plus
+                , description = "Add project icon"
+                }
+            , el [ Font.light ] (text "Add project")
+            ]
+        ]
+
+
+viewProjectPanel : Project -> Element msg
+viewProjectPanel project =
+    row
+        [ width (fillPortion 2)
+        , height (px 150)
+        , Border.width 2
+        , Border.color (rgba255 245 245 245 1)
+        , Border.rounded 10
+        , mouseOver
+            [ Background.gradient
+                { angle = 90
+                , steps =
+                    [ rgba255 0 0 0 0
+                    , rgba255 0 0 0 0
+                    , rgba255 0 0 0 0
+                    , rgba255 245 245 245 1
+                    ]
+                }
+            ]
+        ]
+        [ el
+            [ width (fillPortion 1)
+            , height fill
+            , Border.rounded 25
+            , case Project.thumbnailSrc project of
+                Just thumbnail ->
+                    Background.uncropped thumbnail
+
+                Nothing ->
+                    Background.color (rgba255 92 184 92 1)
+            ]
+            (text "")
+        , column
+            [ width (fillPortion 2)
+            , height fill
+            , padding 5
+            , spacingXY 0 10
+            ]
+            [ image
+                [ width (px 30)
+                , height (px 30)
+                , alignRight
+                ]
+                { src = Asset.src Asset.loading
+                , description = "Loading spinner"
+                }
+            , el
+                [ alignTop
+                , alignLeft
+                , Font.extraLight
+                , Font.size 20
+                , Font.letterSpacing -0.5
+                , width fill
+                , Font.color (rgba 0 0 0 0.8)
+                , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
                 , Border.color (rgba255 245 245 245 1)
-                , Border.rounded 10
-                , mouseOver
-                    [ Background.gradient
-                        { angle = 90
-                        , steps =
-                            [ rgba255 0 0 0 0
-                            , rgba255 0 0 0 0
-                            , rgba255 0 0 0 0
-                            , rgba255 245 245 245 1
-                            ]
-                        }
-                    ]
+                , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
+                , clip
+                , moveUp 30
+                , Font.color (rgba255 92 184 92 1)
                 ]
-                [ el
-                    [ width (fillPortion 1)
-                    , height fill
-                    , Border.rounded 25
-                    , case Project.thumbnailSrc project of
-                        Just thumbnail ->
-                            Background.image thumbnail
-
-                        Nothing ->
-                            Background.color (rgba255 92 184 92 1)
-                    ]
-                    (text "")
-                , column
-                    [ width (fillPortion 2)
-                    , height fill
-                    , padding 10
-                    , spaceEvenly
-                    ]
-                    [ el
-                        [ alignTop
-                        , alignLeft
-                        , Font.medium
-                        , Font.size 20
-                        , Font.letterSpacing -0.5
-                        , width fill
-                        , Font.color (rgba 0 0 0 0.8)
-                        , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
-                        , Border.color (rgba255 245 245 245 1)
-                        , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
-                        , clip
-                        ]
-                        (text <| Project.name project)
-                    , paragraph
-                        [ paddingXY 0 10
-                        , alignTop
-                        , alignLeft
-                        , Font.size 15
-                        , Font.light
-                        , width fill
-                        , clipX
-                        ]
-                        [ text <| Project.repository project
-                        ]
-                    , paragraph
-                        [ alignBottom
-                        , alignLeft
-                        , Font.size 13
-                        , Font.light
-                        ]
-                        [ text "Last updated 2 weeks ago"
-                        ]
-                    ]
+                (text <| Project.name project)
+            , paragraph
+                [ paddingXY 0 0
+                , moveUp 30
+                , alignTop
+                , alignLeft
+                , Font.size 15
+                , Font.color (rgba 0 0 0 0.6)
+                , Font.medium
+                , width fill
+                , clipX
                 ]
+                [ el [ centerX ] (text <| Project.repository project)
+                ]
+            , paragraph
+                [ alignBottom
+                , width fill
+                , Font.size 13
+                , Font.heavy
+                , Font.color (rgba 0 0 0 0.6)
+                ]
+                [ el [ centerX ] (text "Last updated 2 weeks ago")
+                ]
+            ]
+        ]
 
 
 
---
---
---viewProjectThumbnail : Project -> Element msg
---viewProjectThumbnail project =
---    case project.logo of
---        Just logo ->
 -- UPDATE
 
 
