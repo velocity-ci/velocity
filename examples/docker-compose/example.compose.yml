@@ -11,8 +11,8 @@ services:
       - "b"
 
   b:
-    image: busybox
-    command: sleep 10s
+    image: alpine
+    command: /bin/sh -c 'sleep 10s'
     networks:
       default:
         aliases:

@@ -26,6 +26,28 @@ type DockerRun struct {
 	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignoreExit"`
 }
 
+func parseRunCommand(command interface{}) []string {
+	c := []string{}
+	switch x := command.(type) {
+	case []interface{}:
+		for _, p := range x {
+			c = append(c, p.(string))
+		}
+		break
+	case interface{}:
+		re := regexp.MustCompile(`(".+")|('.+')|(\S+)`)
+		matches := re.FindAllString(x.(string), -1)
+		for _, m := range matches {
+			c = append(c, strings.TrimFunc(m, func(r rune) bool {
+				return string(r) == `"` || string(r) == `'`
+			}))
+		}
+		break
+	}
+
+	return c
+}
+
 func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
 	switch x := y["image"].(type) {
 	case interface{}:
@@ -33,24 +55,7 @@ func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error 
 		break
 	}
 
-	s.Command = []string{}
-	switch x := y["command"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			s.Command = append(s.Command, p.(string))
-		}
-		break
-	case interface{}:
-		re := regexp.MustCompile(`(".+")|('.+')|(\S+)`)
-		matches := re.FindAllString(x.(string), -1)
-		s.Command = []string{}
-		for _, m := range matches {
-			s.Command = append(s.Command, strings.TrimFunc(m, func(r rune) bool {
-				return string(r) == `"` || string(r) == `'`
-			}))
-		}
-		break
-	}
+	s.Command = parseRunCommand(y["command"])
 
 	s.Environment = map[string]string{}
 	switch x := y["environment"].(type) {
