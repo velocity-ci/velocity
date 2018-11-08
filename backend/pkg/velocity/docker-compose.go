@@ -351,19 +351,7 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 	}
 
 	// command
-	switch x := serviceMap["command"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			a.Command = append(a.Command, p.(string))
-		}
-		break
-	case interface{}:
-		// TODO: handle /bin/sh -c "sleep 3"; should be: ["/bin/sh", "-c", "\"sleep 3\""]
-		a.Command = strings.Split(x.(string), " ")
-		break
-	default:
-		break
-	}
+	a.Command = parseRunCommand(serviceMap["command"])
 
 	// working_dir
 	switch x := serviceMap["working_dir"].(type) {
