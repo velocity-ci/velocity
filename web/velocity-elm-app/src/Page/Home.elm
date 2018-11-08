@@ -146,7 +146,8 @@ viewPanel panel =
             viewBlankPanel
 
         AddProjectPanel ->
-            viewNewPanel
+            --            viewNewPanel
+            viewProjectFormPanel
 
         ProjectPanel project ->
             viewProjectPanel project
@@ -177,7 +178,14 @@ viewNewPanel =
             , centerY
             , centerX
             , Background.color (rgba255 245 245 245 1)
+            , Border.width 2
             , Border.rounded 360
+            , Border.color (rgba255 245 245 245 0.5)
+            , pointer
+            , mouseOver
+                [ Background.color (rgba255 245 245 245 0.6)
+                , Border.color (rgba255 245 245 245 1)
+                ]
             ]
             [ image
                 [ centerX
@@ -194,6 +202,25 @@ viewNewPanel =
         ]
 
 
+viewProjectFormPanel : Element msg
+viewProjectFormPanel =
+    row
+        [ width (fillPortion 2)
+        , height (px 150)
+        , Border.width 2
+        , Border.color (rgba255 245 245 245 1)
+        , Border.rounded 10
+        ]
+        [ column
+            [ width (fillPortion 2)
+            , height fill
+            , padding 5
+            , spacingXY 0 10
+            ]
+            []
+        ]
+
+
 viewProjectPanel : Project -> Element msg
 viewProjectPanel project =
     row
@@ -202,30 +229,29 @@ viewProjectPanel project =
         , Border.width 2
         , Border.color (rgba255 245 245 245 1)
         , Border.rounded 10
-        , mouseOver
-            [ Background.gradient
-                { angle = 90
-                , steps =
-                    [ rgba255 0 0 0 0
-                    , rgba255 0 0 0 0
-                    , rgba255 0 0 0 0
-                    , rgba255 245 245 245 1
-                    ]
-                }
-            ]
+        , pointer
+        , mouseOver [ Background.color (rgba255 245 245 245 0.6) ]
         ]
         [ el
             [ width (fillPortion 1)
             , height fill
-            , Border.rounded 25
-            , case Project.thumbnailSrc project of
+            , padding 10
+            ]
+            (case Project.thumbnailSrc project of
                 Just thumbnail ->
-                    Background.uncropped thumbnail
+                    el
+                        [ width fill
+                        , height fill
+                        , Background.image thumbnail
+                        , Border.width 1
+                        , Border.color (rgba255 245 245 245 1)
+                        , Border.rounded 10
+                        ]
+                        (text "")
 
                 Nothing ->
-                    Background.color (rgba255 92 184 92 1)
-            ]
-            (text "")
+                    text ""
+            )
         , column
             [ width (fillPortion 2)
             , height fill
@@ -236,6 +262,7 @@ viewProjectPanel project =
                 [ width (px 30)
                 , height (px 30)
                 , alignRight
+                , transparent True
                 ]
                 { src = Asset.src Asset.loading
                 , description = "Loading spinner"
