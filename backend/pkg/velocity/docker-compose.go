@@ -111,7 +111,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 		s := dC.Contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig
-		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, networkResp.ID)
+		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, serviceName, networkResp.ID)
 
 		// Create service runners
 		sR := newServiceRunner(
@@ -188,7 +188,7 @@ func (dC *DockerCompose) String() string {
 	return string(j)
 }
 
-func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
+func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, serviceName, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
 	env := []string{}
 	for k, v := range s.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -244,12 +244,22 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, 
 	networkConfig := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkID: {
-				Aliases: s.Networks["default"].Aliases,
+				Aliases: getServiceAliases(s.Networks["default"].Aliases, serviceName),
 			},
 		},
 	}
 
 	return containerConfig, hostConfig, networkConfig
+}
+
+func getServiceAliases(aliases []string, serviceName string) []string {
+	for _, a := range aliases {
+		if a == serviceName {
+			return aliases
+		}
+	}
+
+	return append(aliases, serviceName)
 }
 
 func getServiceOrder(services map[string]dockerComposeService, serviceOrder []string) []string {
