@@ -1,6 +1,7 @@
 module Page exposing (Page(..), view, viewErrors)
 
 import Api exposing (Cred)
+import Asset
 import Browser exposing (Document)
 import Element exposing (..)
 import Element.Background as Background
@@ -77,6 +78,7 @@ viewBody : Element msg -> (msg -> msg2) -> Element msg2
 viewBody content toMsg =
     row
         [ width (fill |> maximum maxWidth)
+        , height fill
         , centerX
         , paddingXY 20 0
         ]
@@ -94,6 +96,7 @@ viewHeader page maybeViewer =
             , blur = 2
             , color = rgba255 245 245 245 1
             }
+        , Background.color (rgba255 245 245 245 0.5)
         ]
         [ row
             [ width (fill |> maximum maxWidth)
@@ -135,8 +138,15 @@ viewMenu page maybeViewer =
     in
     case maybeViewer of
         Just viewer ->
-            [ linkTo Route.Home (text "Home")
-            , linkTo Route.Logout (text "Sign out")
+            [ linkTo (Route.Home Nothing)
+                (el
+                    [ width (px 30)
+                    , height (px 30)
+                    , Border.rounded 180
+                    , Background.image (Asset.src Asset.defaultAvatar)
+                    ]
+                    (text "")
+                )
             ]
 
         Nothing ->
@@ -155,6 +165,7 @@ viewFooter =
             , blur = 2
             , color = rgba255 245 245 245 1
             }
+        , Background.color (rgba255 245 245 245 0.5)
         ]
         [ Element.el
             [ centerY
@@ -183,7 +194,7 @@ navbarLink page route linkContent =
 isActive : Page -> Route -> Bool
 isActive page route =
     case ( page, route ) of
-        ( Home, Route.Home ) ->
+        ( Home, Route.Home _ ) ->
             True
 
         ( Login, Route.Login ) ->

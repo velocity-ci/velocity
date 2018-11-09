@@ -4,20 +4,24 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession
 -}
 
 import Api exposing (Cred)
+import Array exposing (Array)
 import Asset
 import Browser.Dom as Dom
 import Context exposing (Context)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
-import Html.Events exposing (onClick)
 import Loading
+import Page.Home.ActivePanel exposing (ActivePanel(..))
 import Project exposing (Project)
+import Route
 import Session exposing (Session)
 import Task exposing (Task)
 import Url.Builder
+import Url.Parser.Query as Query
 import Username exposing (Username)
 
 
@@ -28,6 +32,7 @@ import Username exposing (Username)
 type alias Model =
     { session : Session
     , context : Context
+    , activePanel : Maybe ActivePanel
     }
 
 
@@ -39,15 +44,16 @@ type Status a
 
 
 type Panel
-    = AddProjectPanel
+    = AddProjectPanel Bool
     | BlankPanel
     | ProjectPanel Project
 
 
-init : Session -> Context -> ( Model, Cmd Msg )
-init session context =
+init : Session -> Context -> Maybe ActivePanel -> ( Model, Cmd Msg )
+init session context maybeActivePanel =
     ( { session = session
       , context = context
+      , activePanel = maybeActivePanel
       }
     , Cmd.batch
         [ Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
@@ -66,16 +72,32 @@ view model =
         column
             [ width fill
             , height fill
-            , paddingXY 0 10
+            , paddingXY 0 20
             , centerX
+            , spacing 20
             ]
-            [ column
+            [ viewProjectHeader
+            , row
                 [ width fill
                 , height fill
                 ]
-                (viewPanels (Context.device model.context) (Session.projects model.session))
+                (viewColumns model.activePanel (Context.device model.context) (Session.projects model.session))
             ]
     }
+
+
+viewProjectHeader : Element msg
+viewProjectHeader =
+    el
+        [ Font.bold
+        , Font.size 18
+        , width fill
+        , height (px 50)
+        , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
+        , Border.color (rgba255 245 245 245 1)
+        , paddingEach { top = 0, left = 0, right = 0, bottom = 10 }
+        ]
+        (el [ alignLeft, centerY ] (text "Your Projects"))
 
 
 splitProjectsToRows : Int -> List Panel -> List (List Panel)
@@ -120,40 +142,60 @@ rowAmount device =
             3
 
 
-viewPanels : Device -> List Project -> List (Element msg)
-viewPanels device projects =
-    List.concat
-        [ projects, projects, projects ]
+viewColumns : Maybe ActivePanel -> Device -> List Project -> List (Element Msg)
+viewColumns maybeActivePanel device projects =
+    List.concat [ projects, projects, projects, projects ]
         |> List.map ProjectPanel
-        |> (::) AddProjectPanel
-        |> splitProjectsToRows (rowAmount device)
+        |> (::) (AddProjectPanel (maybeActivePanel == Just NewProjectForm))
+        |> List.indexedMap Tuple.pair
+        |> List.foldl
+            (\( i, panel ) columns ->
+                let
+                    columnIndex =
+                        remainderBy (rowAmount device) i
+                in
+                case Array.get columnIndex columns of
+                    Just columnItems ->
+                        Array.set columnIndex (List.append columnItems [ panel ]) columns
+
+                    Nothing ->
+                        columns
+            )
+            (List.range 1 (rowAmount device)
+                |> List.map (always [])
+                |> Array.fromList
+            )
+        |> Array.toList
         |> List.map
-            (\i ->
-                row
+            (\panels ->
+                column
                     [ spacing 20
-                    , paddingXY 0 10
+                    , paddingXY 10 0
                     , width fill
-                    , height (fillPortion 1 |> minimum 150 |> maximum 250)
+                    , height fill
                     ]
-                    (List.map viewPanel i)
+                    (List.map viewPanel panels)
             )
 
 
-viewPanel : Panel -> Element msg
+viewPanel : Panel -> Element Msg
 viewPanel panel =
     case panel of
         BlankPanel ->
             viewBlankPanel
 
-        AddProjectPanel ->
-            --            viewNewPanel
-            viewProjectFormPanel
+        AddProjectPanel open ->
+            if open then
+                viewProjectFormPanel
+
+            else
+                viewNewPanel
 
         ProjectPanel project ->
             viewProjectPanel project
 
 
-viewBlankPanel : Element msg
+viewBlankPanel : Element Msg
 viewBlankPanel =
     el
         [ width (fillPortion 2)
@@ -162,70 +204,151 @@ viewBlankPanel =
         (text "")
 
 
-viewNewPanel : Element msg
+viewNewPanel : Element Msg
 viewNewPanel =
-    column
+    row
         [ width (fillPortion 2)
-        , height (px 150)
-        , Border.width 0
+        , Border.width 1
         , Border.color (rgba255 245 245 245 1)
         , Border.rounded 10
+        , height (px 150)
         ]
-        [ row
+        [ Route.link
             [ height (px 70)
             , width shrink
             , padding 20
             , centerY
             , centerX
-            , Background.color (rgba255 245 245 245 1)
+            , Background.color (rgba255 245 245 245 0.3)
             , Border.width 2
             , Border.rounded 360
-            , Border.color (rgba255 245 245 245 0.5)
-            , pointer
+            , Border.color (rgba255 245 245 245 1)
             , mouseOver
                 [ Background.color (rgba255 245 245 245 0.6)
                 , Border.color (rgba255 245 245 245 1)
                 ]
             ]
-            [ image
-                [ centerX
-                , centerY
-                , height (px 30)
-                , width (px 30)
-                , moveUp 0
+            (row
+                [ height fill
+                , width fill
                 ]
-                { src = Asset.src Asset.plus
-                , description = "Add project icon"
-                }
-            , el [ Font.light ] (text "Add project")
-            ]
+                [ image
+                    [ centerX
+                    , centerY
+                    , height (px 30)
+                    , width (px 30)
+                    , moveUp 0
+                    ]
+                    { src = Asset.src Asset.plus
+                    , description = "Add project icon"
+                    }
+                , el [ Font.light ] (text "Add project")
+                ]
+            )
+            (Route.Home (Just NewProjectForm))
         ]
 
 
-viewProjectFormPanel : Element msg
+viewProjectFormPanel : Element Msg
 viewProjectFormPanel =
-    row
+    column
         [ width (fillPortion 2)
-        , height (px 150)
         , Border.width 2
         , Border.color (rgba255 245 245 245 1)
         , Border.rounded 10
+        , Font.size 14
+        , padding 10
+        , spacingXY 0 20
         ]
-        [ column
+        [ el
+            [ alignTop
+            , alignLeft
+            , Font.extraLight
+            , Font.size 20
+            , Font.letterSpacing -0.5
+            , width fill
+            , Font.color (rgba 0 0 0 0.8)
+            , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
+            , Border.color (rgba255 245 245 245 1)
+            , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
+            , clip
+            , Font.color (rgba255 92 184 92 1)
+            ]
+            (text "New project")
+        , column
+            [ spacingXY 0 10 ]
+            [ paragraph [] [ text "Set up continuous integration or deployment based on a source code repository." ]
+            , paragraph []
+                [ text "This should be a repository with a .velocity.yml file in the root. Check out "
+                , link [ Font.color (rgba255 20 120 197 1) ] { url = "https://google.com", label = text "the documentation" }
+                , text " to find out more."
+                ]
+            ]
+        , column
             [ width (fillPortion 2)
             , height fill
             , padding 5
-            , spacingXY 0 10
+            , spacingXY 0 20
             ]
-            []
+            [ row [ width fill ]
+                [ Input.text [ height (px 30) ]
+                    { onChange = always NoOp
+                    , placeholder = Nothing
+                    , text = ""
+                    , label = Input.labelAbove [ alignLeft ] (text "Project name")
+                    }
+                ]
+            , row [ width fill ]
+                [ Input.text [ height (px 30) ]
+                    { onChange = always NoOp
+                    , placeholder = Nothing
+                    , text = ""
+                    , label = Input.labelAbove [ alignLeft ] (text "Repository URL")
+                    }
+                ]
+            , row
+                [ width fill
+                , paddingEach { top = 10, left = 0, right = 0, bottom = 0 }
+                , spacing 10
+                ]
+                [ Route.link
+                    [ width (fillPortion 1)
+                    , height (px 35)
+                    , Border.width 1
+                    , Border.rounded 5
+                    , alignBottom
+                    , mouseOver
+                        [ Background.color (rgba255 92 184 92 0.6)
+                        , Border.color (rgba255 92 184 92 1)
+                        , Font.color (rgb 255 255 255)
+                        ]
+                    ]
+                    (el [ centerY, centerX ] (text "Cancel"))
+                    (Route.Home Nothing)
+                , Input.button
+                    [ width (fillPortion 2)
+                    , height (px 35)
+                    , Border.width 1
+                    , Border.rounded 5
+                    , alignBottom
+                    , mouseOver
+                        [ Background.color (rgba255 92 184 92 0.6)
+                        , Border.color (rgba255 92 184 92 1)
+                        , Font.color (rgb 255 255 255)
+                        ]
+                    ]
+                    { onPress = Just NoOp
+                    , label = text "Add"
+                    }
+                ]
+            ]
         ]
 
 
 viewProjectPanel : Project -> Element msg
 viewProjectPanel project =
     row
-        [ width (fillPortion 2)
-        , height (px 150)
+        [ width fill
         , Border.width 2
         , Border.color (rgba255 245 245 245 1)
         , Border.rounded 10
@@ -317,11 +440,15 @@ type Msg
     = UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
     | PassedSlowLoadThreshold
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         UpdateSession task ->
             ( model, Task.attempt UpdatedSession task )
 
@@ -347,6 +474,22 @@ scrollToTop =
         -- It's not worth showing the user anything special if scrolling fails.
         -- If anything, we'd log this to an error recording service.
         |> Task.onError (\_ -> Task.succeed ())
+
+
+
+-- PARSER
+
+
+activePanelQueryParser : String -> Query.Parser (Maybe ActivePanel)
+activePanelQueryParser key =
+    Query.custom key <|
+        \stringList ->
+            case stringList of
+                [ "new-project" ] ->
+                    Just NewProjectForm
+
+                _ ->
+                    Nothing
 
 
 

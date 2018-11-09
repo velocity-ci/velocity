@@ -216,7 +216,7 @@ update msg model =
 
         UpdatedSession (Ok session) ->
             ( { model | session = session }
-            , Route.replaceUrl (Session.navKey session) Route.Home
+            , Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
             )
 
         UpdatedSession (Err _) ->

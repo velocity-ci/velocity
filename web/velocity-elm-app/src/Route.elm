@@ -2,8 +2,11 @@ module Route exposing (Route(..), fromUrl, link, replaceUrl)
 
 import Browser.Navigation as Nav
 import Element exposing (Attribute, Element)
+import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Url exposing (Url)
-import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
+import Url.Builder exposing (QueryParameter)
+import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
+import Url.Parser.Query as Query
 import Username exposing (Username)
 
 
@@ -12,7 +15,7 @@ import Username exposing (Username)
 
 
 type Route
-    = Home
+    = Home (Maybe ActivePanel)
     | Root
     | Login
     | Logout
@@ -21,7 +24,7 @@ type Route
 parser : Parser (Route -> a) a
 parser =
     oneOf
-        [ Parser.map Home Parser.top
+        [ Parser.map Home (Parser.top <?> ActivePanel.queryParser "active-panel")
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
         ]
@@ -53,21 +56,28 @@ fromUrl url =
 -- INTERNAL
 
 
+routePieces : Route -> ( List String, List QueryParameter )
+routePieces page =
+    case page of
+        Home activePanel ->
+            ( []
+            , ActivePanel.toQueryParams "active-panel" activePanel
+            )
+
+        Root ->
+            ( [], [] )
+
+        Login ->
+            ( [ "login" ], [] )
+
+        Logout ->
+            ( [ "logout" ], [] )
+
+
 routeToString : Route -> String
 routeToString page =
     let
-        pieces =
-            case page of
-                Home ->
-                    []
-
-                Root ->
-                    []
-
-                Login ->
-                    [ "login" ]
-
-                Logout ->
-                    [ "logout" ]
+        ( urlPieces, queryPieces ) =
+            routePieces page
     in
-    "/" ++ String.join "/" pieces
+    "/" ++ String.join "/" urlPieces ++ Url.Builder.toQuery queryPieces

@@ -175,7 +175,7 @@ changeRouteTo maybeRoute currentPage =
 
         Just Route.Root ->
             ( currentPage
-            , Route.replaceUrl (Session.navKey session) Route.Home
+            , Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
             )
 
         Just Route.Logout ->
@@ -183,7 +183,7 @@ changeRouteTo maybeRoute currentPage =
             , Api.logout
             )
 
-        Just Route.Home ->
+        Just (Route.Home maybeActivePanel) ->
             case Session.viewer session of
                 Nothing ->
                     ( Redirect session context
@@ -191,14 +191,14 @@ changeRouteTo maybeRoute currentPage =
                     )
 
                 Just _ ->
-                    Home.init session context
+                    Home.init session context maybeActivePanel
                         |> updateWith Home GotHomeMsg currentPage
 
         Just Route.Login ->
             case Session.viewer session of
                 Just _ ->
                     ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) Route.Home
+                    , Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
                     )
 
                 Nothing ->
@@ -250,7 +250,7 @@ updatePage msg page =
             ( Redirect session (toContext page)
             , case Session.viewer session of
                 Just _ ->
-                    Route.replaceUrl (Session.navKey session) Route.Home
+                    Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
 
                 Nothing ->
                     Route.replaceUrl (Session.navKey session) Route.Login
