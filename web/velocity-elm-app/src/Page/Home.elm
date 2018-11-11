@@ -16,6 +16,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Loading
 import Page.Home.ActivePanel exposing (ActivePanel(..))
+import Palette
 import Project exposing (Project)
 import Route
 import Session exposing (Session)
@@ -94,10 +95,10 @@ viewProjectHeader =
         , width fill
         , height (px 50)
         , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
-        , Border.color (rgba255 245 245 245 1)
+        , Border.color Palette.neutral6
         , paddingEach { top = 0, left = 0, right = 0, bottom = 10 }
         ]
-        (el [ alignLeft, centerY ] (text "Your Projects"))
+        (el [ alignLeft, centerY, Font.color Palette.primary5 ] (text "Your projects"))
 
 
 splitProjectsToRows : Int -> List Panel -> List (List Panel)
@@ -209,7 +210,7 @@ viewNewPanel =
     row
         [ width (fillPortion 2)
         , Border.width 1
-        , Border.color (rgba255 245 245 245 1)
+        , Border.color Palette.white
         , Border.rounded 10
         , height (px 150)
         ]
@@ -219,13 +220,13 @@ viewNewPanel =
             , padding 20
             , centerY
             , centerX
-            , Background.color (rgba255 245 245 245 0.3)
+            , Background.color Palette.neutral7
             , Border.width 2
             , Border.rounded 360
-            , Border.color (rgba255 245 245 245 1)
+            , Border.color Palette.neutral6
             , mouseOver
-                [ Background.color (rgba255 245 245 245 0.6)
-                , Border.color (rgba255 245 245 245 1)
+                [ Background.color Palette.neutral6
+                , Border.color Palette.neutral5
                 ]
             ]
             (row
@@ -242,7 +243,7 @@ viewNewPanel =
                     { src = Asset.src Asset.plus
                     , description = "Add project icon"
                     }
-                , el [ Font.light ] (text "Add project")
+                , el [ Font.light, Font.color Palette.primary1 ] (text "Add project")
                 ]
             )
             (Route.Home (Just NewProjectForm))
@@ -272,7 +273,7 @@ viewProjectFormPanel =
             , Border.color (rgba255 245 245 245 1)
             , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
             , clip
-            , Font.color (rgba255 92 184 92 1)
+            , Font.color Palette.primary4
             ]
             (text "New project")
         , column
@@ -280,7 +281,7 @@ viewProjectFormPanel =
             [ paragraph [] [ text "Set up continuous integration or deployment based on a source code repository." ]
             , paragraph []
                 [ text "This should be a repository with a .velocity.yml file in the root. Check out "
-                , link [ Font.color (rgba255 20 120 197 1) ] { url = "https://google.com", label = text "the documentation" }
+                , link [ Font.color Palette.primary5 ] { url = "https://google.com", label = text "the documentation" }
                 , text " to find out more."
                 ]
             ]
@@ -316,11 +317,11 @@ viewProjectFormPanel =
                     , height (px 35)
                     , Border.width 1
                     , Border.rounded 5
+                    , Border.color Palette.neutral4
                     , alignBottom
                     , mouseOver
-                        [ Background.color (rgba255 92 184 92 0.6)
-                        , Border.color (rgba255 92 184 92 1)
-                        , Font.color (rgb 255 255 255)
+                        [ Background.color Palette.neutral2
+                        , Font.color Palette.white
                         ]
                     ]
                     (el [ centerY, centerX ] (text "Cancel"))
@@ -330,11 +331,12 @@ viewProjectFormPanel =
                     , height (px 35)
                     , Border.width 1
                     , Border.rounded 5
+                    , Border.color Palette.primary4
+                    , Font.color Palette.primary4
                     , alignBottom
                     , mouseOver
-                        [ Background.color (rgba255 92 184 92 0.6)
-                        , Border.color (rgba255 92 184 92 1)
-                        , Font.color (rgb 255 255 255)
+                        [ Background.color Palette.primary4
+                        , Font.color Palette.white
                         ]
                     ]
                     { onPress = Just NoOp
@@ -350,10 +352,10 @@ viewProjectPanel project =
     row
         [ width fill
         , Border.width 2
-        , Border.color (rgba255 245 245 245 1)
+        , Border.color Palette.neutral7
         , Border.rounded 10
         , pointer
-        , mouseOver [ Background.color (rgba255 245 245 245 0.6) ]
+        , mouseOver [ Background.color Palette.primary7 ]
         ]
         [ el
             [ width (fillPortion 1)
@@ -367,7 +369,7 @@ viewProjectPanel project =
                         , height fill
                         , Background.image thumbnail
                         , Border.width 1
-                        , Border.color (rgba255 245 245 245 1)
+                        , Border.color Palette.neutral5
                         , Border.rounded 10
                         ]
                         (text "")
@@ -397,13 +399,12 @@ viewProjectPanel project =
                 , Font.size 20
                 , Font.letterSpacing -0.5
                 , width fill
-                , Font.color (rgba 0 0 0 0.8)
                 , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
-                , Border.color (rgba255 245 245 245 1)
+                , Border.color Palette.primary7
                 , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
                 , clip
                 , moveUp 30
-                , Font.color (rgba255 92 184 92 1)
+                , Font.color Palette.primary4
                 ]
                 (text <| Project.name project)
             , paragraph
@@ -412,7 +413,7 @@ viewProjectPanel project =
                 , alignTop
                 , alignLeft
                 , Font.size 15
-                , Font.color (rgba 0 0 0 0.6)
+                , Font.color Palette.neutral3
                 , Font.medium
                 , width fill
                 , clipX
@@ -424,7 +425,7 @@ viewProjectPanel project =
                 , width fill
                 , Font.size 13
                 , Font.heavy
-                , Font.color (rgba 0 0 0 0.6)
+                , Font.color Palette.neutral2
                 ]
                 [ el [ centerX ] (text "Last updated 2 weeks ago")
                 ]

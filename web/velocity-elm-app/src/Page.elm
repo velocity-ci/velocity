@@ -9,6 +9,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
+import Palette
 import Route exposing (Route)
 import Session exposing (Session)
 import Username exposing (Username)
@@ -94,9 +95,9 @@ viewHeader page maybeViewer =
             { offset = ( 0, 2 )
             , size = 2
             , blur = 2
-            , color = rgba255 245 245 245 1
+            , color = Palette.neutral6
             }
-        , Background.color (rgba255 245 245 245 0.5)
+        , Background.color Palette.neutral7
         ]
         [ row
             [ width (fill |> maximum maxWidth)
@@ -118,7 +119,7 @@ viewHeader page maybeViewer =
 viewBrand : Element msg
 viewBrand =
     el
-        [ Font.color (rgba255 92 184 92 1)
+        [ Font.color Palette.primary4
         , Font.heavy
         , Font.size 28
         , Font.letterSpacing -1
@@ -144,6 +145,41 @@ viewMenu page maybeViewer =
                     , height (px 30)
                     , Border.rounded 180
                     , Background.image (Asset.src Asset.defaultAvatar)
+                    , Font.size 16
+                    , below
+                        (column
+                            [ Background.color Palette.neutral7
+                            , Border.color Palette.neutral4
+                            , Border.width 1
+                            , Border.rounded 7
+                            , moveRight -180
+                            , width (px 200)
+                            ]
+                            [ row
+                                [ mouseOver [ Background.color Palette.neutral4 ]
+                                , width fill
+                                , padding 10
+                                , spacingXY 10 0
+                                ]
+                                [ el
+                                    [ width (px 45)
+                                    , height (px 45)
+                                    , Border.rounded 90
+                                    , Background.image (Asset.src Asset.defaultAvatar)
+                                    ]
+                                    (text "")
+                                , el [ alignLeft, Font.size 18 ] (text "admin")
+                                ]
+                            , row
+                                [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
+                                , Border.color Palette.neutral6
+                                , mouseOver [ Background.color Palette.neutral4 ]
+                                , width fill
+                                , paddingXY 10 20
+                                ]
+                                [ text "Sign out" ]
+                            ]
+                        )
                     ]
                     (text "")
                 )
@@ -163,9 +199,9 @@ viewFooter =
             { offset = ( 2, 2 )
             , size = 2
             , blur = 2
-            , color = rgba255 245 245 245 1
+            , color = Palette.neutral6
             }
-        , Background.color (rgba255 245 245 245 0.5)
+        , Background.color Palette.neutral7
         ]
         [ Element.el
             [ centerY
