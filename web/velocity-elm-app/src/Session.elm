@@ -13,8 +13,15 @@ import Viewer exposing (Viewer)
 
 
 type Session
-    = LoggedIn Nav.Key Viewer (List Project)
+    = LoggedIn LoggedInInternals
     | Guest Nav.Key
+
+
+type alias LoggedInInternals =
+    { navKey : Nav.Key
+    , viewer : Viewer
+    , projects : List Project
+    }
 
 
 type InitError
@@ -28,8 +35,8 @@ type InitError
 viewer : Session -> Maybe Viewer
 viewer session =
     case session of
-        LoggedIn _ val _ ->
-            Just val
+        LoggedIn internals ->
+            Just internals.viewer
 
         Guest _ ->
             Nothing
@@ -38,8 +45,8 @@ viewer session =
 projects : Session -> List Project
 projects session =
     case session of
-        LoggedIn _ _ projects_ ->
-            projects_
+        LoggedIn internals ->
+            internals.projects
 
         Guest _ ->
             []
@@ -48,8 +55,8 @@ projects session =
 cred : Session -> Maybe Cred
 cred session =
     case session of
-        LoggedIn _ val _ ->
-            Just (Viewer.cred val)
+        LoggedIn internals ->
+            Just (Viewer.cred internals.viewer)
 
         Guest _ ->
             Nothing
@@ -58,8 +65,8 @@ cred session =
 navKey : Session -> Nav.Key
 navKey session =
     case session of
-        LoggedIn key _ _ ->
-            key
+        LoggedIn internals ->
+            internals.navKey
 
         Guest key ->
             key
@@ -108,7 +115,7 @@ fromViewer key baseUrl maybeViewer =
             Project.list (Just credVal) baseUrl
                 |> Http.toTask
                 |> Task.mapError HttpError
-                |> Task.map (LoggedIn key viewerVal)
+                |> Task.map (LoggedInInternals key viewerVal >> LoggedIn)
 
         Nothing ->
             Task.succeed (Guest key)

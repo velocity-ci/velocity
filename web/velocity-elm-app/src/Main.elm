@@ -11,7 +11,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
-import Page
+import Page exposing (Header)
 import Page.Blank as Blank
 import Page.Home as Home
 import Page.Login as Login
@@ -30,10 +30,10 @@ import Viewer exposing (Viewer)
 type Model
     = InitError String
     | Initialising Context Nav.Key
-    | ApplicationStarted App
+    | ApplicationStarted Header Body
 
 
-type App
+type Body
     = Redirect Session Context
     | NotFound Session Context
     | Home Home.Model
@@ -58,17 +58,19 @@ init maybeViewer contextResult url navKey =
 -- VIEW
 
 
-viewCurrentPage : App -> Document Msg
-viewCurrentPage currentPage =
+viewCurrentPage : Header -> Body -> Document Msg
+viewCurrentPage header currentPage =
     let
-        viewPage page toMsg config =
-            let
-                { title, body } =
-                    Page.view (Session.viewer (toSession currentPage)) page config toMsg
-            in
-            { title = title
-            , body = body
-            }
+        viewPage page toMsg { title, content } =
+            Page.view
+                { viewer = Session.viewer (toSession currentPage)
+                , page = page
+                , title = title
+                , content = content
+                , toMsg = toMsg
+                , header = header
+                , updateHeader = UpdateHeader
+                }
     in
     case currentPage of
         Redirect _ _ ->
@@ -87,8 +89,8 @@ viewCurrentPage currentPage =
 view : Model -> Document Msg
 view model =
     case model of
-        ApplicationStarted currentPage ->
-            viewCurrentPage currentPage
+        ApplicationStarted header currentPage ->
+            viewCurrentPage header currentPage
 
         Initialising _ _ ->
             { title = "Loading"
@@ -117,7 +119,7 @@ view model =
 
 type Msg
     = Ignored
-    | StartApplication (Result Session.InitError ( App, Cmd Msg ))
+    | StartApplication (Result Session.InitError ( Body, Cmd Msg ))
     | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
@@ -126,9 +128,14 @@ type Msg
     | UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
     | WindowResized Int Int
+    | UpdateHeader Page.Header
 
 
-toSession : App -> Session
+
+--    | UserMenuClicked
+
+
+toSession : Body -> Session
 toSession page =
     case page of
         Redirect session _ ->
@@ -144,7 +151,7 @@ toSession page =
             Login.toSession login
 
 
-toContext : App -> Context
+toContext : Body -> Context
 toContext page =
     case page of
         Redirect _ context ->
@@ -160,7 +167,7 @@ toContext page =
             Login.toContext login
 
 
-changeRouteTo : Maybe Route -> App -> ( App, Cmd Msg )
+changeRouteTo : Maybe Route -> Body -> ( Body, Cmd Msg )
 changeRouteTo maybeRoute currentPage =
     let
         session =
@@ -206,7 +213,7 @@ changeRouteTo maybeRoute currentPage =
                         |> updateWith Login GotLoginMsg currentPage
 
 
-updatePage : Msg -> App -> ( App, Cmd Msg )
+updatePage : Msg -> Body -> ( Body, Cmd Msg )
 updatePage msg page =
     case ( msg, page ) of
         ( Ignored, _ ) ->
@@ -264,7 +271,7 @@ updatePage msg page =
             ( page, Cmd.none )
 
 
-updateContext : Context -> App -> App
+updateContext : Context -> Body -> Body
 updateContext context page =
     case page of
         Redirect session _ ->
@@ -283,10 +290,10 @@ updateContext context page =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
-        ApplicationStarted page ->
+        ApplicationStarted header page ->
             case msg of
                 StartApplication (Ok ( app, cmd )) ->
-                    ( ApplicationStarted app
+                    ( ApplicationStarted header app
                     , cmd
                     )
 
@@ -295,14 +302,19 @@ update msg model =
                     , Cmd.none
                     )
 
+                UpdateHeader newHeader ->
+                    ( ApplicationStarted newHeader page
+                    , Cmd.none
+                    )
+
                 _ ->
                     updatePage msg page
-                        |> Tuple.mapFirst ApplicationStarted
+                        |> Tuple.mapFirst (ApplicationStarted header)
 
         Initialising _ _ ->
             case msg of
                 StartApplication (Ok ( app, cmd )) ->
-                    ( ApplicationStarted app
+                    ( ApplicationStarted Page.initHeader app
                     , cmd
                     )
 
@@ -318,7 +330,7 @@ update msg model =
             ( model, Cmd.none )
 
 
-updateWith : (subPage -> App) -> (subPageMsg -> Msg) -> App -> ( subPage, Cmd subPageMsg ) -> ( App, Cmd Msg )
+updateWith : (subPage -> Body) -> (subPageMsg -> Msg) -> Body -> ( subPage, Cmd subPageMsg ) -> ( Body, Cmd Msg )
 updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
     ( toPage pageModel
     , Cmd.map toMsg pageCmd
@@ -340,7 +352,7 @@ subscriptions model =
 pageSubscriptions : Model -> Sub Msg
 pageSubscriptions model =
     case model of
-        ApplicationStarted page ->
+        ApplicationStarted _ page ->
             case page of
                 NotFound _ _ ->
                     Sub.none
