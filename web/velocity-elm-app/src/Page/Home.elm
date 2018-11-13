@@ -68,6 +68,12 @@ init session context maybeActivePanel =
 
 view : Model -> { title : String, content : Element Msg }
 view model =
+    let
+        deviceClass =
+            model.context
+                |> Context.device
+                |> .class
+    in
     { title = "Home"
     , content =
         column
@@ -77,7 +83,7 @@ view model =
             , centerX
             , spacing 20
             ]
-            [ viewProjectHeader
+            [ viewIf (deviceClass /= Phone) viewProjectHeader
             , row
                 [ width fill
                 , height fill
@@ -514,3 +520,16 @@ toSession model =
 toContext : Model -> Context
 toContext model =
     model.context
+
+
+
+-- UTIL
+
+
+viewIf : Bool -> Element msg -> Element msg
+viewIf condition content =
+    if condition then
+        content
+
+    else
+        none

@@ -70,6 +70,7 @@ viewCurrentPage header currentPage =
                 , toMsg = toMsg
                 , header = header
                 , updateHeader = UpdateHeader
+                , context = toContext currentPage
                 }
     in
     case currentPage of
@@ -344,9 +345,23 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ pageSubscriptions model
+        [ headerSubscriptions model
+        , pageSubscriptions model
         , Browser.Events.onResize WindowResized
         ]
+
+
+headerSubscriptions : Model -> Sub Msg
+headerSubscriptions model =
+    case model of
+        ApplicationStarted header _ ->
+            Page.headerSubscriptions header UpdateHeader
+
+        Initialising _ _ ->
+            Sub.none
+
+        InitError _ ->
+            Sub.none
 
 
 pageSubscriptions : Model -> Sub Msg

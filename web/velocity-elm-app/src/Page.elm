@@ -1,8 +1,10 @@
-module Page exposing (Header, Page(..), initHeader, view, viewErrors)
+module Page exposing (Header, Page(..), headerSubscriptions, initHeader, view, viewErrors)
 
 import Api exposing (Cred)
 import Asset
 import Browser exposing (Document)
+import Browser.Events
+import Context exposing (Context)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -10,6 +12,8 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
+import Icon
+import Json.Decode as Decode
 import Palette
 import Route exposing (Route)
 import Username exposing (Username)
@@ -20,17 +24,37 @@ import Viewer exposing (Viewer)
 -- Header
 
 
+type DropdownStatus
+    = Open
+    | ListenClicks
+    | Closed
+
+
 type Header
-    = Header Internals
-
-
-type alias Internals =
-    { userMenuOpen : Bool }
+    = Header DropdownStatus
 
 
 initHeader : Header
 initHeader =
-    Header (Internals False)
+    Header Closed
+
+
+{-| The dropdowns makes use of subscriptions to ensure that opened dropdowns are
+automatically closed when you click outside them.
+-}
+headerSubscriptions : Header -> (Header -> msg) -> Sub msg
+headerSubscriptions (Header status) updateStatus =
+    case status of
+        Open ->
+            Browser.Events.onAnimationFrame
+                (\_ -> updateStatus (Header ListenClicks))
+
+        ListenClicks ->
+            Browser.Events.onClick
+                (Decode.succeed (updateStatus (Header Closed)))
+
+        Closed ->
+            Sub.none
 
 
 
@@ -76,11 +100,12 @@ type alias Config msg pageMsg =
     , toMsg : msg -> pageMsg
     , header : Header
     , updateHeader : Header -> pageMsg
+    , context : Context
     }
 
 
 view : Config subMsg msg -> { title : String, body : List (Html msg) }
-view { viewer, page, title, content, toMsg, header, updateHeader } =
+view { context, viewer, page, title, content, toMsg, header, updateHeader } =
     { title = title ++ " - Conduit"
     , body =
         [ Element.layout
@@ -93,7 +118,7 @@ view { viewer, page, title, content, toMsg, header, updateHeader } =
                 [ width fill
                 , height fill
                 ]
-                [ viewHeader page viewer updateHeader header
+                [ viewHeader context page viewer updateHeader header
                 , viewBody content toMsg
                 , viewFooter
                 ]
@@ -113,8 +138,23 @@ viewBody content toMsg =
         [ Element.map toMsg content ]
 
 
-viewHeader : Page -> Maybe Viewer -> (Header -> msg) -> Header -> Element msg
-viewHeader page maybeViewer headerMsg header =
+viewHeader : Context -> Page -> Maybe Viewer -> (Header -> msg) -> Header -> Element msg
+viewHeader context page maybeViewer headerMsg header =
+    let
+        deviceClass =
+            context
+                |> Context.device
+                |> .class
+    in
+    if deviceClass == Phone then
+        viewMobileHeader page maybeViewer headerMsg header
+
+    else
+        viewDesktopHeader page maybeViewer headerMsg header
+
+
+viewDesktopHeader : Page -> Maybe Viewer -> (Header -> msg) -> Header -> Element msg
+viewDesktopHeader page maybeViewer headerMsg header =
     row
         [ width fill
         , height (px 55)
@@ -143,6 +183,42 @@ viewHeader page maybeViewer headerMsg header =
         ]
 
 
+viewMobileHeader : Page -> Maybe Viewer -> (Header -> msg) -> Header -> Element msg
+viewMobileHeader page maybeViewer headerMsg header =
+    column
+        [ width fill
+        , height shrink
+        , Border.shadow
+            { offset = ( 0, 2 )
+            , size = 2
+            , blur = 2
+            , color = Palette.neutral6
+            }
+        , Background.color Palette.neutral7
+        , spacing 5
+        ]
+        [ row
+            [ centerX
+            , Border.widthEach { top = 0, left = 0, right = 0, bottom = 1 }
+            , Border.color Palette.neutral6
+            , width fill
+            , paddingXY 0 10
+            ]
+            [ el [ centerX ] viewBrand
+            ]
+        , row
+            [ width fill
+            , padding 10
+            ]
+            [ column [ width fill ] []
+            , column [ width fill ]
+                [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
+                , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
+                ]
+            ]
+        ]
+
+
 viewBrand : Element msg
 viewBrand =
     el
@@ -158,51 +234,70 @@ viewBrand =
         (text "Velocity")
 
 
+iconOptions : Icon.Options
+iconOptions =
+    Icon.defaultOptions
+
+
 viewMenu : Page -> Maybe Viewer -> (Header -> msg) -> Header -> List (Element msg)
-viewMenu page maybeViewer headerMsg (Header { userMenuOpen }) =
+viewMenu page maybeViewer headerMsg (Header status) =
     let
         linkTo =
             navbarLink page
 
         dropdownMenu =
-            if userMenuOpen then
-                column
-                    [ Background.color Palette.neutral7
-                    , Border.color Palette.neutral4
-                    , Border.width 1
-                    , Border.rounded 7
-                    , moveRight -170
-                    , width (px 200)
-                    ]
-                    [ row
-                        [ width fill
-                        , padding 10
-                        , spacingXY 10 0
+            case status of
+                ListenClicks ->
+                    column
+                        [ Background.color Palette.neutral7
+                        , Border.color Palette.neutral4
+                        , Border.width 1
+                        , Border.rounded 7
+                        , moveRight -170
+                        , width (px 200)
                         ]
-                        [ el
-                            [ width (px 45)
-                            , height (px 45)
-                            , Border.rounded 90
-                            , Background.image (Asset.src Asset.defaultAvatar)
+                        [ row
+                            [ width fill
+                            , padding 10
+                            , spacingXY 10 0
                             ]
-                            (text "")
-                        , column [ width fill ]
-                            [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
-                            , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
+                            [ el
+                                [ width (px 45)
+                                , height (px 45)
+                                , Border.rounded 90
+                                , Background.image (Asset.src Asset.defaultAvatar)
+                                ]
+                                (text "")
+                            , column [ width fill ]
+                                [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
+                                , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
+                                ]
+                            ]
+                        , row
+                            [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
+                            , Border.color Palette.neutral6
+                            , mouseOver
+                                [ Background.color Palette.neutral2
+                                , Font.color Palette.white
+                                ]
+                            , width fill
+                            , paddingXY 20 20
+                            , spacingXY 10 0
+                            , Font.color Palette.primary1
+                            , Font.light
+                            , Font.size 16
+                            ]
+                            [ column
+                                [ width shrink ]
+                                [ Icon.logOut { iconOptions | size = 16 } ]
+                            , column
+                                [ width fill ]
+                                [ text "Sign out" ]
                             ]
                         ]
-                    , row
-                        [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
-                        , Border.color Palette.neutral6
-                        , mouseOver [ Background.color Palette.neutral4 ]
-                        , width fill
-                        , paddingXY 10 20
-                        ]
-                        [ text "Sign out" ]
-                    ]
 
-            else
-                none
+                _ ->
+                    none
     in
     case maybeViewer of
         Just viewer ->
@@ -214,11 +309,11 @@ viewMenu page maybeViewer headerMsg (Header { userMenuOpen }) =
                 , Font.size 16
                 , pointer
                 , below dropdownMenu
-                , onClick (headerMsg (Header { userMenuOpen = not userMenuOpen }))
+                , onClick (headerMsg (Header Open))
                 , Border.shadow
                     { offset = ( 0, 0 )
                     , size =
-                        if userMenuOpen then
+                        if status == ListenClicks then
                             5
 
                         else
