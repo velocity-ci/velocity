@@ -147,7 +147,8 @@ viewHeader context page maybeViewer headerMsg header =
                 |> .class
     in
     if deviceClass == Phone then
-        viewMobileHeader page maybeViewer headerMsg header
+        --        viewMobileHeader page maybeViewer headerMsg header
+        viewDesktopHeader page maybeViewer headerMsg header
 
     else
         viewDesktopHeader page maybeViewer headerMsg header
@@ -170,12 +171,14 @@ viewDesktopHeader page maybeViewer headerMsg header =
             [ width (fill |> maximum maxWidth)
             , centerX
             , paddingXY 20 0
+            , height fill
             ]
             [ el [ alignLeft ] viewBrand
             , row
                 [ centerY
                 , alignRight
-                , spacing 10
+                , spacing 20
+                , height fill
                 ]
               <|
                 viewMenu page maybeViewer headerMsg header
@@ -302,6 +305,43 @@ viewMenu page maybeViewer headerMsg (Header status) =
     case maybeViewer of
         Just viewer ->
             [ el
+                [ height fill
+                , Border.widthEach { top = 0, left = 0, right = 0, bottom = 3 }
+                , Border.color Palette.transparent
+                , paddingXY 8 0
+                , pointer
+                , Font.color Palette.neutral2
+                , mouseOver
+                    [ Border.color Palette.primary3
+                    , Font.color Palette.primary3
+                    ]
+                ]
+                (el
+                    [ width (px 28)
+                    , height (px 28)
+                    , moveDown 3
+                    , Border.rounded 180
+                    , centerY
+                    , above
+                        (el
+                            [ width shrink
+                            , height shrink
+                            , Background.color Palette.primary3
+                            , Border.width 1
+                            , Border.color Palette.primary7
+                            , paddingXY 4 3
+                            , Border.rounded 7
+                            , moveDown 14
+                            , moveRight 14
+                            , Font.size 10
+                            , Font.color Palette.white
+                            ]
+                            (text "2")
+                        )
+                    ]
+                    (Icon.bell { iconOptions | size = 100, sizeUnit = Icon.Percentage })
+                )
+            , el
                 [ width (px 30)
                 , height (px 30)
                 , Border.rounded 180
@@ -309,7 +349,13 @@ viewMenu page maybeViewer headerMsg (Header status) =
                 , Font.size 16
                 , pointer
                 , below dropdownMenu
-                , onClick (headerMsg (Header Open))
+                , onClick
+                    (if status == Closed then
+                        headerMsg (Header Open)
+
+                     else
+                        headerMsg (Header status)
+                    )
                 , Border.shadow
                     { offset = ( 0, 0 )
                     , size =

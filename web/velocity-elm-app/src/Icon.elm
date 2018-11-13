@@ -1,4 +1,4 @@
-module Icon exposing (Options, SizeUnit(..), defaultOptions, logOut)
+module Icon exposing (Options, SizeUnit(..), bell, defaultOptions, logOut)
 
 import Element exposing (Element)
 import FeatherIcons
@@ -35,8 +35,18 @@ defaultOptions =
 
 
 logOut : Options -> Element msg
-logOut { size, strokeWidth, sizeUnit } =
-    FeatherIcons.logOut
+logOut options =
+    featherIcon FeatherIcons.logOut options
+
+
+bell : Options -> Element msg
+bell options =
+    featherIcon FeatherIcons.bell options
+
+
+featherIcon : FeatherIcons.Icon -> Options -> Element msg
+featherIcon icon { size, strokeWidth, sizeUnit } =
+    icon
         |> FeatherIcons.withSize size
         |> FeatherIcons.withStrokeWidth strokeWidth
         |> FeatherIcons.withSizeUnit (sizeUnitToString sizeUnit)

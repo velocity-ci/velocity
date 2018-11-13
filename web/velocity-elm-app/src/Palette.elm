@@ -1,4 +1,4 @@
-module Palette exposing (black, neutral1, neutral2, neutral3, neutral4, neutral5, neutral6, neutral7, primary1, primary2, primary3, primary4, primary5, primary6, primary7, white)
+module Palette exposing (black, neutral1, neutral2, neutral3, neutral4, neutral5, neutral6, neutral7, primary1, primary2, primary3, primary4, primary5, primary6, primary7, transparent, white)
 
 import Element exposing (..)
 
@@ -15,6 +15,11 @@ white =
 black : Element.Color
 black =
     rgba 0 0 0 1
+
+
+transparent : Element.Color
+transparent =
+    rgba 0 0 0 0
 
 
 
