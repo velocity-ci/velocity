@@ -151,14 +151,22 @@ viewProjectHeader device maybeActivePanel =
                 , Font.size 18
                 , width fill
                 , height shrink
-                , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
+                , Background.color Palette.neutral7
+                , Font.color Palette.white
+                , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
                 , Border.color Palette.neutral6
                 , paddingXY 20 15
+                , Border.shadow
+                    { offset = ( 0, 2 )
+                    , size = 2
+                    , blur = 2
+                    , color = Palette.neutral6
+                    }
                 ]
                 [ el
                     [ width fill
                     , centerY
-                    , Font.color Palette.primary5
+                    , Font.color Palette.neutral3
                     ]
                     (el [ alignLeft ] (text "Your projects"))
                 , Route.link
@@ -236,7 +244,7 @@ rowAmount device =
 
 viewColumns : Maybe ActivePanel -> Device -> List Project -> List (Element Msg)
 viewColumns maybeActivePanel device projects =
-    List.concat [ projects, projects, projects, projects ]
+    projects
         |> List.map ProjectPanel
         |> (\projects_ ->
                 case maybeActivePanel of

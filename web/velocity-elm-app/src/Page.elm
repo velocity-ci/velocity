@@ -114,7 +114,7 @@ view config =
                 , Font.sansSerif
                 ]
             , inFront (viewHeader config)
-            , inFront (viewFixedFooter config)
+            , inFront (viewFooter config)
             ]
             (Element.column
                 [ width fill
@@ -130,29 +130,55 @@ view config =
 viewBody : Element msg -> (msg -> msg2) -> Element msg2
 viewBody content toMsg =
     row
-        [ width (fill |> maximum maxWidth)
+        [ width fill
         , height fill
-        , paddingXY 0 75
+        , paddingEach { top = 60, bottom = 70, left = 0, right = 0 }
         , centerX
         ]
         [ Element.map toMsg content ]
 
 
-viewFixedLayout : Config subMsg msg -> Element msg
-viewFixedLayout config =
-    viewHeader config
-
-
 viewHeader : Config subMsg msg -> Element msg
-viewHeader { viewer, updateHeader, header, page } =
+viewHeader config =
+    if .class (Context.device config.context) == Phone then
+        viewMobileHeader config
+
+    else
+        viewDesktopHeader config
+
+
+viewMobileHeader : Config subMsg msg -> Element msg
+viewMobileHeader { viewer, updateHeader, header, page } =
     row
         [ width fill
-        , height (px 75)
+        , height (px 60)
         , paddingXY 0 15
         , Background.color Palette.neutral7
         ]
         [ row
-            [ width (fill |> maximum maxWidth)
+            [ width fill
+            , centerX
+            , paddingXY 20 0
+            , height fill
+            , inFront (column [ alignRight, centerY ] (viewMobileHeaderMenu page viewer updateHeader header))
+            ]
+            [ el
+                [ centerX ]
+                viewBrand
+            ]
+        ]
+
+
+viewDesktopHeader : Config subMsg msg -> Element msg
+viewDesktopHeader { viewer, updateHeader, header, page } =
+    row
+        [ width fill
+        , height (px 60)
+        , paddingXY 0 15
+        , Background.color Palette.neutral7
+        ]
+        [ row
+            [ width fill
             , centerX
             , paddingXY 20 0
             , height fill
@@ -165,20 +191,40 @@ viewHeader { viewer, updateHeader, header, page } =
                 , height fill
                 ]
               <|
-                viewMenu page viewer updateHeader header
+                viewDesktopHeaderMenu page viewer updateHeader header
             ]
         ]
 
 
-viewFixedFooter : Config subMsg msg -> Element msg
-viewFixedFooter { context, page, viewer, updateHeader, header } =
+viewFooter : Config subMsg msg -> Element msg
+viewFooter config =
+    if .class (Context.device config.context) == Phone then
+        viewMobileFooter config
+
+    else
+        viewDesktopFooter config
+
+
+viewDesktopFooter : Config subMsg msg -> Element msg
+viewDesktopFooter config =
+    el
+        [ width fill
+        , height (px 70)
+        , paddingXY 20 15
+        , alignBottom
+        ]
+        none
+
+
+viewMobileFooter : Config subMsg msg -> Element msg
+viewMobileFooter { context, page, viewer, updateHeader, header } =
     let
         (Header status) =
             header
     in
     column
         [ width fill
-        , height (px 75)
+        , height (px 70)
         , paddingXY 20 15
         , alignBottom
         , Border.shadow
@@ -290,8 +336,60 @@ iconOptions =
     Icon.defaultOptions
 
 
-viewMenu : Page -> Maybe Viewer -> (Header -> msg) -> Header -> List (Element msg)
-viewMenu page maybeViewer headerMsg (Header status) =
+viewMobileHeaderMenu : Page -> Maybe Viewer -> (Header -> msg) -> Header -> List (Element msg)
+viewMobileHeaderMenu page maybeViewer headerMsg (Header status) =
+    let
+        linkTo =
+            navbarLink page
+    in
+    case maybeViewer of
+        Just viewer ->
+            [ el
+                [ height fill
+                , Border.widthEach { top = 0, left = 0, right = 0, bottom = 3 }
+                , Border.color Palette.transparent
+                , paddingXY 8 0
+                , pointer
+                , Font.color Palette.neutral2
+                , mouseOver
+                    [ Border.color Palette.primary3
+                    , Font.color Palette.primary3
+                    ]
+                ]
+                (el
+                    [ width (px 28)
+                    , height fill
+                    , moveDown 3
+                    , Border.rounded 180
+                    , centerY
+                    , above
+                        (el
+                            [ width shrink
+                            , height fill
+                            , Background.color Palette.primary3
+                            , Border.width 1
+                            , Border.color Palette.primary7
+                            , paddingXY 4 3
+                            , Border.rounded 7
+                            , moveDown 14
+                            , moveRight 14
+                            , Font.size 10
+                            , Font.color Palette.white
+                            ]
+                            (text "2")
+                        )
+                    ]
+                    (Icon.bell { iconOptions | size = 100, sizeUnit = Icon.Percentage })
+                )
+            ]
+
+        Nothing ->
+            [ linkTo Route.Login (text "Sign in")
+            ]
+
+
+viewDesktopHeaderMenu : Page -> Maybe Viewer -> (Header -> msg) -> Header -> List (Element msg)
+viewDesktopHeaderMenu page maybeViewer headerMsg (Header status) =
     let
         linkTo =
             navbarLink page
