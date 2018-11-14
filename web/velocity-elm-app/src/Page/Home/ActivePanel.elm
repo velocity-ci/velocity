@@ -13,7 +13,7 @@ toQueryParams : String -> Maybe ActivePanel -> List Url.Builder.QueryParameter
 toQueryParams key maybeActivePanel =
     case maybeActivePanel of
         Just NewProjectForm ->
-            [ Url.Builder.string key "new-project" ]
+            [ Url.Builder.string key "new" ]
 
         Nothing ->
             []
@@ -24,7 +24,7 @@ queryParser key =
     QueryParser.custom key <|
         \stringList ->
             case stringList of
-                [ "new-project" ] ->
+                [ "new" ] ->
                     Just NewProjectForm
 
                 _ ->

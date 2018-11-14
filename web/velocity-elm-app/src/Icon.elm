@@ -1,4 +1,4 @@
-module Icon exposing (Options, SizeUnit(..), bell, defaultOptions, logOut)
+module Icon exposing (Options, SizeUnit(..), bell, defaultOptions, logOut, plus, plusCircle)
 
 import Element exposing (Element)
 import FeatherIcons
@@ -34,14 +34,32 @@ defaultOptions =
     }
 
 
+
+-- Icons
+
+
 logOut : Options -> Element msg
-logOut options =
-    featherIcon FeatherIcons.logOut options
+logOut =
+    featherIcon FeatherIcons.logOut
 
 
 bell : Options -> Element msg
-bell options =
-    featherIcon FeatherIcons.bell options
+bell =
+    featherIcon FeatherIcons.bell
+
+
+plusCircle : Options -> Element msg
+plusCircle =
+    featherIcon FeatherIcons.plusCircle
+
+
+plus : Options -> Element msg
+plus =
+    featherIcon FeatherIcons.plus
+
+
+
+-- Private
 
 
 featherIcon : FeatherIcons.Icon -> Options -> Element msg

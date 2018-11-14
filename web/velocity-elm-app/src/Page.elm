@@ -105,22 +105,22 @@ type alias Config msg pageMsg =
 
 
 view : Config subMsg msg -> { title : String, body : List (Html msg) }
-view { context, viewer, page, title, content, toMsg, header, updateHeader } =
-    { title = title ++ " - Conduit"
+view config =
+    { title = config.title ++ " - Conduit"
     , body =
         [ Element.layout
             [ Font.family
                 [ Font.typeface "Roboto"
                 , Font.sansSerif
                 ]
+            , inFront (viewHeader config)
+            , inFront (viewFixedFooter config)
             ]
             (Element.column
                 [ width fill
                 , height fill
                 ]
-                [ viewHeader context page viewer updateHeader header
-                , viewBody content toMsg
-                , viewFooter
+                [ viewBody config.content config.toMsg
                 ]
             )
         ]
@@ -132,39 +132,23 @@ viewBody content toMsg =
     row
         [ width (fill |> maximum maxWidth)
         , height fill
+        , paddingXY 0 75
         , centerX
-        , paddingXY 20 0
         ]
         [ Element.map toMsg content ]
 
 
-viewHeader : Context -> Page -> Maybe Viewer -> (Header -> msg) -> Header -> Element msg
-viewHeader context page maybeViewer headerMsg header =
-    let
-        deviceClass =
-            context
-                |> Context.device
-                |> .class
-    in
-    if deviceClass == Phone then
-        --        viewMobileHeader page maybeViewer headerMsg header
-        viewDesktopHeader page maybeViewer headerMsg header
-
-    else
-        viewDesktopHeader page maybeViewer headerMsg header
+viewFixedLayout : Config subMsg msg -> Element msg
+viewFixedLayout config =
+    viewHeader config
 
 
-viewDesktopHeader : Page -> Maybe Viewer -> (Header -> msg) -> Header -> Element msg
-viewDesktopHeader page maybeViewer headerMsg header =
+viewHeader : Config subMsg msg -> Element msg
+viewHeader { viewer, updateHeader, header, page } =
     row
         [ width fill
-        , height (px 55)
-        , Border.shadow
-            { offset = ( 0, 2 )
-            , size = 2
-            , blur = 2
-            , color = Palette.neutral6
-            }
+        , height (px 75)
+        , paddingXY 0 15
         , Background.color Palette.neutral7
         ]
         [ row
@@ -181,43 +165,107 @@ viewDesktopHeader page maybeViewer headerMsg header =
                 , height fill
                 ]
               <|
-                viewMenu page maybeViewer headerMsg header
+                viewMenu page viewer updateHeader header
             ]
         ]
 
 
-viewMobileHeader : Page -> Maybe Viewer -> (Header -> msg) -> Header -> Element msg
-viewMobileHeader page maybeViewer headerMsg header =
+viewFixedFooter : Config subMsg msg -> Element msg
+viewFixedFooter { context, page, viewer, updateHeader, header } =
+    let
+        (Header status) =
+            header
+    in
     column
         [ width fill
-        , height shrink
+        , height (px 75)
+        , paddingXY 20 15
+        , alignBottom
         , Border.shadow
-            { offset = ( 0, 2 )
+            { offset = ( -2, -2 )
             , size = 2
             , blur = 2
             , color = Palette.neutral6
             }
         , Background.color Palette.neutral7
-        , spacing 5
         ]
         [ row
-            [ centerX
-            , Border.widthEach { top = 0, left = 0, right = 0, bottom = 1 }
-            , Border.color Palette.neutral6
-            , width fill
-            , paddingXY 0 10
+            [ centerY
+            , centerX
+            , width (fill |> maximum maxWidth)
             ]
-            [ el [ centerX ] viewBrand
-            ]
-        , row
-            [ width fill
-            , padding 10
-            ]
-            [ column [ width fill ] []
-            , column [ width fill ]
-                [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
-                , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
+            [ column [ width fill ]
+                [ column []
+                    [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
+                    , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
+                    ]
                 ]
+            , el [ width fill ]
+                (el
+                    [ width (px 35)
+                    , height (px 35)
+                    , Border.rounded 180
+                    , Background.image (Asset.src Asset.defaultAvatar)
+                    , Font.size 16
+                    , pointer
+                    , alignRight
+                    , above
+                        (if status == ListenClicks then
+                            column
+                                [ Background.color Palette.neutral7
+                                , Border.color Palette.neutral4
+                                , Border.width 1
+                                , Border.rounded 7
+                                , moveRight -170
+                                , width (px 200)
+                                ]
+                                [ row
+                                    [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
+                                    , Border.color Palette.neutral6
+                                    , mouseOver
+                                        [ Background.color Palette.neutral2
+                                        , Font.color Palette.white
+                                        ]
+                                    , width fill
+                                    , paddingXY 20 20
+                                    , spacingXY 10 0
+                                    , Font.color Palette.primary1
+                                    , Font.light
+                                    , Font.size 16
+                                    ]
+                                    [ column
+                                        [ width shrink ]
+                                        [ Icon.logOut { iconOptions | size = 16 } ]
+                                    , column
+                                        [ width fill ]
+                                        [ text "Sign out" ]
+                                    ]
+                                ]
+
+                         else
+                            none
+                        )
+                    , onClick
+                        (if status == Closed then
+                            updateHeader (Header Open)
+
+                         else
+                            updateHeader (Header status)
+                        )
+                    , Border.shadow
+                        { offset = ( 0, 0 )
+                        , size =
+                            if status == ListenClicks then
+                                5
+
+                            else
+                                0
+                        , blur = 10
+                        , color = Palette.neutral4
+                        }
+                    ]
+                    none
+                )
             ]
         ]
 
@@ -247,60 +295,6 @@ viewMenu page maybeViewer headerMsg (Header status) =
     let
         linkTo =
             navbarLink page
-
-        dropdownMenu =
-            case status of
-                ListenClicks ->
-                    column
-                        [ Background.color Palette.neutral7
-                        , Border.color Palette.neutral4
-                        , Border.width 1
-                        , Border.rounded 7
-                        , moveRight -170
-                        , width (px 200)
-                        ]
-                        [ row
-                            [ width fill
-                            , padding 10
-                            , spacingXY 10 0
-                            ]
-                            [ el
-                                [ width (px 45)
-                                , height (px 45)
-                                , Border.rounded 90
-                                , Background.image (Asset.src Asset.defaultAvatar)
-                                ]
-                                (text "")
-                            , column [ width fill ]
-                                [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
-                                , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
-                                ]
-                            ]
-                        , row
-                            [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
-                            , Border.color Palette.neutral6
-                            , mouseOver
-                                [ Background.color Palette.neutral2
-                                , Font.color Palette.white
-                                ]
-                            , width fill
-                            , paddingXY 20 20
-                            , spacingXY 10 0
-                            , Font.color Palette.primary1
-                            , Font.light
-                            , Font.size 16
-                            ]
-                            [ column
-                                [ width shrink ]
-                                [ Icon.logOut { iconOptions | size = 16 } ]
-                            , column
-                                [ width fill ]
-                                [ text "Sign out" ]
-                            ]
-                        ]
-
-                _ ->
-                    none
     in
     case maybeViewer of
         Just viewer ->
@@ -318,14 +312,14 @@ viewMenu page maybeViewer headerMsg (Header status) =
                 ]
                 (el
                     [ width (px 28)
-                    , height (px 28)
+                    , height fill
                     , moveDown 3
                     , Border.rounded 180
                     , centerY
                     , above
                         (el
                             [ width shrink
-                            , height shrink
+                            , height fill
                             , Background.color Palette.primary3
                             , Border.width 1
                             , Border.color Palette.primary7
@@ -348,7 +342,13 @@ viewMenu page maybeViewer headerMsg (Header status) =
                 , Background.image (Asset.src Asset.defaultAvatar)
                 , Font.size 16
                 , pointer
-                , below dropdownMenu
+                , below
+                    (if status == ListenClicks then
+                        viewUserDropdown
+
+                     else
+                        none
+                    )
                 , onClick
                     (if status == Closed then
                         headerMsg (Header Open)
@@ -376,25 +376,54 @@ viewMenu page maybeViewer headerMsg (Header status) =
             ]
 
 
-viewFooter : Element msg
-viewFooter =
+viewUserDropdown : Element msg
+viewUserDropdown =
     column
-        [ width fill
-        , height (px 50)
-        , Border.shadow
-            { offset = ( 2, 2 )
-            , size = 2
-            , blur = 2
-            , color = Palette.neutral6
-            }
-        , Background.color Palette.neutral7
+        [ Background.color Palette.neutral7
+        , Border.color Palette.neutral4
+        , Border.width 1
+        , Border.rounded 7
+        , moveRight -170
+        , width (px 200)
         ]
-        [ Element.el
-            [ centerY
-            , centerX
-            , width (fill |> maximum maxWidth)
+        [ row
+            [ width fill
+            , padding 10
+            , spacingXY 10 0
             ]
-            (text "")
+            [ el
+                [ width (px 45)
+                , height (px 45)
+                , Border.rounded 90
+                , Background.image (Asset.src Asset.defaultAvatar)
+                ]
+                (text "")
+            , column [ width fill ]
+                [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
+                , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
+                ]
+            ]
+        , row
+            [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
+            , Border.color Palette.neutral6
+            , mouseOver
+                [ Background.color Palette.neutral2
+                , Font.color Palette.white
+                ]
+            , width fill
+            , paddingXY 20 20
+            , spacingXY 10 0
+            , Font.color Palette.primary1
+            , Font.light
+            , Font.size 16
+            ]
+            [ column
+                [ width shrink ]
+                [ Icon.logOut { iconOptions | size = 16 } ]
+            , column
+                [ width fill ]
+                [ text "Sign out" ]
+            ]
         ]
 
 

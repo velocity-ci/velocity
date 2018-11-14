@@ -14,6 +14,7 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
+import Icon
 import Loading
 import Page.Home.ActivePanel exposing (ActivePanel(..))
 import Palette
@@ -68,22 +69,17 @@ init session context maybeActivePanel =
 
 view : Model -> { title : String, content : Element Msg }
 view model =
-    let
-        deviceClass =
-            model.context
-                |> Context.device
-                |> .class
-    in
     { title = "Home"
     , content =
         column
             [ width fill
             , height fill
-            , paddingXY 0 20
+
+            --            , paddingXY 0 20
             , centerX
             , spacing 20
             ]
-            [ viewIf (deviceClass /= Phone) viewProjectHeader
+            [ viewProjectHeader (Context.device model.context) model.activePanel
             , row
                 [ width fill
                 , height fill
@@ -93,18 +89,107 @@ view model =
     }
 
 
-viewProjectHeader : Element msg
-viewProjectHeader =
-    el
-        [ Font.bold
-        , Font.size 18
-        , width fill
-        , height (px 50)
-        , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
-        , Border.color Palette.neutral6
-        , paddingEach { top = 0, left = 0, right = 0, bottom = 10 }
-        ]
-        (el [ alignLeft, centerY, Font.color Palette.primary5 ] (text "Your projects"))
+iconOptions : Icon.Options
+iconOptions =
+    Icon.defaultOptions
+
+
+viewProjectHeader : Device -> Maybe ActivePanel -> Element msg
+viewProjectHeader device maybeActivePanel =
+    case device.class of
+        Phone ->
+            row
+                [ width fill
+                , height shrink
+                , Background.color Palette.neutral7
+                , Font.color Palette.white
+                , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
+                , Border.color Palette.neutral6
+                , paddingXY 0 15
+                , Border.shadow
+                    { offset = ( 0, 2 )
+                    , size = 2
+                    , blur = 2
+                    , color = Palette.neutral6
+                    }
+                ]
+                [ el [ width (fillPortion 1) ] none
+                , Route.link
+                    [ width (fillPortion 2)
+                    , paddingXY 10 10
+                    , Border.rounded 5
+                    , Font.size 21
+                    , Background.color
+                        (case maybeActivePanel of
+                            Just NewProjectForm ->
+                                Palette.primary4
+
+                            _ ->
+                                Palette.primary5
+                        )
+                    , Border.width 1
+                    , Border.rounded 10
+                    , Border.color Palette.neutral6
+                    , Font.color Palette.neutral7
+                    , mouseOver [ Background.color Palette.primary4 ]
+                    ]
+                    (row
+                        [ height fill
+                        , width fill
+                        ]
+                        [ Icon.plus { iconOptions | size = 21 }
+                        , el [ centerX ] (text "New project")
+                        ]
+                    )
+                    (Route.Home (Just NewProjectForm))
+                , el [ width (fillPortion 1) ] none
+                ]
+
+        _ ->
+            row
+                [ Font.bold
+                , Font.size 18
+                , width fill
+                , height shrink
+                , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
+                , Border.color Palette.neutral6
+                , paddingXY 20 15
+                ]
+                [ el
+                    [ width fill
+                    , centerY
+                    , Font.color Palette.primary5
+                    ]
+                    (el [ alignLeft ] (text "Your projects"))
+                , Route.link
+                    [ width shrink
+                    , paddingXY 10 10
+                    , Border.rounded 5
+                    , Font.size 16
+                    , Background.color
+                        (case maybeActivePanel of
+                            Just NewProjectForm ->
+                                Palette.primary4
+
+                            _ ->
+                                Palette.primary5
+                        )
+                    , Border.width 1
+                    , Border.rounded 10
+                    , Border.color Palette.neutral6
+                    , Font.color Palette.neutral7
+                    , mouseOver [ Background.color Palette.primary4 ]
+                    ]
+                    (row
+                        [ height fill
+                        , width fill
+                        ]
+                        [ Icon.plus { iconOptions | size = 16 }
+                        , el [ centerX ] (text "New project")
+                        ]
+                    )
+                    (Route.Home (Just NewProjectForm))
+                ]
 
 
 splitProjectsToRows : Int -> List Panel -> List (List Panel)
@@ -153,7 +238,14 @@ viewColumns : Maybe ActivePanel -> Device -> List Project -> List (Element Msg)
 viewColumns maybeActivePanel device projects =
     List.concat [ projects, projects, projects, projects ]
         |> List.map ProjectPanel
-        |> (::) (AddProjectPanel (maybeActivePanel == Just NewProjectForm))
+        |> (\projects_ ->
+                case maybeActivePanel of
+                    Just NewProjectForm ->
+                        AddProjectPanel True :: projects_
+
+                    _ ->
+                        projects_
+           )
         |> List.indexedMap Tuple.pair
         |> List.foldl
             (\( i, panel ) columns ->
@@ -181,22 +273,18 @@ viewColumns maybeActivePanel device projects =
                     , width fill
                     , height fill
                     ]
-                    (List.map viewPanel panels)
+                    (List.map (viewPanel device) panels)
             )
 
 
-viewPanel : Panel -> Element Msg
-viewPanel panel =
+viewPanel : Device -> Panel -> Element Msg
+viewPanel device panel =
     case panel of
         BlankPanel ->
             viewBlankPanel
 
         AddProjectPanel open ->
-            if open then
-                viewProjectFormPanel
-
-            else
-                viewNewPanel
+            viewProjectFormPanel
 
         ProjectPanel project ->
             viewProjectPanel project
@@ -209,51 +297,6 @@ viewBlankPanel =
         , height (px 150)
         ]
         (text "")
-
-
-viewNewPanel : Element Msg
-viewNewPanel =
-    row
-        [ width (fillPortion 2)
-        , Border.width 1
-        , Border.color Palette.white
-        , Border.rounded 10
-        , height (px 150)
-        ]
-        [ Route.link
-            [ height (px 70)
-            , width shrink
-            , padding 20
-            , centerY
-            , centerX
-            , Background.color Palette.neutral7
-            , Border.width 2
-            , Border.rounded 360
-            , Border.color Palette.neutral6
-            , mouseOver
-                [ Background.color Palette.neutral6
-                , Border.color Palette.neutral5
-                ]
-            ]
-            (row
-                [ height fill
-                , width fill
-                ]
-                [ image
-                    [ centerX
-                    , centerY
-                    , height (px 30)
-                    , width (px 30)
-                    , moveUp 0
-                    ]
-                    { src = Asset.src Asset.plus
-                    , description = "Add project icon"
-                    }
-                , el [ Font.light, Font.color Palette.primary1 ] (text "Add project")
-                ]
-            )
-            (Route.Home (Just NewProjectForm))
-        ]
 
 
 viewProjectFormPanel : Element Msg
