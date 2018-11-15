@@ -82,8 +82,8 @@ view model =
             ]
             [ viewProjectHeader (Context.device model.context) model.activePanel
             , row
-                [ width (fill |> maximum 1280)
-                , centerX
+                [ width (fill |> maximum 1600)
+                , alignRight
                 , height fill
                 ]
                 (viewColumns model.activePanel (Context.device model.context) (Session.projects model.session))
@@ -151,10 +151,10 @@ viewProjectHeader device maybeActivePanel =
             row
                 [ Font.bold
                 , Font.size 18
-                , width fill
+                , width (fill |> maximum 1600)
+                , alignRight
                 , height shrink
                 , paddingXY 15 10
-                , Background.color Palette.white
                 , Font.color Palette.white
                 , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
                 , Border.color Palette.neutral6
@@ -180,10 +180,10 @@ viewProjectHeader device maybeActivePanel =
                     , Background.color
                         (case maybeActivePanel of
                             Just NewProjectForm ->
-                                Palette.white
+                                Palette.primary2
 
                             _ ->
-                                Palette.white
+                                Palette.primary3
                         )
                     , Border.width 1
                     , Border.rounded 10

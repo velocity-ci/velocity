@@ -124,7 +124,8 @@ view config =
                         [ Device Phone Portrait
                         , Device Phone Landscape
                         ]
-                        viewNotificationsPanel
+                        (viewNotificationsPanel config)
+                        |> viewCollapsableNotificationsPanel config
                     )
                 , inFront
                     (viewIfDeviceIn config
@@ -136,7 +137,8 @@ view config =
                             , height fill
                             , alignRight
                             ]
-                            [ viewNotificationsPanel ]
+                            [ viewNotificationsPanel config ]
+                            |> viewCollapsableNotificationsPanel config
                         )
                     )
                 ]
@@ -148,10 +150,10 @@ view config =
                     , Device BigDesktop Portrait
                     ]
                     (column
-                        [ width (fillPortion 1 |> maximum 400 |> minimum 250)
+                        [ width (fillPortion 1 |> maximum 500 |> minimum 250)
                         , height fill
                         ]
-                        [ viewNotificationsPanel ]
+                        [ viewNotificationsPanel config ]
                     )
                 ]
             )
@@ -163,8 +165,21 @@ view config =
 -- Notifications
 
 
-viewNotificationsPanel : Element msg
-viewNotificationsPanel =
+viewCollapsableNotificationsPanel : Config msg -> Element msg -> Element msg
+viewCollapsableNotificationsPanel config content =
+    let
+        (Layout userMenu open) =
+            config.layout
+    in
+    if open then
+        content
+
+    else
+        none
+
+
+viewNotificationsPanel : Config msg -> Element msg
+viewNotificationsPanel config =
     column
         [ Background.color Palette.primary2
         , width fill
@@ -344,8 +359,8 @@ viewDesktopHeader { viewer, updateLayout, layout, page } =
         , Background.color Palette.primary1
         ]
         [ row
-            [ width fill
-            , centerX
+            [ alignRight
+            , width (fill |> maximum 2100)
             , paddingXY 20 0
             , height fill
             ]
@@ -475,12 +490,20 @@ iconOptions =
 viewMobileHeaderMenu : Config msg -> List (Element msg)
 viewMobileHeaderMenu config =
     let
+        (Layout userMenu notificationsOpen) =
+            config.layout
+
         linkTo =
             navbarLink config.page
     in
     case config.viewer of
         Just viewer ->
-            [ Header.notificationsToggle { amount = 2, toggled = False } ]
+            [ Header.notificationsToggle
+                { amount = 2
+                , toggled = notificationsOpen
+                , toggleMsg = Layout userMenu >> config.updateLayout
+                }
+            ]
 
         Nothing ->
             [ linkTo Route.Login (text "Sign in")

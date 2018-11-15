@@ -16,19 +16,28 @@ iconOptions =
     Icon.defaultOptions
 
 
-notificationsToggle : { amount : Int, toggled : Bool } -> Element msg
-notificationsToggle { amount, toggled } =
+notificationsToggle : { amount : Int, toggled : Bool, toggleMsg : Bool -> msg } -> Element msg
+notificationsToggle { amount, toggled, toggleMsg } =
     el
         [ height (px 45)
-        , Border.widthEach { top = 0, left = 0, right = 0, bottom = 3 }
+        , Border.widthEach
+            { top = 0
+            , left = 0
+            , right = 0
+            , bottom =
+                if toggled then
+                    3
+
+                else
+                    0
+            }
         , Border.color Palette.transparent
         , paddingXY 8 0
         , pointer
         , Font.color Palette.white
-        , mouseOver
-            [ Border.color Palette.primary7
-            , Font.color Palette.primary7
-            ]
+        , onClick (toggleMsg <| not toggled)
+        , Border.color Palette.primary7
+        , Font.color Palette.primary7
         ]
         (el
             [ width (px 28)
