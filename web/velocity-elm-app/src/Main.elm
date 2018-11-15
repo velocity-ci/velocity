@@ -11,7 +11,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
-import Page exposing (Header)
+import Page exposing (Layout)
 import Page.Blank as Blank
 import Page.Home as Home
 import Page.Login as Login
@@ -30,7 +30,7 @@ import Viewer exposing (Viewer)
 type Model
     = InitError String
     | Initialising Context Nav.Key
-    | ApplicationStarted Header Body
+    | ApplicationStarted Layout Body
 
 
 type Body
@@ -58,18 +58,17 @@ init maybeViewer contextResult url navKey =
 -- VIEW
 
 
-viewCurrentPage : Header -> Body -> Document Msg
-viewCurrentPage header currentPage =
+viewCurrentPage : Layout -> Body -> Document Msg
+viewCurrentPage layout currentPage =
     let
         viewPage page toMsg { title, content } =
             Page.view
                 { viewer = Session.viewer (toSession currentPage)
                 , page = page
                 , title = title
-                , content = content
-                , toMsg = toMsg
-                , header = header
-                , updateHeader = UpdateHeader
+                , content = Element.map toMsg content
+                , layout = layout
+                , updateLayout = UpdateLayout
                 , context = toContext currentPage
                 }
     in
@@ -129,7 +128,7 @@ type Msg
     | UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
     | WindowResized Int Int
-    | UpdateHeader Page.Header
+    | UpdateLayout Page.Layout
 
 
 
@@ -303,7 +302,7 @@ update msg model =
                     , Cmd.none
                     )
 
-                UpdateHeader newHeader ->
+                UpdateLayout newHeader ->
                     ( ApplicationStarted newHeader page
                     , Cmd.none
                     )
@@ -315,7 +314,7 @@ update msg model =
         Initialising _ _ ->
             case msg of
                 StartApplication (Ok ( app, cmd )) ->
-                    ( ApplicationStarted Page.initHeader app
+                    ( ApplicationStarted Page.initLayout app
                     , cmd
                     )
 
@@ -355,7 +354,7 @@ headerSubscriptions : Model -> Sub Msg
 headerSubscriptions model =
     case model of
         ApplicationStarted header _ ->
-            Page.headerSubscriptions header UpdateHeader
+            Page.layoutSubscriptions header UpdateLayout
 
         Initialising _ _ ->
             Sub.none

@@ -74,6 +74,7 @@ view model =
         column
             [ width fill
             , height fill
+            , Background.color Palette.white
 
             --            , paddingXY 0 20
             , centerX
@@ -81,7 +82,8 @@ view model =
             ]
             [ viewProjectHeader (Context.device model.context) model.activePanel
             , row
-                [ width fill
+                [ width (fill |> maximum 1280)
+                , centerX
                 , height fill
                 ]
                 (viewColumns model.activePanel (Context.device model.context) (Session.projects model.session))
@@ -122,10 +124,10 @@ viewProjectHeader device maybeActivePanel =
                     , Background.color
                         (case maybeActivePanel of
                             Just NewProjectForm ->
-                                Palette.primary4
+                                Palette.primary2
 
                             _ ->
-                                Palette.primary5
+                                Palette.primary2
                         )
                     , Border.width 1
                     , Border.rounded 10
@@ -151,17 +153,18 @@ viewProjectHeader device maybeActivePanel =
                 , Font.size 18
                 , width fill
                 , height shrink
-                , Background.color Palette.neutral7
+                , paddingXY 15 10
+                , Background.color Palette.white
                 , Font.color Palette.white
                 , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
                 , Border.color Palette.neutral6
-                , paddingXY 20 15
-                , Border.shadow
-                    { offset = ( 0, 2 )
-                    , size = 2
-                    , blur = 2
-                    , color = Palette.neutral6
-                    }
+
+                --                , Border.shadow
+                --                    { offset = ( 0, 2 )
+                --                    , size = 2
+                --                    , blur = 2
+                --                    , color = Palette.neutral6
+                --                    }
                 ]
                 [ el
                     [ width fill
@@ -177,10 +180,10 @@ viewProjectHeader device maybeActivePanel =
                     , Background.color
                         (case maybeActivePanel of
                             Just NewProjectForm ->
-                                Palette.primary4
+                                Palette.white
 
                             _ ->
-                                Palette.primary5
+                                Palette.white
                         )
                     , Border.width 1
                     , Border.rounded 10
@@ -236,7 +239,7 @@ rowAmount device =
             2
 
         ( Desktop, _ ) ->
-            3
+            2
 
         ( BigDesktop, _ ) ->
             3
@@ -312,7 +315,8 @@ viewProjectFormPanel =
     column
         [ width (fillPortion 2)
         , Border.width 2
-        , Border.color (rgba255 245 245 245 1)
+        , Border.color Palette.neutral6
+        , Background.color Palette.white
         , Border.rounded 10
         , Font.size 14
         , padding 10
@@ -408,9 +412,10 @@ viewProjectPanel : Project -> Element msg
 viewProjectPanel project =
     row
         [ width fill
-        , Border.width 2
-        , Border.color Palette.neutral7
+        , Border.width 1
+        , Border.color Palette.primary6
         , Border.rounded 10
+        , Background.color Palette.white
         , pointer
         , mouseOver [ Background.color Palette.primary7 ]
         ]

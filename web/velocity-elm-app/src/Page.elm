@@ -1,4 +1,4 @@
-module Page exposing (Header, Page(..), headerSubscriptions, initHeader, view, viewErrors)
+module Page exposing (DropdownStatus(..), Layout, Page(..), initLayout, layoutSubscriptions, view, viewErrors)
 
 import Api exposing (Cred)
 import Asset
@@ -10,6 +10,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
+import Element.Header as Header
 import Element.Input as Input
 import Html exposing (Html)
 import Icon
@@ -30,28 +31,28 @@ type DropdownStatus
     | Closed
 
 
-type Header
-    = Header DropdownStatus
+type Layout
+    = Layout DropdownStatus Bool
 
 
-initHeader : Header
-initHeader =
-    Header Closed
+initLayout : Layout
+initLayout =
+    Layout Closed False
 
 
 {-| The dropdowns makes use of subscriptions to ensure that opened dropdowns are
 automatically closed when you click outside them.
 -}
-headerSubscriptions : Header -> (Header -> msg) -> Sub msg
-headerSubscriptions (Header status) updateStatus =
+layoutSubscriptions : Layout -> (Layout -> msg) -> Sub msg
+layoutSubscriptions (Layout status notificationsOpen) updateStatus =
     case status of
         Open ->
             Browser.Events.onAnimationFrame
-                (\_ -> updateStatus (Header ListenClicks))
+                (\_ -> updateStatus (Layout ListenClicks notificationsOpen))
 
         ListenClicks ->
             Browser.Events.onClick
-                (Decode.succeed (updateStatus (Header Closed)))
+                (Decode.succeed (updateStatus (Layout Closed notificationsOpen)))
 
         Closed ->
             Sub.none
@@ -92,19 +93,18 @@ isLoading is for determining whether we should show a loading spinner
 in the header. (This comes up during slow page transitions.)
 
 -}
-type alias Config msg pageMsg =
+type alias Config msg =
     { viewer : Maybe Viewer
     , page : Page
     , title : String
     , content : Element msg
-    , toMsg : msg -> pageMsg
-    , header : Header
-    , updateHeader : Header -> pageMsg
+    , layout : Layout
+    , updateLayout : Layout -> msg
     , context : Context
     }
 
 
-view : Config subMsg msg -> { title : String, body : List (Html msg) }
+view : Config msg -> { title : String, body : List (Html msg) }
 view config =
     { title = config.title ++ " - Conduit"
     , body =
@@ -116,51 +116,217 @@ view config =
             , inFront (viewHeader config)
             , inFront (viewFooter config)
             ]
-            (Element.column
+            (Element.row
                 [ width fill
                 , height fill
+                , inFront
+                    (viewIfDeviceIn config
+                        [ Device Phone Portrait
+                        , Device Phone Landscape
+                        ]
+                        viewNotificationsPanel
+                    )
+                , inFront
+                    (viewIfDeviceIn config
+                        [ Device Tablet Portrait
+                        , Device Tablet Landscape
+                        ]
+                        (column
+                            [ width (fillPortion 1 |> maximum 300 |> minimum 250)
+                            , height fill
+                            , alignRight
+                            ]
+                            [ viewNotificationsPanel ]
+                        )
+                    )
                 ]
-                [ viewBody config.content config.toMsg
+                [ el [ width (fillPortion 3), height fill ] (viewBody config.content)
+                , viewIfDeviceIn config
+                    [ Device Desktop Landscape
+                    , Device Desktop Portrait
+                    , Device BigDesktop Landscape
+                    , Device BigDesktop Portrait
+                    ]
+                    (column
+                        [ width (fillPortion 1 |> maximum 400 |> minimum 250)
+                        , height fill
+                        ]
+                        [ viewNotificationsPanel ]
+                    )
                 ]
             )
         ]
     }
 
 
-viewBody : Element msg -> (msg -> msg2) -> Element msg2
-viewBody content toMsg =
+
+-- Notifications
+
+
+viewNotificationsPanel : Element msg
+viewNotificationsPanel =
+    column
+        [ Background.color Palette.primary2
+        , width fill
+        , height fill
+        , paddingEach { top = 80, bottom = 90, left = 20, right = 20 }
+        , spacing 10
+        ]
+        [ viewNotificationsPanelHeading
+        , viewNotificationCommitItem
+        , viewNotificationBuildStartItem
+        ]
+
+
+viewNotificationsPanelHeading : Element msg
+viewNotificationsPanelHeading =
+    row
+        [ width fill
+        , Font.color Palette.neutral7
+        , Font.extraLight
+        , Font.size 17
+        ]
+        [ text "Recent activity" ]
+
+
+viewIfDeviceIn : Config msg -> List Device -> Element msg -> Element msg
+viewIfDeviceIn config devices content =
+    if List.member (Context.device config.context) devices then
+        content
+
+    else
+        none
+
+
+viewIfDeviceNotIn : Config msg -> List Device -> Element msg -> Element msg
+viewIfDeviceNotIn config devices content =
+    if List.member (Context.device config.context) devices then
+        none
+
+    else
+        content
+
+
+
+--viewNotificationSearch : Element msg
+--viewNotificationSearch =
+--    Input.search []
+
+
+viewNotificationCommitItem : Element msg
+viewNotificationCommitItem =
+    row
+        [ Border.width 1
+        , Border.color Palette.primary4
+        , Font.color Palette.neutral4
+        , Font.light
+        , Border.dashed
+        , Border.rounded 5
+        , padding 10
+        , width fill
+        , mouseOver [ Background.color Palette.primary3, Font.color Palette.neutral5 ]
+        ]
+        [ el
+            [ width (px 25)
+            , height (px 25)
+            , Background.image "https://i.imgur.com/4vEcq8U.png"
+            , Border.rounded 10
+            ]
+            none
+        , el [ width fill ]
+            (paragraph
+                [ Font.size 15
+                , alignLeft
+                , paddingXY 10 0
+                ]
+                [ el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "Eddy Lane")
+                , el [ alignLeft, Font.color Palette.neutral5 ] (text " created commit ")
+                , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "b3e8a32")
+                , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text "8 hours ago")
+                ]
+            )
+        ]
+
+
+viewNotificationBuildStartItem : Element msg
+viewNotificationBuildStartItem =
+    row
+        [ Border.width 1
+        , Border.color Palette.primary4
+        , Font.color Palette.neutral4
+        , Font.light
+        , Border.dashed
+        , Border.rounded 5
+        , padding 10
+        , width fill
+        , mouseOver [ Background.color Palette.primary3, Font.color Palette.neutral5 ]
+        ]
+        [ el
+            [ width (px 25)
+            , height (px 25)
+            , Background.image "https://i.imgur.com/4vEcq8U.png"
+            , Border.rounded 10
+            ]
+            none
+        , el [ width fill ]
+            (paragraph
+                [ Font.size 15
+                , alignLeft
+                , paddingXY 10 0
+                ]
+                [ el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "Eddy Lane")
+                , el [ alignLeft, Font.color Palette.neutral5 ] (text " started build ")
+                , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "fdsfds")
+                , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text "9 hours ago")
+                ]
+            )
+        ]
+
+
+viewBody : Element msg -> Element msg
+viewBody content =
     row
         [ width fill
         , height fill
         , paddingEach { top = 60, bottom = 70, left = 0, right = 0 }
         , centerX
         ]
-        [ Element.map toMsg content ]
+        [ content ]
 
 
-viewHeader : Config subMsg msg -> Element msg
+viewHeader : Config msg -> Element msg
 viewHeader config =
-    if .class (Context.device config.context) == Phone then
+    if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
         viewMobileHeader config
 
     else
         viewDesktopHeader config
 
 
-viewMobileHeader : Config subMsg msg -> Element msg
-viewMobileHeader { viewer, updateHeader, header, page } =
+viewMobileHeader : Config msg -> Element msg
+viewMobileHeader config =
     row
         [ width fill
         , height (px 60)
         , paddingXY 0 15
-        , Background.color Palette.neutral7
+        , Background.color Palette.primary1
+
+        --        , Background.color Palette.neutral7
         ]
         [ row
             [ width fill
             , centerX
-            , paddingXY 20 0
             , height fill
-            , inFront (column [ alignRight, centerY ] (viewMobileHeaderMenu page viewer updateHeader header))
+            , inFront
+                (column
+                    [ alignRight
+                    , moveLeft 10
+                    , height fill
+                    ]
+                    [ column []
+                        (viewMobileHeaderMenu config)
+                    ]
+                )
             ]
             [ el
                 [ centerX ]
@@ -169,13 +335,13 @@ viewMobileHeader { viewer, updateHeader, header, page } =
         ]
 
 
-viewDesktopHeader : Config subMsg msg -> Element msg
-viewDesktopHeader { viewer, updateHeader, header, page } =
+viewDesktopHeader : Config msg -> Element msg
+viewDesktopHeader { viewer, updateLayout, layout, page } =
     row
         [ width fill
         , height (px 60)
         , paddingXY 0 15
-        , Background.color Palette.neutral7
+        , Background.color Palette.primary1
         ]
         [ row
             [ width fill
@@ -185,27 +351,26 @@ viewDesktopHeader { viewer, updateHeader, header, page } =
             ]
             [ el [ alignLeft ] viewBrand
             , row
-                [ centerY
-                , alignRight
+                [ alignRight
                 , spacing 20
                 , height fill
                 ]
               <|
-                viewDesktopHeaderMenu page viewer updateHeader header
+                viewDesktopHeaderMenu page viewer updateLayout layout
             ]
         ]
 
 
-viewFooter : Config subMsg msg -> Element msg
+viewFooter : Config msg -> Element msg
 viewFooter config =
-    if .class (Context.device config.context) == Phone then
+    if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
         viewMobileFooter config
 
     else
         viewDesktopFooter config
 
 
-viewDesktopFooter : Config subMsg msg -> Element msg
+viewDesktopFooter : Config msg -> Element msg
 viewDesktopFooter config =
     el
         [ width fill
@@ -216,11 +381,11 @@ viewDesktopFooter config =
         none
 
 
-viewMobileFooter : Config subMsg msg -> Element msg
-viewMobileFooter { context, page, viewer, updateHeader, header } =
+viewMobileFooter : Config msg -> Element msg
+viewMobileFooter { context, page, viewer, updateLayout, layout } =
     let
-        (Header status) =
-            header
+        (Layout status notificationsPanel) =
+            layout
     in
     column
         [ width fill
@@ -257,46 +422,17 @@ viewMobileFooter { context, page, viewer, updateHeader, header } =
                     , alignRight
                     , above
                         (if status == ListenClicks then
-                            column
-                                [ Background.color Palette.neutral7
-                                , Border.color Palette.neutral4
-                                , Border.width 1
-                                , Border.rounded 7
-                                , moveRight -170
-                                , width (px 200)
-                                ]
-                                [ row
-                                    [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
-                                    , Border.color Palette.neutral6
-                                    , mouseOver
-                                        [ Background.color Palette.neutral2
-                                        , Font.color Palette.white
-                                        ]
-                                    , width fill
-                                    , paddingXY 20 20
-                                    , spacingXY 10 0
-                                    , Font.color Palette.primary1
-                                    , Font.light
-                                    , Font.size 16
-                                    ]
-                                    [ column
-                                        [ width shrink ]
-                                        [ Icon.logOut { iconOptions | size = 16 } ]
-                                    , column
-                                        [ width fill ]
-                                        [ text "Sign out" ]
-                                    ]
-                                ]
+                            Header.userMenuToggle
 
                          else
                             none
                         )
                     , onClick
                         (if status == Closed then
-                            updateHeader (Header Open)
+                            updateLayout (Layout Open notificationsPanel)
 
                          else
-                            updateHeader (Header status)
+                            updateLayout (Layout status notificationsPanel)
                         )
                     , Border.shadow
                         { offset = ( 0, 0 )
@@ -319,7 +455,7 @@ viewMobileFooter { context, page, viewer, updateHeader, header } =
 viewBrand : Element msg
 viewBrand =
     el
-        [ Font.color Palette.primary4
+        [ Font.color Palette.primary6
         , Font.heavy
         , Font.size 28
         , Font.letterSpacing -1
@@ -336,60 +472,23 @@ iconOptions =
     Icon.defaultOptions
 
 
-viewMobileHeaderMenu : Page -> Maybe Viewer -> (Header -> msg) -> Header -> List (Element msg)
-viewMobileHeaderMenu page maybeViewer headerMsg (Header status) =
+viewMobileHeaderMenu : Config msg -> List (Element msg)
+viewMobileHeaderMenu config =
     let
         linkTo =
-            navbarLink page
+            navbarLink config.page
     in
-    case maybeViewer of
+    case config.viewer of
         Just viewer ->
-            [ el
-                [ height fill
-                , Border.widthEach { top = 0, left = 0, right = 0, bottom = 3 }
-                , Border.color Palette.transparent
-                , paddingXY 8 0
-                , pointer
-                , Font.color Palette.neutral2
-                , mouseOver
-                    [ Border.color Palette.primary3
-                    , Font.color Palette.primary3
-                    ]
-                ]
-                (el
-                    [ width (px 28)
-                    , height fill
-                    , moveDown 3
-                    , Border.rounded 180
-                    , centerY
-                    , above
-                        (el
-                            [ width shrink
-                            , height fill
-                            , Background.color Palette.primary3
-                            , Border.width 1
-                            , Border.color Palette.primary7
-                            , paddingXY 4 3
-                            , Border.rounded 7
-                            , moveDown 14
-                            , moveRight 14
-                            , Font.size 10
-                            , Font.color Palette.white
-                            ]
-                            (text "2")
-                        )
-                    ]
-                    (Icon.bell { iconOptions | size = 100, sizeUnit = Icon.Percentage })
-                )
-            ]
+            [ Header.notificationsToggle { amount = 2, toggled = False } ]
 
         Nothing ->
             [ linkTo Route.Login (text "Sign in")
             ]
 
 
-viewDesktopHeaderMenu : Page -> Maybe Viewer -> (Header -> msg) -> Header -> List (Element msg)
-viewDesktopHeaderMenu page maybeViewer headerMsg (Header status) =
+viewDesktopHeaderMenu : Page -> Maybe Viewer -> (Layout -> msg) -> Layout -> List (Element msg)
+viewDesktopHeaderMenu page maybeViewer layoutMsg (Layout status notificationsPanel) =
     let
         linkTo =
             navbarLink page
@@ -397,62 +496,26 @@ viewDesktopHeaderMenu page maybeViewer headerMsg (Header status) =
     case maybeViewer of
         Just viewer ->
             [ el
-                [ height fill
-                , Border.widthEach { top = 0, left = 0, right = 0, bottom = 3 }
-                , Border.color Palette.transparent
-                , paddingXY 8 0
-                , pointer
-                , Font.color Palette.neutral2
-                , mouseOver
-                    [ Border.color Palette.primary3
-                    , Font.color Palette.primary3
-                    ]
-                ]
-                (el
-                    [ width (px 28)
-                    , height fill
-                    , moveDown 3
-                    , Border.rounded 180
-                    , centerY
-                    , above
-                        (el
-                            [ width shrink
-                            , height fill
-                            , Background.color Palette.primary3
-                            , Border.width 1
-                            , Border.color Palette.primary7
-                            , paddingXY 4 3
-                            , Border.rounded 7
-                            , moveDown 14
-                            , moveRight 14
-                            , Font.size 10
-                            , Font.color Palette.white
-                            ]
-                            (text "2")
-                        )
-                    ]
-                    (Icon.bell { iconOptions | size = 100, sizeUnit = Icon.Percentage })
-                )
-            , el
                 [ width (px 30)
                 , height (px 30)
+                , alignTop
                 , Border.rounded 180
                 , Background.image (Asset.src Asset.defaultAvatar)
                 , Font.size 16
                 , pointer
                 , below
                     (if status == ListenClicks then
-                        viewUserDropdown
+                        Header.userMenuToggle
 
                      else
                         none
                     )
                 , onClick
                     (if status == Closed then
-                        headerMsg (Header Open)
+                        layoutMsg (Layout Open notificationsPanel)
 
                      else
-                        headerMsg (Header status)
+                        layoutMsg (Layout status notificationsPanel)
                     )
                 , Border.shadow
                     { offset = ( 0, 0 )
@@ -472,57 +535,6 @@ viewDesktopHeaderMenu page maybeViewer headerMsg (Header status) =
         Nothing ->
             [ linkTo Route.Login (text "Sign in")
             ]
-
-
-viewUserDropdown : Element msg
-viewUserDropdown =
-    column
-        [ Background.color Palette.neutral7
-        , Border.color Palette.neutral4
-        , Border.width 1
-        , Border.rounded 7
-        , moveRight -170
-        , width (px 200)
-        ]
-        [ row
-            [ width fill
-            , padding 10
-            , spacingXY 10 0
-            ]
-            [ el
-                [ width (px 45)
-                , height (px 45)
-                , Border.rounded 90
-                , Background.image (Asset.src Asset.defaultAvatar)
-                ]
-                (text "")
-            , column [ width fill ]
-                [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
-                , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
-                ]
-            ]
-        , row
-            [ Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
-            , Border.color Palette.neutral6
-            , mouseOver
-                [ Background.color Palette.neutral2
-                , Font.color Palette.white
-                ]
-            , width fill
-            , paddingXY 20 20
-            , spacingXY 10 0
-            , Font.color Palette.primary1
-            , Font.light
-            , Font.size 16
-            ]
-            [ column
-                [ width shrink ]
-                [ Icon.logOut { iconOptions | size = 16 } ]
-            , column
-                [ width fill ]
-                [ text "Sign out" ]
-            ]
-        ]
 
 
 navbarLink : Page -> Route -> Element msg -> Element msg
