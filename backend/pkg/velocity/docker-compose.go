@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -28,10 +27,7 @@ type DockerCompose struct {
 
 func NewDockerCompose() *DockerCompose {
 	return &DockerCompose{
-		BaseStep: BaseStep{
-			Type:   "compose",
-			Params: map[string]Parameter{},
-		},
+		BaseStep: newBaseStep("compose", []string{}),
 	}
 }
 
@@ -40,6 +36,10 @@ func (s *DockerCompose) UnmarshalYamlInterface(y map[interface{}]interface{}) er
 	case interface{}:
 		s.ComposeFile = x.(string)
 		break
+	}
+	err := s.BaseStep.UnmarshalYamlInterface(y)
+	if err != nil {
+		return err
 	}
 	return s.parseDockerComposeFile()
 }
@@ -57,11 +57,7 @@ func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
 }
 
 func (dC *DockerCompose) parseDockerComposeFile() error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	dockerComposeYml, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, dC.ComposeFile))
+	dockerComposeYml, err := ioutil.ReadFile(filepath.Join(dC.ProjectRoot, dC.ComposeFile))
 	if err != nil {
 		return err
 	}
@@ -106,6 +102,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	// Create writers
 	for _, serviceName := range serviceOrder {
 		writers[serviceName] = emitter.GetStreamWriter(serviceName)
+		defer writers[serviceName].Close()
 	}
 
 	for _, serviceName := range serviceOrder {
@@ -114,7 +111,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 		s := dC.Contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig
-		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, networkResp.ID)
+		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, serviceName, networkResp.ID)
 
 		// Create service runners
 		sR := newServiceRunner(
@@ -172,12 +169,14 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	if !success {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateFailed)
-			writers[serviceName].Write([]byte(fmt.Sprintf("%s\n### FAILED \x1b[0m", errorANSI)))
+			fmt.Fprintf(writers[serviceName], colorFmt(ansiError, "-> %s error"), serviceName)
+
 		}
 	} else {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateSuccess)
-			writers[serviceName].Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
+			fmt.Fprintf(writers[serviceName], colorFmt(ansiSuccess, "-> %s success"), serviceName)
+
 		}
 	}
 
@@ -189,9 +188,8 @@ func (dC *DockerCompose) String() string {
 	return string(j)
 }
 
-func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
+func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, serviceName, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
 	env := []string{}
-	projectRoot, _ := os.Getwd()
 	for k, v := range s.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -206,8 +204,8 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, 
 			guestMount := parts[1:]
 			volumes[parts[1]] = struct{}{}
 			if !filepath.IsAbs(hostMount) { // no absolute paths allowed.
-				hostMount = filepath.Join(projectRoot, filepath.Dir(dC.ComposeFile), hostMount)
-				if strings.Contains(hostMount, projectRoot) { // no further up from project root
+				hostMount = filepath.Join(dC.ProjectRoot, filepath.Dir(dC.ComposeFile), hostMount)
+				if strings.Contains(hostMount, dC.ProjectRoot) { // no further up from project root
 					binds = append(binds, strings.Join(append([]string{hostMount}, guestMount...), ":"))
 				}
 			}
@@ -246,12 +244,22 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s dockerComposeService, 
 	networkConfig := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkID: {
-				Aliases: s.Networks["default"].Aliases,
+				Aliases: getServiceAliases(s.Networks["default"].Aliases, serviceName),
 			},
 		},
 	}
 
 	return containerConfig, hostConfig, networkConfig
+}
+
+func getServiceAliases(aliases []string, serviceName string) []string {
+	for _, a := range aliases {
+		if a == serviceName {
+			return aliases
+		}
+	}
+
+	return append(aliases, serviceName)
 }
 
 func getServiceOrder(services map[string]dockerComposeService, serviceOrder []string) []string {
@@ -353,19 +361,7 @@ func (a *dockerComposeService) UnmarshalYAML(unmarshal func(interface{}) error) 
 	}
 
 	// command
-	switch x := serviceMap["command"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			a.Command = append(a.Command, p.(string))
-		}
-		break
-	case interface{}:
-		// TODO: handle /bin/sh -c "sleep 3"; should be: ["/bin/sh", "-c", "\"sleep 3\""]
-		a.Command = strings.Split(x.(string), " ")
-		break
-	default:
-		break
-	}
+	a.Command = parseRunCommand(serviceMap["command"])
 
 	// working_dir
 	switch x := serviceMap["working_dir"].(type) {

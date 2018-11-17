@@ -2,7 +2,7 @@ data "template_file" "ecs_def_web" {
   template = "${file("${path.module}/web.def.tpl.json")}"
 
   vars {
-    version        = "${var.velocity_version}"
+    version            = "${var.velocity_version}"
     architect_endpoint = "${var.architect_base_address}/v1"
 
     web_labels = "${jsonencode(var.web_labels)}"
@@ -16,7 +16,7 @@ data "template_file" "ecs_def_web" {
 
 resource "aws_ecs_task_definition" "web" {
   family                = "velocity_web"
-  container_definitions = "${data.template_file.ecs_def_web.rendered}" 
+  container_definitions = "${data.template_file.ecs_def_web.rendered}"
 }
 
 resource "aws_ecs_service" "web" {

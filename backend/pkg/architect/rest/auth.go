@@ -2,11 +2,10 @@ package rest
 
 import (
 	"net/http"
-	"os"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
+	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/domain/user"
 )
 
@@ -21,26 +20,13 @@ type authResponse struct {
 	Expires  time.Time `json:"expires"`
 }
 
-var jwtSigningMethod = jwt.SigningMethodHS512
-var jwtStandardClaims = &jwt.StandardClaims{
-	Issuer: "Velocity CI",
-}
-
 func newAuthResponse(u *user.User) *authResponse {
-	now := time.Now()
-	expires := time.Now().Add(time.Hour * 24 * 2)
-
-	claims := jwtStandardClaims
-	claims.ExpiresAt = expires.Unix()
-	claims.NotBefore = now.Unix()
-	claims.IssuedAt = now.Unix()
-
-	token := jwt.NewWithClaims(jwtSigningMethod, claims)
-	tokenString, _ := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	sessionDuration := time.Hour * 24 * 2
+	token, expires := auth.NewJWT(sessionDuration, auth.AudienceUser, u.ID)
 
 	return &authResponse{
 		Username: u.Username,
-		Token:    tokenString,
+		Token:    token,
 		Expires:  expires,
 	}
 }

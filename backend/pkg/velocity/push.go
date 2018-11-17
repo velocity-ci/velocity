@@ -26,17 +26,13 @@ func (s *DockerPush) UnmarshalYamlInterface(y map[interface{}]interface{}) error
 		}
 		break
 	}
-	return nil
+	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func NewDockerPush() *DockerPush {
 	return &DockerPush{
-		Tags: []string{},
-		BaseStep: BaseStep{
-			Type:          "push",
-			OutputStreams: []string{"push"},
-			Params:        map[string]Parameter{},
-		},
+		Tags:     []string{},
+		BaseStep: newBaseStep("push", []string{"push"}),
 	}
 }
 
@@ -46,8 +42,9 @@ func (dP DockerPush) GetDetails() string {
 
 func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 	writer := emitter.GetStreamWriter("push")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	writer.Write([]byte(fmt.Sprintf("\n%s\n## %s\n\x1b[0m", infoANSI, dP.Description)))
+	fmt.Fprintf(writer, colorFmt(ansiInfo, "-> %s"), dP.Description)
 
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
@@ -63,15 +60,16 @@ func (dP *DockerPush) Execute(emitter Emitter, tsk *Task) error {
 		if err != nil {
 			GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
 			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("\nPush failed: %s", err)))
+			fmt.Fprintf(writer, colorFmt(ansiSuccess, "-> push failed: %s"), err)
 			return err
 		}
 		handleOutput(reader, tsk.ResolvedParameters, writer)
-		writer.Write([]byte(fmt.Sprintf("\nPushed: %s", t)))
+		fmt.Fprintf(writer, colorFmt(ansiInfo, "-> pushed: %s"), t)
+
 	}
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte(fmt.Sprintf("\n%s\n### SUCCESS\x1b[0m", successANSI)))
+	fmt.Fprintf(writer, colorFmt(ansiSuccess, "-> success"))
 	return nil
 
 }

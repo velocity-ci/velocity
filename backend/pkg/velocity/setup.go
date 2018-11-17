@@ -1,20 +1,14 @@
 package velocity
 
 import (
-	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"strings"
+	"path/filepath"
 	"time"
 
+	uuid "github.com/satori/go.uuid"
 	"go.uber.org/zap"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 )
 
 type Setup struct {
@@ -51,70 +45,70 @@ func (s Setup) GetDetails() string {
 	return ""
 }
 
-func makeVelocityDirs() error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	os.MkdirAll(fmt.Sprintf("%s/.velocityci/plugins", wd), os.ModePerm)
+func makeVelocityDirs(projectRoot string) error {
+	os.MkdirAll(filepath.Join(projectRoot, ".velocityci/plugins"), os.ModePerm)
 
 	return nil
 }
 
 func (s *Setup) Execute(emitter Emitter, t *Task) error {
-
-	t.RunID = fmt.Sprintf("vci-%s", time.Now().Format("060102150405"))
+	t.RunID = fmt.Sprintf("vci-%s", uuid.NewV4().String())
+	GetLogger().Debug("set run id", zap.String("runID", t.RunID))
 
 	writer := emitter.GetStreamWriter("setup")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
 
 	// Clone repository if necessary
 	if s.repository != nil {
-		// repo, err := Clone(s.repository, false, true, t.Git.Submodule, writer)
-		repo, err := Clone(s.repository, writer, &CloneOptions{Bare: false, Full: false, Submodule: true, Commit: s.commitHash})
+		repo, err := Clone(s.repository, writer, &CloneOptions{Bare: false, Full: true, Submodule: true, Commit: s.commitHash})
 		if err != nil {
 			GetLogger().Error("could not clone repository", zap.Error(err))
 			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+			fmt.Fprintf(writer, colorFmt(ansiError, "-> failed: %s"), err)
 			return err
 		}
 		err = repo.Checkout(s.commitHash)
 		if err != nil {
 			GetLogger().Error("could not checkout", zap.Error(err), zap.String("commit", s.commitHash))
 			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+			fmt.Fprintf(writer, colorFmt(ansiError, "-> failed: %s"), err)
 			return err
 		}
 		os.Chdir(repo.Directory)
+		t.ProjectRoot = repo.Directory
 	}
 
-	if err := makeVelocityDirs(); err != nil {
+	if err := makeVelocityDirs(t.ProjectRoot); err != nil {
 		return err
 	}
 
 	// Resolve parameters
 	parameters := map[string]Parameter{}
-	for k, v := range getGitParams() {
+	basicParams, err := GetBasicParams(writer)
+	if err != nil {
+		return err
+	}
+	for k, v := range basicParams {
 		parameters[k] = v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
 
 	// config
 	for _, config := range t.Parameters {
-		writer.Write([]byte(fmt.Sprintf("Resolving parameter %s", config.GetInfo())))
+		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", config.GetInfo())))
 		params, err := config.GetParameters(writer, t, s.backupResolver)
 		if err != nil {
 			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("could not resolve parameter: %v", err)))
+			fmt.Fprintf(writer, colorFmt(ansiError, "-> could not resolve parameter: %s"), err)
 			return fmt.Errorf("could not resolve %v", err)
 		}
 		for _, param := range params {
 			parameters[param.Name] = param
 			if param.IsSecret {
-				writer.Write([]byte(fmt.Sprintf("Set %s: ***", param.Name)))
+				fmt.Fprintf(writer, colorFmt(ansiInfo, "-> set %s: ***"), param.Name)
 			} else {
-				writer.Write([]byte(fmt.Sprintf("Set %s: %v", param.Name, param.Value)))
+				fmt.Fprintf(writer, colorFmt(ansiInfo, "-> set %s: %v"), param.Name, param.Value)
 			}
 		}
 	}
@@ -129,14 +123,15 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}
 	for _, registry := range t.Docker.Registries {
-		r, err := dockerLogin(registry, writer, t.RunID, parameters, t.Docker.Registries)
+		r, err := dockerLogin(registry, writer, t, parameters)
 		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
-			writer.Write([]byte(fmt.Sprintf("could not login to Docker registry: %v", err)))
+			fmt.Fprintf(writer, colorFmt(ansiError, "-> could not login to Docker registry: %s"), err)
+
 			return err
 		}
 		authedRegistries = append(authedRegistries, r)
-		writer.Write([]byte(fmt.Sprintf("Authenticated with Docker registry: %s", r.Address)))
+		fmt.Fprintf(writer, colorFmt(ansiInfo, "-> authenticated with Docker registry: %s"), r.Address)
 	}
 
 	t.Docker.Registries = authedRegistries
@@ -155,111 +150,63 @@ func (s Setup) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func getGitParams() map[string]Parameter {
-	path, _ := os.Getwd()
+func GetBasicParams(writer io.Writer) (map[string]Parameter, error) {
+	params := map[string]Parameter{}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return params, err
+	}
+	projectRoot, err := findProjectRoot(cwd, []string{})
+	if err != nil {
+		return params, err
+	}
 
-	repo := &RawRepository{Directory: path}
+	repo := &RawRepository{Directory: projectRoot}
+
+	if repo.IsDirty() {
+		fmt.Fprintf(writer, colorFmt(ansiWarn, "-> Project files are dirty. Build repeatability is not guaranteed."))
+	}
 
 	rawCommit, _ := repo.GetCurrentCommitInfo()
 
-	return map[string]Parameter{
-		"GIT_COMMIT_LONG_SHA": {
-			Value:    rawCommit.SHA,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_SHORT_SHA": {
-			Value:    rawCommit.SHA[:7],
-			IsSecret: false,
-		},
-		// "GIT_BRANCH": {
-		// 	Value:    branch,
-		// 	IsSecret: false,
-		// },
-		"GIT_DESCRIBE": {
-			Value:    repo.GetDescribe(),
-			IsSecret: false,
-		},
-		"GIT_COMMIT_AUTHOR": {
-			Value:    rawCommit.AuthorEmail,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_MESSAGE": {
-			Value:    rawCommit.Message,
-			IsSecret: false,
-		},
-		"GIT_COMMIT_TIMESTAMP": {
-			Value:    rawCommit.AuthorDate.String(),
-			IsSecret: false,
-		},
+	buildTimestamp := time.Now().UTC()
+
+	params["GIT_COMMIT_LONG_SHA"] = Parameter{
+		Value:    rawCommit.SHA,
+		IsSecret: false,
 	}
-}
-
-func dockerLogin(registry DockerRegistry, writer io.Writer, RunID string, parameters map[string]Parameter, authConfigs []DockerRegistry) (r DockerRegistry, _ error) {
-
-	type registryAuthConfig struct {
-		Username      string `json:"username"`
-		Password      string `json:"password"`
-		ServerAddress string `json:"serverAddress"`
-		Error         string `json:"error"`
-		State         string `json:"state"`
+	params["GIT_COMMIT_SHORT_SHA"] = Parameter{
+		Value:    rawCommit.SHA[:7],
+		IsSecret: false,
+	}
+	params["GIT_DESCRIBE"] = Parameter{
+		Value:    repo.GetDescribe(),
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_AUTHOR"] = Parameter{
+		Value:    rawCommit.AuthorEmail,
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_MESSAGE"] = Parameter{
+		Value:    rawCommit.Message,
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_TIMESTAMP_RFC3339"] = Parameter{
+		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
+		IsSecret: false,
+	}
+	params["GIT_COMMIT_TIMESTAMP_RFC822"] = Parameter{
+		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
+		IsSecret: false,
+	}
+	params["BUILD_TIMESTAMP_RFC3339"] = Parameter{
+		Value:    buildTimestamp.Format(time.RFC3339),
+		IsSecret: false,
+	}
+	params["BUILD_TIMESTAMP_RFC822"] = Parameter{
+		Value:    buildTimestamp.Format(time.RFC822),
+		IsSecret: false,
 	}
 
-	bin, err := getBinary(registry.Use)
-	if err != nil {
-		return r, err
-	}
-
-	extraEnv := []string{}
-	for k, v := range registry.Arguments {
-		for _, pV := range parameters {
-			v = strings.Replace(v, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
-			k = strings.Replace(k, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
-		}
-		extraEnv = append(extraEnv, fmt.Sprintf("%s=%s", k, v))
-	}
-
-	cmd := exec.Command(bin)
-	cmd.Env = append(os.Environ(), extraEnv...)
-
-	cmdOutBytes, err := cmd.Output()
-	if err != nil {
-		return r, err
-	}
-	var dOutput registryAuthConfig
-	json.Unmarshal(cmdOutBytes, &dOutput)
-
-	if dOutput.State != "success" {
-		return r, fmt.Errorf("registry auth error: %s", dOutput.Error)
-	}
-
-	cli, _ := client.NewEnvClient()
-	ctx := context.Background()
-	_, err = cli.RegistryLogin(ctx, types.AuthConfig{
-		Username:      dOutput.Username,
-		Password:      dOutput.Password,
-		ServerAddress: dOutput.ServerAddress,
-	})
-	if err != nil {
-		return r, err
-	}
-
-	authConfig := types.AuthConfig{
-		Username: dOutput.Username,
-		Password: dOutput.Password,
-	}
-	encodedJSON, err := json.Marshal(authConfig)
-	if err != nil {
-		return r, err
-	}
-	registry.AuthorizationToken = base64.URLEncoding.EncodeToString(encodedJSON)
-	registry.Address = dOutput.ServerAddress
-
-	return registry, nil
-}
-
-type dockerLoginOutput struct {
-	State              string `json:"state"`
-	Error              string `json:"error"`
-	AuthorizationToken string `json:"authToken"`
-	Address            string `json:"address"`
+	return params, nil
 }

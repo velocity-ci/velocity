@@ -2,6 +2,7 @@ package velocity
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,11 +18,7 @@ func NewDockerBuild() *DockerBuild {
 		Dockerfile: "",
 		Context:    "",
 		Tags:       []string{},
-		BaseStep: BaseStep{
-			Type:          "build",
-			OutputStreams: []string{"build"},
-			Params:        map[string]Parameter{},
-		},
+		BaseStep:   newBaseStep("build", []string{"build"}),
 	}
 }
 
@@ -47,7 +44,7 @@ func (s *DockerBuild) UnmarshalYamlInterface(y map[interface{}]interface{}) erro
 		break
 	}
 
-	return nil
+	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func (dB DockerBuild) GetDetails() string {
@@ -56,13 +53,16 @@ func (dB DockerBuild) GetDetails() string {
 
 func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("build")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	writer.Write([]byte(fmt.Sprintf("\n%s\n## %s\n\x1b[0m", infoANSI, dB.Description)))
+	fmt.Fprintf(writer, colorFmt(ansiInfo, "-> %s"), dB.Description)
 
 	authConfigs := getAuthConfigsMap(t.Docker.Registries)
 
+	buildContext := filepath.Join(dB.ProjectRoot, dB.Context)
+
 	err := buildContainer(
-		dB.Context,
+		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
 		t.ResolvedParameters,
@@ -72,12 +72,14 @@ func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	if err != nil {
 		writer.SetStatus(StateFailed)
-		writer.Write([]byte(fmt.Sprintf("\n%s\n### FAILED: %s \x1b[0m", errorANSI, err)))
+		fmt.Fprintf(writer, colorFmt(ansiError, "-> failed: %s"), err)
+
 		return err
 	}
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte(fmt.Sprintf("%s\n### SUCCESS \x1b[0m", successANSI)))
+	fmt.Fprintf(writer, colorFmt(ansiSuccess, "-> success"))
+
 	return nil
 }
 

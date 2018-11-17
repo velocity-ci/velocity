@@ -17,7 +17,7 @@ type Route
 
 default : Route
 default =
-    Overview
+    Commits Nothing Nothing
 
 
 route : Parser (Route -> b) b

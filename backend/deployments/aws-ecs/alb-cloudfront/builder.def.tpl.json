@@ -1,0 +1,44 @@
+[
+    {
+        "name": "velocityci_builder",
+        "image": "civelocity/builder:${version}",
+        "memoryReservation": 128,
+        "essential": true,
+        "mountPoints": [
+            {
+                "sourceVolume": "docker-engine",
+                "containerPath": "/var/run/docker.sock"
+            },
+            {
+                "sourceVolume": "velocity-workspace",
+                "containerPath": "/opt/velocityci"
+            }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "${logs_group}",
+                "awslogs-region": "${logs_region}",
+                "awslogs-stream-prefix": "builder"
+            }
+        },
+        "environment": [
+            {
+                "Name": "DEBUG",
+                "Value": "${debug}"
+            },
+            {
+                "Name": "ARCHITECT_ADDRESS",
+                "Value": "${architect_address}"
+            },
+            {
+                "Name": "BUILDER_SECRET",
+                "Value": "${builder_secret}"
+            },
+            {
+                "Name": "AWS_REGION",
+                "Value": "eu-west-1"
+            }
+        ]
+    }
+]

@@ -11,7 +11,7 @@ services:
       - "8080:8080"
 
   architect:
-    image: golang:1.10
+    image: golang:1.11
     command: /bin/sh -c "eval `ssh-agent` && exec go run cmd/vci-architect/main.go"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/
     environment:
@@ -27,7 +27,7 @@ services:
       - "./architect_data:/opt/velocityci"
 
   builder:
-    image: golang:1.10
+    image: golang:1.11
     command: /bin/sh -c "eval `ssh-agent` && exec go run cmd/vci-builder/main.go"
     working_dir: /go/src/github.com/velocity-ci/velocity/backend/
     environment:

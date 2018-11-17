@@ -124,8 +124,8 @@ tasks context projectSlug hash maybeToken =
             |> ElmTask.mapError Request.Errors.handleHttpError
 
 
-task : Context -> Project.Slug -> Commit.Hash -> Task.Name -> Maybe AuthToken -> ElmTask.Task Request.Errors.HttpError Task
-task context projectSlug hash name maybeToken =
+task : Context -> Project.Slug -> Commit.Hash -> Task.Slug -> Maybe AuthToken -> ElmTask.Task Request.Errors.HttpError Task
+task context projectSlug hash slug maybeToken =
     let
         expect =
             Task.decoder
@@ -137,7 +137,7 @@ task context projectSlug hash name maybeToken =
             , "commits"
             , Commit.hashToString hash
             , "tasks"
-            , Task.nameToString name
+            , Task.slugToString slug
             ]
     in
         apiUrl context (String.join "/" urlPieces)
@@ -176,8 +176,8 @@ builds context projectSlug hash maybeToken =
             |> ElmTask.mapError Request.Errors.handleHttpError
 
 
-createBuild : Context -> Project.Slug -> Commit.Hash -> Task.Name -> List ( String, String ) -> AuthToken -> ElmTask.Task Request.Errors.HttpError Build
-createBuild context projectSlug hash taskName params token =
+createBuild : Context -> Project.Slug -> Commit.Hash -> Task.Slug -> List ( String, String ) -> AuthToken -> ElmTask.Task Request.Errors.HttpError Build
+createBuild context projectSlug hash taskSlug params token =
     let
         expect =
             Build.decoder
@@ -189,7 +189,7 @@ createBuild context projectSlug hash taskName params token =
             , "commits"
             , Commit.hashToString hash
             , "tasks"
-            , Task.nameToString taskName
+            , Task.slugToString taskSlug
             , "builds"
             ]
 

@@ -112,8 +112,15 @@ func (s *BuildSuite) TestUpdateBuild() {
 	b, errs := m.Create(tsk, params)
 	s.Nil(errs)
 
+	b.StartedAt = time.Now().UTC()
+	b.CompletedAt = time.Now().UTC()
+	b.Status = velocity.StateSuccess
+
 	err := m.Update(b)
 	s.Nil(err)
+
+	rB, err := m.GetBuildByID(b.ID)
+	s.Equal(b, rB)
 }
 
 func (s *BuildSuite) TestGetBuildsForProject() {

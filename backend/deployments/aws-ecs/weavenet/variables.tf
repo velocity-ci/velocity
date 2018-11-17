@@ -38,11 +38,11 @@ variable "provision_alb" {
 }
 
 variable "architect_labels" {
-  type = "map"
+  type    = "map"
   default = {}
 }
 
 variable "web_labels" {
-  type = "map"
+  type    = "map"
   default = {}
 }

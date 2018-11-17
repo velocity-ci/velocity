@@ -142,12 +142,12 @@
   version = "v0.3.2"
 
 [[projects]]
-  digest = "1:c5ab735fa81936e20761026748691a9a03680634bb02ebf4518dc1a0aca3d883"
+  digest = "1:302f0381f15e444dec05d6abba0c219264a69e6e16f1ef87ff4f72b22d0c80bf"
   name = "github.com/go-cmd/cmd"
   packages = ["."]
   pruneopts = ""
-  revision = "bcc8acb0e40f18e9f14dd57d35bc76e06541fb12"
-  version = "v1.0.2"
+  revision = "b84ca4f2247327f07f46331c260675cba1a1dc7a"
+  version = "v1.0.3"
 
 [[projects]]
   digest = "1:68d892747cfa2f0638a70b8193bc12c83d9474d93c78f41e4b45a305b2f21e24"
@@ -178,12 +178,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:eaa18118b73be68b0be2410a9797fe172f5e386243b6bff16fd5da4d22c9d966"
+  digest = "1:09ee320e3d7c26151f91f835c6d9198ccb311f555f429f61bf9d441abf77e0cd"
   name = "github.com/gosimple/slug"
   packages = ["."]
   pruneopts = ""
-  revision = "e9f42fa127660e552d0ad2b589868d403a9be7c6"
-  version = "v1.1.1"
+  revision = "91d42f4c3433698e88e87b17a3efbfe40b67c323"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:78f6688d5303263ee19fcb093ecd4b3d7bc01551990a5367878d33e02edba0a0"
@@ -281,6 +281,14 @@
   revision = "b89eecf5ca5db6d3ba60b237ffe3df7bafb7662f"
 
 [[projects]]
+  digest = "1:e85837cb04b78f61688c6eba93ea9d14f60d611e2aaf8319999b1a60d2dafbfa"
+  name = "github.com/urfave/cli"
+  packages = ["."]
+  pruneopts = ""
+  revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
+  version = "v1.20.0"
+
+[[projects]]
   branch = "master"
   digest = "1:857a9ecd5cb13379ecc8f798f6e6b6b574c98b9355657d91e068275f1120aaf7"
   name = "github.com/valyala/bytebufferpool"
@@ -355,6 +363,8 @@
   packages = [
     "context",
     "context/ctxhttp",
+    "http/httpproxy",
+    "idna",
     "proxy",
   ]
   pruneopts = ""
@@ -370,6 +380,29 @@
   ]
   pruneopts = ""
   revision = "cc7307a45468e49eaf2997c890f14aa03a26917b"
+
+[[projects]]
+  digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
+  name = "golang.org/x/text"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+  ]
+  pruneopts = ""
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   digest = "1:ff079e6ffd8ee0e5f39d98d357fef55fd460304c3eece24cb8f5e62318e9747a"
@@ -416,10 +449,12 @@
     "github.com/satori/go.uuid",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/suite",
+    "github.com/urfave/cli",
     "go.uber.org/zap",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/ssh",
     "golang.org/x/crypto/ssh/agent",
+    "golang.org/x/net/http/httpproxy",
     "gopkg.in/go-playground/validator.v9",
     "gopkg.in/go-playground/validator.v9/translations/en",
     "gopkg.in/yaml.v2",

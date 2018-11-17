@@ -25,9 +25,10 @@ func (p *Plugin) Execute(emitter Emitter, t *Task) error {
 	}
 
 	writer := emitter.GetStreamWriter("plugin")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
 
-	bin, err := getBinary(p.Use)
+	bin, err := getBinary(t.ProjectRoot, p.Use, writer)
 	if err != nil {
 		return err
 	}
@@ -49,12 +50,14 @@ func (p *Plugin) Execute(emitter Emitter, t *Task) error {
 
 	if dOutput.State != "success" {
 		writer.SetStatus("failed")
-		writer.Write([]byte(fmt.Sprintf("\n%s\n### FAILED (error: %s)\x1b[0m", errorANSI, dOutput.Error)))
+		fmt.Fprintf(writer, colorFmt(ansiError, "-> failed: %s"), dOutput.Error)
+
 		return fmt.Errorf("error: %s", dOutput.Error)
 	}
 
 	writer.SetStatus("success")
-	writer.Write([]byte(fmt.Sprintf("\n%s\n### SUCCESS \x1b[0m", successANSI)))
+	fmt.Fprintf(writer, colorFmt(ansiSuccess, "-> success"))
+
 	return nil
 }
 

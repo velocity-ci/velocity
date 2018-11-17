@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"time"
 
 	"go.uber.org/zap"
@@ -106,22 +105,18 @@ func (p DerivedParameter) GetInfo() string {
 	return p.Use
 }
 
-func getBinary(u string) (binaryLocation string, _ error) {
+func getBinary(projectRoot, u string, writer io.Writer) (binaryLocation string, _ error) {
 
 	parsedURL, err := url.Parse(u)
 	if err != nil {
 		return "", err
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", wd, slug.Make(parsedURL.Path))
+	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", projectRoot, slug.Make(parsedURL.Path))
 
 	if _, err := os.Stat(binaryLocation); os.IsNotExist(err) {
 		GetLogger().Debug("downloading binary", zap.String("from", u), zap.String("to", binaryLocation))
+		writer.Write([]byte(fmt.Sprintf("Downloading binary: %s", parsedURL.String())))
 		outFile, err := os.Create(binaryLocation)
 		if err != nil {
 			return "", err
@@ -137,6 +132,13 @@ func getBinary(u string) (binaryLocation string, _ error) {
 		if err != nil {
 			return "", err
 		}
+		writer.Write([]byte(fmt.Sprintf(
+			"Downloaded binary: %s to %s. %d bytes",
+			parsedURL.String(),
+			binaryLocation,
+			size,
+		)))
+
 		GetLogger().Debug("downloaded binary", zap.String("from", u), zap.String("to", binaryLocation), zap.Int64("bytes", size))
 		outFile.Chmod(os.ModePerm)
 	}
@@ -147,27 +149,24 @@ func getBinary(u string) (binaryLocation string, _ error) {
 func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolver BackupResolver) (r []Parameter, _ error) {
 
 	// Download binary from use:
-	bin, err := getBinary(p.Use)
+	bin, err := getBinary(t.ProjectRoot, p.Use, writer)
 	if err != nil {
 		return r, err
 	}
+	cmd := []string{bin}
 
 	// Process arguments
-	args := []string{}
 	for k, v := range p.Arguments {
-		args = append(args, fmt.Sprintf("-%s=%s", k, v))
+		cmd = append(cmd, fmt.Sprintf("-%s=%s", k, v))
 	}
-
-	cmd := exec.Command(bin, args...)
-	cmd.Env = os.Environ()
 
 	// Run binary
-	cmdOutBytes, err := cmd.Output()
-	if err != nil {
-		return r, err
+	s := runCmd(BlankWriter{}, cmd, os.Environ())
+	if s.Error != nil {
+		return r, s.Error
 	}
 	var dOutput derivedOutput
-	json.Unmarshal(cmdOutBytes, &dOutput)
+	json.Unmarshal([]byte(s.Stdout[0]), &dOutput)
 
 	if dOutput.State == "warning" {
 		for paramName := range dOutput.Exports {
@@ -184,7 +183,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 	} else if dOutput.State == "success" {
 		for paramName, val := range dOutput.Exports {
 			r = append(r, Parameter{
-				Name:     paramName,
+				Name:     getExportedParameterName(p.Exports, paramName),
 				Value:    val,
 				IsSecret: dOutput.Secret,
 			})
@@ -194,6 +193,14 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 	}
 
 	return r, nil
+}
+
+func getExportedParameterName(pMapping map[string]string, exportedParam string) string {
+	if val, ok := pMapping[exportedParam]; ok {
+		return val
+	}
+
+	return exportedParam
 }
 
 func (p *DerivedParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {

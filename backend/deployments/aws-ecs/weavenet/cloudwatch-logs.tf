@@ -4,6 +4,6 @@ resource "aws_cloudwatch_log_group" "velocityci" {
   retention_in_days = 3
 
   tags {
-    Name        = "Velocity CI"
+    Name = "Velocity CI"
   }
 }

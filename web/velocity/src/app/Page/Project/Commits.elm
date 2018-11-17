@@ -88,6 +88,16 @@ init context session branches projectSlug maybeBranchName maybePage =
             pageLoadError Page.Project "Project unavailable."
     in
         Task.map initialModel (loadCommits context projectSlug maybeAuthToken maybeBranch defaultPage)
+            |> Task.andThen
+                (\initialModel ->
+                    case maybeAuthToken of
+                        Just authToken ->
+                            Request.Project.sync context projectSlug authToken
+                                |> Task.andThen (\_ -> Task.succeed initialModel)
+
+                        Nothing ->
+                            Task.succeed initialModel
+                )
             |> Task.mapError handleLoadError
 
 
