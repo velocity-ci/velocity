@@ -385,7 +385,7 @@ func handlePullPushOutput(b []byte) string {
 		s += o.Status
 	}
 	// add padding to 80
-	for len(s) < 80 {
+	for len(s) < 100 {
 		s += " "
 	}
 	if strings.Contains(o.Status, "Downloaded newer image") ||
