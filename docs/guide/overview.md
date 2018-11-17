@@ -1,16 +1,16 @@
-+++
-date = "2012-08-15T22:32:09+01:00"
-title = "Tasks"
-+++
-
+---
+sidebarDepth: 3
+---
 # Overview
+
+## Tasks
 
 Tasks are configured in [YAML](http://yaml.org/) and consist of *Steps*. There are different *Step* types (see below).
 
 The simplest possible Task we can define is:
 
 
-```
+``` yaml
 # ./tasks/hello-velocity.yml
 ---
 description: "Hello Velocity"
@@ -26,16 +26,16 @@ steps:
 This defines a task with the name `hello-velocity` that will pull and run the `hello-world:latest` docker image, which is the equivalent of doing `docker run --rm hello-world:latest`.
 
 You can run this using the Velocity CLI with:
-```
+``` bash
 vcli run hello-velocity
 ```
 
-# Parameters
+### Parameters
 You can define parameters for your task with the `parameters` array and use them with `${<parameter name>}` expressions:
 
-## Basic Parameters
+#### Basic Parameters
 
-```
+``` yaml
 # ./tasks/hello-parameters.yml
 ---
 description: "Hello example with parameters"
@@ -60,11 +60,11 @@ Note: You'll notice this isn't entirely fool-proof if you, for example, set `you
 Hello Bob. I know *** secret ***.
 ```
 
-## Derived Parameters
+#### Derived Parameters
 
 Derived parameters run a Go binary that can return any arbitrary information to be used as parameters:
 
-```
+``` yaml
 # ./tasks/publish-cli.yml
 ---
 description: "Publish the Velocity CLI"
@@ -81,17 +81,21 @@ parameters:
 
 The above example shows use of the [Velocity AWS SSM parameter](https://github.com/velocity-ci/parameter.aws-ssm) binary exporting the `value` of `/velocityci/github-release-token` as `github_release_token`. The `github_release_token` is then used in creating a GitHub release for the CLI of Velocity!
 
-# Steps
+### Steps
 
 The following *Steps* should suit most (if not all) needs for CI/CD & task running needs.
 
-## Docker Build
+#### Docker Build
 
-## Docker Run
+#### Docker Run
 
-## Docker Compose
+#### Docker Compose
 
-## Push
+#### Push
 
-## Plugin
+#### Plugin
 
+
+## Plugins
+
+## .velocity.yaml
