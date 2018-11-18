@@ -15,6 +15,7 @@ import Http
 import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
 import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
+import Page.Home.ActivePanel as HomeActivePanel
 import Route exposing (Route)
 import Session exposing (Session)
 import Task exposing (Task)
@@ -216,7 +217,7 @@ update msg model =
 
         UpdatedSession (Ok session) ->
             ( { model | session = session }
-            , Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
+            , Route.replaceUrl (Session.navKey session) (Route.Home HomeActivePanel.None)
             )
 
         UpdatedSession (Err _) ->

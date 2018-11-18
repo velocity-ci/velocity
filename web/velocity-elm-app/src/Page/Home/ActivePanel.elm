@@ -6,38 +6,29 @@ import Url.Parser.Query as QueryParser
 
 
 type ActivePanel
-    = NewProjectForm
-    | ConfigureProjectForm String
+    = None
+    | ProjectForm
 
 
-toQueryParams : Maybe ActivePanel -> List Url.Builder.QueryParameter
-toQueryParams maybeActivePanel =
-    case maybeActivePanel of
-        Just NewProjectForm ->
-            [ Url.Builder.string "active-panel" "new" ]
+toQueryParams : ActivePanel -> List Url.Builder.QueryParameter
+toQueryParams activePanel =
+    case activePanel of
+        ProjectForm ->
+            [ Url.Builder.string "active-panel" "project-form" ]
 
-        Just (ConfigureProjectForm repository) ->
-            [ Url.Builder.string "active-panel" "configure"
-            , Url.Builder.string "repository" repository
-            ]
-
-        Nothing ->
+        None ->
             []
 
 
-queryParser : QueryParser.Parser (Maybe ActivePanel)
+queryParser : QueryParser.Parser ActivePanel
 queryParser =
-    QueryParser.map2
-        (\maybeActivePanel maybeRepository ->
-            case ( maybeActivePanel, maybeRepository ) of
-                ( Just "configure", Just repository ) ->
-                    Just (ConfigureProjectForm repository)
-
-                ( Just "new", _ ) ->
-                    Just NewProjectForm
+    QueryParser.map
+        (\activePanel ->
+            case activePanel of
+                Just "project-form" ->
+                    ProjectForm
 
                 _ ->
-                    Nothing
+                    None
         )
         (QueryParser.string "active-panel")
-        (QueryParser.string "repository")

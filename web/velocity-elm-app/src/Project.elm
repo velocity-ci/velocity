@@ -1,12 +1,16 @@
-module Project exposing (Project, decoder, list, name, repository, thumbnailSrc)
+module Project exposing (Project, decoder, list, name, repository, thumbnail, thumbnailSrc)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
 import Http
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)
 import PaginatedList exposing (PaginatedList)
+import Palette
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
 import Time
@@ -68,6 +72,28 @@ thumbnailSrc (Project project) =
 repository : Project -> String
 repository (Project project) =
     project.repository
+
+
+
+-- ELEMENTS --
+
+
+thumbnail : Project -> Element msg
+thumbnail project =
+    case thumbnailSrc project of
+        Just src ->
+            el
+                [ width fill
+                , height fill
+                , Background.image src
+                , Border.width 1
+                , Border.color Palette.neutral5
+                , Border.rounded 10
+                ]
+                (text "")
+
+        Nothing ->
+            none
 
 
 

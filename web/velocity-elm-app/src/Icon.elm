@@ -28,7 +28,7 @@ type alias Options =
 
 defaultOptions : Options
 defaultOptions =
-    { size = 24
+    { size = 16
     , strokeWidth = 1
     , sizeUnit = Pixels
     }

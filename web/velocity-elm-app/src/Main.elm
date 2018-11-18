@@ -14,6 +14,7 @@ import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, stri
 import Page exposing (Layout)
 import Page.Blank as Blank
 import Page.Home as Home
+import Page.Home.ActivePanel as ActivePanel
 import Page.Login as Login
 import Page.NotFound as NotFound
 import Route exposing (Route)
@@ -182,7 +183,7 @@ changeRouteTo maybeRoute currentPage =
 
         Just Route.Root ->
             ( currentPage
-            , Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
+            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
             )
 
         Just Route.Logout ->
@@ -190,7 +191,7 @@ changeRouteTo maybeRoute currentPage =
             , Api.logout
             )
 
-        Just (Route.Home maybeActivePanel) ->
+        Just (Route.Home activePanel) ->
             case Session.viewer session of
                 Nothing ->
                     ( Redirect session context
@@ -198,14 +199,14 @@ changeRouteTo maybeRoute currentPage =
                     )
 
                 Just _ ->
-                    Home.init session context maybeActivePanel
+                    Home.init session context activePanel
                         |> updateWith Home GotHomeMsg currentPage
 
         Just Route.Login ->
             case Session.viewer session of
                 Just _ ->
                     ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
+                    , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
                     )
 
                 Nothing ->
@@ -257,7 +258,7 @@ updatePage msg page =
             ( Redirect session (toContext page)
             , case Session.viewer session of
                 Just _ ->
-                    Route.replaceUrl (Session.navKey session) (Route.Home Nothing)
+                    Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
 
                 Nothing ->
                     Route.replaceUrl (Session.navKey session) Route.Login

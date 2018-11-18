@@ -15,7 +15,7 @@ import Username exposing (Username)
 
 
 type Route
-    = Home (Maybe ActivePanel)
+    = Home ActivePanel
     | Root
     | Login
     | Logout

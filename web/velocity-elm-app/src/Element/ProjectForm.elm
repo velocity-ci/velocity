@@ -6,6 +6,8 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
+import Form
+import Form.Input
 import GitUrl exposing (GitUrl)
 import Html.Attributes
 import Icon
@@ -143,7 +145,9 @@ viewFirstPanel : Url -> Maybe GitUrl -> State -> (State -> Cmd msg -> msg) -> El
 viewFirstPanel url maybeGitUrl state updateMsg =
     column [ spacingXY 0 20, width fill ]
         [ viewHelpText
-        , column [ width fill ] [ viewUrlField url maybeGitUrl (\newUrl parseCmd -> updateMsg (CheckingUrl newUrl) parseCmd) ]
+        , column [ width fill ]
+            [--             viewUrlField url maybeGitUrl (\newUrl parseCmd -> updateMsg (CheckingUrl newUrl) parseCmd)
+            ]
         , row [ width fill ]
             [ el [ width fill ] none
             , el [ width (fillPortion 3) ] (viewNextButton state updateMsg)
@@ -233,48 +237,6 @@ viewHelpText =
         ]
 
 
-fieldStatusAttrs : Bool -> Bool -> List (Element.Attribute msg)
-fieldStatusAttrs valid dirty =
-    if valid then
-        [ Font.color Palette.success3
-        , Border.color Palette.success3
-        , focused (fieldFocusedStatusAttrs valid dirty)
-        ]
-
-    else if dirty then
-        [ Font.color Palette.danger4
-        , Border.color Palette.danger6
-        , focused (fieldFocusedStatusAttrs valid dirty)
-        ]
-
-    else
-        [ Font.color Palette.neutral3
-        , Border.color Palette.neutral3
-        , focused (fieldFocusedStatusAttrs valid dirty)
-        ]
-
-
-fieldFocusedStatusAttrs : Bool -> Bool -> List Decoration
-fieldFocusedStatusAttrs valid dirty =
-    if valid then
-        [ Font.color Palette.success1
-        , Border.color Palette.success5
-        , Border.shadow { offset = ( 0, 0 ), size = 2, blur = 2, color = Palette.success7 }
-        ]
-
-    else if dirty then
-        [ Font.color Palette.neutral2
-        , Border.color Palette.neutral2
-        , Border.shadow { offset = ( 0, 0 ), size = 2, blur = 2, color = Palette.neutral6 }
-        ]
-
-    else
-        [ Font.color Palette.neutral2
-        , Border.color Palette.neutral2
-        , Border.shadow { offset = ( 0, 0 ), size = 2, blur = 2, color = Palette.neutral6 }
-        ]
-
-
 viewUrlField : Url -> Maybe GitUrl -> (Url -> Cmd msg -> msg) -> Element msg
 viewUrlField (Url val) maybeGitUrl updateMsg =
     let
@@ -286,7 +248,7 @@ viewUrlField (Url val) maybeGitUrl updateMsg =
             not <| String.isEmpty val
 
         statusColourAttrs =
-            fieldStatusAttrs isValid isDirty
+            Form.statusAttrs isValid isDirty
 
         leftIcon =
             el
@@ -341,7 +303,7 @@ viewUrlField (Url val) maybeGitUrl updateMsg =
             , Background.color Palette.transparent
             , paddingXY 30 0
             , height fill
-            , focused (fieldFocusedStatusAttrs isValid isDirty)
+            , focused (Form.statusDecorations isValid isDirty)
             ]
             { onChange = \value -> updateMsg (Url val) (parseGitUrlCmd value False)
             , placeholder = Just placeholder
@@ -365,21 +327,7 @@ viewNextButton state updateState =
     case state of
         CheckedUrl (Url val) _ ->
             Route.link
-                [ width fill
-                , height (px 45)
-                , Border.width 1
-                , Border.rounded 5
-                , Border.color Palette.primary4
-                , Font.color Palette.white
-                , Background.color Palette.primary3
-                , padding 11
-                , Font.size 16
-                , alignBottom
-                , mouseOver
-                    [ Background.color Palette.primary4
-                    , Font.color Palette.white
-                    ]
-                ]
+                Form.buttonAttrs
                 (row
                     [ width fill
                     , inFront
