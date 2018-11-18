@@ -78,7 +78,7 @@ list : Maybe Cred -> BaseUrl -> Http.Request (List Project)
 list maybeCred baseUrl =
     let
         endpoint =
-            Endpoint.projects -1 (Api.toEndpoint baseUrl)
+            Endpoint.projects { amount = -1, page = 1 } (Api.toEndpoint baseUrl)
     in
     Decode.field "data" (Decode.list decoder)
         |> Api.get endpoint maybeCred

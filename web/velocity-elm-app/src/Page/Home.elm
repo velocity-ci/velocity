@@ -14,9 +14,10 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
+import Element.ProjectForm as ProjectForm
 import Icon
 import Loading
-import Page.Home.ActivePanel exposing (ActivePanel(..))
+import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Palette
 import Project exposing (Project)
 import Route
@@ -34,31 +35,51 @@ import Username exposing (Username)
 type alias Model =
     { session : Session
     , context : Context
-    , activePanel : Maybe ActivePanel
+    , projectForm : Status ProjectForm.State
     }
 
 
 type Status a
-    = Loading
+    = NotLoaded
+    | Loading
     | LoadingSlowly
     | Loaded a
     | Failed
 
 
 type Panel
-    = AddProjectPanel Bool
+    = AddProjectPanel
     | BlankPanel
     | ProjectPanel Project
 
 
 init : Session -> Context -> Maybe ActivePanel -> ( Model, Cmd Msg )
 init session context maybeActivePanel =
+    let
+        ( projectForm, projectFormCmd ) =
+            case maybeActivePanel of
+                Just ActivePanel.NewProjectForm ->
+                    ( Loaded ProjectForm.init
+                    , Cmd.none
+                    )
+
+                Just (ActivePanel.ConfigureProjectForm repository) ->
+                    ( Loading
+                    , ProjectForm.parseGitUrlCmd repository True
+                    )
+
+                _ ->
+                    ( NotLoaded
+                    , Cmd.none
+                    )
+    in
     ( { session = session
       , context = context
-      , activePanel = maybeActivePanel
+      , projectForm = projectForm
       }
     , Cmd.batch
         [ Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
+        , projectFormCmd
         ]
     )
 
@@ -75,18 +96,16 @@ view model =
             [ width fill
             , height fill
             , Background.color Palette.white
-
-            --            , paddingXY 0 20
             , centerX
             , spacing 20
             ]
-            [ viewProjectHeader (Context.device model.context) model.activePanel
+            [ viewSubHeader (Context.device model.context)
             , row
                 [ width (fill |> maximum 1600)
                 , alignRight
                 , height fill
                 ]
-                (viewColumns model.activePanel (Context.device model.context) (Session.projects model.session))
+                (viewColumns model (Context.device model.context) (Session.projects model.session))
             ]
     }
 
@@ -96,8 +115,8 @@ iconOptions =
     Icon.defaultOptions
 
 
-viewProjectHeader : Device -> Maybe ActivePanel -> Element msg
-viewProjectHeader device maybeActivePanel =
+viewSubHeader : Device -> Element msg
+viewSubHeader device =
     case device.class of
         Phone ->
             row
@@ -121,19 +140,12 @@ viewProjectHeader device maybeActivePanel =
                     , paddingXY 10 10
                     , Border.rounded 5
                     , Font.size 21
-                    , Background.color
-                        (case maybeActivePanel of
-                            Just NewProjectForm ->
-                                Palette.primary2
-
-                            _ ->
-                                Palette.primary2
-                        )
+                    , Background.color Palette.primary5
                     , Border.width 1
                     , Border.rounded 10
                     , Border.color Palette.neutral6
-                    , Font.color Palette.neutral7
-                    , mouseOver [ Background.color Palette.primary4 ]
+                    , Font.color Palette.primary6
+                    , mouseOver [ Background.color Palette.primary5 ]
                     ]
                     (row
                         [ height fill
@@ -143,7 +155,7 @@ viewProjectHeader device maybeActivePanel =
                         , el [ centerX ] (text "New project")
                         ]
                     )
-                    (Route.Home (Just NewProjectForm))
+                    (Route.Home (Just ActivePanel.NewProjectForm))
                 , el [ width (fillPortion 1) ] none
                 ]
 
@@ -158,13 +170,6 @@ viewProjectHeader device maybeActivePanel =
                 , Font.color Palette.white
                 , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
                 , Border.color Palette.neutral6
-
-                --                , Border.shadow
-                --                    { offset = ( 0, 2 )
-                --                    , size = 2
-                --                    , blur = 2
-                --                    , color = Palette.neutral6
-                --                    }
                 ]
                 [ el
                     [ width fill
@@ -177,14 +182,7 @@ viewProjectHeader device maybeActivePanel =
                     , paddingXY 10 10
                     , Border.rounded 5
                     , Font.size 16
-                    , Background.color
-                        (case maybeActivePanel of
-                            Just NewProjectForm ->
-                                Palette.primary2
-
-                            _ ->
-                                Palette.primary3
-                        )
+                    , Background.color Palette.primary2
                     , Border.width 1
                     , Border.rounded 10
                     , Border.color Palette.neutral6
@@ -199,7 +197,7 @@ viewProjectHeader device maybeActivePanel =
                         , el [ centerX ] (text "New project")
                         ]
                     )
-                    (Route.Home (Just NewProjectForm))
+                    (Route.Home (Just ActivePanel.NewProjectForm))
                 ]
 
 
@@ -245,14 +243,18 @@ rowAmount device =
             3
 
 
-viewColumns : Maybe ActivePanel -> Device -> List Project -> List (Element Msg)
-viewColumns maybeActivePanel device projects =
+viewColumns : Model -> Device -> List Project -> List (Element Msg)
+viewColumns model device projects =
     projects
         |> List.map ProjectPanel
         |> (\projects_ ->
-                case maybeActivePanel of
-                    Just NewProjectForm ->
-                        AddProjectPanel True :: projects_
+                case model.projectForm of
+                    Loaded projectForm ->
+                        if ProjectForm.isConfiguring projectForm then
+                            AddProjectPanel :: projects_
+
+                        else
+                            AddProjectPanel :: projects_
 
                     _ ->
                         projects_
@@ -284,18 +286,18 @@ viewColumns maybeActivePanel device projects =
                     , width fill
                     , height fill
                     ]
-                    (List.map (viewPanel device) panels)
+                    (List.map (viewPanel device model) panels)
             )
 
 
-viewPanel : Device -> Panel -> Element Msg
-viewPanel device panel =
+viewPanel : Device -> Model -> Panel -> Element Msg
+viewPanel device model panel =
     case panel of
         BlankPanel ->
             viewBlankPanel
 
-        AddProjectPanel open ->
-            viewProjectFormPanel
+        AddProjectPanel ->
+            viewProjectFormPanel model.projectForm
 
         ProjectPanel project ->
             viewProjectPanel project
@@ -310,102 +312,61 @@ viewBlankPanel =
         (text "")
 
 
-viewProjectFormPanel : Element Msg
-viewProjectFormPanel =
-    column
-        [ width (fillPortion 2)
-        , Border.width 2
-        , Border.color Palette.neutral6
-        , Background.color Palette.white
-        , Border.rounded 10
-        , Font.size 14
-        , padding 10
-        , spacingXY 0 20
-        ]
-        [ el
-            [ alignTop
-            , alignLeft
-            , Font.extraLight
-            , Font.size 20
-            , Font.letterSpacing -0.5
-            , width fill
-            , Font.color (rgba 0 0 0 0.8)
-            , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
-            , Border.color (rgba255 245 245 245 1)
-            , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
-            , clip
-            , Font.color Palette.primary4
-            ]
-            (text "New project")
-        , column
-            [ spacingXY 0 10 ]
-            [ paragraph [] [ text "Set up continuous integration or deployment based on a source code repository." ]
-            , paragraph []
-                [ text "This should be a repository with a .velocity.yml file in the root. Check out "
-                , link [ Font.color Palette.primary5 ] { url = "https://google.com", label = text "the documentation" }
-                , text " to find out more."
+viewProjectFormPanel : Status ProjectForm.State -> Element Msg
+viewProjectFormPanel projectFormStatus =
+    case projectFormStatus of
+        Loaded projectForm ->
+            column
+                [ width (fillPortion 2)
+                , Border.width 2
+                , Border.color Palette.neutral6
+                , Background.color Palette.white
+                , Border.rounded 10
+                , Font.size 14
+                , padding 10
+                , spacingXY 0 20
                 ]
-            ]
-        , column
-            [ width (fillPortion 2)
-            , height fill
-            , padding 5
-            , spacingXY 0 20
-            ]
-            [ row [ width fill ]
-                [ Input.text [ height (px 30) ]
-                    { onChange = always NoOp
-                    , placeholder = Nothing
-                    , text = ""
-                    , label = Input.labelAbove [ alignLeft ] (text "Project name")
-                    }
-                ]
-            , row [ width fill ]
-                [ Input.text [ height (px 30) ]
-                    { onChange = always NoOp
-                    , placeholder = Nothing
-                    , text = ""
-                    , label = Input.labelAbove [ alignLeft ] (text "Repository URL")
-                    }
-                ]
-            , row
-                [ width fill
-                , paddingEach { top = 10, left = 0, right = 0, bottom = 0 }
-                , spacing 10
-                ]
-                [ Route.link
-                    [ width (fillPortion 1)
-                    , height (px 35)
-                    , Border.width 1
-                    , Border.rounded 5
-                    , Border.color Palette.neutral4
-                    , alignBottom
-                    , mouseOver
-                        [ Background.color Palette.neutral2
-                        , Font.color Palette.white
-                        ]
-                    ]
-                    (el [ centerY, centerX ] (text "Cancel"))
-                    (Route.Home Nothing)
-                , Input.button
-                    [ width (fillPortion 2)
-                    , height (px 35)
-                    , Border.width 1
-                    , Border.rounded 5
-                    , Border.color Palette.primary4
+                [ el
+                    [ alignTop
+                    , alignLeft
+                    , Font.extraLight
+                    , Font.size 20
+                    , Font.letterSpacing -0.5
+                    , width fill
+                    , Font.color (rgba 0 0 0 0.8)
+                    , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
+                    , Border.color (rgba255 245 245 245 1)
+                    , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
+                    , clip
                     , Font.color Palette.primary4
-                    , alignBottom
-                    , mouseOver
-                        [ Background.color Palette.primary4
-                        , Font.color Palette.white
-                        ]
+                    , inFront
+                        (Route.link
+                            [ width (px 20)
+                            , height (px 20)
+                            , Border.width 1
+                            , Border.rounded 5
+                            , Border.color Palette.neutral4
+                            , alignRight
+                            , mouseOver
+                                [ Background.color Palette.neutral2
+                                , Font.color Palette.white
+                                ]
+                            ]
+                            (Icon.x Icon.defaultOptions)
+                            (Route.Home Nothing)
+                        )
                     ]
-                    { onPress = Just NoOp
-                    , label = text "Add"
-                    }
+                    (text "New project")
+                , el
+                    [ width (fillPortion 2)
+                    , height fill
+                    , paddingXY 5 0
+                    ]
+                    (ProjectForm.view projectForm UpdateProjectForm)
                 ]
-            ]
-        ]
+
+        _ ->
+            none
 
 
 viewProjectPanel : Project -> Element msg
@@ -502,6 +463,7 @@ viewProjectPanel project =
 type Msg
     = UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
+    | UpdateProjectForm ProjectForm.State (Cmd Msg)
     | PassedSlowLoadThreshold
     | NoOp
 
@@ -520,6 +482,9 @@ update msg model =
 
         UpdatedSession (Err _) ->
             ( model, Cmd.none )
+
+        UpdateProjectForm projectForm subCmd ->
+            ( { model | projectForm = Loaded projectForm }, subCmd )
 
         PassedSlowLoadThreshold ->
             let
@@ -540,28 +505,15 @@ scrollToTop =
 
 
 
--- PARSER
-
-
-activePanelQueryParser : String -> Query.Parser (Maybe ActivePanel)
-activePanelQueryParser key =
-    Query.custom key <|
-        \stringList ->
-            case stringList of
-                [ "new-project" ] ->
-                    Just NewProjectForm
-
-                _ ->
-                    Nothing
-
-
-
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Session.changes UpdateSession (Context.baseUrl model.context) model.session
+    Sub.batch
+        [ Session.changes UpdateSession (Context.baseUrl model.context) model.session
+        , ProjectForm.subscriptions UpdateProjectForm
+        ]
 
 
 

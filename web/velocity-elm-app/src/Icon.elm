@@ -1,4 +1,4 @@
-module Icon exposing (Options, SizeUnit(..), bell, defaultOptions, logOut, plus, plusCircle)
+module Icon exposing (Options, SizeUnit(..), arrowRight, bell, check, defaultOptions, edit, externalLink, gitPullRequest, github, gitlab, link, link2, logOut, plus, plusCircle, settings, x)
 
 import Element exposing (Element)
 import FeatherIcons
@@ -56,6 +56,61 @@ plusCircle =
 plus : Options -> Element msg
 plus =
     featherIcon FeatherIcons.plus
+
+
+arrowRight : Options -> Element msg
+arrowRight =
+    featherIcon FeatherIcons.arrowRight
+
+
+x : Options -> Element msg
+x =
+    featherIcon FeatherIcons.x
+
+
+github : Options -> Element msg
+github =
+    featherIcon FeatherIcons.github
+
+
+gitlab : Options -> Element msg
+gitlab =
+    featherIcon FeatherIcons.gitlab
+
+
+gitPullRequest : Options -> Element msg
+gitPullRequest =
+    featherIcon FeatherIcons.gitPullRequest
+
+
+check : Options -> Element msg
+check =
+    featherIcon FeatherIcons.check
+
+
+settings : Options -> Element msg
+settings =
+    featherIcon FeatherIcons.settings
+
+
+link : Options -> Element msg
+link =
+    featherIcon FeatherIcons.link
+
+
+link2 : Options -> Element msg
+link2 =
+    featherIcon FeatherIcons.link2
+
+
+externalLink : Options -> Element msg
+externalLink =
+    featherIcon FeatherIcons.externalLink
+
+
+edit : Options -> Element msg
+edit =
+    featherIcon FeatherIcons.edit
 
 
 

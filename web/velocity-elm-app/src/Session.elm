@@ -3,6 +3,7 @@ module Session exposing (InitError, Session, changes, cred, errorToString, fromV
 import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
 import Http
+import KnownHost exposing (KnownHost)
 import Project exposing (Project)
 import Task exposing (Task)
 import Viewer exposing (Viewer)
@@ -21,6 +22,7 @@ type alias LoggedInInternals =
     { navKey : Nav.Key
     , viewer : Viewer
     , projects : List Project
+    , knownHosts : List KnownHost
     }
 
 
@@ -111,11 +113,36 @@ fromViewer key baseUrl maybeViewer =
             let
                 credVal =
                     Viewer.cred viewerVal
+
+                projectsRequest =
+                    Project.list (Just credVal) baseUrl
+                        |> Http.toTask
+                        |> Task.mapError HttpError
+
+                knownHostsRequest =
+                    KnownHost.list (Just credVal) baseUrl
+                        |> Http.toTask
+                        |> Task.mapError HttpError
             in
-            Project.list (Just credVal) baseUrl
-                |> Http.toTask
-                |> Task.mapError HttpError
-                |> Task.map (LoggedInInternals key viewerVal >> LoggedIn)
+            Task.map2
+                (\projects_ knownHosts ->
+                    LoggedIn <|
+                        { navKey = key
+                        , viewer = viewerVal
+                        , projects = projects_
+                        , knownHosts = knownHosts
+                        }
+                )
+                projectsRequest
+                knownHostsRequest
 
         Nothing ->
             Task.succeed (Guest key)
+
+
+
+-- { navKey : Nav.Key
+--    , viewer : Viewer
+--    , projects : List Project
+--    , knownHosts : List KnownHost
+--    }

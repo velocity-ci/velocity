@@ -1,6 +1,7 @@
 import './main.css';
 import {Elm} from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
+import * as parseGitUrl from 'git-url-parse';
 
 const storageKey = "store";
 
@@ -12,6 +13,22 @@ const app = Elm.Main.init({
         width: window.innerWidth,
         height: window.innerHeight
     }
+});
+
+console.log(Object.keys(app.ports));
+
+app.ports.parseGitUrl.subscribe(([gitUrl, configuring]) => {
+    console.log('gitUrl', gitUrl, 'configuring', configuring);
+    try {
+        const parsed = parseGitUrl(gitUrl);
+        console.log('parsed', parsed);
+        app.ports.onGitUrlParsed.send({gitUrl, parsed, configuring});
+    }
+    catch (e) {
+        console.warn('Could not parse git URL', e.message);
+        app.ports.onGitUrlParsed.send({gitUrl, parsed: null, configuring: false});
+    }
+
 });
 
 

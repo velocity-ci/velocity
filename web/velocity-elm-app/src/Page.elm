@@ -407,62 +407,48 @@ viewMobileFooter { context, page, viewer, updateLayout, layout } =
         , height (px 70)
         , paddingXY 20 15
         , alignBottom
-        , Border.shadow
-            { offset = ( -2, -2 )
-            , size = 2
-            , blur = 2
-            , color = Palette.neutral6
-            }
-        , Background.color Palette.neutral7
+        , Background.color Palette.transparent
         ]
         [ row
             [ centerY
             , centerX
             , width (fill |> maximum maxWidth)
             ]
-            [ column [ width fill ]
-                [ column []
-                    [ paragraph [ Font.size 15, Font.color Palette.primary2 ] [ text "Signed in as" ]
-                    , paragraph [ Font.size 18, Font.heavy, Font.color Palette.primary5 ] [ text "admin" ]
-                    ]
+            [ el
+                [ width (px 35)
+                , height (px 35)
+                , Border.rounded 180
+                , Background.image (Asset.src Asset.defaultAvatar)
+                , Font.size 16
+                , pointer
+                , alignRight
+                , above
+                    (if status == ListenClicks then
+                        Header.userMenuToggle
+
+                     else
+                        none
+                    )
+                , onClick
+                    (if status == Closed then
+                        updateLayout (Layout Open notificationsPanel)
+
+                     else
+                        updateLayout (Layout status notificationsPanel)
+                    )
+                , Border.shadow
+                    { offset = ( 0, 0 )
+                    , size =
+                        if status == ListenClicks then
+                            5
+
+                        else
+                            0
+                    , blur = 10
+                    , color = Palette.neutral4
+                    }
                 ]
-            , el [ width fill ]
-                (el
-                    [ width (px 35)
-                    , height (px 35)
-                    , Border.rounded 180
-                    , Background.image (Asset.src Asset.defaultAvatar)
-                    , Font.size 16
-                    , pointer
-                    , alignRight
-                    , above
-                        (if status == ListenClicks then
-                            Header.userMenuToggle
-
-                         else
-                            none
-                        )
-                    , onClick
-                        (if status == Closed then
-                            updateLayout (Layout Open notificationsPanel)
-
-                         else
-                            updateLayout (Layout status notificationsPanel)
-                        )
-                    , Border.shadow
-                        { offset = ( 0, 0 )
-                        , size =
-                            if status == ListenClicks then
-                                5
-
-                            else
-                                0
-                        , blur = 10
-                        , color = Palette.neutral4
-                        }
-                    ]
-                    none
-                )
+                none
             ]
         ]
 

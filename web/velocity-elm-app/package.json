@@ -50,5 +50,8 @@
     "webpack-dev-server": "^3.1.1",
     "webpack-manifest-plugin": "^2.0.3",
     "whatwg-fetch": "2.0.4"
+  },
+  "dependencies": {
+    "git-url-parse": "^11.1.1"
   }
 }

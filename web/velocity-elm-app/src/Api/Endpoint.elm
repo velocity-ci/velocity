@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, fromString, login, projects, request)
+module Api.Endpoint exposing (CollectionOptions, Endpoint, fromString, knownHosts, login, projects, request)
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -67,9 +67,27 @@ login baseUrl =
     url baseUrl [ "auth" ] []
 
 
-projects : Int -> Endpoint -> Endpoint
-projects amount baseUrl =
-    url baseUrl [ "projects" ] [ int "amount" amount ]
+type alias CollectionOptions =
+    { amount : Int
+    , page : Int
+    }
+
+
+projects : CollectionOptions -> Endpoint -> Endpoint
+projects opts baseUrl =
+    url baseUrl [ "projects" ] (collectionParams opts)
+
+
+knownHosts : CollectionOptions -> Endpoint -> Endpoint
+knownHosts opts baseUrl =
+    url baseUrl [ "ssh", "known-hosts" ] (collectionParams opts)
+
+
+collectionParams : CollectionOptions -> List QueryParameter
+collectionParams { amount, page } =
+    [ int "amount" amount
+    , int "page" page
+    ]
 
 
 

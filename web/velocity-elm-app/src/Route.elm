@@ -24,7 +24,7 @@ type Route
 parser : Parser (Route -> a) a
 parser =
     oneOf
-        [ Parser.map Home (Parser.top <?> ActivePanel.queryParser "active-panel")
+        [ Parser.map Home (Parser.top <?> ActivePanel.queryParser)
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
         ]
@@ -61,7 +61,7 @@ routePieces page =
     case page of
         Home activePanel ->
             ( []
-            , ActivePanel.toQueryParams "active-panel" activePanel
+            , ActivePanel.toQueryParams activePanel
             )
 
         Root ->
