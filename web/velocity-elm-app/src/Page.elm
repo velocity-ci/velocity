@@ -10,11 +10,11 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Element.Header as Header
 import Element.Input as Input
 import Html exposing (Html)
 import Icon
 import Json.Decode as Decode
+import Layout.Header as Header
 import Palette
 import Route exposing (Route)
 import Username exposing (Username)

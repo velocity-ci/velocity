@@ -153,9 +153,9 @@ module.exports = {
         include: paths.appSrc,
         exclude: [/[/\\\\]elm-stuff[/\\\\]/, /[/\\\\]node_modules[/\\\\]/],
         use: [
-          // {
-          //   loader: require.resolve('elm-hot-webpack-loader')
-          // },
+          {
+            loader: require.resolve('elm-hot-webpack-loader')
+          },
           // string-replace-loader works as InterpolateHtmlPlugin for Elm,
           // it replaces all of the %PUBLIC_URL% with the URL of your
           // application, so you could serve static assets outside of the

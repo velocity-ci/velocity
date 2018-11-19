@@ -1,4 +1,4 @@
-module Icon exposing (Options, SizeUnit(..), arrowRight, bell, check, defaultOptions, edit, externalLink, gitPullRequest, github, gitlab, link, link2, logOut, plus, plusCircle, settings, x)
+module Icon exposing (Options, SizeUnit(..), arrowRight, bell, check, defaultOptions, edit, externalLink, gitPullRequest, github, gitlab, link, link2, logOut, plus, plusCircle, settings, x, xSquare)
 
 import Element exposing (Element)
 import FeatherIcons
@@ -111,6 +111,11 @@ externalLink =
 edit : Options -> Element msg
 edit =
     featherIcon FeatherIcons.edit
+
+
+xSquare : Options -> Element msg
+xSquare =
+    featherIcon FeatherIcons.xSquare
 
 
 

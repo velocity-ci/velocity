@@ -1,4 +1,4 @@
-module Form.Input exposing (Config, text)
+module Form.Input exposing (Config, labelHidden, text)
 
 import Element exposing (..)
 import Element.Background as Background
@@ -6,9 +6,16 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
-import Form
 import Icon
 import Palette
+
+
+
+-- Proxy
+
+
+labelHidden =
+    Input.labelHidden
 
 
 
@@ -119,8 +126,8 @@ rightIcon icon =
     el
         (List.concat
             [ iconAttrs
-            , [ alignLeft
-              , moveRight 7
+            , [ alignRight
+              , moveLeft 7
               ]
             ]
         )

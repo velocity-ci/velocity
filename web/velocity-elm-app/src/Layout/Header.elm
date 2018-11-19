@@ -1,4 +1,4 @@
-module Element.Header exposing (notificationsToggle, userMenuToggle)
+module Layout.Header exposing (notificationsToggle, userMenuToggle)
 
 import Asset
 import Element exposing (..)

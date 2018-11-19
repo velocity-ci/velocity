@@ -13,6 +13,7 @@ import Context exposing (Context)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Button as Button
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
@@ -88,7 +89,7 @@ view model =
             , centerX
             , spacing 20
             ]
-            [ viewSubHeader device
+            [ viewSubHeader (model.projectFormStatus /= NotOpen) device
             , viewPanelGrid device model.projectFormStatus model.session
             ]
     }
@@ -103,24 +104,24 @@ iconOptions =
 -- SubHeader
 
 
-viewSubHeader : Device -> Element msg
-viewSubHeader device =
+viewSubHeader : Bool -> Device -> Element msg
+viewSubHeader disableButton device =
     case device.class of
         Phone ->
-            viewMobileSubHeader
+            viewMobileSubHeader { disableButton = disableButton }
 
         Tablet ->
-            viewDesktopSubHeader
+            viewDesktopSubHeader { disableButton = disableButton }
 
         Desktop ->
-            viewDesktopSubHeader
+            viewDesktopSubHeader { disableButton = disableButton }
 
         BigDesktop ->
-            viewDesktopSubHeader
+            viewDesktopSubHeader { disableButton = disableButton }
 
 
-viewMobileSubHeader : Element msg
-viewMobileSubHeader =
+viewMobileSubHeader : { disableButton : Bool } -> Element msg
+viewMobileSubHeader { disableButton } =
     row
         [ width fill
         , height shrink
@@ -136,27 +137,24 @@ viewMobileSubHeader =
             , color = Palette.neutral6
             }
         ]
-        [ el [ width (fillPortion 1) ] none
-        , Route.link
-            [ width (fillPortion 2)
-            , paddingXY 10 10
-            , Border.rounded 5
-            , Font.size 21
-            , Background.color Palette.primary5
-            , Border.width 1
-            , Border.rounded 10
-            , Border.color Palette.neutral6
-            , Font.color Palette.primary6
-            , mouseOver [ Background.color Palette.primary5 ]
-            ]
-            (viewNewProjectButton 21)
-            (Route.Home ActivePanel.ProjectForm)
-        , el [ width (fillPortion 1) ] none
+        [ el [ width fill ] none
+        , Button.link (Route.Home ActivePanel.ProjectForm)
+            { leftIcon = Nothing
+            , rightIcon = Nothing
+            , centerLeftIcon = Just Icon.plus
+            , centerRightIcon = Nothing
+            , size = Button.Large
+            , scheme = Button.Primary
+            , content = text "New project"
+            , widthLength = fillPortion 2
+            , disabled = disableButton
+            }
+        , el [ width fill ] none
         ]
 
 
-viewDesktopSubHeader : Element msg
-viewDesktopSubHeader =
+viewDesktopSubHeader : { disableButton : Bool } -> Element msg
+viewDesktopSubHeader { disableButton } =
     row
         [ Font.bold
         , Font.size 18
@@ -174,31 +172,17 @@ viewDesktopSubHeader =
             , Font.color Palette.neutral3
             ]
             (el [ alignLeft ] (text "Your projects"))
-        , Route.link
-            [ width shrink
-            , paddingXY 10 10
-            , Border.rounded 5
-            , Font.size 16
-            , Background.color Palette.primary2
-            , Border.width 1
-            , Border.rounded 10
-            , Border.color Palette.neutral6
-            , Font.color Palette.neutral7
-            , mouseOver [ Background.color Palette.primary4 ]
-            ]
-            (viewNewProjectButton 16)
-            (Route.Home ActivePanel.ProjectForm)
-        ]
-
-
-viewNewProjectButton : Float -> Element msg
-viewNewProjectButton iconSize =
-    row
-        [ height fill
-        , width fill
-        ]
-        [ Icon.plus { iconOptions | size = iconSize }
-        , el [ centerX ] (text "New project")
+        , Button.link (Route.Home ActivePanel.ProjectForm)
+            { leftIcon = Nothing
+            , rightIcon = Nothing
+            , centerLeftIcon = Nothing
+            , centerRightIcon = Just Icon.plus
+            , size = Button.Medium
+            , scheme = Button.Primary
+            , content = text "New project"
+            , widthLength = shrink
+            , disabled = disableButton
+            }
         ]
 
 
@@ -298,7 +282,7 @@ viewPanel device panel =
             none
 
         ProjectFormPanel (SettingRepository repositoryValue) ->
-            viewProjectFormSettingRepositoryPanel repositoryValue
+            viewAddProjectPanel repositoryValue
 
         ProjectFormPanel (ConfiguringRepository _) ->
             text "helloworld"
@@ -311,8 +295,10 @@ viewPanel device panel =
 -- Supported panel types
 
 
-viewProjectFormSettingRepositoryPanel : { value : String, dirty : Bool, problems : List String } -> Element Msg
-viewProjectFormSettingRepositoryPanel { value, dirty, problems } =
+{-| This is a panel that is used to for the the simple form to add a new project, its a bit of a CTA.
+-}
+viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Element Msg
+viewAddProjectPanel repositoryField =
     viewPanelContainer
         [ row
             [ alignTop
@@ -321,10 +307,10 @@ viewProjectFormSettingRepositoryPanel { value, dirty, problems } =
             , Font.size 20
             , Font.letterSpacing -0.5
             , width fill
-            , Font.color (rgba 0 0 0 0.8)
+            , Font.color Palette.neutral4
             , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
-            , Border.color (rgba255 245 245 245 1)
-            , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
+            , Border.color Palette.primary7
+            , paddingEach { top = 5, left = 5, bottom = 10, right = 10 }
             , clip
             , Font.color Palette.primary4
             , inFront
@@ -348,98 +334,71 @@ viewProjectFormSettingRepositoryPanel { value, dirty, problems } =
         , row
             [ width fill
             , height fill
-            , paddingXY 5 0
+            , padding 5
             ]
             [ column [ spacingXY 0 20, width fill ]
-                [ viewHelpText
+                [ column [ spacingXY 0 20, Font.color Palette.neutral3, width fill, Font.size 15, Font.alignLeft, paddingEach { top = 10, left = 0, right = 0, bottom = 0 } ]
+                    [ paragraph []
+                        [ text "Set up continuous integration or deployment based on a source code repository." ]
+                    , paragraph []
+                        [ text "This should be a repository with a .velocity.yml file in the root. Check out "
+                        , link [ Font.color Palette.primary5 ] { url = "https://google.com", label = text "the documentation" }
+                        , text " to find out more."
+                        ]
+                    ]
                 , column [ width fill ]
-                    [--             viewUrlField url maybeGitUrl (\newUrl parseCmd -> updateMsg (CheckingUrl newUrl) parseCmd)
+                    [ viewRepositoryField repositoryField
                     ]
-                , row [ width fill ]
-                    [ el [ width fill ] none
-                    , el [ width (fillPortion 3) ] (text "next b")
+                , row [ width fill, spacingXY 10 0 ]
+                    [ el [ width fill ]
+                        (Button.link (Route.Home ActivePanel.None)
+                            { rightIcon = Nothing
+                            , centerRightIcon = Nothing
+                            , leftIcon = Nothing
+                            , centerLeftIcon = Nothing
+                            , content = text "Cancel"
+                            , scheme = Button.Secondary
+                            , size = Button.Medium
+                            , widthLength = fill
+                            , disabled = False
+                            }
+                        )
+                    , el [ width (fillPortion 2) ]
+                        (Button.button NoOp
+                            { rightIcon = Just Icon.arrowRight
+                            , centerRightIcon = Nothing
+                            , leftIcon = Nothing
+                            , centerLeftIcon = Just Icon.settings
+                            , content = text "Configure"
+                            , scheme = Button.Primary
+                            , size = Button.Medium
+                            , widthLength = fill
+                            , disabled = False
+                            }
+                        )
                     ]
                 ]
             ]
         ]
 
 
-viewHelpText : Element msg
-viewHelpText =
-    column [ spacingXY 0 20, Font.color Palette.neutral3, width fill ]
-        [ column [ alignLeft ]
-            [ paragraph [ alignLeft ] [ text "Set up continuous integration or deployment based on a source code repository." ]
-            ]
-        , column
-            []
-            [ paragraph []
-                [ text "This should be a repository with a .velocity.yml file in the root. Check out "
-                , link [ Font.color Palette.primary5 ] { url = "https://google.com", label = text "the documentation" }
-                , text " to find out more."
-                ]
-            ]
-        ]
+viewRepositoryField : { value : String, dirty : Bool, problems : List String } -> Element Msg
+viewRepositoryField { value, dirty, problems } =
+    Input.text
+        { leftIcon = Just Icon.link
+        , rightIcon =
+            if dirty && List.isEmpty problems then
+                Just Icon.check
 
-
-
---viewRepositoryField : { value : String, dirty : Bool, problems : List String } -> Element Msg
---viewRepositoryField { value, dirty, problems } =
---
---viewProjectFormPanel : Status ProjectForm.State -> Element Msg
---viewProjectFormPanel projectFormStatus =
---    case projectFormStatus of
---        Loaded projectForm ->
---            column
---                [ width (fillPortion 2)
---                , Border.width 2
---                , Border.color Palette.neutral6
---                , Background.color Palette.white
---                , Border.rounded 10
---                , Font.size 14
---                , padding 10
---                , spacingXY 0 20
---                ]
---                [ el
---                    [ alignTop
---                    , alignLeft
---                    , Font.extraLight
---                    , Font.size 20
---                    , Font.letterSpacing -0.5
---                    , width fill
---                    , Font.color (rgba 0 0 0 0.8)
---                    , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
---                    , Border.color (rgba255 245 245 245 1)
---                    , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
---                    , clip
---                    , Font.color Palette.primary4
---                    , inFront
---                        (Route.link
---                            [ width (px 20)
---                            , height (px 20)
---                            , Border.width 1
---                            , Border.rounded 5
---                            , Border.color Palette.neutral4
---                            , alignRight
---                            , mouseOver
---                                [ Background.color Palette.neutral2
---                                , Font.color Palette.white
---                                ]
---                            ]
---                            (Icon.x Icon.defaultOptions)
---                            (Route.Home Nothing)
---                        )
---                    ]
---                    (text "New project")
---                , el
---                    [ width (fillPortion 2)
---                    , height fill
---                    , paddingXY 5 0
---                    ]
---                    (ProjectForm.view projectForm UpdateProjectForm)
---                ]
---
---        _ ->
---            none
+            else
+                Nothing
+        , label = Input.labelHidden "Repository URL"
+        , placeholder = Just "Repository URL"
+        , dirty = dirty
+        , value = value
+        , problems = problems
+        , onChange = EnteredRepositoryUrl
+        }
 
 
 viewProjectPanel : Project -> Element msg
@@ -456,50 +415,48 @@ viewProjectPanel project =
             column
                 [ width (fillPortion 2)
                 , height fill
-                , padding 5
-                , spacingXY 0 10
+                , Font.alignLeft
                 ]
-                [ el
+                [ paragraph
                     [ alignTop
                     , alignLeft
+                    , centerX
                     , Font.extraLight
                     , Font.size 20
                     , Font.letterSpacing -0.5
                     , width fill
                     , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
                     , Border.color Palette.primary7
-                    , paddingEach { bottom = 5, left = 0, right = 0, top = 0 }
+                    , paddingEach { top = 5, left = 0, bottom = 10, right = 10 }
                     , clip
                     , Font.color Palette.primary4
                     ]
-                    (text <| Project.name project)
-                , paragraph
-                    [ paddingXY 0 0
-                    , centerY
-                    , alignLeft
-                    , height fill
-                    , Font.size 15
-                    , Font.color Palette.neutral3
-                    , Font.medium
-                    , width fill
-                    , clipX
-                    ]
-                    [ el [ centerX ] (text <| Project.repository project)
-                    ]
-                , paragraph
-                    [ alignBottom
-                    , width fill
-                    , Font.size 13
-                    , Font.heavy
-                    , Font.color Palette.neutral2
-                    ]
-                    [ el [ centerX ] (text "Last updated 2 weeks ago")
+                    [ text <| Project.name project ]
+                , column [ paddingEach { bottom = 0, left = 0, right = 10, top = 10 }, width fill, height fill, spacingXY 0 20 ]
+                    [ paragraph
+                        [ Font.size 15
+                        , Font.color Palette.neutral3
+                        , Font.medium
+                        , width fill
+                        , clipX
+                        ]
+                        [ text <| Project.repository project ]
+                    , paragraph
+                        [ width fill
+                        , Font.alignRight
+                        , height shrink
+                        , alignBottom
+                        , Font.size 13
+                        , Font.heavy
+                        , Font.color Palette.neutral2
+                        ]
+                        [ text "Last updated 2 weeks ago" ]
                     ]
                 ]
     in
     viewPanelContainer
         [ row
-            [ width fill, height fill ]
+            [ width fill, height fill, spacingXY 10 0 ]
             [ thumbnail
             , details
             ]
@@ -510,15 +467,11 @@ viewPanelContainer : List (Element msg) -> Element msg
 viewPanelContainer contents =
     column
         [ width fill
-        , height (px 130)
         , padding 10
-        , spacingXY 5 0
         , Border.width 1
         , Border.color Palette.primary6
         , Border.rounded 10
         , Background.color Palette.white
-        , pointer
-        , mouseOver [ Background.color Palette.primary7 ]
         ]
         contents
 
@@ -530,6 +483,7 @@ viewPanelContainer contents =
 type Msg
     = UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
+    | EnteredRepositoryUrl String
     | PassedSlowLoadThreshold
     | NoOp
 
@@ -539,6 +493,11 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        EnteredRepositoryUrl repositoryUrl ->
+            ( { model | projectFormStatus = SettingRepository { value = repositoryUrl, dirty = True, problems = [] } }
+            , Cmd.none
+            )
 
         UpdateSession task ->
             ( model, Task.attempt UpdatedSession task )
