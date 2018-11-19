@@ -179,7 +179,7 @@ sizeAttrs fromSize =
 activeAttrs : ButtonConfig msg -> List (Attribute msg)
 activeAttrs { disabled, scheme } =
     if disabled then
-        [ alpha 0.8 ]
+        [ alpha 0.6 ]
 
     else
         [ mouseOver (schemeMouseOverDecorations scheme)

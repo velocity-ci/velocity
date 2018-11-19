@@ -1,9 +1,7 @@
-module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession, update, view)
+port module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession, update, view)
 
-{-| The homepage. You can get here via either the / or /#/ routes.
+{-| The homepage. You can get here via either the / route.
 -}
-
---import Element.ProjectForm as ProjectForm
 
 import Api exposing (Cred)
 import Array exposing (Array)
@@ -18,17 +16,47 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Form.Input as Input
+import GitUrl exposing (GitUrl)
 import Icon
+import Json.Decode as Decode
+import Json.Encode as Encode
 import Loading
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Palette
+import Porter
 import Project exposing (Project)
+import Regex
 import Route
 import Session exposing (Session)
 import Task exposing (Task)
 import Url.Builder
 import Url.Parser.Query as Query
 import Username exposing (Username)
+import Validate exposing (ifBlank)
+
+
+
+---- Porter
+
+
+port outgoing : Encode.Value -> Cmd msg
+
+
+port incoming : (Decode.Value -> msg) -> Sub msg
+
+
+porterConfig : Porter.Config String GitUrl Msg
+porterConfig =
+    { outgoingPort = outgoing
+    , incomingPort = incoming
+
+    -- Porter works with a single Request and Response data types. They can both be anything, as long as you supply decoders :)
+    , encodeRequest = Encode.string
+    , decodeResponse = GitUrl.decoder
+
+    -- Porter uses a message added to your Msg type for its internal communications (See `type Msg` below)
+    , porterMsg = ParseGitUrlPorterMsg
+    }
 
 
 
@@ -38,6 +66,7 @@ import Username exposing (Username)
 type alias Model =
     { session : Session
     , context : Context
+    , porter : Porter.Model String GitUrl Msg
     , projectFormStatus : ProjectFormStatus
     }
 
@@ -52,6 +81,7 @@ init : Session -> Context -> ActivePanel -> ( Model, Cmd Msg )
 init session context activePanel =
     ( { session = session
       , context = context
+      , porter = Porter.init
       , projectFormStatus = activePanelToProjectFormStatus activePanel
       }
     , Cmd.batch
@@ -64,7 +94,7 @@ activePanelToProjectFormStatus : ActivePanel -> ProjectFormStatus
 activePanelToProjectFormStatus activePanel =
     case activePanel of
         ActivePanel.ProjectForm ->
-            SettingRepository { value = "", dirty = False, problems = [] }
+            SettingRepository { value = "", dirty = False, problems = validateRepository "" }
 
         _ ->
             NotOpen
@@ -337,12 +367,20 @@ viewAddProjectPanel repositoryField =
             , padding 5
             ]
             [ column [ spacingXY 0 20, width fill ]
-                [ column [ spacingXY 0 20, Font.color Palette.neutral3, width fill, Font.size 15, Font.alignLeft, paddingEach { top = 10, left = 0, right = 0, bottom = 0 } ]
+                [ column
+                    [ spacingXY 0 20
+                    , Font.color Palette.neutral3
+                    , width fill
+                    , Font.size 15
+                    , Font.alignLeft
+                    , paddingEach { top = 10, left = 0, right = 0, bottom = 0 }
+                    ]
                     [ paragraph []
                         [ text "Set up continuous integration or deployment based on a source code repository." ]
                     , paragraph []
                         [ text "This should be a repository with a .velocity.yml file in the root. Check out "
-                        , link [ Font.color Palette.primary5 ] { url = "https://google.com", label = text "the documentation" }
+                        , link [ Font.color Palette.primary5 ]
+                            { url = "https://google.com", label = text "the documentation" }
                         , text " to find out more."
                         ]
                     ]
@@ -373,7 +411,7 @@ viewAddProjectPanel repositoryField =
                             , scheme = Button.Primary
                             , size = Button.Medium
                             , widthLength = fill
-                            , disabled = False
+                            , disabled = not (List.isEmpty repositoryField.problems)
                             }
                         )
                     ]
@@ -432,7 +470,12 @@ viewProjectPanel project =
                     , Font.color Palette.primary4
                     ]
                     [ text <| Project.name project ]
-                , column [ paddingEach { bottom = 0, left = 0, right = 10, top = 10 }, width fill, height fill, spacingXY 0 20 ]
+                , column
+                    [ paddingEach { bottom = 0, left = 0, right = 0, top = 10 }
+                    , width fill
+                    , height fill
+                    , spacingXY 0 20
+                    ]
                     [ paragraph
                         [ Font.size 15
                         , Font.color Palette.neutral3
@@ -440,7 +483,11 @@ viewProjectPanel project =
                         , width fill
                         , clipX
                         ]
-                        [ text <| Project.repository project ]
+                        [ link []
+                            { url = Project.repository project
+                            , label = text <| Project.repository project
+                            }
+                        ]
                     , paragraph
                         [ width fill
                         , Font.alignRight
@@ -477,6 +524,29 @@ viewPanelContainer contents =
 
 
 
+-- VALIDATION
+
+
+validateRepository : String -> List String
+validateRepository repository =
+    let
+        maybeRegex =
+            "(?:git|ssh|https?|git@[-\\w.]+):(\\/\\/)?(.*?)(\\.git)(\\/?|\\#[-\\d\\w._]+?)$"
+                |> Regex.fromStringWith { caseInsensitive = False, multiline = False }
+    in
+    case maybeRegex of
+        Just regex ->
+            if Regex.contains regex repository then
+                []
+
+            else
+                [ "Invalid repository" ]
+
+        Nothing ->
+            []
+
+
+
 -- UPDATE
 
 
@@ -484,6 +554,7 @@ type Msg
     = UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
     | EnteredRepositoryUrl String
+    | ParseGitUrlPorterMsg (Porter.Msg String GitUrl Msg)
     | PassedSlowLoadThreshold
     | NoOp
 
@@ -495,7 +566,14 @@ update msg model =
             ( model, Cmd.none )
 
         EnteredRepositoryUrl repositoryUrl ->
-            ( { model | projectFormStatus = SettingRepository { value = repositoryUrl, dirty = True, problems = [] } }
+            ( { model
+                | projectFormStatus =
+                    SettingRepository
+                        { value = repositoryUrl
+                        , dirty = True
+                        , problems = validateRepository repositoryUrl
+                        }
+              }
             , Cmd.none
             )
 
@@ -507,6 +585,13 @@ update msg model =
 
         UpdatedSession (Err _) ->
             ( model, Cmd.none )
+
+        ParseGitUrlPorterMsg porterMsg ->
+            let
+                ( porterModel, porterCmd ) =
+                    Porter.update porterConfig porterMsg model.porter
+            in
+            ( { model | porter = porterModel }, porterCmd )
 
         PassedSlowLoadThreshold ->
             let

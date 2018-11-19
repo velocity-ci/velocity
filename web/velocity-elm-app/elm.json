@@ -12,11 +12,14 @@
             "elm/html": "1.0.0",
             "elm/http": "1.0.0",
             "elm/json": "1.0.0",
+            "elm/regex": "1.0.0",
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
             "feathericons/elm-feather": "1.1.0",
             "mdgriffith/elm-ui": "1.1.0",
-            "rtfeldman/elm-iso8601-date-strings": "1.1.2"
+            "peterszerzo/elm-porter": "3.0.0",
+            "rtfeldman/elm-iso8601-date-strings": "1.1.2",
+            "rtfeldman/elm-validate": "4.0.1"
         },
         "indirect": {
             "elm/parser": "1.1.0",

@@ -2,6 +2,7 @@ module GitUrl exposing (GitUrl, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, optional, required)
+import Json.Encode as Encode
 
 
 
