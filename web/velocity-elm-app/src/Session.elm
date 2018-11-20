@@ -138,11 +138,3 @@ fromViewer key baseUrl maybeViewer =
 
         Nothing ->
             Task.succeed (Guest key)
-
-
-
--- { navKey : Nav.Key
---    , viewer : Viewer
---    , projects : List Project
---    , knownHosts : List KnownHost
---    }

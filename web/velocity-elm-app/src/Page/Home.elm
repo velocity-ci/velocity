@@ -59,7 +59,7 @@ type alias Model =
 type ProjectFormStatus
     = NotOpen
     | SettingRepository { value : String, dirty : Bool, problems : List String }
-    | ConfiguringRepository String GitUrl
+    | ConfiguringRepository { repositoryUrl : String, gitUrl : GitUrl, projectName : String }
 
 
 init : Session -> Context -> ActivePanel -> ( Model, Cmd Msg )
@@ -67,15 +67,19 @@ init session context activePanel =
     ( { session = session
       , context = context
       , projectFormStatus =
-            ConfiguringRepository "https://github.com/velocity-ci/velocity.git"
-                { protocol = "https"
-                , port_ = Nothing
-                , resource = "github.com"
-                , source = "github.com"
-                , owner = "velocity-ci"
-                , pathName = "/velocity-ci/velocity.git"
-                , fullName = "velocity-ci/velocity"
-                , href = "https://github.com/velocity-ci/velocity.git"
+            ConfiguringRepository
+                { repositoryUrl = "https://github.com/velocity-ci/velocity.git"
+                , projectName = "velocity-ci/velocity"
+                , gitUrl =
+                    { protocol = "https"
+                    , port_ = Nothing
+                    , resource = "github.com"
+                    , source = "github.com"
+                    , owner = "velocity-ci"
+                    , pathName = "/velocity-ci/velocity.git"
+                    , fullName = "velocity-ci/velocity"
+                    , href = "https://github.com/velocity-ci/velocity.git"
+                    }
                 }
 
       --      , projectFormStatus = activePanelToProjectFormStatus activePanel
@@ -307,11 +311,11 @@ viewPanel device panel =
         ProjectFormPanel NotOpen ->
             none
 
-        ProjectFormPanel (SettingRepository repositoryValue) ->
-            viewAddProjectPanel repositoryValue
+        ProjectFormPanel (SettingRepository repositoryField) ->
+            viewAddProjectPanel repositoryField
 
-        ProjectFormPanel (ConfiguringRepository repository gitUrl) ->
-            viewConfigureProjectPanel repository gitUrl
+        ProjectFormPanel (ConfiguringRepository configurationValues) ->
+            viewConfigureProjectPanel configurationValues
 
         ProjectPanel project ->
             viewProjectPanel project
@@ -326,7 +330,7 @@ viewPanel device panel =
 viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Element Msg
 viewAddProjectPanel repositoryField =
     viewPanelContainer
-        [ viewNewProjectPanelHeader
+        [ viewNewProjectPanelHeader "New project"
         , row
             [ width fill
             , height fill
@@ -386,45 +390,160 @@ viewAddProjectPanel repositoryField =
         ]
 
 
-viewConfigureProjectPanel : String -> GitUrl -> Element msg
-viewConfigureProjectPanel repository gitUrl =
+viewConfigureProjectPanel : { repositoryUrl : String, gitUrl : GitUrl, projectName : String } -> Element Msg
+viewConfigureProjectPanel { repositoryUrl, gitUrl, projectName } =
     let
         infoRow header value =
             row
                 [ width fill
                 , Font.size 16
-                , spacingXY 10 0
-                , Background.color Palette.white
                 , Border.rounded 10
-                , paddingXY 0 10
+                , spacingXY 10 0
                 ]
                 [ el
-                    [ width fill
+                    [ width shrink
                     , Font.alignRight
                     , Font.color Palette.neutral2
                     ]
                     (text header)
                 , el
-                    [ width (fillPortion 2)
+                    [ width fill
                     , Font.alignLeft
                     , Font.color Palette.primary2
                     ]
-                    (text value)
+                    value
                 ]
+
+        thumbnailIconOpts =
+            let
+                opts =
+                    Icon.defaultOptions
+            in
+            { opts | sizeUnit = Icon.Percentage, size = 100 }
     in
     viewPanelContainer
-        [ viewNewProjectPanelHeader
-        , column [ width fill, spacingXY 0 10 ]
-            [ infoRow "Protocol" gitUrl.protocol
-            , infoRow "Owner" gitUrl.owner
-            , infoRow "Name" gitUrl.fullName
-            , infoRow "Source" gitUrl.source
+        [ viewNewProjectPanelHeader "New repository source"
+        , row
+            [ width fill
+            , spacingXY 0 20
+            , paddingEach
+                { top = 10
+                , left = 5
+                , right = 5
+                , bottom = 0
+                }
+            ]
+            [ el
+                [ width <| fillPortion 2
+                , height fill
+                , Border.widthEach { left = 0, right = 1, top = 0, bottom = 0 }
+                , Border.color Palette.neutral6
+                , paddingEach { top = 0, left = 0, right = 10, bottom = 0 }
+                ]
+                (column [ height fill, width fill ]
+                    [ el [ centerX, centerY, Font.color Palette.primary2 ] <| GitUrl.sourceThumbnail gitUrl thumbnailIconOpts
+                    , el [ centerX, centerY, padding 10, Background.color Palette.neutral6, Border.rounded 10, Font.size 14 ] (text gitUrl.source)
+                    ]
+                )
+            , column
+                [ spacingXY 0 20
+                , Font.color Palette.neutral3
+                , Font.extraLight
+                , width <| fillPortion 10
+                , Font.size 15
+                , Font.alignLeft
+                , paddingEach { top = 10, left = 10, right = 0, bottom = 0 }
+                ]
+                [ paragraph []
+                    [ text ("Because this is your first repository hosted on " ++ gitUrl.source ++ " we need you to ")
+                    , text "tell Velocity their public SSH key."
+                    ]
+                , paragraph []
+                    [ text "You can find their public SSH key by running"
+                    ]
+                , paragraph [ Font.color Palette.primary2, Font.family [ Font.monospace ] ]
+                    [ text ("ssh-keyscan " ++ gitUrl.source ++ "") ]
+                , paragraph []
+                    [ text "If the results of the command match the sources published public key, "
+                    , link [ Font.color Palette.primary1 ] { url = "https://help.github.com/articles/github-s-ssh-key-fingerprints/", label = text "for example GitHub" }
+                    , text " then we can fully trust Velocity is talking to the correct servers."
+                    ]
+                ]
+            ]
+        , row [ width fill, height shrink ]
+            [ el [ height (px 125), width fill, paddingEach { top = 20, left = 0, right = 0, bottom = 20 } ]
+                (Input.multilineText
+                    { leftIcon = Nothing
+                    , rightIcon = Nothing
+                    , label = Input.labelHidden "Public key"
+                    , placeholder = Just <| "ssh-keyscan " ++ gitUrl.source
+                    , dirty = False
+                    , value = ""
+                    , problems = []
+                    , onChange = always NoOp
+                    }
+                )
+            ]
+        , row [ width fill, spacingXY 10 0 ]
+            [ el [ width fill ]
+                (Button.button NewProjectBackButtonClicked
+                    { rightIcon = Nothing
+                    , centerRightIcon = Nothing
+                    , leftIcon = Just Icon.arrowLeft
+                    , centerLeftIcon = Nothing
+                    , content = text "Back"
+                    , scheme = Button.Secondary
+                    , size = Button.Medium
+                    , widthLength = fill
+                    , disabled = False
+                    }
+                )
+            , el [ width (fillPortion 2) ]
+                (Button.button ConfigureRepositoryButtonClicked
+                    { rightIcon = Just Icon.arrowRight
+                    , centerRightIcon = Nothing
+                    , leftIcon = Nothing
+                    , centerLeftIcon = Nothing
+                    , content = text "Allow source"
+                    , scheme = Button.Primary
+                    , size = Button.Medium
+                    , widthLength = fill
+                    , disabled = False
+                    }
+                )
             ]
         ]
 
 
-viewNewProjectPanelHeader : Element msg
-viewNewProjectPanelHeader =
+
+--            , row [ width fill, height shrink, padding 10, spacing 10, Font.size 22 ]
+--                [ -- Source (e.g. github, gitlab, bitbucket) logo
+--                  el
+--                    [ width shrink, height shrink ]
+--                    (GitUrl.sourceThumbnail gitUrl thumbnailIconOpts)
+--                , el
+--                    [ width fill
+--                    , height shrink
+--                    , Font.color Palette.primary2
+--                    , Font.alignLeft
+--                    , centerY
+--                    ]
+--                    (text gitUrl.source)
+--                ]
+--            , Input.text
+--                { leftIcon = Nothing
+--                , rightIcon = Nothing
+--                , label = Input.labelLeft "Name"
+--                , placeholder = Nothing
+--                , dirty = False
+--                , value = projectName
+--                , problems = []
+--                , onChange = always NoOp
+--                }
+
+
+viewNewProjectPanelHeader : String -> Element msg
+viewNewProjectPanelHeader headerText =
     row
         [ alignTop
         , alignLeft
@@ -457,7 +576,7 @@ viewNewProjectPanelHeader =
                 (Route.Home ActivePanel.None)
             )
         ]
-        [ text "New project" ]
+        [ text headerText ]
 
 
 viewRepositoryField : { value : String, dirty : Bool, problems : List String } -> Element Msg
@@ -556,9 +675,9 @@ viewPanelContainer contents =
         [ width fill
         , padding 10
         , Border.width 1
-        , Border.color Palette.primary7
+        , Border.color Palette.neutral6
         , Border.rounded 10
-        , Background.color Palette.neutral7
+        , Background.color Palette.white
         ]
         contents
 
@@ -596,6 +715,7 @@ type Msg
     | ConfigureRepositoryButtonClicked
     | ParsedRepository (Result Decode.Error { repository : String, gitUrl : GitUrl })
     | EnteredRepositoryUrl String
+    | NewProjectBackButtonClicked
     | PassedSlowLoadThreshold
     | NoOp
 
@@ -605,6 +725,22 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        NewProjectBackButtonClicked ->
+            ( { model
+                | projectFormStatus =
+                    case model.projectFormStatus of
+                        NotOpen ->
+                            model.projectFormStatus
+
+                        SettingRepository _ ->
+                            model.projectFormStatus
+
+                        ConfiguringRepository { repositoryUrl } ->
+                            SettingRepository { value = repositoryUrl, dirty = True, problems = [] }
+              }
+            , Cmd.none
+            )
 
         EnteredRepositoryUrl repositoryUrl ->
             ( { model
@@ -642,7 +778,14 @@ update msg model =
             )
 
         ParsedRepository (Ok { repository, gitUrl }) ->
-            ( { model | projectFormStatus = ConfiguringRepository repository gitUrl }
+            ( { model
+                | projectFormStatus =
+                    ConfiguringRepository
+                        { repositoryUrl = repository
+                        , gitUrl = gitUrl
+                        , projectName = gitUrl.fullName
+                        }
+              }
             , Cmd.none
             )
 

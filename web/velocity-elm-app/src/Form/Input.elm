@@ -1,4 +1,4 @@
-module Form.Input exposing (Config, labelHidden, text)
+module Form.Input exposing (Config, labelAbove, labelBelow, labelHidden, labelLeft, labelRight, multilineText, text)
 
 import Element exposing (..)
 import Element.Background as Background
@@ -14,8 +14,64 @@ import Palette
 -- Proxy
 
 
+labelHidden : String -> Input.Label msg
 labelHidden =
     Input.labelHidden
+
+
+labelLeft : String -> Input.Label msg
+labelLeft labelText =
+    Input.labelLeft
+        [ centerY
+        , paddingEach
+            { right = 10
+            , left = 0
+            , top = 0
+            , bottom = 0
+            }
+        ]
+        (Element.text labelText)
+
+
+labelRight : String -> Input.Label msg
+labelRight labelText =
+    Input.labelRight
+        [ centerY
+        , paddingEach
+            { right = 0
+            , left = 10
+            , top = 0
+            , bottom = 0
+            }
+        ]
+        (Element.text labelText)
+
+
+labelBelow : String -> Input.Label msg
+labelBelow labelText =
+    Input.labelBelow
+        [ centerY
+        , paddingEach
+            { right = 0
+            , left = 0
+            , top = 10
+            , bottom = 0
+            }
+        ]
+        (Element.text labelText)
+
+
+labelAbove : String -> Input.Label msg
+labelAbove labelText =
+    Input.labelAbove
+        [ paddingEach
+            { right = 0
+            , left = 0
+            , top = 0
+            , bottom = 10
+            }
+        ]
+        (Element.text labelText)
 
 
 
@@ -48,34 +104,89 @@ text config =
             [ statusAttrs valid dirty
             , [ height (px 40)
               , width fill
-              , Border.width 1
-              , Border.rounded 4
+
+              --              , Border.width 1
+              --              , Border.rounded 4
               , Font.size 16
               , inFront (maybeIconLeft config.leftIcon)
               , inFront (maybeIconRight config.rightIcon)
-              , mouseOver
-                    [ Border.shadow
-                        { offset = ( 0, 0 )
-                        , size = 1
-                        , blur = 0
-                        , color = Palette.neutral5
-                        }
-                    ]
+
+              --              , mouseOver
+              --                    [ Border.shadow
+              --                        { offset = ( 0, 0 )
+              --                        , size = 1
+              --                        , blur = 0
+              --                        , color = Palette.neutral5
+              --                        }
+              --                    ]
               ]
             ]
         )
         (Input.text
             [ Input.focusedOnLoad
-            , Border.width 0
+            , Border.width 1
             , Background.color Palette.transparent
-            , paddingXY 30 0
+
+            --            , paddingXY 30 0
             , height fill
+            , width fill
             , focused (statusDecorations valid dirty)
             ]
             { onChange = config.onChange
             , placeholder = maybePlaceholder config.placeholder
             , text = config.value
-            , label = Input.labelHidden "Repository URL"
+            , label = config.label
+            }
+        )
+
+
+multilineText : Config msg -> Element msg
+multilineText config =
+    let
+        valid =
+            List.isEmpty config.problems
+
+        dirty =
+            config.dirty
+    in
+    el
+        (List.concat
+            [ statusAttrs valid dirty
+            , [ height fill
+              , width fill
+
+              --              , Border.width 1
+              --              , Border.rounded 4
+              , Font.size 16
+              , inFront (maybeIconLeft config.leftIcon)
+              , inFront (maybeIconRight config.rightIcon)
+
+              --              , mouseOver
+              --                    [ Border.shadow
+              --                        { offset = ( 0, 0 )
+              --                        , size = 1
+              --                        , blur = 0
+              --                        , color = Palette.neutral5
+              --                        }
+              --                    ]
+              ]
+            ]
+        )
+        (Input.multiline
+            [ Input.focusedOnLoad
+            , Border.width 1
+            , Background.color Palette.transparent
+
+            --            , paddingXY 30 0
+            , height fill
+            , width fill
+            , focused (statusDecorations valid dirty)
+            ]
+            { onChange = config.onChange
+            , placeholder = maybePlaceholder config.placeholder
+            , text = config.value
+            , label = config.label
+            , spellcheck = False
             }
         )
 

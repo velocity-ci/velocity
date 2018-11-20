@@ -2,6 +2,7 @@ module KnownHost exposing (KnownHost, addKnownHost, decoder, list)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
+import GitUrl exposing (GitUrl)
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, required)
@@ -32,6 +33,24 @@ decoder =
 
 
 -- HELPERS --
+
+
+isUnknownHost : List KnownHost -> Maybe GitUrl -> Bool
+isUnknownHost knownHosts maybeGitUrl =
+    case maybeGitUrl of
+        Just { source } ->
+            knownHosts
+                |> hostsFromKnownHosts
+                |> List.member source
+                |> not
+
+        Nothing ->
+            False
+
+
+hostsFromKnownHosts : List KnownHost -> List String
+hostsFromKnownHosts knownHosts =
+    List.foldl (.hosts >> (++)) [] knownHosts
 
 
 findKnownHost : List KnownHost -> KnownHost -> Maybe KnownHost

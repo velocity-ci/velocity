@@ -1,5 +1,7 @@
-module GitUrl exposing (GitUrl, decoder)
+module GitUrl exposing (GitUrl, decoder, sourceThumbnail)
 
+import Element exposing (Element)
+import Icon
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, optional, required)
 import Json.Encode as Encode
@@ -36,3 +38,16 @@ decoder =
         |> required "pathname" Decode.string
         |> required "full_name" Decode.string
         |> required "href" Decode.string
+
+
+sourceThumbnail : GitUrl -> (Icon.Options -> Element msg)
+sourceThumbnail { source } =
+    case source of
+        "github.com" ->
+            Icon.github
+
+        "gitlab.con" ->
+            Icon.gitlab
+
+        _ ->
+            Icon.gitPullRequest
