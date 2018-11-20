@@ -36,27 +36,13 @@ import Validate exposing (ifBlank)
 
 
 
----- Porter
+---- Ports
 
 
-port outgoing : Encode.Value -> Cmd msg
+port parseRepository : Encode.Value -> Cmd msg
 
 
-port incoming : (Decode.Value -> msg) -> Sub msg
-
-
-porterConfig : Porter.Config String GitUrl Msg
-porterConfig =
-    { outgoingPort = outgoing
-    , incomingPort = incoming
-
-    -- Porter works with a single Request and Response data types. They can both be anything, as long as you supply decoders :)
-    , encodeRequest = Encode.string
-    , decodeResponse = GitUrl.decoder
-
-    -- Porter uses a message added to your Msg type for its internal communications (See `type Msg` below)
-    , porterMsg = ParseGitUrlPorterMsg
-    }
+port parsedRepository : (Decode.Value -> msg) -> Sub msg
 
 
 
@@ -66,7 +52,6 @@ porterConfig =
 type alias Model =
     { session : Session
     , context : Context
-    , porter : Porter.Model String GitUrl Msg
     , projectFormStatus : ProjectFormStatus
     }
 
@@ -74,15 +59,26 @@ type alias Model =
 type ProjectFormStatus
     = NotOpen
     | SettingRepository { value : String, dirty : Bool, problems : List String }
-    | ConfiguringRepository String
+    | ConfiguringRepository String GitUrl
 
 
 init : Session -> Context -> ActivePanel -> ( Model, Cmd Msg )
 init session context activePanel =
     ( { session = session
       , context = context
-      , porter = Porter.init
-      , projectFormStatus = activePanelToProjectFormStatus activePanel
+      , projectFormStatus =
+            ConfiguringRepository "https://github.com/velocity-ci/velocity.git"
+                { protocol = "https"
+                , port_ = Nothing
+                , resource = "github.com"
+                , source = "github.com"
+                , owner = "velocity-ci"
+                , pathName = "/velocity-ci/velocity.git"
+                , fullName = "velocity-ci/velocity"
+                , href = "https://github.com/velocity-ci/velocity.git"
+                }
+
+      --      , projectFormStatus = activePanelToProjectFormStatus activePanel
       }
     , Cmd.batch
         [ Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
@@ -96,7 +92,7 @@ activePanelToProjectFormStatus activePanel =
         ActivePanel.ProjectForm ->
             SettingRepository { value = "", dirty = False, problems = validateRepository "" }
 
-        _ ->
+        ActivePanel.None ->
             NotOpen
 
 
@@ -191,7 +187,7 @@ viewDesktopSubHeader { disableButton } =
         , width (fill |> maximum 1600)
         , alignRight
         , height shrink
-        , paddingXY 15 10
+        , paddingXY 20 10
         , Font.color Palette.white
         , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
         , Border.color Palette.neutral6
@@ -283,8 +279,8 @@ viewPanelGrid device projectFormStatus session =
             )
         |> row
             [ width (fill |> maximum 1600)
-            , paddingXY 10 0
-            , spacingXY 10 0
+            , paddingXY 20 0
+            , spacingXY 20 0
             , alignRight
             , height fill
             ]
@@ -314,8 +310,8 @@ viewPanel device panel =
         ProjectFormPanel (SettingRepository repositoryValue) ->
             viewAddProjectPanel repositoryValue
 
-        ProjectFormPanel (ConfiguringRepository _) ->
-            text "helloworld"
+        ProjectFormPanel (ConfiguringRepository repository gitUrl) ->
+            viewConfigureProjectPanel repository gitUrl
 
         ProjectPanel project ->
             viewProjectPanel project
@@ -330,37 +326,7 @@ viewPanel device panel =
 viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Element Msg
 viewAddProjectPanel repositoryField =
     viewPanelContainer
-        [ row
-            [ alignTop
-            , alignLeft
-            , Font.extraLight
-            , Font.size 20
-            , Font.letterSpacing -0.5
-            , width fill
-            , Font.color Palette.neutral4
-            , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
-            , Border.color Palette.primary7
-            , paddingEach { top = 5, left = 5, bottom = 10, right = 10 }
-            , clip
-            , Font.color Palette.primary4
-            , inFront
-                (Route.link
-                    [ width (px 20)
-                    , height (px 20)
-                    , Border.width 1
-                    , Border.rounded 5
-                    , Border.color Palette.neutral4
-                    , alignRight
-                    , mouseOver
-                        [ Background.color Palette.neutral2
-                        , Font.color Palette.white
-                        ]
-                    ]
-                    (Icon.x Icon.defaultOptions)
-                    (Route.Home ActivePanel.None)
-                )
-            ]
-            [ text "New project" ]
+        [ viewNewProjectPanelHeader
         , row
             [ width fill
             , height fill
@@ -395,14 +361,14 @@ viewAddProjectPanel repositoryField =
                             , leftIcon = Nothing
                             , centerLeftIcon = Nothing
                             , content = text "Cancel"
-                            , scheme = Button.Secondary
+                            , scheme = Button.Transparent
                             , size = Button.Medium
                             , widthLength = fill
                             , disabled = False
                             }
                         )
                     , el [ width (fillPortion 2) ]
-                        (Button.button NoOp
+                        (Button.button ConfigureRepositoryButtonClicked
                             { rightIcon = Just Icon.arrowRight
                             , centerRightIcon = Nothing
                             , leftIcon = Nothing
@@ -418,6 +384,80 @@ viewAddProjectPanel repositoryField =
                 ]
             ]
         ]
+
+
+viewConfigureProjectPanel : String -> GitUrl -> Element msg
+viewConfigureProjectPanel repository gitUrl =
+    let
+        infoRow header value =
+            row
+                [ width fill
+                , Font.size 16
+                , spacingXY 10 0
+                , Background.color Palette.white
+                , Border.rounded 10
+                , paddingXY 0 10
+                ]
+                [ el
+                    [ width fill
+                    , Font.alignRight
+                    , Font.color Palette.neutral2
+                    ]
+                    (text header)
+                , el
+                    [ width (fillPortion 2)
+                    , Font.alignLeft
+                    , Font.color Palette.primary2
+                    ]
+                    (text value)
+                ]
+    in
+    viewPanelContainer
+        [ viewNewProjectPanelHeader
+        , column [ width fill, spacingXY 0 10 ]
+            [ infoRow "Protocol" gitUrl.protocol
+            , infoRow "Owner" gitUrl.owner
+            , infoRow "Name" gitUrl.fullName
+            , infoRow "Source" gitUrl.source
+            ]
+        ]
+
+
+viewNewProjectPanelHeader : Element msg
+viewNewProjectPanelHeader =
+    row
+        [ alignTop
+        , alignLeft
+        , Font.extraLight
+        , Font.size 20
+        , Font.letterSpacing -0.5
+        , width fill
+        , Font.color Palette.neutral4
+        , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
+        , Border.color Palette.primary7
+        , paddingEach { top = 5, left = 5, bottom = 10, right = 10 }
+        , clip
+        , Font.color Palette.primary4
+
+        --- X button
+        , inFront
+            (Route.link
+                [ width (px 20)
+                , height (px 20)
+                , Border.width 1
+                , Border.rounded 5
+                , Border.color Palette.neutral4
+                , alignRight
+                , mouseOver
+                    [ Background.color Palette.neutral2
+                    , Font.color Palette.white
+                    ]
+                ]
+                (Icon.x Icon.defaultOptions)
+                (Route.Home ActivePanel.None)
+            )
+        ]
+        [ text "New project" ]
 
 
 viewRepositoryField : { value : String, dirty : Bool, problems : List String } -> Element Msg
@@ -516,9 +556,9 @@ viewPanelContainer contents =
         [ width fill
         , padding 10
         , Border.width 1
-        , Border.color Palette.primary6
+        , Border.color Palette.primary7
         , Border.rounded 10
-        , Background.color Palette.white
+        , Background.color Palette.neutral7
         ]
         contents
 
@@ -553,8 +593,9 @@ validateRepository repository =
 type Msg
     = UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
+    | ConfigureRepositoryButtonClicked
+    | ParsedRepository (Result Decode.Error { repository : String, gitUrl : GitUrl })
     | EnteredRepositoryUrl String
-    | ParseGitUrlPorterMsg (Porter.Msg String GitUrl Msg)
     | PassedSlowLoadThreshold
     | NoOp
 
@@ -586,12 +627,27 @@ update msg model =
         UpdatedSession (Err _) ->
             ( model, Cmd.none )
 
-        ParseGitUrlPorterMsg porterMsg ->
-            let
-                ( porterModel, porterCmd ) =
-                    Porter.update porterConfig porterMsg model.porter
-            in
-            ( { model | porter = porterModel }, porterCmd )
+        ConfigureRepositoryButtonClicked ->
+            ( model
+            , case model.projectFormStatus of
+                SettingRepository { value, problems } ->
+                    if List.isEmpty problems then
+                        parseRepository (Encode.string value)
+
+                    else
+                        Cmd.none
+
+                _ ->
+                    Cmd.none
+            )
+
+        ParsedRepository (Ok { repository, gitUrl }) ->
+            ( { model | projectFormStatus = ConfiguringRepository repository gitUrl }
+            , Cmd.none
+            )
+
+        ParsedRepository (Err _) ->
+            ( model, Cmd.none )
 
         PassedSlowLoadThreshold ->
             let
@@ -619,7 +675,20 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Session.changes UpdateSession (Context.baseUrl model.context) model.session
+        , parsedRepositorySub
         ]
+
+
+parsedRepositorySub : Sub Msg
+parsedRepositorySub =
+    let
+        decoder =
+            Decode.map2
+                (\repository gitUrl -> { repository = repository, gitUrl = gitUrl })
+                (Decode.field "repository" Decode.string)
+                (Decode.field "gitUrl" GitUrl.decoder)
+    in
+    parsedRepository (Decode.decodeValue decoder >> ParsedRepository)
 
 
 

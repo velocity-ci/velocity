@@ -11,6 +11,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
+import Loading
 import Page exposing (Layout)
 import Page.Blank as Blank
 import Page.Home as Home
@@ -95,7 +96,11 @@ view model =
 
         Initialising _ _ ->
             { title = "Loading"
-            , body = [ layout [] (text "Loading") ]
+            , body =
+                [ layout
+                    [ width fill, height fill ]
+                    (el [ centerX, moveDown 100, width shrink, height shrink ] Loading.icon)
+                ]
             }
 
         InitError error ->

@@ -14,6 +14,7 @@ import Route exposing (Route)
 type Scheme
     = Primary
     | Secondary
+    | Transparent
 
 
 type Size
@@ -162,7 +163,6 @@ baseAttrs : Length -> List (Element.Attribute msg)
 baseAttrs widthLength =
     [ width widthLength
     , height (px 45)
-    , Border.width 1
     , Border.rounded 5
     , padding 11
     , alignBottom
@@ -200,6 +200,11 @@ schemeMouseOverDecorations scheme =
             , Font.color Palette.primary2
             ]
 
+        Transparent ->
+            [ Background.color Palette.transparent
+            , Font.color Palette.primary2
+            ]
+
 
 schemeAttrs : Scheme -> List (Element.Attribute msg)
 schemeAttrs scheme =
@@ -208,10 +213,19 @@ schemeAttrs scheme =
             [ Border.color Palette.primary4
             , Font.color Palette.white
             , Background.color Palette.primary3
+            , Border.width 1
             ]
 
         Secondary ->
             [ Border.color Palette.neutral4
             , Font.color Palette.primary3
             , Background.color Palette.neutral6
+            , Border.width 1
+            ]
+
+        Transparent ->
+            [ Border.color Palette.neutral4
+            , Background.color Palette.transparent
+            , Font.color Palette.primary3
+            , Border.width 0
             ]

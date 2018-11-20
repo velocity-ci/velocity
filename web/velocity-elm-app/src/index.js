@@ -16,21 +16,20 @@ const app = Elm.Main.init({
 });
 
 console.log(Object.keys(app.ports));
-//
-// app.ports.parseGitUrl.subscribe(([gitUrl, configuring]) => {
-//     console.log('gitUrl', gitUrl, 'configuring', configuring);
-//     try {
-//         const parsed = parseGitUrl(gitUrl);
-//         console.log('parsed', parsed);
-//         app.ports.onGitUrlParsed.send({gitUrl, parsed, configuring});
-//     }
-//     catch (e) {
-//         console.warn('Could not parse git URL', e.message);
-//         app.ports.onGitUrlParsed.send({gitUrl, parsed: null, configuring: false});
-//     }
-//
-// });
-//
+
+app.ports.parseRepository.subscribe((repository) => {
+    console.log('repository', repository);
+    try {
+        const gitUrl = parseGitUrl(repository);
+        app.ports.parsedRepository.send({repository, gitUrl});
+    }
+    catch (e) {
+        console.warn('Could not parse git URL', e.message);
+        app.ports.parsedRepository.send({repository, gitUrl: null});
+    }
+
+});
+
 
 app.ports.storeCache.subscribe(function (val) {
     if (val === null) {
