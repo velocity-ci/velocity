@@ -22,13 +22,12 @@ import Task exposing (Task)
 import Viewer exposing (Viewer)
 
 
-
 -- MODEL
 
 
-type alias Model =
+type alias Model msg =
     { session : Session
-    , context : Context
+    , context : Context msg
     , problems : List Problem
     , form : Form
     }
@@ -69,7 +68,7 @@ type alias Form =
     }
 
 
-init : Session -> Context -> ( Model, Cmd msg )
+init : Session -> Context msg -> ( Model msg, Cmd Msg )
 init session context =
     ( { session = session
       , context = context
@@ -87,7 +86,7 @@ init session context =
 -- VIEW
 
 
-view : Model -> { title : String, content : Element Msg }
+view : Model msg -> { title : String, content : Element Msg }
 view model =
     { title = "Login"
     , content =
@@ -109,7 +108,7 @@ viewProblem problem =
                 ServerError str ->
                     str
     in
-    text errorMessage
+        text errorMessage
 
 
 viewForm : Form -> Element Msg
@@ -176,7 +175,7 @@ type Msg
     | UpdatedSession (Result Session.InitError Session)
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model msg -> ( Model msg, Cmd Msg )
 update msg model =
     case msg of
         SubmittedForm ->
@@ -203,9 +202,9 @@ update msg model =
                     Api.decodeErrors error
                         |> List.map ServerError
             in
-            ( { model | problems = List.append model.problems serverErrors }
-            , Cmd.none
-            )
+                ( { model | problems = List.append model.problems serverErrors }
+                , Cmd.none
+                )
 
         CompletedLogin (Ok viewer) ->
             ( model
@@ -227,7 +226,7 @@ update msg model =
 {-| Helper function for `update`. Updates the form and returns Cmd.none.
 Useful for recording form fields!
 -}
-updateForm : (Form -> Form) -> Model -> ( Model, Cmd Msg )
+updateForm : (Form -> Form) -> Model msg -> ( Model msg, Cmd Msg )
 updateForm transform model =
     ( { model | form = transform model.form }, Cmd.none )
 
@@ -236,9 +235,9 @@ updateForm transform model =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : Model msg -> Sub Msg
 subscriptions model =
-    Session.changes UpdateSession (Context.baseUrl model.context) model.session
+    Session.changes UpdateSession model.context model.session
 
 
 
@@ -274,12 +273,12 @@ validate form =
         trimmedForm =
             trimFields form
     in
-    case List.concatMap (validateField trimmedForm) fieldsToValidate of
-        [] ->
-            Ok trimmedForm
+        case List.concatMap (validateField trimmedForm) fieldsToValidate of
+            [] ->
+                Ok trimmedForm
 
-        problems ->
-            Err problems
+            problems ->
+                Err problems
 
 
 validateField : TrimmedForm -> ValidatedField -> List Problem
@@ -289,14 +288,12 @@ validateField (Trimmed form) field =
             Email ->
                 if String.isEmpty form.username then
                     [ "username can't be blank." ]
-
                 else
                     []
 
             Password ->
                 if String.isEmpty form.password then
                     [ "password can't be blank." ]
-
                 else
                     []
 
@@ -316,7 +313,7 @@ trimFields form =
 -- HTTP
 
 
-login : Context -> TrimmedForm -> Http.Request Viewer
+login : Context msg -> TrimmedForm -> Http.Request Viewer
 login context (Trimmed form) =
     let
         body =
@@ -326,18 +323,18 @@ login context (Trimmed form) =
                 ]
                 |> Http.jsonBody
     in
-    Api.login (Context.baseUrl context) body Viewer.decoder
+        Api.login (Context.baseUrl context) body Viewer.decoder
 
 
 
 -- EXPORT
 
 
-toSession : Model -> Session
+toSession : Model msg -> Session
 toSession model =
     model.session
 
 
-toContext : Model -> Context
+toContext : Model msg -> Context msg
 toContext model =
     model.context

@@ -18,6 +18,7 @@ import Page.Home as Home
 import Page.Home.ActivePanel as ActivePanel
 import Page.Login as Login
 import Page.NotFound as NotFound
+import Phoenix.Socket as Socket
 import Route exposing (Route)
 import Session exposing (Session)
 import Task exposing (Task)
@@ -31,23 +32,23 @@ import Viewer exposing (Viewer)
 
 type Model
     = InitError String
-    | Initialising Context Nav.Key
+    | InitialHTTPRequests (Context Msg) Nav.Key
     | ApplicationStarted Layout Body
 
 
 type Body
-    = Redirect Session Context
-    | NotFound Session Context
-    | Home Home.Model
-    | Login Login.Model
+    = Redirect Session (Context Msg)
+    | NotFound Session (Context Msg)
+    | Home (Home.Model Msg)
+    | Login (Login.Model Msg)
 
 
-init : Maybe Viewer -> Result Decode.Error Context -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init : Maybe Viewer -> Result Decode.Error (Context Msg) -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
-            ( Initialising context navKey
-            , Session.fromViewer navKey (Context.baseUrl context) maybeViewer
+            ( InitialHTTPRequests context navKey
+            , Session.fromViewer navKey context maybeViewer
                 |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
                 |> Task.attempt StartApplication
             )
@@ -94,7 +95,7 @@ view model =
         ApplicationStarted header currentPage ->
             viewCurrentPage header currentPage
 
-        Initialising _ _ ->
+        InitialHTTPRequests _ _ ->
             { title = "Loading"
             , body =
                 [ layout
@@ -135,10 +136,7 @@ type Msg
     | UpdatedSession (Result Session.InitError Session)
     | WindowResized Int Int
     | UpdateLayout Page.Layout
-
-
-
---    | UserMenuClicked
+    | SocketMsg (Socket.Msg Msg)
 
 
 toSession : Body -> Session
@@ -157,7 +155,7 @@ toSession page =
             Login.toSession login
 
 
-toContext : Body -> Context
+toContext : Body -> Context Msg
 toContext page =
     case page of
         Redirect _ context ->
@@ -272,12 +270,21 @@ updatePage msg page =
         ( UpdatedSession (Err _), _ ) ->
             ( page, Cmd.none )
 
+        ( SocketMsg subMsg, _ ) ->
+            let
+                ( context, socketCmd ) =
+                    Context.updateSocket subMsg (toContext page)
+            in
+            ( updateContext context page
+            , Cmd.map SocketMsg socketCmd
+            )
+
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
 
 
-updateContext : Context -> Body -> Body
+updateContext : Context Msg -> Body -> Body
 updateContext context page =
     case page of
         Redirect session _ ->
@@ -291,6 +298,22 @@ updateContext context page =
 
         Login login ->
             Login { login | context = context }
+
+
+updateSession : Session -> Body -> Body
+updateSession session page =
+    case page of
+        Redirect _ context ->
+            Redirect session context
+
+        NotFound _ context ->
+            NotFound session context
+
+        Home home ->
+            Home { home | session = session }
+
+        Login login ->
+            Login { login | session = session }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -317,11 +340,15 @@ update msg model =
                     updatePage msg page
                         |> Tuple.mapFirst (ApplicationStarted header)
 
-        Initialising _ _ ->
+        InitialHTTPRequests _ _ ->
             case msg of
                 StartApplication (Ok ( app, cmd )) ->
-                    ( ApplicationStarted Page.initLayout app
-                    , cmd
+                    let
+                        ( context, socketCmd ) =
+                            Session.joinChannels (toSession app) (toContext app)
+                    in
+                    ( ApplicationStarted Page.initLayout (updateContext context app)
+                    , Cmd.map SocketMsg socketCmd
                     )
 
                 StartApplication (Err err) ->
@@ -352,8 +379,22 @@ subscriptions model =
     Sub.batch
         [ headerSubscriptions model
         , pageSubscriptions model
+        , socketSubscriptions model
         , Browser.Events.onResize WindowResized
         ]
+
+
+socketSubscriptions : Model -> Sub Msg
+socketSubscriptions model =
+    case model of
+        ApplicationStarted _ page ->
+            Context.socketSubscriptions SocketMsg (toContext page)
+
+        InitialHTTPRequests context _ ->
+            Context.socketSubscriptions SocketMsg context
+
+        InitError _ ->
+            Sub.none
 
 
 headerSubscriptions : Model -> Sub Msg
@@ -362,7 +403,7 @@ headerSubscriptions model =
         ApplicationStarted header _ ->
             Page.layoutSubscriptions header UpdateLayout
 
-        Initialising _ _ ->
+        InitialHTTPRequests _ _ ->
             Sub.none
 
         InitError _ ->
@@ -378,7 +419,7 @@ pageSubscriptions model =
                     Sub.none
 
                 Redirect session context ->
-                    Session.changes UpdateSession (Context.baseUrl context) session
+                    Session.changes UpdateSession context session
 
                 Home home ->
                     Sub.map GotHomeMsg (Home.subscriptions home)
@@ -386,7 +427,7 @@ pageSubscriptions model =
                 Login login ->
                     Sub.map GotLoginMsg (Login.subscriptions login)
 
-        Initialising _ _ ->
+        InitialHTTPRequests _ _ ->
             Sub.none
 
         InitError _ ->

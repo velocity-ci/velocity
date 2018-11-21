@@ -1,7 +1,8 @@
-module Api.Endpoint exposing (CollectionOptions, Endpoint, fromString, knownHosts, login, projects, request)
+module Api.Endpoint exposing (CollectionOptions, Endpoint, fromString, knownHosts, login, projects, request, toWs)
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Phoenix.Channel exposing (Channel)
 import Url.Builder exposing (QueryParameter, int, string)
 import Username exposing (Username)
 
@@ -56,6 +57,16 @@ url baseUrl paths queryParams =
         ("v1" :: paths)
         queryParams
         |> Endpoint
+
+
+toWs : Endpoint -> String
+toWs (Endpoint apiUrlBase) =
+    if String.startsWith "http" apiUrlBase then
+        "ws" ++ String.dropLeft 4 apiUrlBase
+
+    else
+        -- Not an http API URL - this will fail pretty quickly
+        apiUrlBase
 
 
 

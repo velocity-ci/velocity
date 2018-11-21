@@ -2,6 +2,7 @@ port module Api exposing
     ( BaseUrl
     , Cred
     , application
+    , credPayload
     , decodeErrors
     , get
     , login
@@ -9,6 +10,7 @@ port module Api exposing
     , post
     , storeCredWith
     , toEndpoint
+    , toWsEndpoint
     , username
     , viewerChanges
     )
@@ -24,6 +26,7 @@ import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
+import Phoenix.Channel as Channel exposing (Channel)
 import Url exposing (Url)
 import Username exposing (Username)
 
@@ -44,6 +47,11 @@ type BaseUrl
 toEndpoint : BaseUrl -> Endpoint
 toEndpoint (BaseUrl endpoint) =
     endpoint
+
+
+toWsEndpoint : BaseUrl -> String
+toWsEndpoint (BaseUrl endpoint) =
+    Endpoint.toWs endpoint
 
 
 {-| The authentication credentials for the Viewer (that is, the currently logged-in user.)
@@ -73,6 +81,15 @@ username (Cred val _) =
 credHeader : Cred -> Http.Header
 credHeader (Cred _ str) =
     Http.header "Authorization" ("Bearer " ++ str)
+
+
+credPayload : Cred -> Channel msg -> Channel msg
+credPayload (Cred _ val) channel =
+    let
+        payload =
+            Encode.object [ ( "token", Encode.string val ) ]
+    in
+    Channel.withPayload payload channel
 
 
 {-| It's important that this is never exposed!

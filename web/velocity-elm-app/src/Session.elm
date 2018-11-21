@@ -1,9 +1,12 @@
-module Session exposing (InitError, Session, addKnownHost, addProject, changes, cred, errorToString, fromViewer, knownHosts, navKey, projects, viewer)
+module Session exposing (InitError, Session, addKnownHost, addProject, changes, cred, errorToString, fromViewer, joinChannels, knownHosts, navKey, projects, viewer)
 
 import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
+import Context exposing (Context)
 import Http
 import KnownHost exposing (KnownHost)
+import Phoenix.Channel as Channel exposing (Channel)
+import Phoenix.Socket as Socket exposing (Socket)
 import Project exposing (Project)
 import Task exposing (Task)
 import Viewer exposing (Viewer)
@@ -31,17 +34,27 @@ type InitError
 
 
 
--- INFO
+-- COLLECTIONS
 
 
-viewer : Session -> Maybe Viewer
-viewer session =
+knownHosts : Session -> List KnownHost
+knownHosts session =
     case session of
         LoggedIn internals ->
-            Just internals.viewer
+            internals.knownHosts
 
         Guest _ ->
-            Nothing
+            []
+
+
+addKnownHost : KnownHost -> Session -> Session
+addKnownHost knownHost session =
+    case session of
+        LoggedIn internals ->
+            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost }
+
+        Guest _ ->
+            session
 
 
 projects : Session -> List Project
@@ -54,14 +67,28 @@ projects session =
             []
 
 
-knownHosts : Session -> List KnownHost
-knownHosts session =
+addProject : Project -> Session -> Session
+addProject project session =
     case session of
         LoggedIn internals ->
-            internals.knownHosts
+            LoggedIn { internals | projects = Project.addProject internals.projects project }
 
         Guest _ ->
-            []
+            session
+
+
+
+-- INFO
+
+
+viewer : Session -> Maybe Viewer
+viewer session =
+    case session of
+        LoggedIn internals ->
+            Just internals.viewer
+
+        Guest _ ->
+            Nothing
 
 
 cred : Session -> Maybe Cred
@@ -107,33 +134,31 @@ errorToString (HttpError httpError) =
 -- CHANGES
 
 
-addKnownHost : KnownHost -> Session -> Session
-addKnownHost knownHost session =
+changes : (Task InitError Session -> msg) -> Context msg2 -> Session -> Sub msg
+changes toMsg context session =
+    Api.viewerChanges (fromViewer (navKey session) context >> toMsg) Viewer.decoder
+
+
+joinChannels : Session -> Context msg -> ( Context msg, Cmd (Socket.Msg msg) )
+joinChannels session context =
     case session of
-        LoggedIn internals ->
-            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost }
-
         Guest _ ->
-            session
+            ( context
+            , Cmd.none
+            )
 
-
-addProject : Project -> Session -> Session
-addProject project session =
-    case session of
         LoggedIn internals ->
-            LoggedIn { internals | projects = Project.addProject internals.projects project }
-
-        Guest _ ->
-            session
-
-
-changes : (Task InitError Session -> msg) -> BaseUrl -> Session -> Sub msg
-changes toMsg baseUrl session =
-    Api.viewerChanges (fromViewer (navKey session) baseUrl >> toMsg) Viewer.decoder
+            let
+                ( newContext, joinCmd ) =
+                    Context.joinChannel (Channel.init "projects") (Viewer.cred internals.viewer) context
+            in
+            ( newContext
+            , joinCmd
+            )
 
 
-fromViewer : Nav.Key -> BaseUrl -> Maybe Viewer -> Task InitError Session
-fromViewer key baseUrl maybeViewer =
+fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError Session
+fromViewer key context maybeViewer =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
     -- decode that String as JSON.
@@ -145,12 +170,12 @@ fromViewer key baseUrl maybeViewer =
                     Viewer.cred viewerVal
 
                 projectsRequest =
-                    Project.list credVal baseUrl
+                    Project.list credVal (Context.baseUrl context)
                         |> Http.toTask
                         |> Task.mapError HttpError
 
                 knownHostsRequest =
-                    KnownHost.list credVal baseUrl
+                    KnownHost.list credVal (Context.baseUrl context)
                         |> Http.toTask
                         |> Task.mapError HttpError
             in

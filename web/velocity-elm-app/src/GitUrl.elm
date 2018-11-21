@@ -46,7 +46,7 @@ sourceIcon { source } =
         "github.com" ->
             Icon.github
 
-        "gitlab.con" ->
+        "gitlab.com" ->
             Icon.gitlab
 
         _ ->

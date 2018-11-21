@@ -217,7 +217,7 @@ schemeAttrs scheme =
             ]
 
         Secondary ->
-            [ Border.color Palette.neutral4
+            [ Border.color Palette.neutral6
             , Font.color Palette.primary3
             , Background.color Palette.neutral6
             , Border.width 1
