@@ -1,4 +1,4 @@
-module GitUrl exposing (GitUrl, decoder, sourceThumbnail)
+module GitUrl exposing (GitUrl, decoder, sourceIcon)
 
 import Element exposing (Element)
 import Icon
@@ -40,8 +40,8 @@ decoder =
         |> required "href" Decode.string
 
 
-sourceThumbnail : GitUrl -> (Icon.Options -> Element msg)
-sourceThumbnail { source } =
+sourceIcon : GitUrl -> (Icon.Options -> Element msg)
+sourceIcon { source } =
     case source of
         "github.com" ->
             Icon.github

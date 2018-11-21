@@ -59,7 +59,7 @@ type alias Model =
 type ProjectFormStatus
     = NotOpen
     | SettingRepository { value : String, dirty : Bool, problems : List String }
-    | ConfiguringRepository { repositoryUrl : String, gitUrl : GitUrl, projectName : String }
+    | ConfiguringRepository { gitUrl : GitUrl, projectName : String }
 
 
 init : Session -> Context -> ActivePanel -> ( Model, Cmd Msg )
@@ -68,8 +68,7 @@ init session context activePanel =
       , context = context
       , projectFormStatus =
             ConfiguringRepository
-                { repositoryUrl = "https://github.com/velocity-ci/velocity.git"
-                , projectName = "velocity-ci/velocity"
+                { projectName = "velocity-ci/velocity"
                 , gitUrl =
                     { protocol = "https"
                     , port_ = Nothing
@@ -325,12 +324,17 @@ viewPanel device panel =
 -- Supported panel types
 
 
+defaultIconOpts : Icon.Options
+defaultIconOpts =
+    Icon.defaultOptions
+
+
 {-| This is a panel that is used to for the the simple form to add a new project, its a bit of a CTA.
 -}
 viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Element Msg
 viewAddProjectPanel repositoryField =
     viewPanelContainer
-        [ viewNewProjectPanelHeader "New project"
+        [ viewNewProjectPanelHeader "New project" ( 2, 3 )
         , row
             [ width fill
             , height fill
@@ -390,39 +394,10 @@ viewAddProjectPanel repositoryField =
         ]
 
 
-viewConfigureProjectPanel : { repositoryUrl : String, gitUrl : GitUrl, projectName : String } -> Element Msg
-viewConfigureProjectPanel { repositoryUrl, gitUrl, projectName } =
-    let
-        infoRow header value =
-            row
-                [ width fill
-                , Font.size 16
-                , Border.rounded 10
-                , spacingXY 10 0
-                ]
-                [ el
-                    [ width shrink
-                    , Font.alignRight
-                    , Font.color Palette.neutral2
-                    ]
-                    (text header)
-                , el
-                    [ width fill
-                    , Font.alignLeft
-                    , Font.color Palette.primary2
-                    ]
-                    value
-                ]
-
-        thumbnailIconOpts =
-            let
-                opts =
-                    Icon.defaultOptions
-            in
-            { opts | sizeUnit = Icon.Percentage, size = 100 }
-    in
+viewAddKnownHostPanel : { repositoryUrl : String, gitUrl : GitUrl, projectName : String } -> Element Msg
+viewAddKnownHostPanel { repositoryUrl, gitUrl, projectName } =
     viewPanelContainer
-        [ viewNewProjectPanelHeader "New repository source"
+        [ viewNewProjectPanelHeader "New repository source" ( 3, 3 )
         , row
             [ width fill
             , spacingXY 0 20
@@ -440,11 +415,7 @@ viewConfigureProjectPanel { repositoryUrl, gitUrl, projectName } =
                 , Border.color Palette.neutral6
                 , paddingEach { top = 0, left = 0, right = 10, bottom = 0 }
                 ]
-                (column [ height fill, width fill ]
-                    [ el [ centerX, centerY, Font.color Palette.primary2 ] <| GitUrl.sourceThumbnail gitUrl thumbnailIconOpts
-                    , el [ centerX, centerY, padding 10, Background.color Palette.neutral6, Border.rounded 10, Font.size 14 ] (text gitUrl.source)
-                    ]
-                )
+                (viewGitSourceLogo gitUrl { defaultIconOpts | size = 100, sizeUnit = Icon.Percentage })
             , column
                 [ spacingXY 0 20
                 , Font.color Palette.neutral3
@@ -515,35 +486,115 @@ viewConfigureProjectPanel { repositoryUrl, gitUrl, projectName } =
         ]
 
 
+viewConfigureProjectPanel : { gitUrl : GitUrl, projectName : String } -> Element Msg
+viewConfigureProjectPanel { gitUrl, projectName } =
+    viewPanelContainer
+        [ viewNewProjectPanelHeader "New project / configure" ( 2, 3 )
+        , row
+            [ width fill
+            , spacingXY 10 20
+            , Font.size 15
+            , paddingEach
+                { top = 10
+                , left = 0
+                , right = 0
+                , bottom = 0
+                }
+            ]
+            [ column [ width fill, spacingXY 0 10 ]
+                [ wrappedRow [ height shrink, width fill, spacing 10 ]
+                    [ paragraph [ width (fillPortion 2), Font.alignRight ] [ text "Name" ]
+                    , paragraph
+                        [ width (fillPortion 10)
+                        , padding 10
+                        , Font.alignLeft
+                        , Background.color Palette.neutral7
+                        , Border.rounded 5
+                        , pointer
+                        , Font.color Palette.primary4
+                        , mouseOver
+                            [ Background.color Palette.neutral6
+                            , Font.color Palette.primary1
+                            ]
+                        , inFront (el [ width shrink, alignRight, centerY, moveLeft 5 ] (Icon.edit2 Icon.defaultOptions))
+                        ]
+                        [ text gitUrl.fullName
+                        ]
+                    ]
+                , wrappedRow [ height shrink, width fill, spacing 10 ]
+                    [ paragraph [ width (fillPortion 2), Font.alignRight ] [ text "Source" ]
+                    , paragraph
+                        [ width (fillPortion 10)
+                        , padding 10
+                        , Font.alignLeft
+                        , Font.color Palette.neutral3
+                        , inFront (el [ width shrink, alignRight, centerY, moveLeft 5 ] (GitUrl.sourceIcon gitUrl { defaultIconOpts | size = 16 }))
+                        ]
+                        [ text gitUrl.source ]
+                    ]
+                , wrappedRow [ height shrink, width fill, spacing 10 ]
+                    [ paragraph [ width (fillPortion 2), Font.alignRight ] [ text "Repo" ]
+                    , paragraph
+                        [ width (fillPortion 10)
+                        , padding 10
+                        , Font.alignLeft
+                        , Font.color Palette.neutral3
+                        ]
+                        [ text gitUrl.pathName ]
+                    ]
+                , wrappedRow [ height shrink, width fill, spacing 10 ]
+                    [ paragraph [ width (fillPortion 2), Font.alignRight ] [ text "Public" ]
+                    , paragraph
+                        [ width (fillPortion 10)
+                        , padding 10
+                        , Font.alignLeft
+                        , Font.color Palette.neutral3
+                        ]
+                        [ text "Yes" ]
+                    ]
+                ]
+            ]
+        , row [ width fill, spacingXY 10 0, paddingEach { top = 20, bottom = 0, left = 0, right = 0 } ]
+            [ el [ width fill ]
+                (Button.button NewProjectBackButtonClicked
+                    { rightIcon = Nothing
+                    , centerRightIcon = Nothing
+                    , leftIcon = Just Icon.arrowLeft
+                    , centerLeftIcon = Nothing
+                    , content = text "Back"
+                    , scheme = Button.Secondary
+                    , size = Button.Medium
+                    , widthLength = fill
+                    , disabled = False
+                    }
+                )
+            , el [ width (fillPortion 2) ]
+                (Button.button ConfigureRepositoryButtonClicked
+                    { rightIcon = Just Icon.check
+                    , centerRightIcon = Nothing
+                    , leftIcon = Nothing
+                    , centerLeftIcon = Nothing
+                    , content = text "Complete project"
+                    , scheme = Button.Primary
+                    , size = Button.Medium
+                    , widthLength = fill
+                    , disabled = False
+                    }
+                )
+            ]
+        ]
 
---            , row [ width fill, height shrink, padding 10, spacing 10, Font.size 22 ]
---                [ -- Source (e.g. github, gitlab, bitbucket) logo
---                  el
---                    [ width shrink, height shrink ]
---                    (GitUrl.sourceThumbnail gitUrl thumbnailIconOpts)
---                , el
---                    [ width fill
---                    , height shrink
---                    , Font.color Palette.primary2
---                    , Font.alignLeft
---                    , centerY
---                    ]
---                    (text gitUrl.source)
---                ]
---            , Input.text
---                { leftIcon = Nothing
---                , rightIcon = Nothing
---                , label = Input.labelLeft "Name"
---                , placeholder = Nothing
---                , dirty = False
---                , value = projectName
---                , problems = []
---                , onChange = always NoOp
---                }
+
+viewGitSourceLogo : GitUrl -> Icon.Options -> Element msg
+viewGitSourceLogo gitUrl opts =
+    column [ height fill, width fill ]
+        [ el [ centerX, centerY, Font.color Palette.primary2 ] <| GitUrl.sourceIcon gitUrl opts
+        , el [ centerX, centerY, padding 5, Background.color Palette.neutral6, Border.rounded 10, Font.size 12 ] (text gitUrl.source)
+        ]
 
 
-viewNewProjectPanelHeader : String -> Element msg
-viewNewProjectPanelHeader headerText =
+viewNewProjectPanelHeader : String -> ( Int, Int ) -> Element msg
+viewNewProjectPanelHeader headerText ( currentPanel, totalPanels ) =
     row
         [ alignTop
         , alignLeft
@@ -736,8 +787,8 @@ update msg model =
                         SettingRepository _ ->
                             model.projectFormStatus
 
-                        ConfiguringRepository { repositoryUrl } ->
-                            SettingRepository { value = repositoryUrl, dirty = True, problems = [] }
+                        ConfiguringRepository { gitUrl } ->
+                            SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
               }
             , Cmd.none
             )
@@ -777,12 +828,11 @@ update msg model =
                     Cmd.none
             )
 
-        ParsedRepository (Ok { repository, gitUrl }) ->
+        ParsedRepository (Ok { gitUrl }) ->
             ( { model
                 | projectFormStatus =
                     ConfiguringRepository
-                        { repositoryUrl = repository
-                        , gitUrl = gitUrl
+                        { gitUrl = gitUrl
                         , projectName = gitUrl.fullName
                         }
               }
