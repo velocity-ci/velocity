@@ -6,6 +6,7 @@ port module Api exposing
     , get
     , login
     , logout
+    , post
     , storeCredWith
     , toEndpoint
     , username

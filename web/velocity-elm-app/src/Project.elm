@@ -1,4 +1,4 @@
-module Project exposing (Project, decoder, list, name, repository, thumbnail, thumbnailSrc)
+module Project exposing (Project, addProject, create, decoder, list, name, repository, thumbnail, thumbnailSrc)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -9,6 +9,7 @@ import Http
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)
+import Json.Encode as Encode
 import PaginatedList exposing (PaginatedList)
 import Palette
 import Project.Id as Id exposing (Id)
@@ -97,14 +98,61 @@ thumbnail project =
 
 
 
+-- HELPERS --
+
+
+findProject : List Project -> Project -> Maybe Project
+findProject projects (Project a) =
+    List.filter (\(Project b) -> b.id == a.id) projects
+        |> List.head
+
+
+addProject : List Project -> Project -> List Project
+addProject projects project =
+    case findProject projects project of
+        Just _ ->
+            projects
+
+        Nothing ->
+            project :: projects
+
+
+
 -- COLLECTION --
 
 
-list : Maybe Cred -> BaseUrl -> Http.Request (List Project)
-list maybeCred baseUrl =
+list : Cred -> BaseUrl -> Http.Request (List Project)
+list cred baseUrl =
     let
         endpoint =
-            Endpoint.projects { amount = -1, page = 1 } (Api.toEndpoint baseUrl)
+            Endpoint.projects (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl)
     in
     Decode.field "data" (Decode.list decoder)
-        |> Api.get endpoint maybeCred
+        |> Api.get endpoint (Just cred)
+
+
+create : Cred -> BaseUrl -> { a | name : String, repository : String, privateKey : Maybe String } -> Http.Request Project
+create cred baseUrl values =
+    let
+        endpoint =
+            Endpoint.projects Nothing (Api.toEndpoint baseUrl)
+
+        baseValues =
+            [ ( "name", Encode.string values.name )
+            , ( "address", Encode.string values.repository )
+            ]
+
+        submitValues =
+            case values.privateKey of
+                Just privateKey ->
+                    ( "key", Encode.string privateKey ) :: baseValues
+
+                Nothing ->
+                    baseValues
+
+        body =
+            submitValues
+                |> Encode.object
+                |> Http.jsonBody
+    in
+    Api.post endpoint (Just cred) body decoder

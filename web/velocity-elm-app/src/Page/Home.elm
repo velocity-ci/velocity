@@ -17,9 +17,11 @@ import Element.Font as Font
 import Element.Input
 import Form.Input as Input
 import GitUrl exposing (GitUrl)
+import Http
 import Icon
 import Json.Decode as Decode
 import Json.Encode as Encode
+import KnownHost exposing (KnownHost)
 import Loading
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Palette
@@ -59,6 +61,7 @@ type alias Model =
 type ProjectFormStatus
     = NotOpen
     | SettingRepository { value : String, dirty : Bool, problems : List String }
+    | AddingKnownHost { gitUrl : GitUrl, publicKey : String }
     | ConfiguringRepository { gitUrl : GitUrl, projectName : String }
 
 
@@ -66,22 +69,7 @@ init : Session -> Context -> ActivePanel -> ( Model, Cmd Msg )
 init session context activePanel =
     ( { session = session
       , context = context
-      , projectFormStatus =
-            ConfiguringRepository
-                { projectName = "velocity-ci/velocity"
-                , gitUrl =
-                    { protocol = "https"
-                    , port_ = Nothing
-                    , resource = "github.com"
-                    , source = "github.com"
-                    , owner = "velocity-ci"
-                    , pathName = "/velocity-ci/velocity.git"
-                    , fullName = "velocity-ci/velocity"
-                    , href = "https://github.com/velocity-ci/velocity.git"
-                    }
-                }
-
-      --      , projectFormStatus = activePanelToProjectFormStatus activePanel
+      , projectFormStatus = activePanelToProjectFormStatus activePanel
       }
     , Cmd.batch
         [ Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
@@ -313,6 +301,9 @@ viewPanel device panel =
         ProjectFormPanel (SettingRepository repositoryField) ->
             viewAddProjectPanel repositoryField
 
+        ProjectFormPanel (AddingKnownHost configurationValues) ->
+            viewAddKnownHostPanel configurationValues
+
         ProjectFormPanel (ConfiguringRepository configurationValues) ->
             viewConfigureProjectPanel configurationValues
 
@@ -394,8 +385,8 @@ viewAddProjectPanel repositoryField =
         ]
 
 
-viewAddKnownHostPanel : { repositoryUrl : String, gitUrl : GitUrl, projectName : String } -> Element Msg
-viewAddKnownHostPanel { repositoryUrl, gitUrl, projectName } =
+viewAddKnownHostPanel : { gitUrl : GitUrl, publicKey : String } -> Element Msg
+viewAddKnownHostPanel { gitUrl, publicKey } =
     viewPanelContainer
         [ viewNewProjectPanelHeader "New repository source" ( 3, 3 )
         , row
@@ -436,7 +427,10 @@ viewAddKnownHostPanel { repositoryUrl, gitUrl, projectName } =
                     [ text ("ssh-keyscan " ++ gitUrl.source ++ "") ]
                 , paragraph []
                     [ text "If the results of the command match the sources published public key, "
-                    , link [ Font.color Palette.primary1 ] { url = "https://help.github.com/articles/github-s-ssh-key-fingerprints/", label = text "for example GitHub" }
+                    , link [ Font.color Palette.primary1 ]
+                        { url = "https://help.github.com/articles/github-s-ssh-key-fingerprints/"
+                        , label = text "for example GitHub"
+                        }
                     , text " then we can fully trust Velocity is talking to the correct servers."
                     ]
                 ]
@@ -449,9 +443,9 @@ viewAddKnownHostPanel { repositoryUrl, gitUrl, projectName } =
                     , label = Input.labelHidden "Public key"
                     , placeholder = Just <| "ssh-keyscan " ++ gitUrl.source
                     , dirty = False
-                    , value = ""
+                    , value = publicKey
                     , problems = []
-                    , onChange = always NoOp
+                    , onChange = EnteredRepositorySourcePublicKey
                     }
                 )
             ]
@@ -470,7 +464,7 @@ viewAddKnownHostPanel { repositoryUrl, gitUrl, projectName } =
                     }
                 )
             , el [ width (fillPortion 2) ]
-                (Button.button ConfigureRepositoryButtonClicked
+                (Button.button AddKnownHostButtonClicked
                     { rightIcon = Just Icon.arrowRight
                     , centerRightIcon = Nothing
                     , leftIcon = Nothing
@@ -516,7 +510,8 @@ viewConfigureProjectPanel { gitUrl, projectName } =
                             [ Background.color Palette.neutral6
                             , Font.color Palette.primary1
                             ]
-                        , inFront (el [ width shrink, alignRight, centerY, moveLeft 5 ] (Icon.edit2 Icon.defaultOptions))
+                        , inFront
+                            (el [ width shrink, alignRight, centerY, moveLeft 5 ] (Icon.edit2 Icon.defaultOptions))
                         ]
                         [ text gitUrl.fullName
                         ]
@@ -528,7 +523,10 @@ viewConfigureProjectPanel { gitUrl, projectName } =
                         , padding 10
                         , Font.alignLeft
                         , Font.color Palette.neutral3
-                        , inFront (el [ width shrink, alignRight, centerY, moveLeft 5 ] (GitUrl.sourceIcon gitUrl { defaultIconOpts | size = 16 }))
+                        , inFront
+                            (el [ width shrink, alignRight, centerY, moveLeft 5 ]
+                                (GitUrl.sourceIcon gitUrl { defaultIconOpts | size = 16 })
+                            )
                         ]
                         [ text gitUrl.source ]
                     ]
@@ -569,7 +567,7 @@ viewConfigureProjectPanel { gitUrl, projectName } =
                     }
                 )
             , el [ width (fillPortion 2) ]
-                (Button.button ConfigureRepositoryButtonClicked
+                (Button.button CompleteProjectButtonClicked
                     { rightIcon = Just Icon.check
                     , centerRightIcon = Nothing
                     , leftIcon = Nothing
@@ -588,8 +586,21 @@ viewConfigureProjectPanel { gitUrl, projectName } =
 viewGitSourceLogo : GitUrl -> Icon.Options -> Element msg
 viewGitSourceLogo gitUrl opts =
     column [ height fill, width fill ]
-        [ el [ centerX, centerY, Font.color Palette.primary2 ] <| GitUrl.sourceIcon gitUrl opts
-        , el [ centerX, centerY, padding 5, Background.color Palette.neutral6, Border.rounded 10, Font.size 12 ] (text gitUrl.source)
+        [ el
+            [ centerX
+            , centerY
+            , Font.color Palette.primary2
+            ]
+            (GitUrl.sourceIcon gitUrl opts)
+        , el
+            [ centerX
+            , centerY
+            , padding 5
+            , Background.color Palette.neutral6
+            , Border.rounded 10
+            , Font.size 12
+            ]
+            (text gitUrl.source)
         ]
 
 
@@ -766,13 +777,22 @@ type Msg
     | ConfigureRepositoryButtonClicked
     | ParsedRepository (Result Decode.Error { repository : String, gitUrl : GitUrl })
     | EnteredRepositoryUrl String
+    | EnteredRepositorySourcePublicKey String
+    | CompleteProjectButtonClicked
     | NewProjectBackButtonClicked
+    | AddKnownHostButtonClicked
+    | KnownHostCreated (Result Http.Error KnownHost)
+    | ProjectCreated (Result Http.Error Project)
     | PassedSlowLoadThreshold
     | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        baseUrl =
+            Context.baseUrl model.context
+    in
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -782,15 +802,45 @@ update msg model =
                 | projectFormStatus =
                     case model.projectFormStatus of
                         NotOpen ->
-                            model.projectFormStatus
+                            NotOpen
 
                         SettingRepository _ ->
-                            model.projectFormStatus
+                            NotOpen
+
+                        AddingKnownHost { gitUrl } ->
+                            SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
 
                         ConfiguringRepository { gitUrl } ->
                             SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
               }
             , Cmd.none
+            )
+
+        AddKnownHostButtonClicked ->
+            ( model
+            , case ( model.projectFormStatus, Session.cred model.session ) of
+                ( AddingKnownHost { publicKey }, Just cred ) ->
+                    KnownHost.create cred baseUrl publicKey
+                        |> Http.send KnownHostCreated
+
+                _ ->
+                    Cmd.none
+            )
+
+        CompleteProjectButtonClicked ->
+            ( model
+            , case ( model.projectFormStatus, Session.cred model.session ) of
+                ( ConfiguringRepository { gitUrl, projectName }, Just cred ) ->
+                    Project.create cred
+                        baseUrl
+                        { name = gitUrl.fullName
+                        , repository = gitUrl.href
+                        , privateKey = Nothing
+                        }
+                        |> Http.send ProjectCreated
+
+                _ ->
+                    Cmd.none
             )
 
         EnteredRepositoryUrl repositoryUrl ->
@@ -801,6 +851,19 @@ update msg model =
                         , dirty = True
                         , problems = validateRepository repositoryUrl
                         }
+              }
+            , Cmd.none
+            )
+
+        EnteredRepositorySourcePublicKey publicKey ->
+            ( { model
+                | projectFormStatus =
+                    case model.projectFormStatus of
+                        AddingKnownHost internals ->
+                            AddingKnownHost { internals | publicKey = publicKey }
+
+                        _ ->
+                            model.projectFormStatus
               }
             , Cmd.none
             )
@@ -831,13 +894,51 @@ update msg model =
         ParsedRepository (Ok { gitUrl }) ->
             ( { model
                 | projectFormStatus =
-                    ConfiguringRepository
-                        { gitUrl = gitUrl
-                        , projectName = gitUrl.fullName
-                        }
+                    if KnownHost.isUnknownHost (Session.knownHosts model.session) (Just gitUrl) then
+                        AddingKnownHost
+                            { gitUrl = gitUrl
+                            , publicKey = ""
+                            }
+
+                    else
+                        ConfiguringRepository
+                            { gitUrl = gitUrl
+                            , projectName = gitUrl.fullName
+                            }
               }
             , Cmd.none
             )
+
+        ProjectCreated (Ok project) ->
+            ( { model
+                | session = Session.addProject project model.session
+                , projectFormStatus = NotOpen
+              }
+            , Cmd.none
+            )
+
+        KnownHostCreated (Ok knownHost) ->
+            ( { model
+                | session = Session.addKnownHost knownHost model.session
+                , projectFormStatus =
+                    case model.projectFormStatus of
+                        AddingKnownHost { gitUrl } ->
+                            ConfiguringRepository
+                                { gitUrl = gitUrl
+                                , projectName = gitUrl.fullName
+                                }
+
+                        _ ->
+                            model.projectFormStatus
+              }
+            , Cmd.none
+            )
+
+        ProjectCreated (Err _) ->
+            ( model, Cmd.none )
+
+        KnownHostCreated (Err _) ->
+            ( model, Cmd.none )
 
         ParsedRepository (Err _) ->
             ( model, Cmd.none )

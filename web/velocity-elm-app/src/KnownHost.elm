@@ -1,4 +1,4 @@
-module KnownHost exposing (KnownHost, addKnownHost, decoder, list)
+module KnownHost exposing (KnownHost, addKnownHost, create, findKnownHost, isUnknownHost, list)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -6,6 +6,7 @@ import GitUrl exposing (GitUrl)
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, required)
+import Json.Encode as Encode
 
 
 type alias KnownHost =
@@ -88,14 +89,27 @@ idToString (Id id) =
 
 
 
--- COLLECTION --
+-- REQUESTS
 
 
-list : Maybe Cred -> BaseUrl -> Http.Request (List KnownHost)
-list maybeCred baseUrl =
+list : Cred -> BaseUrl -> Http.Request (List KnownHost)
+list cred baseUrl =
     let
         endpoint =
-            Endpoint.knownHosts { amount = -1, page = 1 } (Api.toEndpoint baseUrl)
+            Endpoint.knownHosts (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl)
     in
     Decode.field "data" (Decode.list decoder)
-        |> Api.get endpoint maybeCred
+        |> Api.get endpoint (Just cred)
+
+
+create : Cred -> BaseUrl -> String -> Http.Request KnownHost
+create cred baseUrl publicKey =
+    let
+        endpoint =
+            Endpoint.knownHosts Nothing (Api.toEndpoint baseUrl)
+
+        body =
+            Encode.object [ ( "entry", Encode.string publicKey ) ]
+                |> Http.jsonBody
+    in
+    Api.post endpoint (Just cred) body decoder

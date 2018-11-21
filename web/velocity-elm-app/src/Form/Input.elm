@@ -126,8 +126,7 @@ text config =
             [ Input.focusedOnLoad
             , Border.width 1
             , Background.color Palette.transparent
-
-            --            , paddingXY 30 0
+            , paddingXY 30 0
             , height fill
             , width fill
             , focused (statusDecorations valid dirty)

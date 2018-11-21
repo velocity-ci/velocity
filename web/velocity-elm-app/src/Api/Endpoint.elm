@@ -73,21 +73,26 @@ type alias CollectionOptions =
     }
 
 
-projects : CollectionOptions -> Endpoint -> Endpoint
+projects : Maybe CollectionOptions -> Endpoint -> Endpoint
 projects opts baseUrl =
     url baseUrl [ "projects" ] (collectionParams opts)
 
 
-knownHosts : CollectionOptions -> Endpoint -> Endpoint
-knownHosts opts baseUrl =
-    url baseUrl [ "ssh", "known-hosts" ] (collectionParams opts)
+knownHosts : Maybe CollectionOptions -> Endpoint -> Endpoint
+knownHosts maybeOpts baseUrl =
+    url baseUrl [ "ssh", "known-hosts" ] (collectionParams maybeOpts)
 
 
-collectionParams : CollectionOptions -> List QueryParameter
-collectionParams { amount, page } =
-    [ int "amount" amount
-    , int "page" page
-    ]
+collectionParams : Maybe CollectionOptions -> List QueryParameter
+collectionParams maybeOpts =
+    case maybeOpts of
+        Just { amount, page } ->
+            [ int "amount" amount
+            , int "page" page
+            ]
+
+        Nothing ->
+            []
 
 
 

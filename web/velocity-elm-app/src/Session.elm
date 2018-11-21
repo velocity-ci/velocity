@@ -1,4 +1,4 @@
-module Session exposing (InitError, Session, changes, cred, errorToString, fromViewer, navKey, projects, viewer)
+module Session exposing (InitError, Session, addKnownHost, addProject, changes, cred, errorToString, fromViewer, knownHosts, navKey, projects, viewer)
 
 import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
@@ -54,6 +54,16 @@ projects session =
             []
 
 
+knownHosts : Session -> List KnownHost
+knownHosts session =
+    case session of
+        LoggedIn internals ->
+            internals.knownHosts
+
+        Guest _ ->
+            []
+
+
 cred : Session -> Maybe Cred
 cred session =
     case session of
@@ -97,6 +107,26 @@ errorToString (HttpError httpError) =
 -- CHANGES
 
 
+addKnownHost : KnownHost -> Session -> Session
+addKnownHost knownHost session =
+    case session of
+        LoggedIn internals ->
+            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost }
+
+        Guest _ ->
+            session
+
+
+addProject : Project -> Session -> Session
+addProject project session =
+    case session of
+        LoggedIn internals ->
+            LoggedIn { internals | projects = Project.addProject internals.projects project }
+
+        Guest _ ->
+            session
+
+
 changes : (Task InitError Session -> msg) -> BaseUrl -> Session -> Sub msg
 changes toMsg baseUrl session =
     Api.viewerChanges (fromViewer (navKey session) baseUrl >> toMsg) Viewer.decoder
@@ -115,22 +145,22 @@ fromViewer key baseUrl maybeViewer =
                     Viewer.cred viewerVal
 
                 projectsRequest =
-                    Project.list (Just credVal) baseUrl
+                    Project.list credVal baseUrl
                         |> Http.toTask
                         |> Task.mapError HttpError
 
                 knownHostsRequest =
-                    KnownHost.list (Just credVal) baseUrl
+                    KnownHost.list credVal baseUrl
                         |> Http.toTask
                         |> Task.mapError HttpError
             in
             Task.map2
-                (\projects_ knownHosts ->
+                (\projects_ knownHosts_ ->
                     LoggedIn <|
                         { navKey = key
                         , viewer = viewerVal
                         , projects = projects_
-                        , knownHosts = knownHosts
+                        , knownHosts = knownHosts_
                         }
                 )
                 projectsRequest
