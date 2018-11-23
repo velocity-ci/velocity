@@ -1,4 +1,4 @@
-module Project exposing (Project, addProject, channel, channelName, create, decoder, list, name, repository, thumbnail, thumbnailSrc, updateProject)
+module Project exposing (Project, addProject, channel, channelName, create, decoder, list, name, repository, slug, sync, thumbnail, thumbnailSrc, updateProject)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -66,6 +66,11 @@ name (Project project) =
     project.name
 
 
+slug : Project -> Slug
+slug (Project project) =
+    project.slug
+
+
 thumbnailSrc : Project -> Maybe String
 thumbnailSrc (Project project) =
     project.logo
@@ -77,8 +82,8 @@ repository (Project project) =
 
 
 channelName : Project -> String
-channelName (Project { slug }) =
-    "project:" ++ Slug.toString slug
+channelName (Project project) =
+    "project:" ++ Slug.toString project.slug
 
 
 channel : Project -> Channel msg
@@ -153,6 +158,15 @@ list cred baseUrl =
     in
     Decode.field "data" (Decode.list decoder)
         |> Api.get endpoint (Just cred)
+
+
+sync : Cred -> BaseUrl -> Slug -> Http.Request Project
+sync cred baseUrl slug_ =
+    let
+        endpoint =
+            Endpoint.projectSync (Api.toEndpoint baseUrl) slug_
+    in
+    Api.post endpoint (Just cred) (Encode.object [] |> Http.jsonBody) decoder
 
 
 create : Cred -> BaseUrl -> { a | name : String, repository : String, privateKey : Maybe String } -> Http.Request Project

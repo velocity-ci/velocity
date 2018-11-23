@@ -1,8 +1,9 @@
-module Api.Endpoint exposing (CollectionOptions, Endpoint, fromString, knownHosts, login, projects, request, toWs)
+module Api.Endpoint exposing (CollectionOptions, Endpoint, fromString, knownHosts, login, projectSync, projects, request, toWs)
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Phoenix.Channel exposing (Channel)
+import Project.Slug
 import Url.Builder exposing (QueryParameter, int, string)
 import Username exposing (Username)
 
@@ -87,6 +88,11 @@ type alias CollectionOptions =
 projects : Maybe CollectionOptions -> Endpoint -> Endpoint
 projects opts baseUrl =
     url baseUrl [ "projects" ] (collectionParams opts)
+
+
+projectSync : Endpoint -> Project.Slug.Slug -> Endpoint
+projectSync baseUrl projectSlug =
+    url baseUrl [ "projects", Project.Slug.toString projectSlug, "sync" ] []
 
 
 knownHosts : Maybe CollectionOptions -> Endpoint -> Endpoint
