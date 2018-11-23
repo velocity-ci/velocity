@@ -1,9 +1,10 @@
-module Context exposing (Context, baseUrl, device, joinChannel, socket, socketSubscriptions, start, updateSocket, windowResize, wsUrl)
+module Context exposing (Context, baseUrl, device, joinChannel, on, socket, socketSubscriptions, start, updateSocket, windowResize, wsUrl)
 
 {-| The runtime context of the application.
 -}
 
 import Api exposing (BaseUrl, Cred)
+import Dict exposing (Dict)
 import Element exposing (Device)
 import Email exposing (Email)
 import Http
@@ -77,6 +78,13 @@ windowResize dimensions (Context baseUrl_ _ socket_) =
 
 
 -- SOCKET
+
+
+on : String -> String -> (Encode.Value -> msg) -> Context msg -> Context msg
+on eventName channelName onReceive (Context baseUrl_ device_ socket_) =
+    socket_
+        |> Socket.on eventName channelName onReceive
+        |> Context baseUrl_ device_
 
 
 joinChannel : Channel msg -> Cred -> Context msg -> ( Context msg, Cmd (Socket.Msg msg) )

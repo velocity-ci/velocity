@@ -137,6 +137,8 @@ type Msg
     | WindowResized Int Int
     | UpdateLayout Page.Layout
     | SocketMsg (Socket.Msg Msg)
+    | SocketUpdate Session.SocketUpdate
+    | SetSession Session
 
 
 toSession : Body -> Session
@@ -321,18 +323,31 @@ update msg model =
     case model of
         ApplicationStarted header page ->
             case msg of
-                StartApplication (Ok ( app, cmd )) ->
-                    ( ApplicationStarted header app
-                    , cmd
-                    )
-
-                StartApplication (Err err) ->
-                    ( InitError (Session.errorToString err)
+                UpdateLayout newHeader ->
+                    ( ApplicationStarted newHeader page
                     , Cmd.none
                     )
 
-                UpdateLayout newHeader ->
-                    ( ApplicationStarted newHeader page
+                SocketUpdate updateMsg ->
+                    let
+                        context =
+                            toContext page
+
+                        ( session, updatedContext, socketCmd ) =
+                            toSession page
+                                |> Session.socketUpdate updateMsg SocketUpdate context
+
+                        updatedPage =
+                            page
+                                |> updateSession session
+                                |> updateContext updatedContext
+                    in
+                    ( ApplicationStarted header updatedPage
+                    , Cmd.map SocketMsg socketCmd
+                    )
+
+                SetSession session ->
+                    ( ApplicationStarted header (updateSession session page)
                     , Cmd.none
                     )
 
@@ -345,7 +360,7 @@ update msg model =
                 StartApplication (Ok ( app, cmd )) ->
                     let
                         ( context, socketCmd ) =
-                            Session.joinChannels (toSession app) (toContext app)
+                            Session.joinChannels (toSession app) SocketUpdate (toContext app)
                     in
                     ( ApplicationStarted Page.initLayout (updateContext context app)
                     , Cmd.map SocketMsg socketCmd
@@ -377,7 +392,7 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ headerSubscriptions model
+        [ layoutSubscriptions model
         , pageSubscriptions model
         , socketSubscriptions model
         , Browser.Events.onResize WindowResized
@@ -397,11 +412,11 @@ socketSubscriptions model =
             Sub.none
 
 
-headerSubscriptions : Model -> Sub Msg
-headerSubscriptions model =
+layoutSubscriptions : Model -> Sub Msg
+layoutSubscriptions model =
     case model of
-        ApplicationStarted header _ ->
-            Page.layoutSubscriptions header UpdateLayout
+        ApplicationStarted layout _ ->
+            Page.layoutSubscriptions layout UpdateLayout
 
         InitialHTTPRequests _ _ ->
             Sub.none

@@ -1,4 +1,4 @@
-module Project exposing (Project, addProject, create, decoder, list, name, repository, thumbnail, thumbnailSrc)
+module Project exposing (Project, addProject, channel, channelName, create, decoder, list, name, repository, thumbnail, thumbnailSrc, updateProject)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -12,6 +12,7 @@ import Json.Decode.Pipeline exposing (custom, required)
 import Json.Encode as Encode
 import PaginatedList exposing (PaginatedList)
 import Palette
+import Phoenix.Channel as Channel exposing (Channel)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
 import Time
@@ -75,6 +76,16 @@ repository (Project project) =
     project.repository
 
 
+channelName : Project -> String
+channelName (Project { slug }) =
+    "project:" ++ Slug.toString slug
+
+
+channel : Project -> Channel msg
+channel project =
+    Channel.init (channelName project)
+
+
 
 -- ELEMENTS --
 
@@ -107,14 +118,27 @@ findProject projects (Project a) =
         |> List.head
 
 
-addProject : List Project -> Project -> List Project
-addProject projects project =
+addProject : Project -> List Project -> List Project
+addProject project projects =
     case findProject projects project of
         Just _ ->
             projects
 
         Nothing ->
             project :: projects
+
+
+updateProject : Project -> List Project -> List Project
+updateProject (Project a) projects =
+    projects
+        |> List.map
+            (\(Project b) ->
+                if a.id == b.id then
+                    Project a
+
+                else
+                    Project b
+            )
 
 
 
@@ -156,3 +180,7 @@ create cred baseUrl values =
                 |> Http.jsonBody
     in
     Api.post endpoint (Just cred) body decoder
+
+
+
+-- CHANNEL --

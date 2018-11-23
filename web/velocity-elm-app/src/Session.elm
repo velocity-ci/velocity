@@ -1,9 +1,10 @@
-module Session exposing (InitError, Session, addKnownHost, addProject, changes, cred, errorToString, fromViewer, joinChannels, knownHosts, navKey, projects, viewer)
+module Session exposing (InitError, Session, SocketUpdate, addKnownHost, addProject, changes, cred, errorToString, fromViewer, joinChannels, joinProjectChannel, knownHosts, navKey, projects, socketUpdate, viewer)
 
 import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
 import Context exposing (Context)
 import Http
+import Json.Decode as Decode
 import KnownHost exposing (KnownHost)
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Socket as Socket exposing (Socket)
@@ -31,6 +32,12 @@ type alias LoggedInInternals =
 
 type InitError
     = HttpError Http.Error
+
+
+type SocketUpdate
+    = ProjectUpdated Project
+    | ProjectAdded Project
+    | NoOp
 
 
 
@@ -71,7 +78,7 @@ addProject : Project -> Session -> Session
 addProject project session =
     case session of
         LoggedIn internals ->
-            LoggedIn { internals | projects = Project.addProject internals.projects project }
+            LoggedIn { internals | projects = Project.addProject project internals.projects }
 
         Guest _ ->
             session
@@ -139,8 +146,8 @@ changes toMsg context session =
     Api.viewerChanges (fromViewer (navKey session) context >> toMsg) Viewer.decoder
 
 
-joinChannels : Session -> Context msg -> ( Context msg, Cmd (Socket.Msg msg) )
-joinChannels session context =
+joinChannels : Session -> (SocketUpdate -> msg) -> Context msg -> ( Context msg, Cmd (Socket.Msg msg) )
+joinChannels session toMsg context =
     case session of
         Guest _ ->
             ( context
@@ -149,12 +156,92 @@ joinChannels session context =
 
         LoggedIn internals ->
             let
-                ( newContext, joinCmd ) =
-                    Context.joinChannel (Channel.init "projects") (Viewer.cred internals.viewer) context
+                cred_ =
+                    Viewer.cred internals.viewer
+
+                ( projectJoinedContext, projectsChannelCmd ) =
+                    joinProjectsChannel { cred_ = cred_, toMsg = toMsg, context_ = context }
             in
-            ( newContext
-            , joinCmd
-            )
+            internals.projects
+                |> List.foldl
+                    (\project ( context_, cmd_ ) ->
+                        let
+                            ( updatedContext, newCmd ) =
+                                joinProjectChannel { cred_ = cred_, toMsg = toMsg, context_ = context_ } project
+                        in
+                        ( updatedContext
+                        , Cmd.batch [ cmd_, newCmd ]
+                        )
+                    )
+                    ( projectJoinedContext, projectsChannelCmd )
+
+
+joinProjectsChannel :
+    { cred_ : Cred, toMsg : SocketUpdate -> msg, context_ : Context msg }
+    -> ( Context msg, Cmd (Socket.Msg msg) )
+joinProjectsChannel { cred_, toMsg, context_ } =
+    let
+        channelName =
+            "projects"
+
+        decoder encodedValue =
+            Decode.decodeValue Project.decoder encodedValue
+                |> Result.toMaybe
+                |> Maybe.map (ProjectAdded >> toMsg)
+                |> Maybe.withDefault (toMsg NoOp)
+    in
+    Context.on "project:new" channelName decoder context_
+        |> Context.joinChannel (Channel.init channelName) cred_
+
+
+joinProjectChannel :
+    { cred_ : Cred, toMsg : SocketUpdate -> msg, context_ : Context msg }
+    -> Project
+    -> ( Context msg, Cmd (Socket.Msg msg) )
+joinProjectChannel { cred_, toMsg, context_ } project =
+    let
+        channelName =
+            Project.channelName project
+
+        decoder encodedValue =
+            Decode.decodeValue Project.decoder encodedValue
+                |> Result.toMaybe
+                |> Maybe.map (ProjectUpdated >> toMsg)
+                |> Maybe.withDefault (toMsg NoOp)
+    in
+    Context.on "project:update" channelName decoder context_
+        |> Context.joinChannel (Project.channel project) cred_
+
+
+socketUpdate : SocketUpdate -> (SocketUpdate -> msg) -> Context msg -> Session -> ( Session, Context msg, Cmd (Socket.Msg msg) )
+socketUpdate update toMsg context session =
+    case session of
+        LoggedIn internals ->
+            case update of
+                ProjectUpdated project ->
+                    ( LoggedIn { internals | projects = Project.updateProject project internals.projects }
+                    , context
+                    , Cmd.none
+                    )
+
+                ProjectAdded project ->
+                    let
+                        credVal =
+                            Viewer.cred internals.viewer
+
+                        ( updatedContext, joinCmd ) =
+                            joinProjectChannel { cred_ = credVal, toMsg = toMsg, context_ = context } project
+                    in
+                    ( LoggedIn { internals | projects = Project.addProject project internals.projects }
+                    , updatedContext
+                    , joinCmd
+                    )
+
+                NoOp ->
+                    ( session, context, Cmd.none )
+
+        Guest _ ->
+            ( session, context, Cmd.none )
 
 
 fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError Session
