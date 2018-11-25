@@ -19,11 +19,11 @@
             "mdgriffith/elm-ui": "1.1.0",
             "peterszerzo/elm-porter": "3.0.0",
             "rtfeldman/elm-iso8601-date-strings": "1.1.2",
-            "rtfeldman/elm-validate": "4.0.1"
+            "rtfeldman/elm-validate": "4.0.1",
+            "elm/svg": "1.0.1"
         },
         "indirect": {
             "elm/parser": "1.1.0",
-            "elm/svg": "1.0.1",
             "elm/virtual-dom": "1.0.0"
         }
     },

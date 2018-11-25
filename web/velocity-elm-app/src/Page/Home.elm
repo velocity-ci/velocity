@@ -665,32 +665,32 @@ viewProjectPanel project =
     let
         thumbnail =
             column
-                [ width (fillPortion 1)
+                [ width shrink
                 , height fill
                 ]
                 [ Project.thumbnail project ]
 
         details =
             column
-                [ width (fillPortion 2)
+                [ width fill
                 , height fill
                 , Font.alignLeft
                 ]
-                [ paragraph
-                    [ alignTop
-                    , alignLeft
-                    , centerX
+                [ row
+                    [ width fill
                     , Font.extraLight
                     , Font.size 20
                     , Font.letterSpacing -0.5
                     , width fill
                     , Border.widthEach { bottom = 2, left = 0, top = 0, right = 0 }
                     , Border.color Palette.primary7
-                    , paddingEach { top = 5, left = 0, bottom = 10, right = 10 }
-                    , clip
+                    , paddingEach { top = 5, left = 0, bottom = 10, right = 0 }
                     , Font.color Palette.primary4
+                    , spacingXY 10 0
                     ]
-                    [ text <| Project.name project ]
+                    [ column [ width fill ] [ text <| Project.name project ]
+                    , column [ width shrink ] [ Loading.icon { width = 20, height = 20 } ]
+                    ]
                 , column
                     [ paddingEach { bottom = 0, left = 0, right = 0, top = 10 }
                     , width fill
@@ -702,13 +702,17 @@ viewProjectPanel project =
                         , Font.color Palette.neutral3
                         , Font.medium
                         , width fill
-                        , clipX
                         ]
-                        [ link []
+                        [ newTabLink [ width fill ]
                             { url = Project.repository project
-                            , label = text <| Project.repository project
+                            , label =
+                                row []
+                                    [ Icon.externalLink { defaultIconOpts | size = 15 }
+                                    , el [ centerY, paddingEach { left = 5, right = 0, bottom = 0, top = 0 } ] (text "Open repo")
+                                    ]
                             }
                         ]
+                    , row [ width fill ] []
                     , paragraph
                         [ width fill
                         , Font.alignRight

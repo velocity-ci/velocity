@@ -1,4 +1,29 @@
-module Icon exposing (Options, SizeUnit(..), arrowLeft, arrowRight, bell, check, defaultOptions, edit, edit2, externalLink, gitPullRequest, github, gitlab, link, link2, logOut, plus, plusCircle, settings, uploadCloud, x, xSquare)
+module Icon exposing
+    ( Options
+    , SizeUnit(..)
+    , arrowLeft
+    , arrowRight
+    , bell
+    , check
+    , code
+    , defaultOptions
+    , edit
+    , edit2
+    , externalLink
+    , fullSizeOptions
+    , gitPullRequest
+    , github
+    , gitlab
+    , link
+    , link2
+    , logOut
+    , plus
+    , plusCircle
+    , settings
+    , uploadCloud
+    , x
+    , xSquare
+    )
 
 import Element exposing (Element)
 import FeatherIcons
@@ -31,6 +56,14 @@ defaultOptions =
     { size = 16
     , strokeWidth = 1
     , sizeUnit = Pixels
+    }
+
+
+fullSizeOptions : Options
+fullSizeOptions =
+    { size = 100
+    , strokeWidth = 1
+    , sizeUnit = Percentage
     }
 
 
@@ -131,6 +164,11 @@ xSquare =
 uploadCloud : Options -> Element msg
 uploadCloud =
     featherIcon FeatherIcons.uploadCloud
+
+
+code : Options -> Element msg
+code =
+    featherIcon FeatherIcons.code
 
 
 

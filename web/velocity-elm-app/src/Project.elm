@@ -5,7 +5,9 @@ import Api.Endpoint as Endpoint exposing (Endpoint)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Http
+import Icon
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)
@@ -100,17 +102,27 @@ thumbnail project =
     case thumbnailSrc project of
         Just src ->
             el
-                [ width fill
-                , height fill
-                , Background.image src
+                [ width (px 100)
+                , height (px 100)
+                , Background.uncropped src
                 , Border.width 1
                 , Border.color Palette.neutral5
                 , Border.rounded 10
+                , padding 5
                 ]
                 (text "")
 
         Nothing ->
-            none
+            el
+                [ width (px 100)
+                , height (px 100)
+                , Border.width 1
+                , Border.color Palette.neutral5
+                , Border.rounded 10
+                , paddingXY 5 0
+                , Font.color Palette.neutral6
+                ]
+                (Icon.code Icon.fullSizeOptions)
 
 
 

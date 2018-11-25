@@ -100,7 +100,9 @@ view model =
             , body =
                 [ layout
                     [ width fill, height fill ]
-                    (el [ centerX, moveDown 100, width shrink, height shrink ] Loading.icon)
+                    (el [ centerX, moveDown 100, width shrink, height shrink ] <|
+                        Loading.icon { width = 50, height = 50 }
+                    )
                 ]
             }
 

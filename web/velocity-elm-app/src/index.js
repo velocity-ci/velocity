@@ -5,54 +5,64 @@ import * as parseGitUrl from 'git-url-parse';
 import Sockette from 'sockette';
 const storageKey = "store";
 
-const app = Elm.Main.init({
-    node: document.getElementById('root'),
-    flags: {
-        viewer: localStorage.getItem(storageKey),
-        baseUrl: process.env.ARCHITECT_ADDRESS,
-        width: window.innerWidth,
-        height: window.innerHeight
-    }
-});
 
-console.log(Object.keys(app.ports));
-
-app.ports.parseRepository.subscribe((repository) => {
-    console.log('repository', repository);
-    try {
-        const gitUrl = parseGitUrl(repository);
-        app.ports.parsedRepository.send({repository, gitUrl});
-    }
-    catch (e) {
-        console.warn('Could not parse git URL', e.message);
-        app.ports.parsedRepository.send({repository, gitUrl: null});
-    }
-
-});
-
-
-app.ports.storeCache.subscribe(function (val) {
-    if (val === null) {
-        localStorage.removeItem(storageKey);
-    } else {
-        localStorage.setItem(storageKey, JSON.stringify(val));
-    }
-    // Report that the new session was stored succesfully.
-    setTimeout(function () {
-        app.ports.onStoreChange.send(val);
-    }, 0);
-});
 
 
 /**
  * Sockets
  */
 
+let app;
+
 const ws = new Sockette('ws://localhost/v1/ws ', {
     timeout: 5e3,
     maxAttempts: 10,
     onopen: (e) => {
-        console.info('Connected to websocket. Booting application');
+
+        app = Elm.Main.init({
+            node: document.getElementById('root'),
+            flags: {
+                viewer: localStorage.getItem(storageKey),
+                baseUrl: process.env.ARCHITECT_ADDRESS,
+                width: window.innerWidth,
+                height: window.innerHeight
+            }
+        });
+
+        console.log(Object.keys(app.ports));
+
+        app.ports.parseRepository.subscribe((repository) => {
+            console.log('repository', repository);
+            try {
+                const gitUrl = parseGitUrl(repository);
+                app.ports.parsedRepository.send({repository, gitUrl});
+            }
+            catch (e) {
+                console.warn('Could not parse git URL', e.message);
+                app.ports.parsedRepository.send({repository, gitUrl: null});
+            }
+
+        });
+
+
+        app.ports.storeCache.subscribe(function (val) {
+            if (val === null) {
+                localStorage.removeItem(storageKey);
+            } else {
+                localStorage.setItem(storageKey, JSON.stringify(val));
+            }
+            // Report that the new session was stored succesfully.
+            setTimeout(function () {
+                app.ports.onStoreChange.send(val);
+            }, 0);
+        });
+
+        app.ports.send_.subscribe((msg) => {
+            console.log('PORT: send message', msg);
+            ws.send(msg);
+        });
+
+
     },
     onmessage: (msg) => {
         console.log('PORT: on message', msg.data);
@@ -67,10 +77,6 @@ const ws = new Sockette('ws://localhost/v1/ws ', {
 
 
 //
-app.ports.send_.subscribe((msg) => {
-    console.log('PORT: send message', msg);
-    ws.send(msg);
-});
 
 // ws.send('Hello, world!');
 // ws.json({type: 'ping'});
