@@ -1,5 +1,6 @@
 module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
 
+import Activity
 import Api
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Browser exposing (Document)
@@ -73,6 +74,7 @@ viewCurrentPage layout currentPage =
                 , layout = layout
                 , updateLayout = UpdateLayout
                 , context = toContext currentPage
+                , log = Session.log (toSession currentPage)
                 }
     in
     case currentPage of

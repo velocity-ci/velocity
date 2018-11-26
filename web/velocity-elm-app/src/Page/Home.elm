@@ -689,7 +689,7 @@ viewProjectPanel project =
                     , spacingXY 10 0
                     ]
                     [ column [ width fill ] [ text <| Project.name project ]
-                    , column [ width shrink ] [ Loading.icon { width = 20, height = 20 } ]
+                    , viewIf (Project.syncing project) <| column [ width shrink ] [ Loading.icon { width = 20, height = 20 } ]
                     ]
                 , column
                     [ paddingEach { bottom = 0, left = 0, right = 0, top = 10 }

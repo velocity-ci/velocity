@@ -1,5 +1,24 @@
-module Session exposing (InitError, Session, SocketUpdate, addKnownHost, addProject, changes, cred, errorToString, fromViewer, joinChannels, joinProjectChannel, knownHosts, navKey, projects, socketUpdate, viewer)
+module Session exposing
+    ( InitError
+    , Session
+    , SocketUpdate
+    , addKnownHost
+    , addProject
+    , changes
+    , cred
+    , errorToString
+    , fromViewer
+    , joinChannels
+    , joinProjectChannel
+    , knownHosts
+    , log
+    , navKey
+    , projects
+    , socketUpdate
+    , viewer
+    )
 
+import Activity
 import Api exposing (BaseUrl, Cred)
 import Browser.Navigation as Nav
 import Context exposing (Context)
@@ -27,6 +46,7 @@ type alias LoggedInInternals =
     , viewer : Viewer
     , projects : List Project
     , knownHosts : List KnownHost
+    , log : Activity.Log
     }
 
 
@@ -116,6 +136,16 @@ navKey session =
 
         Guest key ->
             key
+
+
+log : Session -> Maybe Activity.Log
+log session =
+    case session of
+        LoggedIn internals ->
+            Just internals.log
+
+        Guest _ ->
+            Nothing
 
 
 errorToString : InitError -> String
@@ -232,7 +262,11 @@ socketUpdate update toMsg context session =
                         ( updatedContext, joinCmd ) =
                             joinProjectChannel { cred_ = credVal, toMsg = toMsg, context_ = context } project
                     in
-                    ( LoggedIn { internals | projects = Project.addProject project internals.projects }
+                    ( LoggedIn
+                        { internals
+                            | projects = Project.addProject project internals.projects
+                            , log = Activity.projectAdded (Project.id project) internals.log
+                        }
                     , updatedContext
                     , joinCmd
                     )
@@ -273,6 +307,7 @@ fromViewer key context maybeViewer =
                         , viewer = viewerVal
                         , projects = projects_
                         , knownHosts = knownHosts_
+                        , log = Activity.init
                         }
                 )
                 projectsRequest

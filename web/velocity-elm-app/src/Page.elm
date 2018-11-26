@@ -1,5 +1,6 @@
 module Page exposing (DropdownStatus(..), Layout, Page(..), initLayout, layoutSubscriptions, view, viewErrors)
 
+import Activity
 import Api exposing (Cred)
 import Asset
 import Browser exposing (Document)
@@ -19,6 +20,7 @@ import Palette
 import Route exposing (Route)
 import Username exposing (Username)
 import Viewer exposing (Viewer)
+
 
 
 -- Header
@@ -100,6 +102,7 @@ type alias Config msg =
     , layout : Layout
     , updateLayout : Layout -> msg
     , context : Context msg
+    , log : Maybe Activity.Log
     }
 
 
@@ -123,8 +126,10 @@ view config =
                         [ Device Phone Portrait
                         , Device Phone Landscape
                         ]
-                        (viewNotificationsPanel config)
-                        |> viewCollapsableNotificationsPanel config
+                        (config.log
+                            |> Maybe.map (Activity.view >> viewCollapsableNotificationsPanel config)
+                            |> Maybe.withDefault none
+                        )
                     )
                 , inFront
                     (viewIfDeviceIn config
@@ -136,8 +141,10 @@ view config =
                             , height fill
                             , alignRight
                             ]
-                            [ viewNotificationsPanel config ]
-                            |> viewCollapsableNotificationsPanel config
+                            [ config.log
+                                |> Maybe.map (Activity.view >> viewCollapsableNotificationsPanel config)
+                                |> Maybe.withDefault none
+                            ]
                         )
                     )
                 ]
@@ -152,7 +159,10 @@ view config =
                         [ width (fillPortion 1 |> maximum 500 |> minimum 250)
                         , height fill
                         ]
-                        [ viewNotificationsPanel config ]
+                        [ config.log
+                            |> Maybe.map Activity.view
+                            |> Maybe.withDefault none
+                        ]
                     )
                 ]
             )
@@ -170,42 +180,18 @@ viewCollapsableNotificationsPanel config content =
         (Layout userMenu open) =
             config.layout
     in
-        if open then
-            content
-        else
-            none
+    if open then
+        content
 
-
-viewNotificationsPanel : Config msg -> Element msg
-viewNotificationsPanel config =
-    column
-        [ Background.color Palette.primary2
-        , width fill
-        , height fill
-        , paddingEach { top = 80, bottom = 90, left = 20, right = 20 }
-        , spacing 10
-        ]
-        [ viewNotificationsPanelHeading
-        , viewNotificationCommitItem
-        , viewNotificationBuildStartItem
-        ]
-
-
-viewNotificationsPanelHeading : Element msg
-viewNotificationsPanelHeading =
-    row
-        [ width fill
-        , Font.color Palette.neutral7
-        , Font.extraLight
-        , Font.size 17
-        ]
-        [ text "Recent activity" ]
+    else
+        none
 
 
 viewIfDeviceIn : Config msg -> List Device -> Element msg -> Element msg
 viewIfDeviceIn config devices content =
     if List.member (Context.device config.context) devices then
         content
+
     else
         none
 
@@ -214,84 +200,9 @@ viewIfDeviceNotIn : Config msg -> List Device -> Element msg -> Element msg
 viewIfDeviceNotIn config devices content =
     if List.member (Context.device config.context) devices then
         none
+
     else
         content
-
-
-
---viewNotificationSearch : Element msg
---viewNotificationSearch =
---    Input.search []
-
-
-viewNotificationCommitItem : Element msg
-viewNotificationCommitItem =
-    row
-        [ Border.width 1
-        , Border.color Palette.primary4
-        , Font.color Palette.neutral4
-        , Font.light
-        , Border.dashed
-        , Border.rounded 5
-        , padding 10
-        , width fill
-        , mouseOver [ Background.color Palette.primary3, Font.color Palette.neutral5 ]
-        ]
-        [ el
-            [ width (px 25)
-            , height (px 25)
-            , Background.image "https://i.imgur.com/4vEcq8U.png"
-            , Border.rounded 10
-            ]
-            none
-        , el [ width fill ]
-            (paragraph
-                [ Font.size 15
-                , alignLeft
-                , paddingXY 10 0
-                ]
-                [ el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "Eddy Lane")
-                , el [ alignLeft, Font.color Palette.neutral5 ] (text " created commit ")
-                , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "b3e8a32")
-                , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text "8 hours ago")
-                ]
-            )
-        ]
-
-
-viewNotificationBuildStartItem : Element msg
-viewNotificationBuildStartItem =
-    row
-        [ Border.width 1
-        , Border.color Palette.primary4
-        , Font.color Palette.neutral4
-        , Font.light
-        , Border.dashed
-        , Border.rounded 5
-        , padding 10
-        , width fill
-        , mouseOver [ Background.color Palette.primary3, Font.color Palette.neutral5 ]
-        ]
-        [ el
-            [ width (px 25)
-            , height (px 25)
-            , Background.image "https://i.imgur.com/4vEcq8U.png"
-            , Border.rounded 10
-            ]
-            none
-        , el [ width fill ]
-            (paragraph
-                [ Font.size 15
-                , alignLeft
-                , paddingXY 10 0
-                ]
-                [ el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "Eddy Lane")
-                , el [ alignLeft, Font.color Palette.neutral5 ] (text " started build ")
-                , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text "fdsfds")
-                , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text "9 hours ago")
-                ]
-            )
-        ]
 
 
 viewBody : Element msg -> Element msg
@@ -309,6 +220,7 @@ viewHeader : Config msg -> Element msg
 viewHeader config =
     if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
         viewMobileHeader config
+
     else
         viewDesktopHeader config
 
@@ -320,7 +232,8 @@ viewMobileHeader config =
         , height (px 60)
         , paddingXY 0 15
         , Background.color Palette.primary1
-          --        , Background.color Palette.neutral7
+
+        --        , Background.color Palette.neutral7
         ]
         [ row
             [ width fill
@@ -374,6 +287,7 @@ viewFooter : Config msg -> Element msg
 viewFooter config =
     if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
         viewMobileFooter config
+
     else
         viewDesktopFooter config
 
@@ -395,52 +309,55 @@ viewMobileFooter { context, page, viewer, updateLayout, layout } =
         (Layout status notificationsPanel) =
             layout
     in
-        column
-            [ width fill
-            , height (px 70)
-            , paddingXY 20 15
-            , alignBottom
-            , Background.color Palette.transparent
+    column
+        [ width fill
+        , height (px 70)
+        , paddingXY 20 15
+        , alignBottom
+        , Background.color Palette.transparent
+        ]
+        [ row
+            [ centerY
+            , centerX
+            , width (fill |> maximum maxWidth)
             ]
-            [ row
-                [ centerY
-                , centerX
-                , width (fill |> maximum maxWidth)
+            [ el
+                [ width (px 35)
+                , height (px 35)
+                , Border.rounded 180
+                , Background.image (Asset.src Asset.defaultAvatar)
+                , Font.size 16
+                , pointer
+                , alignRight
+                , above
+                    (if status == ListenClicks then
+                        Header.userMenuToggle
+
+                     else
+                        none
+                    )
+                , onClick
+                    (if status == Closed then
+                        updateLayout (Layout Open notificationsPanel)
+
+                     else
+                        updateLayout (Layout status notificationsPanel)
+                    )
+                , Border.shadow
+                    { offset = ( 0, 0 )
+                    , size =
+                        if status == ListenClicks then
+                            5
+
+                        else
+                            0
+                    , blur = 10
+                    , color = Palette.neutral4
+                    }
                 ]
-                [ el
-                    [ width (px 35)
-                    , height (px 35)
-                    , Border.rounded 180
-                    , Background.image (Asset.src Asset.defaultAvatar)
-                    , Font.size 16
-                    , pointer
-                    , alignRight
-                    , above
-                        (if status == ListenClicks then
-                            Header.userMenuToggle
-                         else
-                            none
-                        )
-                    , onClick
-                        (if status == Closed then
-                            updateLayout (Layout Open notificationsPanel)
-                         else
-                            updateLayout (Layout status notificationsPanel)
-                        )
-                    , Border.shadow
-                        { offset = ( 0, 0 )
-                        , size =
-                            if status == ListenClicks then
-                                5
-                            else
-                                0
-                        , blur = 10
-                        , color = Palette.neutral4
-                        }
-                    ]
-                    none
-                ]
+                none
             ]
+        ]
 
 
 viewBrand : Element msg
@@ -472,18 +389,18 @@ viewMobileHeaderMenu config =
         linkTo =
             navbarLink config.page
     in
-        case config.viewer of
-            Just viewer ->
-                [ Header.notificationsToggle
-                    { amount = 2
-                    , toggled = notificationsOpen
-                    , toggleMsg = Layout userMenu >> config.updateLayout
-                    }
-                ]
+    case config.viewer of
+        Just viewer ->
+            [ Header.notificationsToggle
+                { amount = 2
+                , toggled = notificationsOpen
+                , toggleMsg = Layout userMenu >> config.updateLayout
+                }
+            ]
 
-            Nothing ->
-                [ linkTo Route.Login (text "Sign in")
-                ]
+        Nothing ->
+            [ linkTo Route.Login (text "Sign in")
+            ]
 
 
 viewDesktopHeaderMenu : Page -> Maybe Viewer -> (Layout -> msg) -> Layout -> List (Element msg)
@@ -492,45 +409,48 @@ viewDesktopHeaderMenu page maybeViewer layoutMsg (Layout status notificationsPan
         linkTo =
             navbarLink page
     in
-        case maybeViewer of
-            Just viewer ->
-                [ el
-                    [ width (px 30)
-                    , height (px 30)
-                    , alignTop
-                    , Border.rounded 180
-                    , Background.image (Asset.src Asset.defaultAvatar)
-                    , Font.size 16
-                    , pointer
-                    , below
-                        (if status == ListenClicks then
-                            Header.userMenuToggle
-                         else
-                            none
-                        )
-                    , onClick
-                        (if status == Closed then
-                            layoutMsg (Layout Open notificationsPanel)
-                         else
-                            layoutMsg (Layout status notificationsPanel)
-                        )
-                    , Border.shadow
-                        { offset = ( 0, 0 )
-                        , size =
-                            if status == ListenClicks then
-                                5
-                            else
-                                0
-                        , blur = 10
-                        , color = Palette.neutral4
-                        }
-                    ]
-                    none
-                ]
+    case maybeViewer of
+        Just viewer ->
+            [ el
+                [ width (px 30)
+                , height (px 30)
+                , alignTop
+                , Border.rounded 180
+                , Background.image (Asset.src Asset.defaultAvatar)
+                , Font.size 16
+                , pointer
+                , below
+                    (if status == ListenClicks then
+                        Header.userMenuToggle
 
-            Nothing ->
-                [ linkTo Route.Login (text "Sign in")
+                     else
+                        none
+                    )
+                , onClick
+                    (if status == Closed then
+                        layoutMsg (Layout Open notificationsPanel)
+
+                     else
+                        layoutMsg (Layout status notificationsPanel)
+                    )
+                , Border.shadow
+                    { offset = ( 0, 0 )
+                    , size =
+                        if status == ListenClicks then
+                            5
+
+                        else
+                            0
+                    , blur = 10
+                    , color = Palette.neutral4
+                    }
                 ]
+                none
+            ]
+
+        Nothing ->
+            [ linkTo Route.Login (text "Sign in")
+            ]
 
 
 navbarLink : Page -> Route -> Element msg -> Element msg
@@ -538,6 +458,7 @@ navbarLink page route linkContent =
     Route.link
         (if isActive page route then
             [ Font.color (rgba255 0 0 0 0.8) ]
+
          else
             [ Font.color (rgba255 0 0 0 0.3)
             , mouseOver [ Font.color (rgba255 0 0 0 0.5) ]
@@ -566,6 +487,7 @@ viewErrors : msg -> List String -> Element msg
 viewErrors dismissErrors errors =
     if List.isEmpty errors then
         text ""
+
     else
         row [] <|
             List.map (\error -> paragraph [] [ text error ]) errors

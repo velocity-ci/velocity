@@ -1,4 +1,4 @@
-module Project exposing (Project, addProject, channel, channelName, create, decoder, list, name, repository, slug, sync, thumbnail, thumbnailSrc, updateProject)
+module Project exposing (Project, addProject, channel, channelName, create, decoder, id, list, name, repository, slug, sync, syncing, thumbnail, thumbnailSrc, updateProject)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -63,6 +63,11 @@ internalsDecoder =
 -- INFO --
 
 
+id : Project -> Id
+id (Project project) =
+    project.id
+
+
 name : Project -> String
 name (Project project) =
     project.name
@@ -91,6 +96,11 @@ channelName (Project project) =
 channel : Project -> Channel msg
 channel project =
     Channel.init (channelName project)
+
+
+syncing : Project -> Bool
+syncing (Project project) =
+    project.synchronising
 
 
 
