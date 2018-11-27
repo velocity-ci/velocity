@@ -338,7 +338,7 @@ viewMobileHeaderMenu config =
     case config.viewer of
         Just viewer ->
             [ Header.notificationsToggle
-                { amount = 2
+                { amount = Activity.unreadAmount config.log.activities
                 , toggled = notificationsOpen
                 , toggleMsg = Layout userMenu >> config.updateLayout
                 }

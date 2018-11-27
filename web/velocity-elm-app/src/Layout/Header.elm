@@ -46,17 +46,18 @@ notificationsToggle { amount, toggled, toggleMsg } =
             , Border.rounded 180
             , centerY
             , above
-                (el
-                    [ width shrink
-                    , height fill
-                    , Background.color Palette.primary5
-                    , paddingXY 4 3
-                    , Border.rounded 7
-                    , moveDown 14
-                    , moveRight 14
-                    , Font.size 10
-                    ]
-                    (text "2")
+                (viewIf (amount > 0) <|
+                    el
+                        [ width shrink
+                        , height fill
+                        , Background.color Palette.primary5
+                        , paddingXY 4 3
+                        , Border.rounded 7
+                        , moveDown 14
+                        , moveRight 14
+                        , Font.size 10
+                        ]
+                        (text <| String.fromInt amount)
                 )
             ]
             (Icon.bell { iconOptions | size = 100, sizeUnit = Icon.Percentage })
@@ -112,3 +113,12 @@ userMenuToggle =
                 [ text "Sign out" ]
             ]
         ]
+
+
+viewIf : Bool -> Element msg -> Element msg
+viewIf condition content =
+    if condition then
+        content
+
+    else
+        none
