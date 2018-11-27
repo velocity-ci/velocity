@@ -665,8 +665,8 @@ viewProjectPanel project =
     let
         thumbnail =
             column
-                [ width shrink
-                , height fill
+                [ width (px 100)
+                , height (px 100)
                 ]
                 [ Project.thumbnail project ]
 

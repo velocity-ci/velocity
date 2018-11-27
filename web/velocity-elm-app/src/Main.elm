@@ -74,7 +74,7 @@ viewCurrentPage layout currentPage =
                 , layout = layout
                 , updateLayout = UpdateLayout
                 , context = toContext currentPage
-                , log = Session.log (toSession currentPage)
+                , log = activityLog <| toSession currentPage
                 }
     in
     case currentPage of
@@ -89,6 +89,12 @@ viewCurrentPage layout currentPage =
 
         Login login ->
             viewPage Page.Login GotLoginMsg (Login.view login)
+
+
+activityLog : Session -> Activity.ViewConfiguration
+activityLog session =
+    Maybe.map2 Activity.ViewConfiguration (Session.log session) (Just <| Session.projects session)
+        |> Maybe.withDefault { activities = Activity.init, projects = [] }
 
 
 view : Model -> Document Msg

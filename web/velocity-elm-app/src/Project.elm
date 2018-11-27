@@ -1,4 +1,21 @@
-module Project exposing (Project, addProject, channel, channelName, create, decoder, id, list, name, repository, slug, sync, syncing, thumbnail, thumbnailSrc, updateProject)
+module Project exposing
+    ( Project
+    , addProject
+    , channel
+    , channelName
+    , create
+    , decoder
+    , findProject
+    , id
+    , list
+    , name
+    , repository
+    , slug
+    , sync
+    , syncing
+    , thumbnail
+    , updateProject
+    )
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -78,11 +95,6 @@ slug (Project project) =
     project.slug
 
 
-thumbnailSrc : Project -> Maybe String
-thumbnailSrc (Project project) =
-    project.logo
-
-
 repository : Project -> String
 repository (Project project) =
     project.repository
@@ -112,8 +124,10 @@ thumbnail project =
     case thumbnailSrc project of
         Just src ->
             el
-                [ width (px 100)
-                , height (px 100)
+                [ centerX
+                , centerY
+                , width fill
+                , height fill
                 , Background.uncropped src
                 , Border.width 1
                 , Border.color Palette.neutral5
@@ -124,35 +138,40 @@ thumbnail project =
 
         Nothing ->
             el
-                [ width (px 100)
-                , height (px 100)
+                [ height fill
+                , width fill
                 , Border.width 1
                 , Border.color Palette.neutral5
                 , Border.rounded 10
                 , paddingXY 5 0
                 , Font.color Palette.neutral6
                 ]
-                (Icon.code Icon.fullSizeOptions)
+                (el [ centerX, centerY ] <| Icon.code Icon.fullSizeOptions)
+
+
+thumbnailSrc : Project -> Maybe String
+thumbnailSrc (Project project) =
+    project.logo
 
 
 
 -- HELPERS --
 
 
-findProject : List Project -> Project -> Maybe Project
-findProject projects (Project a) =
-    List.filter (\(Project b) -> b.id == a.id) projects
+findProject : List Project -> Id -> Maybe Project
+findProject projects targetId =
+    List.filter (\(Project b) -> b.id == targetId) projects
         |> List.head
 
 
 addProject : Project -> List Project -> List Project
-addProject project projects =
-    case findProject projects project of
+addProject (Project internals) projects =
+    case findProject projects internals.id of
         Just _ ->
             projects
 
         Nothing ->
-            project :: projects
+            Project internals :: projects
 
 
 updateProject : Project -> List Project -> List Project

@@ -102,7 +102,7 @@ type alias Config msg =
     , layout : Layout
     , updateLayout : Layout -> msg
     , context : Context msg
-    , log : Maybe Activity.Log
+    , log : Activity.ViewConfiguration
     }
 
 
@@ -121,49 +121,11 @@ view config =
             (Element.row
                 [ width fill
                 , height fill
-                , inFront
-                    (viewIfDeviceIn config
-                        [ Device Phone Portrait
-                        , Device Phone Landscape
-                        ]
-                        (config.log
-                            |> Maybe.map (Activity.view >> viewCollapsableNotificationsPanel config)
-                            |> Maybe.withDefault none
-                        )
-                    )
-                , inFront
-                    (viewIfDeviceIn config
-                        [ Device Tablet Portrait
-                        , Device Tablet Landscape
-                        ]
-                        (column
-                            [ width (fillPortion 1 |> maximum 300 |> minimum 250)
-                            , height fill
-                            , alignRight
-                            ]
-                            [ config.log
-                                |> Maybe.map (Activity.view >> viewCollapsableNotificationsPanel config)
-                                |> Maybe.withDefault none
-                            ]
-                        )
-                    )
+                , inFront <| viewSmallScreenNotificationsPanel config
+                , inFront <| viewMediumScreenNotificationsPanel config
                 ]
-                [ el [ width (fillPortion 3), height fill ] (viewBody config.content)
-                , viewIfDeviceIn config
-                    [ Device Desktop Landscape
-                    , Device Desktop Portrait
-                    , Device BigDesktop Landscape
-                    , Device BigDesktop Portrait
-                    ]
-                    (column
-                        [ width (fillPortion 1 |> maximum 500 |> minimum 250)
-                        , height fill
-                        ]
-                        [ config.log
-                            |> Maybe.map Activity.view
-                            |> Maybe.withDefault none
-                        ]
-                    )
+                [ viewBody config.content
+                , viewLargeScreenNotificationsPanel config
                 ]
             )
         ]
@@ -171,49 +133,115 @@ view config =
 
 
 
--- Notifications
+-- Notification panel
 
 
-viewCollapsableNotificationsPanel : Config msg -> Element msg -> Element msg
-viewCollapsableNotificationsPanel config content =
+viewSmallScreenNotificationsPanel : Config msg -> Element msg
+viewSmallScreenNotificationsPanel config =
+    let
+        (Layout _ isOpen) =
+            config.layout
+    in
+    viewPanelIfOpenAndSize config.context
+        isOpen
+        [ Device Phone Portrait
+        , Device Phone Landscape
+        ]
+        (viewCollapsableNotificationsPanel config)
+
+
+viewMediumScreenNotificationsPanel : Config msg -> Element msg
+viewMediumScreenNotificationsPanel config =
+    let
+        (Layout _ isOpen) =
+            config.layout
+    in
+    viewPanelIfOpenAndSize config.context
+        isOpen
+        [ Device Tablet Portrait
+        , Device Tablet Landscape
+        ]
+        (column
+            [ width
+                (fill
+                    |> maximum 300
+                    |> minimum 250
+                )
+            , height fill
+            , alignRight
+            ]
+            [ viewCollapsableNotificationsPanel config
+            ]
+        )
+
+
+viewLargeScreenNotificationsPanel : Config msg -> Element msg
+viewLargeScreenNotificationsPanel config =
+    viewPanelIfOpenAndSize config.context
+        True
+        [ Device Desktop Landscape
+        , Device Desktop Portrait
+        , Device BigDesktop Landscape
+        , Device BigDesktop Portrait
+        ]
+        (column
+            [ width
+                (fill
+                    |> maximum 500
+                    |> minimum 250
+                )
+            , height fill
+            ]
+            [ viewNotificationActivities config
+            ]
+        )
+
+
+viewCollapsableNotificationsPanel : Config msg -> Element msg
+viewCollapsableNotificationsPanel config =
     let
         (Layout userMenu open) =
             config.layout
     in
     if open then
+        viewNotificationActivities config
+
+    else
+        none
+
+
+viewNotificationActivities : Config msg -> Element msg
+viewNotificationActivities config =
+    Activity.view config.log
+
+
+viewPanelIfOpenAndSize : Context msg -> Bool -> List Device -> Element msg -> Element msg
+viewPanelIfOpenAndSize context isOpen devices content =
+    if isOpen && List.member (Context.device context) devices then
         content
 
     else
         none
 
 
-viewIfDeviceIn : Config msg -> List Device -> Element msg -> Element msg
-viewIfDeviceIn config devices content =
-    if List.member (Context.device config.context) devices then
-        content
 
-    else
-        none
-
-
-viewIfDeviceNotIn : Config msg -> List Device -> Element msg -> Element msg
-viewIfDeviceNotIn config devices content =
-    if List.member (Context.device config.context) devices then
-        none
-
-    else
-        content
+-- Body
 
 
 viewBody : Element msg -> Element msg
 viewBody content =
-    row
-        [ width fill
-        , height fill
-        , paddingEach { top = 60, bottom = 70, left = 0, right = 0 }
-        , centerX
-        ]
-        [ content ]
+    el [ width (fillPortion 3), height fill ] <|
+        row
+            [ width fill
+            , height fill
+            , paddingEach { top = 60, bottom = 70, left = 0, right = 0 }
+            , centerX
+            ]
+            [ content ]
+
+
+
+-- Header
 
 
 viewHeader : Config msg -> Element msg
@@ -223,6 +251,21 @@ viewHeader config =
 
     else
         viewDesktopHeader config
+
+
+viewBrand : Element msg
+viewBrand =
+    el
+        [ Font.color Palette.primary6
+        , Font.heavy
+        , Font.size 28
+        , Font.letterSpacing -1
+        , Font.family
+            [ Font.typeface "titillium web"
+            , Font.sansSerif
+            ]
+        ]
+        (text "Velocity")
 
 
 viewMobileHeader : Config msg -> Element msg
@@ -281,103 +324,6 @@ viewDesktopHeader { viewer, updateLayout, layout, page } =
                 viewDesktopHeaderMenu page viewer updateLayout layout
             ]
         ]
-
-
-viewFooter : Config msg -> Element msg
-viewFooter config =
-    if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
-        viewMobileFooter config
-
-    else
-        viewDesktopFooter config
-
-
-viewDesktopFooter : Config msg -> Element msg
-viewDesktopFooter config =
-    el
-        [ width fill
-        , height (px 70)
-        , paddingXY 20 15
-        , alignBottom
-        ]
-        none
-
-
-viewMobileFooter : Config msg -> Element msg
-viewMobileFooter { context, page, viewer, updateLayout, layout } =
-    let
-        (Layout status notificationsPanel) =
-            layout
-    in
-    column
-        [ width fill
-        , height (px 70)
-        , paddingXY 20 15
-        , alignBottom
-        , Background.color Palette.transparent
-        ]
-        [ row
-            [ centerY
-            , centerX
-            , width (fill |> maximum maxWidth)
-            ]
-            [ el
-                [ width (px 35)
-                , height (px 35)
-                , Border.rounded 180
-                , Background.image (Asset.src Asset.defaultAvatar)
-                , Font.size 16
-                , pointer
-                , alignRight
-                , above
-                    (if status == ListenClicks then
-                        Header.userMenuToggle
-
-                     else
-                        none
-                    )
-                , onClick
-                    (if status == Closed then
-                        updateLayout (Layout Open notificationsPanel)
-
-                     else
-                        updateLayout (Layout status notificationsPanel)
-                    )
-                , Border.shadow
-                    { offset = ( 0, 0 )
-                    , size =
-                        if status == ListenClicks then
-                            5
-
-                        else
-                            0
-                    , blur = 10
-                    , color = Palette.neutral4
-                    }
-                ]
-                none
-            ]
-        ]
-
-
-viewBrand : Element msg
-viewBrand =
-    el
-        [ Font.color Palette.primary6
-        , Font.heavy
-        , Font.size 28
-        , Font.letterSpacing -1
-        , Font.family
-            [ Font.typeface "titillium web"
-            , Font.sansSerif
-            ]
-        ]
-        (text "Velocity")
-
-
-iconOptions : Icon.Options
-iconOptions =
-    Icon.defaultOptions
 
 
 viewMobileHeaderMenu : Config msg -> List (Element msg)
@@ -479,6 +425,96 @@ isActive page route =
 
         _ ->
             False
+
+
+
+-- Footer
+
+
+viewFooter : Config msg -> Element msg
+viewFooter config =
+    if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
+        viewMobileFooter config
+
+    else
+        viewDesktopFooter config
+
+
+viewDesktopFooter : Config msg -> Element msg
+viewDesktopFooter config =
+    el
+        [ width fill
+        , height (px 70)
+        , paddingXY 20 15
+        , alignBottom
+        ]
+        none
+
+
+viewMobileFooter : Config msg -> Element msg
+viewMobileFooter { context, page, viewer, updateLayout, layout } =
+    let
+        (Layout status notificationsPanel) =
+            layout
+    in
+    column
+        [ width fill
+        , height (px 70)
+        , paddingXY 20 15
+        , alignBottom
+        , Background.color Palette.transparent
+        ]
+        [ row
+            [ centerY
+            , centerX
+            , width (fill |> maximum maxWidth)
+            ]
+            [ el
+                [ width (px 35)
+                , height (px 35)
+                , Border.rounded 180
+                , Background.image (Asset.src Asset.defaultAvatar)
+                , Font.size 16
+                , pointer
+                , alignRight
+                , above
+                    (if status == ListenClicks then
+                        Header.userMenuToggle
+
+                     else
+                        none
+                    )
+                , onClick
+                    (if status == Closed then
+                        updateLayout (Layout Open notificationsPanel)
+
+                     else
+                        updateLayout (Layout status notificationsPanel)
+                    )
+                , Border.shadow
+                    { offset = ( 0, 0 )
+                    , size =
+                        if status == ListenClicks then
+                            5
+
+                        else
+                            0
+                    , blur = 10
+                    , color = Palette.neutral4
+                    }
+                ]
+                none
+            ]
+        ]
+
+
+
+-- Utils
+
+
+iconOptions : Icon.Options
+iconOptions =
+    Icon.defaultOptions
 
 
 {-| Render dismissable errors. We use this all over the place!
