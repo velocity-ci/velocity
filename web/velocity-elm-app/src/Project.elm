@@ -1,21 +1,22 @@
-module Project exposing
-    ( Project
-    , addProject
-    , channel
-    , channelName
-    , create
-    , decoder
-    , findProject
-    , id
-    , list
-    , name
-    , repository
-    , slug
-    , sync
-    , syncing
-    , thumbnail
-    , updateProject
-    )
+module Project
+    exposing
+        ( Project
+        , addProject
+        , channel
+        , channelName
+        , create
+        , decoder
+        , findProject
+        , id
+        , list
+        , name
+        , repository
+        , slug
+        , sync
+        , syncing
+        , thumbnail
+        , updateProject
+        )
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -181,7 +182,6 @@ updateProject (Project a) projects =
             (\(Project b) ->
                 if a.id == b.id then
                     Project a
-
                 else
                     Project b
             )

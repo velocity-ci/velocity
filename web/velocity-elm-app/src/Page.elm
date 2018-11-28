@@ -83,6 +83,7 @@ type Page
     | Settings
     | Profile Username
     | NewArticle
+    | Project
 
 
 {-| Take a page's Html and frames it with a header and footer.

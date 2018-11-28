@@ -3,12 +3,12 @@ module Route exposing (Route(..), fromUrl, link, replaceUrl)
 import Browser.Navigation as Nav
 import Element exposing (Attribute, Element)
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
+import Project.Id as ProjectId
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
 import Url.Parser.Query as Query
 import Username exposing (Username)
-
 
 
 -- ROUTING
@@ -19,6 +19,7 @@ type Route
     | Root
     | Login
     | Logout
+    | Project ProjectId.Id
 
 
 parser : Parser (Route -> a) a
@@ -27,6 +28,7 @@ parser =
         [ Parser.map Home (Parser.top <?> ActivePanel.queryParser)
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
+        , Parser.map Project (s "project" </> ProjectId.urlParser)
         ]
 
 
@@ -72,6 +74,9 @@ routePieces page =
 
         Logout ->
             ( [ "logout" ], [] )
+
+        Project id ->
+            ( [ "project", ProjectId.toString id ], [] )
 
 
 routeToString : Route -> String

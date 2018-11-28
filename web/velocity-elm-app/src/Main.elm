@@ -14,12 +14,14 @@ import Element.Font as Font
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Loading
 import Page exposing (Layout)
-import Page.Blank as Blank
-import Page.Home as Home
+import Page.Blank as BlankPage
+import Page.Home as HomePage
 import Page.Home.ActivePanel as ActivePanel
-import Page.Login as Login
-import Page.NotFound as NotFound
+import Page.Login as LoginPage
+import Page.NotFound as NotFoundPage
+import Page.Project as ProjectPage
 import Phoenix.Socket as Socket
+import Project
 import Route exposing (Route)
 import Session exposing (Session)
 import Task exposing (Task)
@@ -40,8 +42,9 @@ type Model
 type Body
     = Redirect Session (Context Msg)
     | NotFound Session (Context Msg)
-    | Home (Home.Model Msg)
-    | Login (Login.Model Msg)
+    | Home (HomePage.Model Msg)
+    | Login (LoginPage.Model Msg)
+    | Project ProjectPage.Model
 
 
 init : Maybe Viewer -> Result Decode.Error (Context Msg) -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -65,30 +68,41 @@ init maybeViewer contextResult url navKey =
 viewCurrentPage : Layout -> Body -> Document Msg
 viewCurrentPage layout currentPage =
     let
+        session =
+            toSession currentPage
+
         viewPage page toMsg { title, content } =
             Page.view
-                { viewer = Session.viewer (toSession currentPage)
+                { viewer = Session.viewer session
                 , page = page
                 , title = title
                 , content = Element.map toMsg content
                 , layout = layout
                 , updateLayout = UpdateLayout
                 , context = toContext currentPage
-                , log = activityLog <| toSession currentPage
+                , log = activityLog session
                 }
     in
     case currentPage of
         Redirect _ _ ->
-            viewPage Page.Other (always Ignored) Blank.view
+            viewPage Page.Other (always Ignored) BlankPage.view
 
         NotFound _ _ ->
-            viewPage Page.Other (always Ignored) NotFound.view
+            viewPage Page.Other (always Ignored) NotFoundPage.view
 
-        Home home ->
-            viewPage Page.Home GotHomeMsg (Home.view home)
+        Home page ->
+            viewPage Page.Home GotHomeMsg (HomePage.view page)
 
-        Login login ->
-            viewPage Page.Login GotLoginMsg (Login.view login)
+        Login page ->
+            viewPage Page.Login GotLoginMsg (LoginPage.view page)
+
+        Project page ->
+            case Project.findProject (Session.projects session) (ProjectPage.id page) of
+                Just project ->
+                    viewPage Page.Project GotProjectMsg (ProjectPage.view { model = page, project = project })
+
+                Nothing ->
+                    viewPage Page.Other (always Ignored) NotFoundPage.view
 
 
 activityLog : Session -> Activity.ViewConfiguration
@@ -140,8 +154,9 @@ type Msg
     | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
-    | GotHomeMsg Home.Msg
-    | GotLoginMsg Login.Msg
+    | GotHomeMsg HomePage.Msg
+    | GotLoginMsg LoginPage.Msg
+    | GotProjectMsg ProjectPage.Msg
     | UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
     | WindowResized Int Int
@@ -161,10 +176,10 @@ toSession page =
             session
 
         Home home ->
-            Home.toSession home
+            HomePage.toSession home
 
         Login login ->
-            Login.toSession login
+            LoginPage.toSession login
 
 
 toContext : Body -> Context Msg
@@ -177,10 +192,10 @@ toContext page =
             context
 
         Home home ->
-            Home.toContext home
+            HomePage.toContext home
 
         Login login ->
-            Login.toContext login
+            LoginPage.toContext login
 
 
 changeRouteTo : Maybe Route -> Body -> ( Body, Cmd Msg )
@@ -214,7 +229,7 @@ changeRouteTo maybeRoute currentPage =
                     )
 
                 Just _ ->
-                    Home.init session context activePanel
+                    HomePage.init session context activePanel
                         |> updateWith Home GotHomeMsg currentPage
 
         Just Route.Login ->
@@ -225,8 +240,19 @@ changeRouteTo maybeRoute currentPage =
                     )
 
                 Nothing ->
-                    Login.init session context
+                    LoginPage.init session context
                         |> updateWith Login GotLoginMsg currentPage
+
+        Just (Route.Project id) ->
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
+
+                Just _ ->
+                    ProjectPage.init id
+                        |> updateWith Project GotProjectMsg currentPage
 
 
 updatePage : Msg -> Body -> ( Body, Cmd Msg )
@@ -259,11 +285,11 @@ updatePage msg page =
             )
 
         ( GotHomeMsg subMsg, Home home ) ->
-            Home.update subMsg home
+            HomePage.update subMsg home
                 |> updateWith Home GotHomeMsg page
 
         ( GotLoginMsg subMsg, Login login ) ->
-            Login.update subMsg login
+            LoginPage.update subMsg login
                 |> updateWith Login GotLoginMsg page
 
         ( UpdateSession task, _ ) ->
@@ -447,10 +473,13 @@ pageSubscriptions model =
                     Session.changes UpdateSession context session
 
                 Home home ->
-                    Sub.map GotHomeMsg (Home.subscriptions home)
+                    Sub.map GotHomeMsg (HomePage.subscriptions home)
 
                 Login login ->
-                    Sub.map GotLoginMsg (Login.subscriptions login)
+                    Sub.map GotLoginMsg (LoginPage.subscriptions login)
+
+                Project project ->
+                    Sub.none
 
         InitialHTTPRequests _ _ ->
             Sub.none
