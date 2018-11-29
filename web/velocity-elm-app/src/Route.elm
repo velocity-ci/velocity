@@ -1,14 +1,17 @@
 module Route exposing (Route(..), fromUrl, link, replaceUrl)
 
 import Browser.Navigation as Nav
-import Element exposing (Attribute, Element)
+import Element exposing (..)
+import Element.Font as Font
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
+import Palette
 import Project.Id as ProjectId
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
 import Url.Parser.Query as Query
 import Username exposing (Username)
+
 
 
 -- ROUTING
@@ -38,10 +41,24 @@ parser =
 
 link : List (Attribute msg) -> Element msg -> Route -> Element msg
 link attrs label targetRoute =
-    Element.link attrs
+    Element.link
+        (List.concat
+            [ linkAttrs
+            , attrs
+            ]
+        )
         { url = routeToString targetRoute
         , label = label
         }
+
+
+linkAttrs : List (Attribute msg)
+linkAttrs =
+    [ Font.color Palette.primary3
+    , mouseOver
+        [ Font.color Palette.primary5
+        ]
+    ]
 
 
 replaceUrl : Nav.Key -> Route -> Cmd msg

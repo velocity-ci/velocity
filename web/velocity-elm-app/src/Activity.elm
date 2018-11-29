@@ -75,7 +75,7 @@ unreadAmount : Log -> Int
 unreadAmount (Log { activities, seenActivities }) =
     List.foldl
         (\(ActivityItem id _) acc ->
-            if Set.member id seenActivities then
+            if not <| Set.member id seenActivities then
                 acc + 1
 
             else

@@ -44,7 +44,7 @@ type Body
     | NotFound Session (Context Msg)
     | Home (HomePage.Model Msg)
     | Login (LoginPage.Model Msg)
-    | Project ProjectPage.Model
+    | Project (ProjectPage.Model Msg)
 
 
 init : Maybe Viewer -> Result Decode.Error (Context Msg) -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -97,12 +97,17 @@ viewCurrentPage layout currentPage =
             viewPage Page.Login GotLoginMsg (LoginPage.view page)
 
         Project page ->
-            case Project.findProject (Session.projects session) (ProjectPage.id page) of
-                Just project ->
-                    viewPage Page.Project GotProjectMsg (ProjectPage.view { model = page, project = project })
+            viewPage Page.Project GotProjectMsg (ProjectPage.view page)
 
-                Nothing ->
-                    viewPage Page.Other (always Ignored) NotFoundPage.view
+
+
+--
+--            case Project.findProject (Session.projects session) (ProjectPage.id page) of
+--                Just project ->
+--                    viewPage Page.Project GotProjectMsg (ProjectPage.view project)
+--
+--                Nothing ->
+--                    viewPage Page.Other (always Ignored) NotFoundPage.view
 
 
 activityLog : Session -> Activity.ViewConfiguration
@@ -181,6 +186,9 @@ toSession page =
         Login login ->
             LoginPage.toSession login
 
+        Project project ->
+            ProjectPage.toSession project
+
 
 toContext : Body -> Context Msg
 toContext page =
@@ -196,6 +204,9 @@ toContext page =
 
         Login login ->
             LoginPage.toContext login
+
+        Project project ->
+            ProjectPage.toContext project
 
 
 changeRouteTo : Maybe Route -> Body -> ( Body, Cmd Msg )
@@ -251,7 +262,7 @@ changeRouteTo maybeRoute currentPage =
                     )
 
                 Just _ ->
-                    ProjectPage.init id
+                    ProjectPage.init session context id
                         |> updateWith Project GotProjectMsg currentPage
 
 
@@ -337,6 +348,9 @@ updateContext context page =
         Login login ->
             Login { login | context = context }
 
+        Project project ->
+            Project { project | context = context }
+
 
 updateSession : Session -> Body -> Body
 updateSession session page =
@@ -352,6 +366,9 @@ updateSession session page =
 
         Login login ->
             Login { login | session = session }
+
+        Project project ->
+            Project { project | session = session }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

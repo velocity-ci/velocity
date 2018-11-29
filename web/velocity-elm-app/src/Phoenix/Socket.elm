@@ -332,7 +332,7 @@ phoenixMessages socket =
 debugIfEnabled : Socket msg -> String -> String
 debugIfEnabled socket =
     if socket.debug then
-        Debug.log "phx_message"
+        identity
 
     else
         identity
@@ -360,7 +360,7 @@ mapInternalMsgs socket maybeMessage =
             let
                 message =
                     if socket.debug then
-                        Debug.log "Phoenix message" mess
+                        mess
 
                     else
                         mess

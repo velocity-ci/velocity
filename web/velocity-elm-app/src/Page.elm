@@ -16,6 +16,7 @@ import Html exposing (Html)
 import Icon
 import Json.Decode as Decode
 import Layout.Header as Header
+import Page.Home.ActivePanel as ActivePanel
 import Palette
 import Route exposing (Route)
 import Username exposing (Username)
@@ -256,7 +257,7 @@ viewHeader config =
 
 viewBrand : Element msg
 viewBrand =
-    el
+    Route.link
         [ Font.color Palette.primary6
         , Font.heavy
         , Font.size 28
@@ -265,8 +266,10 @@ viewBrand =
             [ Font.typeface "titillium web"
             , Font.sansSerif
             ]
+        , mouseOver [ Font.color Palette.primary5 ]
         ]
         (text "Velocity")
+        (Route.Home ActivePanel.None)
 
 
 viewMobileHeader : Config msg -> Element msg

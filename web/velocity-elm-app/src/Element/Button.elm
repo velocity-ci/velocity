@@ -167,6 +167,7 @@ baseAttrs widthLength =
     , padding 11
     , alignBottom
     , spacingXY 5 0
+    , centerY
     ]
 
 

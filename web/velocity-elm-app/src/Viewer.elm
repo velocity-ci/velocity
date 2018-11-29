@@ -6,6 +6,7 @@ impossible to have a Viewer if you aren't logged in.
 -}
 
 import Api exposing (Cred)
+import Element exposing (..)
 import Email exposing (Email)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)

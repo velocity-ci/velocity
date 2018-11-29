@@ -177,7 +177,7 @@ viewDesktopSubHeader { disableButton } =
         , Font.size 18
         , width (fill |> maximum 1600)
         , alignRight
-        , height shrink
+        , height (px 65)
         , paddingXY 20 10
         , Font.color Palette.white
         , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
@@ -688,7 +688,9 @@ viewProjectPanel project =
                     , Font.color Palette.primary4
                     , spacingXY 10 0
                     ]
-                    [ column [ width fill ] [ text <| Project.name project ]
+                    [ paragraph [ width fill ]
+                        [ Route.link [ width fill, clip ] (text <| Project.name project) (Route.Project <| Project.id project)
+                        ]
                     , viewIf (Project.syncing project) <| column [ width shrink ] [ Loading.icon { width = 20, height = 20 } ]
                     ]
                 , column
