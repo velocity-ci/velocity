@@ -32,6 +32,7 @@ type alias ButtonConfig msg =
     , content : Element msg
     , size : Size
     , widthLength : Length
+    , heightLength : Length
     , disabled : Bool
     }
 
@@ -47,6 +48,7 @@ simpleButton onClick { content, scheme } =
         , scheme = scheme
         , size = Medium
         , widthLength = fill
+        , heightLength = px 45
         , disabled = False
         }
 
@@ -62,6 +64,7 @@ simpleLink route { content, scheme } =
         , scheme = scheme
         , size = Medium
         , widthLength = fill
+        , heightLength = px 45
         , disabled = False
         }
 
@@ -79,7 +82,7 @@ buttonIconOptions fromSize =
 
 
 link : Route -> ButtonConfig msg -> Element msg
-link route ({ size, widthLength, scheme, centerLeftIcon, centerRightIcon } as buttonConfig) =
+link route ({ size, widthLength, heightLength, scheme, centerLeftIcon, centerRightIcon } as buttonConfig) =
     let
         content =
             row [ centerX ]
@@ -90,7 +93,7 @@ link route ({ size, widthLength, scheme, centerLeftIcon, centerRightIcon } as bu
     in
     Route.link
         (List.concat
-            [ baseAttrs widthLength
+            [ baseAttrs widthLength heightLength
             , sizeAttrs size
             , sideIcons buttonConfig
             , schemeAttrs scheme
@@ -102,10 +105,10 @@ link route ({ size, widthLength, scheme, centerLeftIcon, centerRightIcon } as bu
 
 
 button : msg -> ButtonConfig msg -> Element msg
-button onClickMsg ({ size, scheme, centerLeftIcon, centerRightIcon, widthLength } as buttonConfig) =
+button onClickMsg ({ size, scheme, centerLeftIcon, centerRightIcon, widthLength, heightLength } as buttonConfig) =
     row
         (List.concat
-            [ baseAttrs widthLength
+            [ baseAttrs widthLength heightLength
             , sideIcons buttonConfig
             , schemeAttrs scheme
             , activeAttrs buttonConfig
@@ -159,12 +162,24 @@ sizeInt fromSize =
             21
 
 
-baseAttrs : Length -> List (Element.Attribute msg)
-baseAttrs widthLength =
+paddingInt : Size -> Int
+paddingInt fromSize =
+    case fromSize of
+        Small ->
+            8
+
+        Medium ->
+            11
+
+        Large ->
+            14
+
+
+baseAttrs : Length -> Length -> List (Element.Attribute msg)
+baseAttrs widthLength heightLength =
     [ width widthLength
-    , height (px 45)
+    , height heightLength
     , Border.rounded 5
-    , padding 11
     , alignBottom
     , spacingXY 5 0
     , centerY
@@ -174,6 +189,7 @@ baseAttrs widthLength =
 sizeAttrs : Size -> List (Element.Attribute msg)
 sizeAttrs fromSize =
     [ Font.size (sizeInt fromSize)
+    , padding (paddingInt fromSize)
     ]
 
 

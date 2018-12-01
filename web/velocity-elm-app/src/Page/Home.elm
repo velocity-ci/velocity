@@ -164,6 +164,7 @@ viewMobileSubHeader { disableButton } =
             , scheme = Button.Primary
             , content = text "New project"
             , widthLength = fillPortion 2
+            , heightLength = px 45
             , disabled = disableButton
             }
         , el [ width fill ] none
@@ -198,6 +199,7 @@ viewDesktopSubHeader { disableButton } =
             , scheme = Button.Primary
             , content = text "New project"
             , widthLength = shrink
+            , heightLength = px 45
             , disabled = disableButton
             }
         ]
@@ -363,6 +365,7 @@ viewAddProjectPanel repositoryField =
                             , scheme = Button.Secondary
                             , size = Button.Medium
                             , widthLength = fill
+                            , heightLength = px 45
                             , disabled = False
                             }
                         )
@@ -376,6 +379,7 @@ viewAddProjectPanel repositoryField =
                             , scheme = Button.Primary
                             , size = Button.Medium
                             , widthLength = fill
+                            , heightLength = px 45
                             , disabled = not (List.isEmpty repositoryField.problems)
                             }
                         )
@@ -460,6 +464,7 @@ viewAddKnownHostPanel { gitUrl, publicKey } =
                     , scheme = Button.Secondary
                     , size = Button.Medium
                     , widthLength = fill
+                    , heightLength = px 45
                     , disabled = False
                     }
                 )
@@ -473,6 +478,7 @@ viewAddKnownHostPanel { gitUrl, publicKey } =
                     , scheme = Button.Primary
                     , size = Button.Medium
                     , widthLength = fill
+                    , heightLength = px 45
                     , disabled = False
                     }
                 )
@@ -563,6 +569,7 @@ viewConfigureProjectPanel { gitUrl, projectName } =
                     , scheme = Button.Secondary
                     , size = Button.Medium
                     , widthLength = fill
+                    , heightLength = px 45
                     , disabled = False
                     }
                 )
@@ -576,6 +583,7 @@ viewConfigureProjectPanel { gitUrl, projectName } =
                     , scheme = Button.Primary
                     , size = Button.Medium
                     , widthLength = fill
+                    , heightLength = px 45
                     , disabled = False
                     }
                 )

@@ -1,6 +1,7 @@
 module Icon exposing
     ( Options
     , SizeUnit(..)
+    , arrowDown
     , arrowLeft
     , arrowRight
     , bell
@@ -19,6 +20,7 @@ module Icon exposing
     , logOut
     , plus
     , plusCircle
+    , search
     , settings
     , uploadCloud
     , x
@@ -91,6 +93,11 @@ plus =
     featherIcon FeatherIcons.plus
 
 
+arrowDown : Options -> Element msg
+arrowDown =
+    featherIcon FeatherIcons.arrowDown
+
+
 arrowRight : Options -> Element msg
 arrowRight =
     featherIcon FeatherIcons.arrowRight
@@ -129,6 +136,11 @@ check =
 settings : Options -> Element msg
 settings =
     featherIcon FeatherIcons.settings
+
+
+search : Options -> Element msg
+search =
+    featherIcon FeatherIcons.search
 
 
 link : Options -> Element msg

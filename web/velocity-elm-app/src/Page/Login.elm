@@ -22,6 +22,7 @@ import Task exposing (Task)
 import Viewer exposing (Viewer)
 
 
+
 -- MODEL
 
 
@@ -108,7 +109,7 @@ viewProblem problem =
                 ServerError str ->
                     str
     in
-        text errorMessage
+    text errorMessage
 
 
 viewForm : Form -> Element Msg
@@ -202,9 +203,9 @@ update msg model =
                     Api.decodeErrors error
                         |> List.map ServerError
             in
-                ( { model | problems = List.append model.problems serverErrors }
-                , Cmd.none
-                )
+            ( { model | problems = List.append model.problems serverErrors }
+            , Cmd.none
+            )
 
         CompletedLogin (Ok viewer) ->
             ( model
@@ -273,12 +274,12 @@ validate form =
         trimmedForm =
             trimFields form
     in
-        case List.concatMap (validateField trimmedForm) fieldsToValidate of
-            [] ->
-                Ok trimmedForm
+    case List.concatMap (validateField trimmedForm) fieldsToValidate of
+        [] ->
+            Ok trimmedForm
 
-            problems ->
-                Err problems
+        problems ->
+            Err problems
 
 
 validateField : TrimmedForm -> ValidatedField -> List Problem
@@ -288,12 +289,14 @@ validateField (Trimmed form) field =
             Email ->
                 if String.isEmpty form.username then
                     [ "username can't be blank." ]
+
                 else
                     []
 
             Password ->
                 if String.isEmpty form.password then
                     [ "password can't be blank." ]
+
                 else
                     []
 
@@ -323,7 +326,7 @@ login context (Trimmed form) =
                 ]
                 |> Http.jsonBody
     in
-        Api.login (Context.baseUrl context) body Viewer.decoder
+    Api.login (Context.baseUrl context) body Viewer.decoder
 
 
 

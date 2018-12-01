@@ -303,6 +303,10 @@ updatePage msg page =
             LoginPage.update subMsg login
                 |> updateWith Login GotLoginMsg page
 
+        ( GotProjectMsg subMsg, Project project ) ->
+            ProjectPage.update subMsg project
+                |> updateWith Project GotProjectMsg page
+
         ( UpdateSession task, _ ) ->
             ( page, Task.attempt UpdatedSession task )
 

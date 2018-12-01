@@ -1,4 +1,4 @@
-module Form.Input exposing (Config, labelAbove, labelBelow, labelHidden, labelLeft, labelRight, multilineText, text)
+module Form.Input exposing (Config, labelAbove, labelBelow, labelHidden, labelLeft, labelRight, multilineText, search, text)
 
 import Element exposing (..)
 import Element.Background as Background
@@ -123,6 +123,55 @@ text config =
             ]
         )
         (Input.text
+            [ Input.focusedOnLoad
+            , Border.width 1
+            , Background.color Palette.transparent
+            , paddingXY 30 0
+            , height fill
+            , width fill
+            , focused (statusDecorations valid dirty)
+            ]
+            { onChange = config.onChange
+            , placeholder = maybePlaceholder config.placeholder
+            , text = config.value
+            , label = config.label
+            }
+        )
+
+
+search : Config msg -> Element msg
+search config =
+    let
+        valid =
+            List.isEmpty config.problems
+
+        dirty =
+            config.dirty
+    in
+    el
+        (List.concat
+            [ statusAttrs valid dirty
+            , [ height (px 40)
+              , width fill
+
+              --              , Border.width 1
+              --              , Border.rounded 4
+              , Font.size 16
+              , inFront (maybeIconLeft config.leftIcon)
+              , inFront (maybeIconRight config.rightIcon)
+
+              --              , mouseOver
+              --                    [ Border.shadow
+              --                        { offset = ( 0, 0 )
+              --                        , size = 1
+              --                        , blur = 0
+              --                        , color = Palette.neutral5
+              --                        }
+              --                    ]
+              ]
+            ]
+        )
+        (Input.search
             [ Input.focusedOnLoad
             , Border.width 1
             , Background.color Palette.transparent
