@@ -396,6 +396,13 @@ viewDesktopHeaderMenu page maybeViewer layoutMsg (Layout status notificationsPan
                     }
                 ]
                 none
+            , el
+                [ Font.color Palette.neutral7
+                , centerY
+                , Font.heavy
+                , Font.size 16
+                ]
+                (text "Eddy Lane")
             ]
 
         Nothing ->

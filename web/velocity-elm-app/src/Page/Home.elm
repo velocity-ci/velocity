@@ -104,7 +104,6 @@ view model =
             , height fill
             , Background.color Palette.white
             , centerX
-            , spacing 20
             ]
             [ viewSubHeader (model.projectFormStatus /= NotOpen) device
             , viewPanelGrid device model.projectFormStatus model.session
@@ -272,7 +271,8 @@ viewPanelGrid device projectFormStatus session =
             )
         |> row
             [ width (fill |> maximum 1600)
-            , paddingXY 20 0
+            , Background.color Palette.neutral7
+            , paddingXY 20 20
             , spacingXY 20 0
             , alignRight
             , height fill

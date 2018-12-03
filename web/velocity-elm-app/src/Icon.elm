@@ -6,6 +6,7 @@ module Icon exposing
     , arrowRight
     , bell
     , check
+    , cloudRain
     , code
     , defaultOptions
     , edit
@@ -22,6 +23,7 @@ module Icon exposing
     , plusCircle
     , search
     , settings
+    , sun
     , uploadCloud
     , x
     , xSquare
@@ -181,6 +183,16 @@ uploadCloud =
 code : Options -> Element msg
 code =
     featherIcon FeatherIcons.code
+
+
+sun : Options -> Element msg
+sun =
+    featherIcon FeatherIcons.sun
+
+
+cloudRain : Options -> Element msg
+cloudRain =
+    featherIcon FeatherIcons.cloudRain
 
 
 

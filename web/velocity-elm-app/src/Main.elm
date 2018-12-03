@@ -500,7 +500,7 @@ pageSubscriptions model =
                     Sub.map GotLoginMsg (LoginPage.subscriptions login)
 
                 Project project ->
-                    Sub.none
+                    Sub.map GotProjectMsg (ProjectPage.subscriptions project)
 
         InitialHTTPRequests _ _ ->
             Sub.none

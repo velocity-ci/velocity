@@ -151,7 +151,7 @@ search config =
     el
         (List.concat
             [ statusAttrs valid dirty
-            , [ height (px 40)
+            , [ height shrink
               , width fill
 
               --              , Border.width 1
@@ -175,7 +175,7 @@ search config =
             [ Input.focusedOnLoad
             , Border.width 1
             , Background.color Palette.transparent
-            , paddingXY 30 0
+            , paddingXY 30 10
             , height fill
             , width fill
             , focused (statusDecorations valid dirty)
