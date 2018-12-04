@@ -339,35 +339,45 @@ viewMobileBody model project =
         , padding 20
         ]
         [ viewProjectDetails project
-        , viewProjectHealth project
-        , viewTimeline
+        , el [ height shrink, width fill ] (viewProjectHealthIcons project)
+        , viewProjectBuilds project
         ]
 
 
 viewDesktopBody : Model msg -> Project -> Element Msg
 viewDesktopBody model project =
-    row
-        [ height fill
+    column
+        [ width fill
+        , height fill
         , Background.color Palette.neutral7
-        , centerX
-        , spacing 20
-        , padding 20
-        , width (fill |> maximum 1600)
-        , alignRight
+        , paddingXY 20 40
+        , spacingXY 20 40
         ]
-        [ column
-            [ width (fillPortion 4)
-            , height fill
-            , spacingXY 0 20
+        [ row
+            [ height shrink
+            , centerX
+            , spacing 20
+            , width (fill |> maximum 1600)
+            , alignRight
             ]
-            [ viewProjectDetails project
-            , viewProjectHealth project
+            [ column
+                [ width (fillPortion 4)
+                , height fill
+                , spacingXY 0 20
+                ]
+                [ viewProjectDetails project
+                ]
+            , column
+                [ width (fillPortion 6)
+                , height fill
+                ]
+                [ viewProjectHealthIcons project ]
             ]
-        , column
-            [ width (fillPortion 6)
-            , height fill
+        , row
+            [ width fill
+            , spacing 20
             ]
-            [ viewTimeline ]
+            [ viewProjectBuilds project ]
         ]
 
 
@@ -392,14 +402,124 @@ viewBigDesktopBody model project =
             [ width (fillPortion 3)
             , height fill
             ]
-            [ viewProjectHealth project
+            [ viewProjectHealthIcons project
             ]
-        , column
-            [ width (fillPortion 6)
-            , height fill
-            ]
-            [ viewTimeline ]
         ]
+
+
+
+-- Project Buiilds
+
+
+type alias Build =
+    { started : String
+    , task : String
+    }
+
+
+persons : List Build
+persons =
+    [ { started = "March 8th, 8:30:47 PM"
+      , task = "run-unit-tests"
+      }
+    , { started = "March 20th, 1:23:11 AM"
+      , task = "deploy-master"
+      }
+    ]
+
+
+viewProjectBuilds : Project -> Element Msg
+viewProjectBuilds project =
+    column
+        [ width fill
+        , height (px 300)
+        , Background.color Palette.white
+        , Border.shadow
+            { offset = ( 1, 1 )
+            , size = 1
+            , blur = 1
+            , color = Palette.neutral6
+            }
+        , Border.rounded 5
+        ]
+        [ el
+            [ Font.size 20
+            , width fill
+            , Font.alignLeft
+            , paddingXY 10 20
+            ]
+            (text "Builds")
+        , row
+            [ width fill
+            , height fill
+            , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
+            , paddingXY 10 30
+            , height (px 50)
+            , Border.color Palette.neutral6
+            , Font.size 14
+            ]
+            [ indexedTable
+                [ width fill
+                , height fill
+                ]
+                { data = persons
+                , columns =
+                    [ { header = viewTableHeader (text "Started")
+                      , width = fillPortion 2
+                      , view = \i person -> viewTableCell (text person.started) i
+                      }
+                    , { header = viewTableHeader (text "Task")
+                      , width = fill
+                      , view = \i person -> viewTableCell (text person.task) i
+                      }
+                    ]
+                }
+            ]
+        ]
+
+
+viewTableHeader : Element msg -> Element msg
+viewTableHeader contents =
+    el
+        [ width fill
+        , height (px 40)
+        ]
+    <|
+        el
+            [ centerY
+            , paddingXY 10 0
+            , Font.size 16
+            ]
+        <|
+            contents
+
+
+viewTableCell : Element msg -> Int -> Element msg
+viewTableCell contents i =
+    let
+        lastIndex =
+            List.length persons - 1
+
+        borders =
+            if i == 0 then
+                { top = 2, bottom = 1, left = 0, right = 0 }
+
+            else if i == lastIndex then
+                { top = 0, bottom = 2, left = 0, right = 0 }
+
+            else
+                { top = 0, bottom = 1, left = 0, right = 0 }
+    in
+    el
+        [ width fill
+        , height (px 60)
+        , Border.widthEach borders
+        , Background.color Palette.neutral7
+        , Border.color Palette.neutral6
+        ]
+    <|
+        el [ centerY, paddingXY 10 0 ] <|
+            contents
 
 
 
@@ -471,6 +591,21 @@ viewProjectDetails project =
             ]
             [ el [ Font.color Palette.neutral2 ] (text "Default branch")
             ]
+        , row
+            [ width fill
+            , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
+            , paddingXY 10 0
+            , height (px 50)
+            , Border.color Palette.neutral6
+            , Font.size 15
+            , spaceEvenly
+            ]
+            [ el [ Font.color Palette.neutral2 ] (text "Updated")
+            , el
+                [ Font.color Palette.neutral2
+                ]
+                (text "2 weeks ago")
+            ]
         ]
 
 
@@ -503,7 +638,6 @@ viewProjectHealth project =
             [ width fill
             , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
             , paddingXY 10 0
-            , height (px 50)
             , Border.color Palette.neutral6
             , Font.size 15
             , spaceEvenly
@@ -515,13 +649,124 @@ viewProjectHealth project =
             [ width fill
             , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
             , paddingXY 10 0
-            , height (px 50)
             , Border.color Palette.neutral6
             , Font.size 15
             , spaceEvenly
             ]
             [ el [ Font.color Palette.neutral2 ] (text "deploy-master")
             , el [ Font.color Palette.warning3 ] (Icon.cloudRain Icon.defaultOptions)
+            ]
+        , row
+            [ width fill
+            , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
+            , paddingXY 10 0
+            , Border.color Palette.neutral6
+            , Font.size 15
+            , spaceEvenly
+            ]
+            [ el [ Font.color Palette.neutral2 ] (text "build-containers")
+            , el [ Font.color Palette.danger3 ] (Icon.cloudLightning Icon.defaultOptions)
+            ]
+        ]
+
+
+viewProjectHealthIcons : Project -> Element Msg
+viewProjectHealthIcons project =
+    let
+        defaultOpts =
+            Icon.defaultOptions
+
+        iconOpts =
+            { defaultOpts | size = 38 }
+    in
+    column
+        [ width fill
+        , height fill
+        , Background.color Palette.white
+        , Border.shadow
+            { offset = ( 1, 1 )
+            , size = 1
+            , blur = 1
+            , color = Palette.neutral6
+            }
+        , Border.rounded 5
+        ]
+        [ el
+            [ Font.size 20
+            , width fill
+            , Font.alignLeft
+            , paddingXY 10 20
+            ]
+            (text "Tasks")
+        , row
+            [ width fill
+            , height fill
+            , Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
+            , Border.color Palette.neutral6
+            , paddingXY 10 10
+            , spacing 10
+            ]
+            [ column
+                [ width fill
+                , height shrink
+                , paddingXY 0 20
+                , Font.size 15
+                , spacingXY 0 5
+                , height shrink
+                , centerY
+                , Border.width 1
+                , Border.rounded 10
+                , Border.color Palette.transparent
+                , pointer
+                , mouseOver
+                    [ Background.color Palette.neutral7
+                    , Border.color Palette.neutral6
+                    ]
+                ]
+                [ el [ Font.color Palette.success4, width shrink, centerX ] (Icon.checkCircle iconOpts)
+                , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "run-unit-tests")
+                , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "1 hour ago")
+                ]
+            , column
+                [ width fill
+                , paddingXY 0 20
+                , Font.size 15
+                , spacingXY 0 5
+                , height shrink
+                , centerY
+                , pointer
+                , mouseOver
+                    [ Background.color Palette.neutral7
+                    , Border.color Palette.neutral6
+                    ]
+                , Border.width 1
+                , Border.color Palette.transparent
+                , Border.rounded 10
+                ]
+                [ el [ Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle iconOpts)
+                , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "deploy-master")
+                , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "2 weeks ago")
+                ]
+            , column
+                [ width fill
+                , paddingXY 0 20
+                , Font.size 15
+                , spacingXY 0 5
+                , height shrink
+                , centerY
+                , pointer
+                , mouseOver
+                    [ Background.color Palette.neutral7
+                    , Border.color Palette.neutral6
+                    ]
+                , Border.width 1
+                , Border.color Palette.transparent
+                , Border.rounded 10
+                ]
+                [ el [ Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle iconOpts)
+                , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "build-containers")
+                , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "3 months ago")
+                ]
             ]
         ]
 

@@ -141,8 +141,7 @@ viewMobileSubHeader { disableButton } =
     row
         [ width fill
         , height shrink
-        , Background.color Palette.neutral7
-        , Font.color Palette.white
+        , Background.color Palette.white
         , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
         , Border.color Palette.neutral6
         , paddingXY 0 15

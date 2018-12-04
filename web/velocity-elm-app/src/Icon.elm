@@ -6,6 +6,8 @@ module Icon exposing
     , arrowRight
     , bell
     , check
+    , checkCircle
+    , cloudLightning
     , cloudRain
     , code
     , defaultOptions
@@ -26,6 +28,7 @@ module Icon exposing
     , sun
     , uploadCloud
     , x
+    , xCircle
     , xSquare
     )
 
@@ -135,6 +138,16 @@ check =
     featherIcon FeatherIcons.check
 
 
+checkCircle : Options -> Element msg
+checkCircle =
+    featherIcon FeatherIcons.checkCircle
+
+
+xCircle : Options -> Element msg
+xCircle =
+    featherIcon FeatherIcons.xCircle
+
+
 settings : Options -> Element msg
 settings =
     featherIcon FeatherIcons.settings
@@ -193,6 +206,11 @@ sun =
 cloudRain : Options -> Element msg
 cloudRain =
     featherIcon FeatherIcons.cloudRain
+
+
+cloudLightning : Options -> Element msg
+cloudLightning =
+    featherIcon FeatherIcons.cloudLightning
 
 
 
