@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+
+  db:
+    image: postgres:alpine
+    environment:
+      POSTGRES_PASSWORD: velocity
+      POSTGRES_USER: velocity
+      POSTGRES_DB: velocity
+    ports:
+     - "5432:5432"
+
+  architect:
+    image: elixir:latest
+    command: /bin/sh -c "mix local.hex --force && mix deps.get && mix wait_for_it && mix ecto.create && mix ecto.migrate && mix test --color --trace; mix coveralls.html --color; mix credo --strict"
+    working_dir: /app
+    environment:
+      MIX_ENV: test
+      ADMIN_PASSWORD: admin
+      DB_HOSTNAME: db
+      DB_PORT: "5432"
+      DB_USERNAME: velocity
+      DB_PASSWORD: velocity
+      DB_DBNAME: velocity
+    ports:
+      - "4000:4000"
+    volumes: 
+      - "./:/app"
