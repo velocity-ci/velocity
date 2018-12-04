@@ -408,12 +408,44 @@ viewBigDesktopBody model project =
 
 
 
--- Project Buiilds
+-- Project Branch Tabs
+
+
+viewProjectBranchTabs : Element msg
+viewProjectBranchTabs =
+    row [ spaceEvenly ]
+        [ viewProjectBranchTab True "Builds"
+        , viewProjectBranchTab False "Commits"
+        ]
+
+
+viewProjectBranchTab : Bool -> String -> Element msg
+viewProjectBranchTab isSelected label =
+    el
+        [ Font.size 14
+        , width fill
+        , Font.alignLeft
+        , paddingXY 25 20
+        , Background.color
+            (if isSelected then
+                Palette.white
+
+             else
+                Palette.transparent
+            )
+        ]
+        (text label)
+
+
+
+-- Project Builds
 
 
 type alias Build =
     { started : String
     , task : String
+    , commit : String
+    , branch : String
     }
 
 
@@ -421,9 +453,13 @@ persons : List Build
 persons =
     [ { started = "March 8th, 8:30:47 PM"
       , task = "run-unit-tests"
+      , commit = "sgb3rwgv"
+      , branch = "master"
       }
     , { started = "March 20th, 1:23:11 AM"
       , task = "deploy-master"
+      , commit = "sgb3rwgv"
+      , branch = "develop"
       }
     ]
 
@@ -432,31 +468,25 @@ viewProjectBuilds : Project -> Element Msg
 viewProjectBuilds project =
     column
         [ width fill
-        , height (px 300)
-        , Background.color Palette.white
-        , Border.shadow
-            { offset = ( 1, 1 )
-            , size = 1
-            , blur = 1
-            , color = Palette.neutral6
-            }
+
+        --        , Background.color Palette.white
+        --        , Border.shadow
+        --            { offset = ( 1, 1 )
+        --            , size = 1
+        --            , blur = 1
+        --            , color = Palette.neutral6
+        --            }
         , Border.rounded 5
         ]
-        [ el
-            [ Font.size 20
-            , width fill
-            , Font.alignLeft
-            , paddingXY 10 20
-            ]
-            (text "Builds")
+        [ viewProjectBranchTabs
         , row
             [ width fill
             , height fill
-            , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
             , paddingXY 10 30
             , height (px 50)
-            , Border.color Palette.neutral6
             , Font.size 14
+            , height (px 300)
+            , Background.color Palette.white
             ]
             [ indexedTable
                 [ width fill
@@ -471,6 +501,23 @@ viewProjectBuilds project =
                     , { header = viewTableHeader (text "Task")
                       , width = fill
                       , view = \i person -> viewTableCell (text person.task) i
+                      }
+                    , { header = viewTableHeader (text "Commit")
+                      , width = fill
+                      , view =
+                            \i person ->
+                                viewTableCell
+                                    (row []
+                                        [ text person.commit
+                                        , text " "
+                                        , row [ Font.heavy ]
+                                            [ text "("
+                                            , text person.branch
+                                            , text ")"
+                                            ]
+                                        ]
+                                    )
+                                    i
                       }
                     ]
                 }
