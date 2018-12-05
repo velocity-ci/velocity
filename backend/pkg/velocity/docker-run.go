@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +26,28 @@ type DockerRun struct {
 	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignoreExit"`
 }
 
+func parseRunCommand(command interface{}) []string {
+	c := []string{}
+	switch x := command.(type) {
+	case []interface{}:
+		for _, p := range x {
+			c = append(c, p.(string))
+		}
+		break
+	case interface{}:
+		re := regexp.MustCompile(`(".+")|('.+')|(\S+)`)
+		matches := re.FindAllString(x.(string), -1)
+		for _, m := range matches {
+			c = append(c, strings.TrimFunc(m, func(r rune) bool {
+				return string(r) == `"` || string(r) == `'`
+			}))
+		}
+		break
+	}
+
+	return c
+}
+
 func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
 	switch x := y["image"].(type) {
 	case interface{}:
@@ -34,24 +55,7 @@ func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error 
 		break
 	}
 
-	s.Command = []string{}
-	switch x := y["command"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			s.Command = append(s.Command, p.(string))
-		}
-		break
-	case interface{}:
-		re := regexp.MustCompile(`(".+")|('.+')|(\S+)`)
-		matches := re.FindAllString(x.(string), -1)
-		s.Command = []string{}
-		for _, m := range matches {
-			s.Command = append(s.Command, strings.TrimFunc(m, func(r rune) bool {
-				return string(r) == `"` || string(r) == `'`
-			}))
-		}
-		break
-	}
+	s.Command = parseRunCommand(y["command"])
 
 	s.Environment = map[string]string{}
 	switch x := y["environment"].(type) {
@@ -88,7 +92,8 @@ func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error 
 		s.IgnoreExitCode = x.(bool)
 		break
 	}
-	return nil
+
+	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func NewDockerRun() *DockerRun {
@@ -99,10 +104,7 @@ func NewDockerRun() *DockerRun {
 		WorkingDir:     "",
 		MountPoint:     "",
 		IgnoreExitCode: false,
-		BaseStep: BaseStep{
-			Type:          "run",
-			OutputStreams: []string{"run"},
-		},
+		BaseStep:       newBaseStep("run", []string{"run"}),
 	}
 }
 
@@ -112,8 +114,9 @@ func (dR DockerRun) GetDetails() string {
 
 func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("run")
+	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	writer.Write([]byte(fmt.Sprintf("%s## %s\x1b[0m", infoANSI, dR.Description)))
+	fmt.Fprintf(writer, colorFmt(ansiInfo, "-> %s"), dR.Description)
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"
@@ -122,7 +125,6 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 	for k, v := range dR.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
-	cwd, _ := os.Getwd()
 
 	// Only used for Docker-based CLI. Unsupported right now.
 	// if os.Getenv("SIB_CWD") != "" {
@@ -141,7 +143,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s", cwd, dR.MountPoint),
+			fmt.Sprintf("%s:%s", dR.ProjectRoot, dR.MountPoint),
 		},
 	}
 
@@ -192,14 +194,15 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
 		writer.SetStatus(StateFailed)
-		writer.Write([]byte(fmt.Sprintf("%s### FAILED (exited: %d)\x1b[0m", errorANSI, exitCode)))
+		fmt.Fprintf(writer, colorFmt(ansiError, "-> error (exited: %d)"), exitCode)
+
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte(fmt.Sprintf("%s### SUCCESS (exited: %d)\x1b[0m", successANSI, exitCode)))
-	return nil
+	fmt.Fprintf(writer, colorFmt(ansiSuccess, "-> success (exited: %d)"), exitCode)
 
+	return nil
 }
 
 func (dR DockerRun) Validate(params map[string]Parameter) error {

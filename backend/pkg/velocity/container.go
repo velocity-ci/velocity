@@ -3,7 +3,6 @@ package velocity
 import (
 	"bufio"
 	"context"
-	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/docker/docker/api/types/network"
 	"go.uber.org/zap"
+	"golang.org/x/net/http/httpproxy"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -78,17 +78,15 @@ type serviceRunner struct {
 
 func getContainerName(serviceName string) string {
 	return fmt.Sprintf(
-		"vci-%s-%x",
+		"vci-%s",
 		serviceName,
-		md5.Sum([]byte(serviceName)),
 	)
 }
 
 func getImageName(serviceName string) string {
 	return fmt.Sprintf(
-		"vci-%s-%x",
+		"vci-%s",
 		serviceName,
-		md5.Sum([]byte(serviceName)),
 	)
 }
 
@@ -152,27 +150,23 @@ func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
 		sR.containerConfig.Image = getImageName(sR.name)
 	} else {
 		// check if image exists locally before pulling
-		if findImageLocally(sR.image, sR.dockerCli, sR.context) != nil {
-			sR.image = resolvePullImage(sR.image)
-			sR.containerConfig.Image = resolvePullImage(sR.image)
-			authToken := getAuthToken(sR.image, dockerRegistries)
-			pullResp, err := sR.dockerCli.ImagePull(
-				sR.context,
-				sR.image,
-				types.ImagePullOptions{
-					RegistryAuth: authToken,
-				},
-			)
-			if err != nil {
-				GetLogger().Error("could not pull image", zap.String("err", err.Error()))
-			}
-			defer pullResp.Close()
-			handleOutput(pullResp, sR.params, sR.writer)
-
-			sR.writer.Write([]byte(fmt.Sprintf("Pulled: %s", sR.image)))
-		} else {
-			sR.writer.Write([]byte(fmt.Sprintf("Got locally: %s", sR.image)))
+		sR.image = resolvePullImage(sR.image)
+		sR.containerConfig.Image = resolvePullImage(sR.image)
+		authToken := getAuthToken(sR.image, dockerRegistries)
+		pullResp, err := sR.dockerCli.ImagePull(
+			sR.context,
+			sR.image,
+			types.ImagePullOptions{
+				RegistryAuth: authToken,
+			},
+		)
+		if err != nil {
+			GetLogger().Error("could not pull image", zap.String("err", err.Error()))
 		}
+		defer pullResp.Close()
+		handleOutput(pullResp, sR.params, sR.writer)
+
+		fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> pulled image: %s"), sR.image)
 
 	}
 }
@@ -193,8 +187,29 @@ func findImageLocally(imageName string, cli *client.Client, ctx context.Context)
 	return fmt.Errorf("could not find image: %s", imageName)
 }
 
+func respectProxyEnv(env []string) []string {
+	config := httpproxy.FromEnvironment()
+	if len(config.HTTPProxy) > 1 {
+		env = append(env, fmt.Sprintf("HTTP_PROXY=%s", config.HTTPProxy))
+		env = append(env, fmt.Sprintf("http_proxy=%s", config.HTTPProxy))
+	}
+	if len(config.HTTPSProxy) > 1 {
+		env = append(env, fmt.Sprintf("HTTPS_PROXY=%s", config.HTTPSProxy))
+		env = append(env, fmt.Sprintf("https_proxy=%s", config.HTTPSProxy))
+	}
+	if len(config.NoProxy) > 1 {
+		env = append(env, fmt.Sprintf("NO_PROXY=%s", config.NoProxy))
+		env = append(env, fmt.Sprintf("no_proxy=%s", config.NoProxy))
+	}
+
+	return env
+}
+
 func (sR *serviceRunner) Create() {
-	sR.writer.Write([]byte(fmt.Sprintf("Creating container: %s", getContainerName(sR.name))))
+	fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s created"), getContainerName(sR.name))
+
+	sR.containerConfig.Env = respectProxyEnv(sR.containerConfig.Env)
+
 	createResp, err := sR.dockerCli.ContainerCreate(
 		sR.context,
 		sR.containerConfig,
@@ -209,7 +224,7 @@ func (sR *serviceRunner) Create() {
 }
 
 func (sR *serviceRunner) Run(stop chan string) {
-	sR.writer.Write([]byte(fmt.Sprintf("Running container: %s (%s)", getContainerName(sR.name), sR.containerID)))
+	fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s running"), getContainerName(sR.name))
 	err := sR.dockerCli.ContainerStart(
 		sR.context,
 		sR.containerID,
@@ -251,8 +266,7 @@ func (sR *serviceRunner) Stop() {
 	}
 
 	sR.exitCode = container.State.ExitCode
-	sR.writer.Write([]byte(fmt.Sprintf("Container %s exited: %d", sR.containerID, sR.exitCode)))
-	sR.writer.Write([]byte(fmt.Sprintf("container %s status: %s", sR.containerID, container.State.Status)))
+	fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s container exited: %d"), getContainerName(sR.name), sR.exitCode)
 
 	if !sR.removing {
 		sR.removing = true
@@ -264,7 +278,8 @@ func (sR *serviceRunner) Stop() {
 		if err != nil {
 			GetLogger().Error("could not remove container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 		}
-		sR.writer.Write([]byte(fmt.Sprintf("Removed container: %s (%s)", getContainerName(sR.name), sR.containerID)))
+		fmt.Fprintf(sR.writer, colorFmt(ansiInfo, "-> %s removed"), getContainerName(sR.name))
+
 	}
 }
 
@@ -277,9 +292,6 @@ func buildContainer(
 	authConfigs map[string]types.AuthConfig,
 ) error {
 	GetLogger().Debug("building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
-
-	cwd, _ := os.Getwd()
-	buildContext = fmt.Sprintf("%s/%s", cwd, buildContext)
 
 	excludes, err := readDockerignore(buildContext)
 	if err != nil {

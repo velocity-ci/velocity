@@ -53,11 +53,6 @@ func (a *Architect) Stop() error {
 	return a.Server.Shutdown(ctx)
 }
 
-type App interface {
-	Start()
-	Stop() error
-}
-
 func New() *Architect {
 	a := &Architect{
 		Server: echo.New(),
@@ -81,7 +76,7 @@ func (a *Architect) Init() {
 	buildStepManager := build.NewStepManager(a.DB)
 	buildStreamManager := build.NewStreamManager(a.DB)
 	buildManager := build.NewBuildManager(a.DB, buildStepManager, buildStreamManager)
-	builderManager := builder.NewManager(buildManager, knownHostManager, buildStepManager, buildStreamManager)
+	builderManager := builder.NewManager()
 	syncManager := v_sync.NewManager(projectManager, taskManager, branchManager, commitManager)
 
 	a.Server.Use(middleware.CORS())
@@ -101,6 +96,6 @@ func (a *Architect) Init() {
 	)
 
 	a.Workers = []domain.Worker{
-		builder.NewScheduler(builderManager, buildManager, &a.workerWg),
+		builder.NewScheduler(&a.workerWg, builderManager, buildManager, knownHostManager, buildStepManager, buildStreamManager),
 	}
 }

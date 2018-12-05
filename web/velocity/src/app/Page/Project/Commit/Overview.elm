@@ -84,7 +84,7 @@ viewTaskListItem : Project -> Commit -> List Build -> ProjectTask.Task -> Html M
 viewTaskListItem project commit builds task =
     let
         route =
-            CommitRoute.Task task.name Nothing
+            CommitRoute.Task task.slug Nothing
                 |> ProjectRoute.Commit commit.hash
                 |> Route.Project project.slug
 

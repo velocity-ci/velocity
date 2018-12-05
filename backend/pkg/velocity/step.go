@@ -3,6 +3,8 @@ package velocity
 import (
 	"fmt"
 	"time"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 type Step interface {
@@ -14,13 +16,8 @@ type Step interface {
 	SetParams(map[string]Parameter) error
 	GetOutputStreams() []string
 	UnmarshalYamlInterface(map[interface{}]interface{}) error
+	SetProjectRoot(string)
 }
-
-const (
-	successANSI = "\x1b[1m\x1b[49m\x1b[32m"
-	errorANSI   = "\x1b[1m\x1b[49m\x1b[31m"
-	infoANSI    = "\x1b[1m\x1b[49m\x1b[34m"
-)
 
 // Step state constants
 const (
@@ -50,11 +47,21 @@ const (
 )
 
 type BaseStep struct {
-	Type          string               `json:"type" yaml:"type"`
-	Description   string               `json:"description" yaml:"description"`
-	OutputStreams []string             `json:"outputStreams" yaml:"-"`
-	Params        map[string]Parameter `json:"params" yaml:"-"`
-	runID         string
+	Type          string   `json:"type" yaml:"type"`
+	Description   string   `json:"description" yaml:"description"`
+	OutputStreams []string `json:"outputStreams" yaml:"-"`
+
+	Params      map[string]Parameter `json:"params" yaml:"-"`
+	runID       string
+	ProjectRoot string
+}
+
+func newBaseStep(t string, streams []string) BaseStep {
+	return BaseStep{
+		Type:          t,
+		OutputStreams: streams,
+		Params:        map[string]Parameter{},
+	}
 }
 
 func (bS *BaseStep) GetType() string {
@@ -75,10 +82,23 @@ func (bS *BaseStep) SetParams(params map[string]Parameter) {
 
 func (bS *BaseStep) GetRunID() string {
 	if bS.runID == "" {
-		bS.runID = time.Now().Format("060102150405")
+		bS.runID = uuid.NewV4().String()
 	}
 
 	return bS.runID
+}
+
+func (bS *BaseStep) SetProjectRoot(path string) {
+	bS.ProjectRoot = path
+}
+
+func (s *BaseStep) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
+	switch x := y["description"].(type) {
+	case interface{}:
+		s.Description = x.(string)
+		break
+	}
+	return nil
 }
 
 type StreamLine struct {

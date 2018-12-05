@@ -18,13 +18,13 @@ resource "aws_ecs_task_definition" "builder" {
 
   task_role_arn = "${aws_iam_role.builder.arn}"
 
-   volume {
+  volume {
     name      = "docker-engine"
     host_path = "/var/run/docker.sock"
   }
 
   volume {
-    name = "velocity-workspace"
+    name      = "velocity-workspace"
     host_path = "/opt/velocityci"
   }
 }

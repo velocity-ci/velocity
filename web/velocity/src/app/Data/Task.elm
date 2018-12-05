@@ -11,6 +11,7 @@ import UrlParser
 
 type alias Task =
     { id : Id
+    , slug : Slug
     , name : Name
     , description : String
     , steps : List Step
@@ -91,6 +92,7 @@ decoder : Decoder Task
 decoder =
     decode Task
         |> required "id" decodeId
+        |> required "slug" decodeSlug
         |> required "name" decodeName
         |> optional "description" Decode.string ""
         |> optional "steps" (Decode.list stepDecoder) []
@@ -242,10 +244,17 @@ type Name
 type Id
     = Id String
 
+type Slug
+    = Slug String
+
 
 decodeName : Decoder Name
 decodeName =
     Decode.map Name Decode.string
+
+decodeSlug : Decoder Slug
+decodeSlug =
+    Decode.map Slug Decode.string
 
 
 nameParser : UrlParser.Parser (Name -> a) a
@@ -256,6 +265,14 @@ nameParser =
 nameToString : Name -> String
 nameToString (Name name) =
     name
+
+slugParser : UrlParser.Parser (Slug -> a) a
+slugParser =
+    UrlParser.custom "SLUG" (Ok << Slug)
+
+slugToString : Slug -> String
+slugToString (Slug slug) =
+    slug
 
 
 decodeId : Decoder Id

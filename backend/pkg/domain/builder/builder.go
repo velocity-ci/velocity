@@ -1,25 +1,24 @@
 package builder
 
-import "time"
+import (
+	"time"
 
-type Transport interface {
-	WriteJSON(interface{}) error
-	ReadJSON(interface{}) error
-	Close() error
-}
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
+)
 
 const (
-	stateReady = "ready"
-	stateBusy  = "busy"
-	stateError = "error"
+	StateReady        = "ready"
+	StateBusy         = "busy"
+	StateError        = "error"
+	StateDisconnected = "disconnected"
 )
 
 type Builder struct {
 	ID        string
+	Token     string
 	State     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	ws      Transport
-	Command *BuilderCtrlMessage
+	WS *phoenix.Server
 }

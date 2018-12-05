@@ -1,0 +1,27 @@
+[
+    {
+        "name": "velocityci_web",
+        "image": "civelocity/web:${version}",
+        "memoryReservation": 128,
+        "essential": true,
+        "portMappings": [
+            {
+                "containerPort": 80
+            }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "${logs_group}",
+                "awslogs-region": "${logs_region}",
+                "awslogs-stream-prefix": "web"
+            }
+        },
+        "environment": [
+            {
+                "Name": "ARCHITECT_ENDPOINT",
+                "Value": "${architect_address}"
+            }
+        ]
+    }
+]

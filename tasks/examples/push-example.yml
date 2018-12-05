@@ -1,0 +1,26 @@
+description: "Example pushing to Docker Hub"
+name: push-example
+
+parameters:
+  - name: docker_hub_username
+    secret: true
+  - name: docker_hub_password
+    secret: true
+
+docker:
+  registries:
+    - use: https://github.com/velocity-ci/registry-docker-hub/releases/download/v0.1.1/registry-docker-hub
+      arguments:
+        username: ${docker_hub_username}
+        password: ${docker_hub_password}
+
+steps: 
+  - type: build
+    context: ./backend
+    dockerfile: test.Dockerfile
+    tags:
+      - vjftw/test
+
+  - type: push
+    tags:
+      - vjftw/test
