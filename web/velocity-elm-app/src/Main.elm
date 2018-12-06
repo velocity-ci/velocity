@@ -15,6 +15,7 @@ import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, stri
 import Loading
 import Page exposing (Layout)
 import Page.Blank as BlankPage
+import Page.Build as BuildPage
 import Page.Home as HomePage
 import Page.Home.ActivePanel as ActivePanel
 import Page.Login as LoginPage
@@ -45,6 +46,7 @@ type Body
     | Home (HomePage.Model Msg)
     | Login (LoginPage.Model Msg)
     | Project (ProjectPage.Model Msg)
+    | Build (BuildPage.Model Msg)
 
 
 init : Maybe Viewer -> Result Decode.Error (Context Msg) -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -99,15 +101,8 @@ viewCurrentPage layout currentPage =
         Project page ->
             viewPage Page.Project GotProjectMsg (ProjectPage.view page)
 
-
-
---
---            case Project.findProject (Session.projects session) (ProjectPage.id page) of
---                Just project ->
---                    viewPage Page.Project GotProjectMsg (ProjectPage.view project)
---
---                Nothing ->
---                    viewPage Page.Other (always Ignored) NotFoundPage.view
+        Build page ->
+            viewPage Page.Build GotBuildMsg (BuildPage.view page)
 
 
 activityLog : Session -> Activity.ViewConfiguration
@@ -162,6 +157,7 @@ type Msg
     | GotHomeMsg HomePage.Msg
     | GotLoginMsg LoginPage.Msg
     | GotProjectMsg ProjectPage.Msg
+    | GotBuildMsg BuildPage.Msg
     | UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
     | WindowResized Int Int
@@ -189,6 +185,9 @@ toSession page =
         Project project ->
             ProjectPage.toSession project
 
+        Build build ->
+            BuildPage.toSession build
+
 
 toContext : Body -> Context Msg
 toContext page =
@@ -207,6 +206,9 @@ toContext page =
 
         Project project ->
             ProjectPage.toContext project
+
+        Build build ->
+            BuildPage.toContext build
 
 
 changeRouteTo : Maybe Route -> Body -> ( Body, Cmd Msg )
@@ -307,6 +309,10 @@ updatePage msg page =
             ProjectPage.update subMsg project
                 |> updateWith Project GotProjectMsg page
 
+        ( GotBuildMsg subMsg, Build build ) ->
+            BuildPage.update subMsg build
+                |> updateWith Build GotBuildMsg page
+
         ( UpdateSession task, _ ) ->
             ( page, Task.attempt UpdatedSession task )
 
@@ -355,6 +361,9 @@ updateContext context page =
         Project project ->
             Project { project | context = context }
 
+        Build build ->
+            Build { build | context = context }
+
 
 updateSession : Session -> Body -> Body
 updateSession session page =
@@ -373,6 +382,9 @@ updateSession session page =
 
         Project project ->
             Project { project | session = session }
+
+        Build build ->
+            Build { build | session = session }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -501,6 +513,9 @@ pageSubscriptions model =
 
                 Project project ->
                     Sub.map GotProjectMsg (ProjectPage.subscriptions project)
+
+                Build build ->
+                    Sub.map GotBuildMsg (BuildPage.subscriptions build)
 
         InitialHTTPRequests _ _ ->
             Sub.none

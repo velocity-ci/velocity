@@ -78,6 +78,7 @@ under Other.
 -}
 type Page
     = Other
+    | Build
     | Home
     | Login
     | Register
