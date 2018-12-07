@@ -5,6 +5,7 @@ import Element exposing (..)
 import Element.Font as Font
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Palette
+import Project.Build.Id as BuildId
 import Project.Id as ProjectId
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)
@@ -23,6 +24,10 @@ type Route
     | Login
     | Logout
     | Project ProjectId.Id
+
+
+
+--    | Build BuildId.Id
 
 
 parser : Parser (Route -> a) a

@@ -2,6 +2,7 @@ module Page.Build exposing (Model, Msg, init, subscriptions, toContext, toSessio
 
 import Context exposing (Context)
 import Element exposing (..)
+import Project.Build as Build
 import Project.Id exposing (Id)
 import Session exposing (Session)
 

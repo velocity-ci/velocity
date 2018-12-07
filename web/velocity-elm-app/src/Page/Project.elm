@@ -433,6 +433,20 @@ viewProjectBranchTab isSelected label =
              else
                 Palette.transparent
             )
+        , Border.shadow
+            { offset = ( 1, 1 )
+            , size = 1
+            , blur = 1
+            , color = Palette.neutral6
+            }
+        , Border.roundEach { topLeft = 5, topRight = 5, bottomLeft = 0, bottomRight = 0 }
+        , Border.color
+            (if isSelected then
+                Palette.neutral6
+
+             else
+                Palette.transparent
+            )
         ]
         (text label)
 
@@ -446,20 +460,29 @@ type alias Build =
     , task : String
     , commit : String
     , branch : String
+    , status : BuildStatus
     }
 
 
-persons : List Build
-persons =
+type BuildStatus
+    = Success
+    | Failure
+    | InProgress
+
+
+builds : List Build
+builds =
     [ { started = "March 8th, 8:30:47 PM"
       , task = "run-unit-tests"
       , commit = "sgb3rwgv"
       , branch = "master"
+      , status = Success
       }
     , { started = "March 20th, 1:23:11 AM"
       , task = "deploy-master"
       , commit = "sgb3rwgv"
       , branch = "develop"
+      , status = Failure
       }
     ]
 
@@ -468,19 +491,19 @@ viewProjectBuilds : Project -> Element Msg
 viewProjectBuilds project =
     column
         [ width fill
-
-        --        , Background.color Palette.white
-        --        , Border.shadow
-        --            { offset = ( 1, 1 )
-        --            , size = 1
-        --            , blur = 1
-        --            , color = Palette.neutral6
-        --            }
         , Border.rounded 5
+        , above viewProjectBranchTabs
+        , moveDown 50
         ]
-        [ viewProjectBranchTabs
-        , row
-            [ width fill
+        [ row
+            [ Background.color Palette.white
+            , Border.shadow
+                { offset = ( 1, 1 )
+                , size = 1
+                , blur = 1
+                , color = Palette.neutral6
+                }
+            , width fill
             , height fill
             , paddingXY 10 30
             , height (px 50)
@@ -492,7 +515,7 @@ viewProjectBuilds project =
                 [ width fill
                 , height fill
                 ]
-                { data = persons
+                { data = builds
                 , columns =
                     [ { header = viewTableHeader (text "Started")
                       , width = fillPortion 2
@@ -516,6 +539,29 @@ viewProjectBuilds project =
                                             , text ")"
                                             ]
                                         ]
+                                    )
+                                    i
+                      }
+                    , { header = viewTableHeader (text "Status")
+                      , width = fill
+                      , view =
+                            \i person ->
+                                viewTableCell
+                                    (case person.status of
+                                        Success ->
+                                            row [ Font.color Palette.success3, spacingXY 5 0 ]
+                                                [ el [ Font.heavy ] (Icon.check Icon.defaultOptions)
+                                                , text "Finished"
+                                                ]
+
+                                        Failure ->
+                                            row [ Font.color Palette.danger3, spacingXY 5 0 ]
+                                                [ el [ Font.heavy ] (Icon.x Icon.defaultOptions)
+                                                , text "Finished"
+                                                ]
+
+                                        InProgress ->
+                                            row [] [ text "In progress" ]
                                     )
                                     i
                       }
@@ -545,7 +591,7 @@ viewTableCell : Element msg -> Int -> Element msg
 viewTableCell contents i =
     let
         lastIndex =
-            List.length persons - 1
+            List.length builds - 1
 
         borders =
             if i == 0 then
