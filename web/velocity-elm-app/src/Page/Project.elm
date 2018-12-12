@@ -15,9 +15,9 @@ import Icon
 import Json.Decode as Decode
 import Palette
 import Project exposing (Project)
+import Project.Branch as Branch exposing (Branch)
 import Project.Id exposing (Id)
 import Session exposing (Session)
-
 
 
 -- Model
@@ -93,13 +93,12 @@ update msg model =
                 state =
                     if model.branchDropdown == BranchDropdown Open then
                         BranchDropdown Closed
-
                     else
                         BranchDropdown Open
             in
-            ( { model | branchDropdown = state }
-            , Cmd.none
-            )
+                ( { model | branchDropdown = state }
+                , Cmd.none
+                )
 
         BranchDropdownListenClicks ->
             ( { model | branchDropdown = BranchDropdown ListenClicks }
@@ -138,22 +137,14 @@ view model =
 
         projects =
             Session.projects model.session
-
-        maybeProject =
-            Project.findProject projects model.id
     in
-    { title = "Project page"
-    , content =
-        case maybeProject of
-            Just project ->
-                column [ width fill, height fill ]
-                    [ viewSubHeader device project model
-                    , viewBody device model project
-                    ]
-
-            Nothing ->
-                viewErrored
-    }
+        { title = "Project page"
+        , content =
+            column [ width fill, height fill ]
+                [ viewSubHeader device model
+                , viewBody device model
+                ]
+        }
 
 
 viewErrored : Element msg
@@ -165,24 +156,33 @@ viewErrored =
 -- SubHeader
 
 
-viewSubHeader : Device -> Project -> Model msg -> Element Msg
-viewSubHeader device project model =
-    case device.class of
-        Phone ->
-            viewMobileSubHeader project model
+viewSubHeader : Device -> Model msg -> Element Msg
+viewSubHeader device { session, id, branchDropdown } =
+    case Session.project id session of
+        Just project ->
+            let
+                branches =
+                    Session.branches (Project.id project) session
+            in
+                case device.class of
+                    Phone ->
+                        viewMobileSubHeader project branches branchDropdown
 
-        Tablet ->
-            viewDesktopSubHeader project model
+                    Tablet ->
+                        viewDesktopSubHeader project branches branchDropdown
 
-        Desktop ->
-            viewDesktopSubHeader project model
+                    Desktop ->
+                        viewDesktopSubHeader project branches branchDropdown
 
-        BigDesktop ->
-            viewDesktopSubHeader project model
+                    BigDesktop ->
+                        viewDesktopSubHeader project branches branchDropdown
+
+        Nothing ->
+            none
 
 
-viewMobileSubHeader : Project -> Model msg -> Element Msg
-viewMobileSubHeader project model =
+viewMobileSubHeader : Project -> List Branch -> BranchDropdown -> Element Msg
+viewMobileSubHeader project branches branchDropdown =
     row
         [ width fill
         , height shrink
@@ -198,7 +198,7 @@ viewMobileSubHeader project model =
             , color = Palette.neutral6
             }
         , below
-            (if model.branchDropdown == BranchDropdown ListenClicks then
+            (if branchDropdown == BranchDropdown ListenClicks then
                 el
                     [ width fill
                     , height (px 9999)
@@ -206,8 +206,7 @@ viewMobileSubHeader project model =
                     , Background.color Palette.neutral7
                     , Font.color Palette.primary5
                     ]
-                    viewBranchSelectDropdown
-
+                    (viewBranchSelectDropdown branches)
              else
                 none
             )
@@ -219,13 +218,13 @@ viewMobileSubHeader project model =
             , spaceEvenly
             ]
             [ el [ width fill, Font.alignLeft, paddingXY 20 0 ] (text <| Project.name project)
-            , el [ width fill, paddingXY 20 0 ] (viewBranchSelectButton fill model.branchDropdown)
+            , el [ width fill, paddingXY 20 0 ] (viewBranchSelectButton fill branchDropdown)
             ]
         ]
 
 
-viewDesktopSubHeader : Project -> Model msg -> Element Msg
-viewDesktopSubHeader project model =
+viewDesktopSubHeader : Project -> List Branch -> BranchDropdown -> Element Msg
+viewDesktopSubHeader project branches branchDropdown =
     row
         [ Font.bold
         , Font.size 18
@@ -249,7 +248,7 @@ viewDesktopSubHeader project model =
             , el
                 [ width fill
                 , below
-                    (if model.branchDropdown == BranchDropdown ListenClicks then
+                    (if branchDropdown == BranchDropdown ListenClicks then
                         column
                             [ width (fill |> maximum 600 |> minimum 400)
                             , alignRight
@@ -291,10 +290,9 @@ viewDesktopSubHeader project model =
                                         ]
                                         (Icon.x Icon.defaultOptions)
                                     ]
-                                , viewBranchSelectDropdown
+                                , viewBranchSelectDropdown branches
                                 ]
                             ]
-
                      else
                         none
                     )
@@ -302,7 +300,7 @@ viewDesktopSubHeader project model =
                 (el
                     [ alignRight
                     ]
-                    (viewBranchSelectButton shrink model.branchDropdown)
+                    (viewBranchSelectButton shrink branchDropdown)
                 )
             ]
         ]
@@ -312,24 +310,29 @@ viewDesktopSubHeader project model =
 -- Body
 
 
-viewBody : Device -> Model msg -> Project -> Element Msg
-viewBody device model project =
-    case device.class of
-        Phone ->
-            viewMobileBody model project
+viewBody : Device -> Model msg -> Element Msg
+viewBody device model =
+    case Session.project model.id model.session of
+        Just project ->
+            case device.class of
+                Phone ->
+                    viewMobileBody project
 
-        Tablet ->
-            viewDesktopBody model project
+                Tablet ->
+                    viewDesktopBody project
 
-        Desktop ->
-            viewDesktopBody model project
+                Desktop ->
+                    viewDesktopBody project
 
-        BigDesktop ->
-            viewBigDesktopBody model project
+                BigDesktop ->
+                    viewBigDesktopBody project
+
+        Nothing ->
+            none
 
 
-viewMobileBody : Model msg -> Project -> Element Msg
-viewMobileBody model project =
+viewMobileBody : Project -> Element Msg
+viewMobileBody project =
     column
         [ width fill
         , height fill
@@ -344,8 +347,8 @@ viewMobileBody model project =
         ]
 
 
-viewDesktopBody : Model msg -> Project -> Element Msg
-viewDesktopBody model project =
+viewDesktopBody : Project -> Element Msg
+viewDesktopBody project =
     column
         [ width fill
         , height fill
@@ -381,8 +384,8 @@ viewDesktopBody model project =
         ]
 
 
-viewBigDesktopBody : Model msg -> Project -> Element Msg
-viewBigDesktopBody model project =
+viewBigDesktopBody : Project -> Element Msg
+viewBigDesktopBody project =
     row
         [ height fill
         , Background.color Palette.neutral7
@@ -429,7 +432,6 @@ viewProjectBranchTab isSelected label =
         , Background.color
             (if isSelected then
                 Palette.white
-
              else
                 Palette.transparent
             )
@@ -443,7 +445,6 @@ viewProjectBranchTab isSelected label =
         , Border.color
             (if isSelected then
                 Palette.neutral6
-
              else
                 Palette.transparent
             )
@@ -519,17 +520,17 @@ viewProjectBuilds project =
                 , columns =
                     [ { header = viewTableHeader (text "Started")
                       , width = fillPortion 2
-                      , view = \i person -> viewTableCell (text person.started) i
+                      , view = \i person -> viewLeftTableCell (text person.started) i
                       }
                     , { header = viewTableHeader (text "Task")
                       , width = fill
-                      , view = \i person -> viewTableCell (text person.task) i
+                      , view = \i person -> viewLeftTableCell (text person.task) i
                       }
                     , { header = viewTableHeader (text "Commit")
                       , width = fill
                       , view =
                             \i person ->
-                                viewTableCell
+                                viewLeftTableCell
                                     (row []
                                         [ text person.commit
                                         , text " "
@@ -546,7 +547,7 @@ viewProjectBuilds project =
                       , width = fill
                       , view =
                             \i person ->
-                                viewTableCell
+                                viewLeftTableCell
                                     (case person.status of
                                         Success ->
                                             row [ Font.color Palette.success3, spacingXY 5 0 ]
@@ -564,6 +565,12 @@ viewProjectBuilds project =
                                             row [] [ text "In progress" ]
                                     )
                                     i
+                      }
+                    , { header = viewTableHeader (text "")
+                      , width = shrink
+                      , view =
+                            \i _ ->
+                                viewRightTableCell (el [] (Icon.arrowRight Icon.defaultOptions)) i
                       }
                     ]
                 }
@@ -587,8 +594,8 @@ viewTableHeader contents =
             contents
 
 
-viewTableCell : Element msg -> Int -> Element msg
-viewTableCell contents i =
+viewLeftTableCell : Element msg -> Int -> Element msg
+viewLeftTableCell contents i =
     let
         lastIndex =
             List.length builds - 1
@@ -596,23 +603,47 @@ viewTableCell contents i =
         borders =
             if i == 0 then
                 { top = 2, bottom = 1, left = 0, right = 0 }
-
             else if i == lastIndex then
                 { top = 0, bottom = 2, left = 0, right = 0 }
-
             else
                 { top = 0, bottom = 1, left = 0, right = 0 }
     in
-    el
-        [ width fill
-        , height (px 60)
-        , Border.widthEach borders
-        , Background.color Palette.neutral7
-        , Border.color Palette.neutral6
-        ]
-    <|
-        el [ centerY, paddingXY 10 0 ] <|
-            contents
+        el
+            [ width fill
+            , height (px 60)
+            , Border.widthEach borders
+            , Background.color Palette.neutral7
+            , Border.color Palette.neutral6
+            ]
+        <|
+            el [ centerY, paddingXY 10 0 ] <|
+                contents
+
+
+viewRightTableCell : Element msg -> Int -> Element msg
+viewRightTableCell contents i =
+    let
+        lastIndex =
+            List.length builds - 1
+
+        borders =
+            if i == 0 then
+                { top = 2, bottom = 1, left = 0, right = 0 }
+            else if i == lastIndex then
+                { top = 0, bottom = 2, left = 0, right = 0 }
+            else
+                { top = 0, bottom = 1, left = 0, right = 0 }
+    in
+        el
+            [ width fill
+            , height (px 60)
+            , Border.widthEach borders
+            , Background.color Palette.neutral7
+            , Border.color Palette.neutral6
+            ]
+        <|
+            el [ centerY, paddingXY 10 0, alignRight ] <|
+                contents
 
 
 
@@ -772,96 +803,96 @@ viewProjectHealthIcons project =
         iconOpts =
             { defaultOpts | size = 38 }
     in
-    column
-        [ width fill
-        , height fill
-        , Background.color Palette.white
-        , Border.shadow
-            { offset = ( 1, 1 )
-            , size = 1
-            , blur = 1
-            , color = Palette.neutral6
-            }
-        , Border.rounded 5
-        ]
-        [ el
-            [ Font.size 20
-            , width fill
-            , Font.alignLeft
-            , paddingXY 10 20
-            ]
-            (text "Tasks")
-        , row
+        column
             [ width fill
             , height fill
-            , Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
-            , Border.color Palette.neutral6
-            , paddingXY 10 10
-            , spacing 10
+            , Background.color Palette.white
+            , Border.shadow
+                { offset = ( 1, 1 )
+                , size = 1
+                , blur = 1
+                , color = Palette.neutral6
+                }
+            , Border.rounded 5
             ]
-            [ column
+            [ el
+                [ Font.size 20
+                , width fill
+                , Font.alignLeft
+                , paddingXY 10 20
+                ]
+                (text "Tasks")
+            , row
                 [ width fill
-                , height shrink
-                , paddingXY 0 20
-                , Font.size 15
-                , spacingXY 0 5
-                , height shrink
-                , centerY
-                , Border.width 1
-                , Border.rounded 10
-                , Border.color Palette.transparent
-                , pointer
-                , mouseOver
-                    [ Background.color Palette.neutral7
-                    , Border.color Palette.neutral6
+                , height fill
+                , Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
+                , Border.color Palette.neutral6
+                , paddingXY 10 10
+                , spacing 10
+                ]
+                [ column
+                    [ width fill
+                    , height shrink
+                    , paddingXY 0 20
+                    , Font.size 15
+                    , spacingXY 0 5
+                    , height shrink
+                    , centerY
+                    , Border.width 1
+                    , Border.rounded 10
+                    , Border.color Palette.transparent
+                    , pointer
+                    , mouseOver
+                        [ Background.color Palette.neutral7
+                        , Border.color Palette.neutral6
+                        ]
                     ]
-                ]
-                [ el [ Font.color Palette.success4, width shrink, centerX ] (Icon.checkCircle iconOpts)
-                , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "run-unit-tests")
-                , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "1 hour ago")
-                ]
-            , column
-                [ width fill
-                , paddingXY 0 20
-                , Font.size 15
-                , spacingXY 0 5
-                , height shrink
-                , centerY
-                , pointer
-                , mouseOver
-                    [ Background.color Palette.neutral7
-                    , Border.color Palette.neutral6
+                    [ el [ Font.color Palette.success4, width shrink, centerX ] (Icon.checkCircle iconOpts)
+                    , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "run-unit-tests")
+                    , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "1 hour ago")
                     ]
-                , Border.width 1
-                , Border.color Palette.transparent
-                , Border.rounded 10
-                ]
-                [ el [ Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle iconOpts)
-                , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "deploy-master")
-                , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "2 weeks ago")
-                ]
-            , column
-                [ width fill
-                , paddingXY 0 20
-                , Font.size 15
-                , spacingXY 0 5
-                , height shrink
-                , centerY
-                , pointer
-                , mouseOver
-                    [ Background.color Palette.neutral7
-                    , Border.color Palette.neutral6
+                , column
+                    [ width fill
+                    , paddingXY 0 20
+                    , Font.size 15
+                    , spacingXY 0 5
+                    , height shrink
+                    , centerY
+                    , pointer
+                    , mouseOver
+                        [ Background.color Palette.neutral7
+                        , Border.color Palette.neutral6
+                        ]
+                    , Border.width 1
+                    , Border.color Palette.transparent
+                    , Border.rounded 10
                     ]
-                , Border.width 1
-                , Border.color Palette.transparent
-                , Border.rounded 10
-                ]
-                [ el [ Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle iconOpts)
-                , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "build-containers")
-                , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "3 months ago")
+                    [ el [ Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle iconOpts)
+                    , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "deploy-master")
+                    , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "2 weeks ago")
+                    ]
+                , column
+                    [ width fill
+                    , paddingXY 0 20
+                    , Font.size 15
+                    , spacingXY 0 5
+                    , height shrink
+                    , centerY
+                    , pointer
+                    , mouseOver
+                        [ Background.color Palette.neutral7
+                        , Border.color Palette.neutral6
+                        ]
+                    , Border.width 1
+                    , Border.color Palette.transparent
+                    , Border.rounded 10
+                    ]
+                    [ el [ Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle iconOpts)
+                    , el [ Font.color Palette.neutral1, width shrink, centerX ] (text "build-containers")
+                    , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "3 months ago")
+                    ]
                 ]
             ]
-        ]
 
 
 
@@ -893,7 +924,6 @@ viewBranchSelectButton widthLength (BranchDropdown state) =
             , scheme =
                 if state == Closed then
                     Button.Secondary
-
                 else
                     Button.Primary
             , content =
@@ -910,8 +940,8 @@ viewBranchSelectButton widthLength (BranchDropdown state) =
         )
 
 
-viewBranchSelectDropdown : Element Msg
-viewBranchSelectDropdown =
+viewBranchSelectDropdown : List Branch -> Element Msg
+viewBranchSelectDropdown branches =
     column [ width fill ]
         [ row
             [ width fill
@@ -937,42 +967,56 @@ viewBranchSelectDropdown =
             [ width fill
             , paddingEach { top = 0, left = 0, right = 0, bottom = 0 }
             ]
-            [ row
-                [ Border.widthEach { top = 1, bottom = 0, right = 0, left = 0 }
-                , Border.color Palette.neutral6
-                , width fill
-                , padding 10
-                , Background.color Palette.white
-                , spacingXY 10 0
-                , Font.color Palette.neutral1
-                , pointer
-                , mouseOver
-                    [ Background.color Palette.primary4
-                    , Font.color Palette.neutral7
-                    ]
-                ]
-                [ el [ width shrink, centerY ] (Icon.check Icon.defaultOptions)
-                , el [ width fill, centerY, Font.alignLeft, clipX ] (text "master")
-                ]
-            , row
-                [ Border.widthEach { top = 1, bottom = 0, right = 0, left = 0 }
-                , Border.color Palette.neutral6
-                , width fill
-                , padding 10
-                , Background.color Palette.white
-                , spacingXY 10 0
-                , Font.color Palette.neutral1
-                , Border.roundEach { bottomLeft = 5, bottomRight = 5, topLeft = 0, topRight = 0 }
-                , pointer
-                , mouseOver
-                    [ Background.color Palette.primary4
-                    , Font.color Palette.neutral7
-                    ]
-                ]
-                [ el [ width (px 16), centerY ] none
-                , el [ width fill, centerY, Font.alignLeft, clipX ] (text "elm-upgrade")
-                ]
+            (List.indexedMap
+                (\i b ->
+                    let
+                        rounded =
+                            if i + 1 == List.length branches then
+                                { topLeft = 0
+                                , topRight = 0
+                                , bottomLeft = 5
+                                , bottomRight = 5
+                                }
+                            else
+                                { topLeft = 0
+                                , topRight = 0
+                                , bottomLeft = 0
+                                , bottomRight = 0
+                                }
+                    in
+                        viewBranchSelectDropdownItem rounded b
+                )
+                branches
+            )
+        ]
+
+
+viewBranchSelectDropdownItem :
+    { topLeft : Int
+    , topRight : Int
+    , bottomLeft : Int
+    , bottomRight : Int
+    }
+    -> Branch
+    -> Element Msg
+viewBranchSelectDropdownItem rounded branch =
+    row
+        [ Border.widthEach { top = 1, bottom = 0, right = 0, left = 0 }
+        , Border.color Palette.neutral6
+        , width fill
+        , padding 10
+        , Background.color Palette.white
+        , spacingXY 10 0
+        , Font.color Palette.neutral1
+        , Border.roundEach rounded
+        , pointer
+        , mouseOver
+            [ Background.color Palette.primary4
+            , Font.color Palette.neutral7
             ]
+        ]
+        [ el [ width (px 16), centerY ] none
+        , el [ width fill, centerY, Font.alignLeft, clipX ] (Branch.text branch)
         ]
 
 

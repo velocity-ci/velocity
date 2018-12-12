@@ -1,4 +1,4 @@
-module Project.Task exposing (Task)
+module Project.Task exposing (Task, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, optional, required)

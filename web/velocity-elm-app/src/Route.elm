@@ -14,7 +14,6 @@ import Url.Parser.Query as Query
 import Username exposing (Username)
 
 
-
 -- ROUTING
 
 
@@ -24,10 +23,7 @@ type Route
     | Login
     | Logout
     | Project ProjectId.Id
-
-
-
---    | Build BuildId.Id
+    | Build BuildId.Id
 
 
 parser : Parser (Route -> a) a
@@ -37,6 +33,7 @@ parser =
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
         , Parser.map Project (s "project" </> ProjectId.urlParser)
+        , Parser.map Build (s "build" </> BuildId.urlParser)
         ]
 
 
@@ -98,7 +95,10 @@ routePieces page =
             ( [ "logout" ], [] )
 
         Project id ->
-            ( [ "project", ProjectId.toString id ], [] )
+            ( ProjectId.routePieces id, [] )
+
+        Build id ->
+            ( [ "build", BuildId.toString id ], [] )
 
 
 routeToString : Route -> String
@@ -107,4 +107,4 @@ routeToString page =
         ( urlPieces, queryPieces ) =
             routePieces page
     in
-    "/" ++ String.join "/" urlPieces ++ Url.Builder.toQuery queryPieces
+        "/" ++ String.join "/" urlPieces ++ Url.Builder.toQuery queryPieces

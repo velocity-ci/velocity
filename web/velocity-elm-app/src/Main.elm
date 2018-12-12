@@ -30,7 +30,6 @@ import Url exposing (Url)
 import Viewer exposing (Viewer)
 
 
-
 ---- MODEL ----
 
 
@@ -85,24 +84,24 @@ viewCurrentPage layout currentPage =
                 , log = activityLog session
                 }
     in
-    case currentPage of
-        Redirect _ _ ->
-            viewPage Page.Other (always Ignored) BlankPage.view
+        case currentPage of
+            Redirect _ _ ->
+                viewPage Page.Other (always Ignored) BlankPage.view
 
-        NotFound _ _ ->
-            viewPage Page.Other (always Ignored) NotFoundPage.view
+            NotFound _ _ ->
+                viewPage Page.Other (always Ignored) NotFoundPage.view
 
-        Home page ->
-            viewPage Page.Home GotHomeMsg (HomePage.view page)
+            Home page ->
+                viewPage Page.Home GotHomeMsg (HomePage.view page)
 
-        Login page ->
-            viewPage Page.Login GotLoginMsg (LoginPage.view page)
+            Login page ->
+                viewPage Page.Login GotLoginMsg (LoginPage.view page)
 
-        Project page ->
-            viewPage Page.Project GotProjectMsg (ProjectPage.view page)
+            Project page ->
+                viewPage Page.Project GotProjectMsg (ProjectPage.view page)
 
-        Build page ->
-            viewPage Page.Build GotBuildMsg (BuildPage.view page)
+            Build page ->
+                viewPage Page.Build GotBuildMsg (BuildPage.view page)
 
 
 activityLog : Session -> Activity.ViewConfiguration
@@ -220,52 +219,63 @@ changeRouteTo maybeRoute currentPage =
         context =
             toContext currentPage
     in
-    case maybeRoute of
-        Nothing ->
-            ( NotFound session context, Cmd.none )
+        case maybeRoute of
+            Nothing ->
+                ( NotFound session context, Cmd.none )
 
-        Just Route.Root ->
-            ( currentPage
-            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-            )
+            Just (Route.Root) ->
+                ( currentPage
+                , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+                )
 
-        Just Route.Logout ->
-            ( Redirect session context
-            , Api.logout
-            )
+            Just (Route.Logout) ->
+                ( Redirect session context
+                , Api.logout
+                )
 
-        Just (Route.Home activePanel) ->
-            case Session.viewer session of
-                Nothing ->
-                    ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) Route.Login
-                    )
+            Just (Route.Home activePanel) ->
+                case Session.viewer session of
+                    Nothing ->
+                        ( Redirect session context
+                        , Route.replaceUrl (Session.navKey session) Route.Login
+                        )
 
-                Just _ ->
-                    HomePage.init session context activePanel
-                        |> updateWith Home GotHomeMsg currentPage
+                    Just _ ->
+                        HomePage.init session context activePanel
+                            |> updateWith Home GotHomeMsg currentPage
 
-        Just Route.Login ->
-            case Session.viewer session of
-                Just _ ->
-                    ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-                    )
+            Just (Route.Login) ->
+                case Session.viewer session of
+                    Just _ ->
+                        ( Redirect session context
+                        , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+                        )
 
-                Nothing ->
-                    LoginPage.init session context
-                        |> updateWith Login GotLoginMsg currentPage
+                    Nothing ->
+                        LoginPage.init session context
+                            |> updateWith Login GotLoginMsg currentPage
 
-        Just (Route.Project id) ->
-            case Session.viewer session of
-                Nothing ->
-                    ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) Route.Login
-                    )
+            Just (Route.Build id) ->
+                case Session.viewer session of
+                    Nothing ->
+                        ( Redirect session context
+                        , Route.replaceUrl (Session.navKey session) Route.Login
+                        )
 
-                Just _ ->
-                    ProjectPage.init session context id
-                        |> updateWith Project GotProjectMsg currentPage
+                    Just _ ->
+                        BuildPage.init session context id
+                            |> updateWith Build GotBuildMsg currentPage
+
+            Just (Route.Project id) ->
+                case Session.viewer session of
+                    Nothing ->
+                        ( Redirect session context
+                        , Route.replaceUrl (Session.navKey session) Route.Login
+                        )
+
+                    Just _ ->
+                        ProjectPage.init session context id
+                            |> updateWith Project GotProjectMsg currentPage
 
 
 updatePage : Msg -> Body -> ( Body, Cmd Msg )
@@ -334,9 +344,9 @@ updatePage msg page =
                 ( context, socketCmd ) =
                     Context.updateSocket subMsg (toContext page)
             in
-            ( updateContext context page
-            , Cmd.map SocketMsg socketCmd
-            )
+                ( updateContext context page
+                , Cmd.map SocketMsg socketCmd
+                )
 
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
@@ -411,9 +421,9 @@ update msg model =
                                 |> updateSession session
                                 |> updateContext updatedContext
                     in
-                    ( ApplicationStarted header updatedPage
-                    , Cmd.map SocketMsg socketCmd
-                    )
+                        ( ApplicationStarted header updatedPage
+                        , Cmd.map SocketMsg socketCmd
+                        )
 
                 SetSession session ->
                     ( ApplicationStarted header (updateSession session page)
@@ -431,9 +441,9 @@ update msg model =
                         ( context, socketCmd ) =
                             Session.joinChannels (toSession app) SocketUpdate (toContext app)
                     in
-                    ( ApplicationStarted Page.initLayout (updateContext context app)
-                    , Cmd.map SocketMsg socketCmd
-                    )
+                        ( ApplicationStarted Page.initLayout (updateContext context app)
+                        , Cmd.map SocketMsg socketCmd
+                        )
 
                 StartApplication (Err err) ->
                     ( InitError (Session.errorToString err)

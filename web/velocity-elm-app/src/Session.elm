@@ -1,22 +1,25 @@
-module Session exposing
-    ( InitError
-    , Session
-    , SocketUpdate
-    , addKnownHost
-    , addProject
-    , changes
-    , cred
-    , errorToString
-    , fromViewer
-    , joinChannels
-    , joinProjectChannel
-    , knownHosts
-    , log
-    , navKey
-    , projects
-    , socketUpdate
-    , viewer
-    )
+module Session
+    exposing
+        ( InitError
+        , Session
+        , SocketUpdate
+        , addKnownHost
+        , addProject
+        , branches
+        , changes
+        , cred
+        , errorToString
+        , fromViewer
+        , joinChannels
+        , joinProjectChannel
+        , knownHosts
+        , log
+        , navKey
+        , project
+        , projects
+        , socketUpdate
+        , viewer
+        )
 
 import Activity
 import Api exposing (BaseUrl, Cred)
@@ -28,9 +31,10 @@ import KnownHost exposing (KnownHost)
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Socket as Socket exposing (Socket)
 import Project exposing (Project)
+import Project.Branch as Branch exposing (Branch)
+import Project.Id
 import Task exposing (Task)
 import Viewer exposing (Viewer)
-
 
 
 -- TYPES
@@ -45,6 +49,7 @@ type alias LoggedInInternals =
     { navKey : Nav.Key
     , viewer : Viewer
     , projects : List Project
+    , branches : Project.Id.Dict (List Branch)
     , knownHosts : List KnownHost
     , log : Activity.Log
     }
@@ -84,6 +89,16 @@ addKnownHost knownHost session =
             session
 
 
+project : Project.Id.Id -> Session -> Maybe Project
+project projectId session =
+    case session of
+        LoggedIn internals ->
+            Project.findProject internals.projects projectId
+
+        Guest _ ->
+            Nothing
+
+
 projects : Session -> List Project
 projects session =
     case session of
@@ -94,11 +109,22 @@ projects session =
             []
 
 
-addProject : Project -> Session -> Session
-addProject project session =
+branches : Project.Id.Id -> Session -> List Branch
+branches projectId session =
     case session of
         LoggedIn internals ->
-            LoggedIn { internals | projects = Project.addProject project internals.projects }
+            Project.Id.get projectId internals.branches
+                |> Maybe.withDefault []
+
+        Guest _ ->
+            []
+
+
+addProject : Project -> Session -> Session
+addProject p session =
+    case session of
+        LoggedIn internals ->
+            LoggedIn { internals | projects = Project.addProject p internals.projects }
 
         Guest _ ->
             session
@@ -192,18 +218,18 @@ joinChannels session toMsg context =
                 ( projectJoinedContext, projectsChannelCmd ) =
                     joinProjectsChannel { cred_ = cred_, toMsg = toMsg, context_ = context }
             in
-            internals.projects
-                |> List.foldl
-                    (\project ( context_, cmd_ ) ->
-                        let
-                            ( updatedContext, newCmd ) =
-                                joinProjectChannel { cred_ = cred_, toMsg = toMsg, context_ = context_ } project
-                        in
-                        ( updatedContext
-                        , Cmd.batch [ cmd_, newCmd ]
+                internals.projects
+                    |> List.foldl
+                        (\p ( context_, cmd_ ) ->
+                            let
+                                ( updatedContext, newCmd ) =
+                                    joinProjectChannel { cred_ = cred_, toMsg = toMsg, context_ = context_ } p
+                            in
+                                ( updatedContext
+                                , Cmd.batch [ cmd_, newCmd ]
+                                )
                         )
-                    )
-                    ( projectJoinedContext, projectsChannelCmd )
+                        ( projectJoinedContext, projectsChannelCmd )
 
 
 joinProjectsChannel :
@@ -220,18 +246,18 @@ joinProjectsChannel { cred_, toMsg, context_ } =
                 |> Maybe.map (ProjectAdded >> toMsg)
                 |> Maybe.withDefault (toMsg NoOp)
     in
-    Context.on "project:new" channelName decoder context_
-        |> Context.joinChannel (Channel.init channelName) cred_
+        Context.on "project:new" channelName decoder context_
+            |> Context.joinChannel (Channel.init channelName) cred_
 
 
 joinProjectChannel :
     { cred_ : Cred, toMsg : SocketUpdate -> msg, context_ : Context msg }
     -> Project
     -> ( Context msg, Cmd (Socket.Msg msg) )
-joinProjectChannel { cred_, toMsg, context_ } project =
+joinProjectChannel { cred_, toMsg, context_ } p =
     let
         channelName =
-            Project.channelName project
+            Project.channelName p
 
         decoder encodedValue =
             Decode.decodeValue Project.decoder encodedValue
@@ -239,8 +265,8 @@ joinProjectChannel { cred_, toMsg, context_ } project =
                 |> Maybe.map (ProjectUpdated >> toMsg)
                 |> Maybe.withDefault (toMsg NoOp)
     in
-    Context.on "project:update" channelName decoder context_
-        |> Context.joinChannel (Project.channel project) cred_
+        Context.on "project:update" channelName decoder context_
+            |> Context.joinChannel (Project.channel p) cred_
 
 
 socketUpdate : SocketUpdate -> (SocketUpdate -> msg) -> Context msg -> Session -> ( Session, Context msg, Cmd (Socket.Msg msg) )
@@ -248,28 +274,28 @@ socketUpdate update toMsg context session =
     case session of
         LoggedIn internals ->
             case update of
-                ProjectUpdated project ->
-                    ( LoggedIn { internals | projects = Project.updateProject project internals.projects }
+                ProjectUpdated p ->
+                    ( LoggedIn { internals | projects = Project.updateProject p internals.projects }
                     , context
                     , Cmd.none
                     )
 
-                ProjectAdded project ->
+                ProjectAdded p ->
                     let
                         credVal =
                             Viewer.cred internals.viewer
 
                         ( updatedContext, joinCmd ) =
-                            joinProjectChannel { cred_ = credVal, toMsg = toMsg, context_ = context } project
+                            joinProjectChannel { cred_ = credVal, toMsg = toMsg, context_ = context } p
                     in
-                    ( LoggedIn
-                        { internals
-                            | projects = Project.addProject project internals.projects
-                            , log = Activity.projectAdded (Project.id project) internals.log
-                        }
-                    , updatedContext
-                    , joinCmd
-                    )
+                        ( LoggedIn
+                            { internals
+                                | projects = Project.addProject p internals.projects
+                                , log = Activity.projectAdded (Project.id p) internals.log
+                            }
+                        , updatedContext
+                        , joinCmd
+                        )
 
                 NoOp ->
                     ( session, context, Cmd.none )
@@ -287,31 +313,58 @@ fromViewer key context maybeViewer =
     case maybeViewer of
         Just viewerVal ->
             let
+                baseUrl =
+                    Context.baseUrl context
+
                 credVal =
                     Viewer.cred viewerVal
 
                 projectsRequest =
-                    Project.list credVal (Context.baseUrl context)
+                    Project.list credVal baseUrl
                         |> Http.toTask
+                        |> Task.andThen
+                            (\projectsResponse ->
+                                projectsResponse
+                                    |> List.map
+                                        (\p ->
+                                            Branch.list credVal baseUrl (Project.slug p)
+                                                |> Http.toTask
+                                                |> Task.andThen
+                                                    (\b ->
+                                                        Task.succeed { project = p, branches = b }
+                                                    )
+                                        )
+                                    |> Task.sequence
+                            )
                         |> Task.mapError HttpError
 
                 knownHostsRequest =
-                    KnownHost.list credVal (Context.baseUrl context)
+                    KnownHost.list credVal baseUrl
                         |> Http.toTask
                         |> Task.mapError HttpError
             in
-            Task.map2
-                (\projects_ knownHosts_ ->
-                    LoggedIn <|
-                        { navKey = key
-                        , viewer = viewerVal
-                        , projects = projects_
-                        , knownHosts = knownHosts_
-                        , log = Activity.init
-                        }
-                )
-                projectsRequest
-                knownHostsRequest
+                Task.map2
+                    (\projects_ knownHosts_ ->
+                        let
+                            branches_ =
+                                projects_
+                                    |> List.foldl
+                                        (\e acc ->
+                                            Project.Id.insert (Project.id e.project) e.branches acc
+                                        )
+                                        Project.Id.empty
+                        in
+                            LoggedIn <|
+                                { navKey = key
+                                , viewer = viewerVal
+                                , projects = List.map .project projects_
+                                , branches = branches_
+                                , knownHosts = knownHosts_
+                                , log = Activity.init
+                                }
+                    )
+                    projectsRequest
+                    knownHostsRequest
 
         Nothing ->
             Task.succeed (Guest key)

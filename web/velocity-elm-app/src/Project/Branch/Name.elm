@@ -1,5 +1,6 @@
-module Project.Branch.Name exposing (Name, decoder, urlParser)
+module Project.Branch.Name exposing (Name, decoder, text, urlParser)
 
+import Element exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
 
@@ -9,6 +10,15 @@ import Url.Parser exposing (Parser)
 
 type Name
     = Name String
+
+
+
+-- INFO
+
+
+text : Name -> Element msg
+text (Name str) =
+    Element.text str
 
 
 
