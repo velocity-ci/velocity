@@ -1,11 +1,13 @@
-module Project.Build exposing (Build, decoder)
+module Project.Build exposing (Build, decoder, list)
 
 import Api exposing (BaseUrl, Cred)
+import Api.Endpoint as Endpoint
 import Http
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)
 import Json.Encode as Encode
+import PaginatedList exposing (PaginatedList)
 import Project.Build.Id as Id exposing (Id)
 import Project.Build.Status as Status exposing (Status)
 import Project.Build.Step as Step exposing (Step)
@@ -55,12 +57,13 @@ internalsDecoder =
 
 
 -- COLLECTION --
---
---list : Cred -> BaseUrl -> ProjectSlug.Slug -> Http.Request (List Build)
---list cred baseUrl projectSlug =
---    let
---        endpoint =
---            Endpoint.branches (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
---    in
---        Decode.field "data" (Decode.list decoder)
---            |> Api.get endpoint (Just cred)
+
+
+list : Cred -> BaseUrl -> ProjectSlug.Slug -> Http.Request (PaginatedList Build)
+list cred baseUrl projectSlug =
+    let
+        endpoint =
+            Endpoint.builds (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
+    in
+    PaginatedList.decoder decoder
+        |> Api.get endpoint (Just cred)

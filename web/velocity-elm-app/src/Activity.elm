@@ -180,4 +180,4 @@ projectFromCategory : List Project -> CategoryProject -> Maybe Project
 projectFromCategory projects category =
     case category of
         ProjectAdded projectId ->
-            Project.findProject projects projectId
+            Project.findProjectById projects projectId

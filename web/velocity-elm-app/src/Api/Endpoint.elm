@@ -1,16 +1,16 @@
-module Api.Endpoint
-    exposing
-        ( CollectionOptions
-        , Endpoint
-        , branches
-        , fromString
-        , knownHosts
-        , login
-        , projectSync
-        , projects
-        , request
-        , toWs
-        )
+module Api.Endpoint exposing
+    ( CollectionOptions
+    , Endpoint
+    , branches
+    , builds
+    , fromString
+    , knownHosts
+    , login
+    , projectSync
+    , projects
+    , request
+    , toWs
+    )
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -76,6 +76,7 @@ toWs : Endpoint -> String
 toWs (Endpoint apiUrlBase) =
     if String.startsWith "http" apiUrlBase then
         "ws" ++ String.dropLeft 4 apiUrlBase
+
     else
         -- Not an http API URL - this will fail pretty quickly
         apiUrlBase
@@ -102,6 +103,16 @@ branches opts baseUrl projectSlug =
         [ "projects"
         , Project.Slug.toString projectSlug
         , "branches"
+        ]
+        (collectionParams opts)
+
+
+builds : Maybe CollectionOptions -> Endpoint -> Project.Slug.Slug -> Endpoint
+builds opts baseUrl projectSlug =
+    url baseUrl
+        [ "projects"
+        , Project.Slug.toString projectSlug
+        , "builds"
         ]
         (collectionParams opts)
 

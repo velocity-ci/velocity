@@ -1,18 +1,18 @@
-module Project.Id
-    exposing
-        ( Dict
-        , Id
-        , decoder
-        , empty
-        , get
-        , insert
-        , routePieces
-        , urlParser
-        )
+module Project.Id exposing
+    ( Dict
+    , Id
+    , decoder
+    , empty
+    , get
+    , insert
+    , routePieces
+    , urlParser
+    )
 
 import Dict as BaseDict
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+
 
 
 -- TYPES
@@ -41,7 +41,7 @@ decoder =
 
 
 
--- TRANSFORM
+-- ROUTE
 
 
 routePieces : Id -> List String

@@ -1,6 +1,7 @@
 module Icon exposing
     ( Options
     , SizeUnit(..)
+    , alertCircle
     , arrowDown
     , arrowLeft
     , arrowRight
@@ -25,6 +26,7 @@ module Icon exposing
     , plusCircle
     , search
     , settings
+    , size
     , sun
     , uploadCloud
     , x
@@ -74,8 +76,21 @@ fullSizeOptions =
     }
 
 
+size : Float -> Options
+size size_ =
+    { size = size_
+    , strokeWidth = 1
+    , sizeUnit = Pixels
+    }
+
+
 
 -- Icons
+
+
+alertCircle : Options -> Element msg
+alertCircle =
+    featherIcon FeatherIcons.alertCircle
 
 
 logOut : Options -> Element msg
@@ -218,10 +233,10 @@ cloudLightning =
 
 
 featherIcon : FeatherIcons.Icon -> Options -> Element msg
-featherIcon icon { size, strokeWidth, sizeUnit } =
+featherIcon icon opts =
     icon
-        |> FeatherIcons.withSize size
-        |> FeatherIcons.withStrokeWidth strokeWidth
-        |> FeatherIcons.withSizeUnit (sizeUnitToString sizeUnit)
+        |> FeatherIcons.withSize opts.size
+        |> FeatherIcons.withStrokeWidth opts.strokeWidth
+        |> FeatherIcons.withSizeUnit (sizeUnitToString opts.sizeUnit)
         |> FeatherIcons.toHtml []
         |> Element.html

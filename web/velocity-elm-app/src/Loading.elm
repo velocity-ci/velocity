@@ -45,7 +45,7 @@ loaderSvg =
                 , cy conf.cy
                 , r "5"
                 , fillOpacity conf.fillOpacity
-                , fill "#0078c6"
+                , fill "currentColor"
                 ]
                 [ animate
                     [ attributeName "fill-opacity"

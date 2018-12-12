@@ -1,25 +1,25 @@
-module Session
-    exposing
-        ( InitError
-        , Session
-        , SocketUpdate
-        , addKnownHost
-        , addProject
-        , branches
-        , changes
-        , cred
-        , errorToString
-        , fromViewer
-        , joinChannels
-        , joinProjectChannel
-        , knownHosts
-        , log
-        , navKey
-        , project
-        , projects
-        , socketUpdate
-        , viewer
-        )
+module Session exposing
+    ( InitError
+    , Session
+    , SocketUpdate
+    , addKnownHost
+    , addProject
+    , branches
+    , changes
+    , cred
+    , errorToString
+    , fromViewer
+    , joinChannels
+    , joinProjectChannel
+    , knownHosts
+    , log
+    , navKey
+    , projectWithId
+    , projectWithSlug
+    , projects
+    , socketUpdate
+    , viewer
+    )
 
 import Activity
 import Api exposing (BaseUrl, Cred)
@@ -33,8 +33,10 @@ import Phoenix.Socket as Socket exposing (Socket)
 import Project exposing (Project)
 import Project.Branch as Branch exposing (Branch)
 import Project.Id
+import Project.Slug
 import Task exposing (Task)
 import Viewer exposing (Viewer)
+
 
 
 -- TYPES
@@ -89,11 +91,21 @@ addKnownHost knownHost session =
             session
 
 
-project : Project.Id.Id -> Session -> Maybe Project
-project projectId session =
+projectWithId : Project.Id.Id -> Session -> Maybe Project
+projectWithId projectId session =
     case session of
         LoggedIn internals ->
-            Project.findProject internals.projects projectId
+            Project.findProjectById internals.projects projectId
+
+        Guest _ ->
+            Nothing
+
+
+projectWithSlug : Project.Slug.Slug -> Session -> Maybe Project
+projectWithSlug projectSlug session =
+    case session of
+        LoggedIn internals ->
+            Project.findProjectBySlug internals.projects projectSlug
 
         Guest _ ->
             Nothing
@@ -218,18 +230,18 @@ joinChannels session toMsg context =
                 ( projectJoinedContext, projectsChannelCmd ) =
                     joinProjectsChannel { cred_ = cred_, toMsg = toMsg, context_ = context }
             in
-                internals.projects
-                    |> List.foldl
-                        (\p ( context_, cmd_ ) ->
-                            let
-                                ( updatedContext, newCmd ) =
-                                    joinProjectChannel { cred_ = cred_, toMsg = toMsg, context_ = context_ } p
-                            in
-                                ( updatedContext
-                                , Cmd.batch [ cmd_, newCmd ]
-                                )
+            internals.projects
+                |> List.foldl
+                    (\p ( context_, cmd_ ) ->
+                        let
+                            ( updatedContext, newCmd ) =
+                                joinProjectChannel { cred_ = cred_, toMsg = toMsg, context_ = context_ } p
+                        in
+                        ( updatedContext
+                        , Cmd.batch [ cmd_, newCmd ]
                         )
-                        ( projectJoinedContext, projectsChannelCmd )
+                    )
+                    ( projectJoinedContext, projectsChannelCmd )
 
 
 joinProjectsChannel :
@@ -246,8 +258,8 @@ joinProjectsChannel { cred_, toMsg, context_ } =
                 |> Maybe.map (ProjectAdded >> toMsg)
                 |> Maybe.withDefault (toMsg NoOp)
     in
-        Context.on "project:new" channelName decoder context_
-            |> Context.joinChannel (Channel.init channelName) cred_
+    Context.on "project:new" channelName decoder context_
+        |> Context.joinChannel (Channel.init channelName) cred_
 
 
 joinProjectChannel :
@@ -265,8 +277,8 @@ joinProjectChannel { cred_, toMsg, context_ } p =
                 |> Maybe.map (ProjectUpdated >> toMsg)
                 |> Maybe.withDefault (toMsg NoOp)
     in
-        Context.on "project:update" channelName decoder context_
-            |> Context.joinChannel (Project.channel p) cred_
+    Context.on "project:update" channelName decoder context_
+        |> Context.joinChannel (Project.channel p) cred_
 
 
 socketUpdate : SocketUpdate -> (SocketUpdate -> msg) -> Context msg -> Session -> ( Session, Context msg, Cmd (Socket.Msg msg) )
@@ -288,14 +300,14 @@ socketUpdate update toMsg context session =
                         ( updatedContext, joinCmd ) =
                             joinProjectChannel { cred_ = credVal, toMsg = toMsg, context_ = context } p
                     in
-                        ( LoggedIn
-                            { internals
-                                | projects = Project.addProject p internals.projects
-                                , log = Activity.projectAdded (Project.id p) internals.log
-                            }
-                        , updatedContext
-                        , joinCmd
-                        )
+                    ( LoggedIn
+                        { internals
+                            | projects = Project.addProject p internals.projects
+                            , log = Activity.projectAdded (Project.id p) internals.log
+                        }
+                    , updatedContext
+                    , joinCmd
+                    )
 
                 NoOp ->
                     ( session, context, Cmd.none )
@@ -343,28 +355,28 @@ fromViewer key context maybeViewer =
                         |> Http.toTask
                         |> Task.mapError HttpError
             in
-                Task.map2
-                    (\projects_ knownHosts_ ->
-                        let
-                            branches_ =
-                                projects_
-                                    |> List.foldl
-                                        (\e acc ->
-                                            Project.Id.insert (Project.id e.project) e.branches acc
-                                        )
-                                        Project.Id.empty
-                        in
-                            LoggedIn <|
-                                { navKey = key
-                                , viewer = viewerVal
-                                , projects = List.map .project projects_
-                                , branches = branches_
-                                , knownHosts = knownHosts_
-                                , log = Activity.init
-                                }
-                    )
-                    projectsRequest
-                    knownHostsRequest
+            Task.map2
+                (\projects_ knownHosts_ ->
+                    let
+                        branches_ =
+                            projects_
+                                |> List.foldl
+                                    (\e acc ->
+                                        Project.Id.insert (Project.id e.project) e.branches acc
+                                    )
+                                    Project.Id.empty
+                    in
+                    LoggedIn <|
+                        { navKey = key
+                        , viewer = viewerVal
+                        , projects = List.map .project projects_
+                        , branches = branches_
+                        , knownHosts = knownHosts_
+                        , log = Activity.init
+                        }
+                )
+                projectsRequest
+                knownHostsRequest
 
         Nothing ->
             Task.succeed (Guest key)

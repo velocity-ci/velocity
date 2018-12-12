@@ -696,7 +696,7 @@ viewProjectPanel project =
                     , spacingXY 10 0
                     ]
                     [ paragraph [ width fill ]
-                        [ Route.link [ width fill, clip ] (text <| Project.name project) (Route.Project <| Project.id project)
+                        [ Route.link [ width fill, clip ] (text <| Project.name project) (Route.Project <| Project.slug project)
                         ]
                     , viewIf (Project.syncing project) <| column [ width shrink ] [ Loading.icon { width = 20, height = 20 } ]
                     ]

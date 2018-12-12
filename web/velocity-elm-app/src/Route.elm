@@ -6,12 +6,13 @@ import Element.Font as Font
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Palette
 import Project.Build.Id as BuildId
-import Project.Id as ProjectId
+import Project.Slug
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
 import Url.Parser.Query as Query
 import Username exposing (Username)
+
 
 
 -- ROUTING
@@ -22,7 +23,7 @@ type Route
     | Root
     | Login
     | Logout
-    | Project ProjectId.Id
+    | Project Project.Slug.Slug
     | Build BuildId.Id
 
 
@@ -32,7 +33,7 @@ parser =
         [ Parser.map Home (Parser.top <?> ActivePanel.queryParser)
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
-        , Parser.map Project (s "project" </> ProjectId.urlParser)
+        , Parser.map Project (s "project" </> Project.Slug.urlParser)
         , Parser.map Build (s "build" </> BuildId.urlParser)
         ]
 
@@ -94,8 +95,8 @@ routePieces page =
         Logout ->
             ( [ "logout" ], [] )
 
-        Project id ->
-            ( ProjectId.routePieces id, [] )
+        Project slug ->
+            ( Project.Slug.routePieces slug, [] )
 
         Build id ->
             ( [ "build", BuildId.toString id ], [] )
@@ -107,4 +108,4 @@ routeToString page =
         ( urlPieces, queryPieces ) =
             routePieces page
     in
-        "/" ++ String.join "/" urlPieces ++ Url.Builder.toQuery queryPieces
+    "/" ++ String.join "/" urlPieces ++ Url.Builder.toQuery queryPieces
