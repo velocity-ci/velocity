@@ -535,26 +535,6 @@ viewConfigureProjectPanel { gitUrl, projectName } =
                         ]
                         [ text gitUrl.source ]
                     ]
-                , wrappedRow [ height shrink, width fill, spacing 10 ]
-                    [ paragraph [ width (fillPortion 2), Font.alignRight ] [ text "Repo" ]
-                    , paragraph
-                        [ width (fillPortion 10)
-                        , padding 10
-                        , Font.alignLeft
-                        , Font.color Palette.neutral3
-                        ]
-                        [ text gitUrl.pathName ]
-                    ]
-                , wrappedRow [ height shrink, width fill, spacing 10 ]
-                    [ paragraph [ width (fillPortion 2), Font.alignRight ] [ text "Public" ]
-                    , paragraph
-                        [ width (fillPortion 10)
-                        , padding 10
-                        , Font.alignLeft
-                        , Font.color Palette.neutral3
-                        ]
-                        [ text "Yes" ]
-                    ]
                 ]
             ]
         , row [ width fill, spacingXY 10 0, paddingEach { top = 20, bottom = 0, left = 0, right = 0 } ]
@@ -698,7 +678,7 @@ viewProjectPanel project =
                     [ paragraph [ width fill ]
                         [ Route.link [ width fill, clip ] (text <| Project.name project) (Route.Project <| Project.slug project)
                         ]
-                    , viewIf (Project.syncing project) <| column [ width shrink ] [ Loading.icon { width = 20, height = 20 } ]
+                    , viewIf (Project.syncing project) <| column [ width shrink, Font.color Palette.primary1 ] [ Loading.icon { width = 20, height = 20 } ]
                     ]
                 , column
                     [ paddingEach { bottom = 0, left = 0, right = 0, top = 10 }
