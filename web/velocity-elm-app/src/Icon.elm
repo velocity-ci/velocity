@@ -19,6 +19,7 @@ module Icon exposing
     , gitPullRequest
     , github
     , gitlab
+    , info
     , link
     , link2
     , logOut
@@ -181,6 +182,11 @@ link =
 link2 : Options -> Element msg
 link2 =
     featherIcon FeatherIcons.link2
+
+
+info : Options -> Element msg
+info =
+    featherIcon FeatherIcons.info
 
 
 externalLink : Options -> Element msg

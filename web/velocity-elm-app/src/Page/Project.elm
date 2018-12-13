@@ -24,6 +24,8 @@ import Project.Id exposing (Id)
 import Project.Slug exposing (Slug)
 import Session exposing (Session)
 import Task
+import Time
+import Timestamp
 
 
 
@@ -33,6 +35,7 @@ import Task
 type alias Model msg =
     { session : Session
     , context : Context msg
+    , timeZone : Time.Zone
     , slug : Slug
     , branchDropdown : BranchDropdown
     , builds : Status (PaginatedList Build)
@@ -78,6 +81,7 @@ init session context projectSlug =
     in
     ( { session = session
       , context = context
+      , timeZone = Time.utc
       , slug = projectSlug
       , branchDropdown = BranchDropdown Closed
       , builds = Loading
@@ -85,6 +89,7 @@ init session context projectSlug =
     , Cmd.batch
         [ buildCmd
         , Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
+        , Task.perform GotTimeZone Time.here
         ]
     )
 
@@ -119,6 +124,7 @@ type Msg
     | BranchDropdownClose
     | CompletedLoadBuilds (Result Http.Error (PaginatedList Build))
     | PassedSlowLoadThreshold
+    | GotTimeZone Time.Zone
 
 
 update : Msg -> Model msg -> ( Model msg, Cmd Msg )
@@ -174,6 +180,11 @@ update msg model =
             , Cmd.none
             )
 
+        GotTimeZone tz ->
+            ( { model | timeZone = tz }
+            , Cmd.none
+            )
+
 
 
 -- EXPORT
@@ -206,7 +217,7 @@ view model =
     , content =
         column [ width fill, height fill ]
             [ viewSubHeader device model
-            , viewBody device model
+            , viewBody model.timeZone device model
             ]
     }
 
@@ -376,29 +387,29 @@ viewDesktopSubHeader project branches branchDropdown =
 -- Body
 
 
-viewBody : Device -> Model msg -> Element Msg
-viewBody device { slug, session, builds } =
+viewBody : Time.Zone -> Device -> Model msg -> Element Msg
+viewBody tz device { slug, session, builds } =
     case Session.projectWithSlug slug session of
         Just project ->
             case device.class of
                 Phone ->
-                    viewMobileBody project builds
+                    viewMobileBody tz project builds
 
                 Tablet ->
-                    viewDesktopBody project builds
+                    viewDesktopBody tz project builds
 
                 Desktop ->
-                    viewDesktopBody project builds
+                    viewDesktopBody tz project builds
 
                 BigDesktop ->
-                    viewBigDesktopBody project builds
+                    viewBigDesktopBody tz project builds
 
         Nothing ->
             none
 
 
-viewMobileBody : Project -> Status (PaginatedList Build) -> Element Msg
-viewMobileBody project builds =
+viewMobileBody : Time.Zone -> Project -> Status (PaginatedList Build) -> Element Msg
+viewMobileBody tz project builds =
     column
         [ width fill
         , height fill
@@ -409,12 +420,12 @@ viewMobileBody project builds =
         ]
         [ viewProjectDetails project
         , el [ height shrink, width fill ] (viewProjectHealthIcons project)
-        , viewProjectBuildsContainer builds
+        , viewProjectBuildsContainer tz builds
         ]
 
 
-viewDesktopBody : Project -> Status (PaginatedList Build) -> Element Msg
-viewDesktopBody project builds =
+viewDesktopBody : Time.Zone -> Project -> Status (PaginatedList Build) -> Element Msg
+viewDesktopBody tz project builds =
     column
         [ width fill
         , height fill
@@ -446,13 +457,13 @@ viewDesktopBody project builds =
             [ width fill
             , spacing 20
             ]
-            [ viewProjectBuildsContainer builds
+            [ viewProjectBuildsContainer tz builds
             ]
         ]
 
 
-viewBigDesktopBody : Project -> Status (PaginatedList Build) -> Element Msg
-viewBigDesktopBody project builds =
+viewBigDesktopBody : Time.Zone -> Project -> Status (PaginatedList Build) -> Element Msg
+viewBigDesktopBody tz project builds =
     row
         [ height fill
         , Background.color Palette.neutral7
@@ -483,7 +494,7 @@ viewBigDesktopBody project builds =
 
 viewProjectBranchTabs : Element msg
 viewProjectBranchTabs =
-    row [ spaceEvenly ]
+    row [ spaceEvenly, moveUp 55, paddingEach { bottom = 2, left = 0, right = 0, top = 0 } ]
         [ viewProjectBranchTab True "Builds"
         , viewProjectBranchTab False "Commits"
         ]
@@ -491,6 +502,22 @@ viewProjectBranchTabs =
 
 viewProjectBranchTab : Bool -> String -> Element msg
 viewProjectBranchTab isSelected label =
+    let
+        shadow =
+            if isSelected then
+                { offset = ( 1, 1 )
+                , size = 1
+                , blur = 1
+                , color = Palette.neutral6
+                }
+
+            else
+                { offset = ( 0, 0 )
+                , size = 0
+                , blur = 0
+                , color = Palette.transparent
+                }
+    in
     el
         [ Font.size 14
         , width fill
@@ -503,12 +530,7 @@ viewProjectBranchTab isSelected label =
              else
                 Palette.transparent
             )
-        , Border.shadow
-            { offset = ( 1, 1 )
-            , size = 1
-            , blur = 1
-            , color = Palette.neutral6
-            }
+        , Border.shadow shadow
         , Border.roundEach { topLeft = 5, topRight = 5, bottomLeft = 0, bottomRight = 0 }
         , Border.color
             (if isSelected then
@@ -517,44 +539,26 @@ viewProjectBranchTab isSelected label =
              else
                 Palette.transparent
             )
+        , inFront
+            (if isSelected then
+                el
+                    [ height (px 10)
+                    , alignBottom
+                    , moveDown 4
+                    , width fill
+                    , Background.color Palette.white
+                    ]
+                    none
+
+             else
+                none
+            )
         ]
         (text label)
 
 
 
 -- Project Builds
-
-
-type alias DummyBuild =
-    { started : String
-    , task : String
-    , commit : String
-    , branch : String
-    , status : BuildStatus
-    }
-
-
-type BuildStatus
-    = Success
-    | Failure
-    | InProgress
-
-
-dummyBuilds : List DummyBuild
-dummyBuilds =
-    [ { started = "March 8th, 8:30:47 PM"
-      , task = "run-unit-tests"
-      , commit = "sgb3rwgv"
-      , branch = "master"
-      , status = Success
-      }
-    , { started = "March 20th, 1:23:11 AM"
-      , task = "deploy-master"
-      , commit = "sgb3rwgv"
-      , branch = "develop"
-      , status = Failure
-      }
-    ]
 
 
 viewProjectBuildsLoading : Element msg
@@ -568,40 +572,46 @@ viewProjectBuildsLoading =
         Loading.icon { width = 40, height = 40 }
 
 
-viewProjectBuildsContainer : Status (PaginatedList Build) -> Element Msg
-viewProjectBuildsContainer buildStatus =
+viewProjectBuildsContainer : Time.Zone -> Status (PaginatedList Build) -> Element Msg
+viewProjectBuildsContainer tz buildStatus =
     column
         [ width fill
-        , Border.rounded 5
-        , above viewProjectBranchTabs
+        , behindContent viewProjectBranchTabs
         , moveDown 50
         ]
         [ row
-            [ Background.color Palette.white
+            [ width fill
+            , paddingXY 10 30
+            , Font.size 14
+            , height (px 300)
+            , Background.color Palette.white
             , Border.shadow
                 { offset = ( 1, 1 )
                 , size = 1
                 , blur = 1
                 , color = Palette.neutral6
                 }
-            , width fill
-            , height fill
-            , paddingXY 10 30
-            , height (px 50)
-            , Font.size 14
-            , height (px 300)
-            , Background.color Palette.white
+            , Border.roundEach
+                { topLeft = 0
+                , topRight = 5
+                , bottomLeft = 5
+                , bottomRight = 5
+                }
             ]
-            [ viewProjectBuilds buildStatus
+            [ viewProjectBuilds tz buildStatus
             ]
         ]
 
 
-viewProjectBuilds : Status (PaginatedList Build) -> Element Msg
-viewProjectBuilds buildStatus =
+viewProjectBuilds : Time.Zone -> Status (PaginatedList Build) -> Element Msg
+viewProjectBuilds tz buildStatus =
     case buildStatus of
         Loaded builds ->
-            viewProjectBuildsTable builds
+            if PaginatedList.total builds == 0 then
+                viewProjectBuildsEmpty
+
+            else
+                viewProjectBuildsTable tz builds
 
         LoadingSlowly ->
             viewProjectBuildsLoading
@@ -620,14 +630,14 @@ viewProjectBuildsFailed =
             [ width shrink
             , centerX
             , Font.size 18
-            , Font.color Palette.danger3
+            , Font.color Palette.danger4
             , spacingXY 10 0
             ]
             [ el [] (Icon.alertCircle <| Icon.size 32)
             , paragraph [] [ text "There was a problem loading builds" ]
             ]
         , paragraph
-            []
+            [ Font.color Palette.danger1 ]
             [ text "If you think this is a bug we'd really appreciate it if you could "
             , newTabLink
                 [ Font.color Palette.primary4
@@ -641,68 +651,112 @@ viewProjectBuildsFailed =
         ]
 
 
-viewProjectBuildsTable : PaginatedList Build -> Element Msg
-viewProjectBuildsTable builds =
+viewProjectBuildsEmpty : Element msg
+viewProjectBuildsEmpty =
+    column [ width fill, spacingXY 0 20 ]
+        [ row
+            [ width shrink
+            , centerX
+            , Font.size 18
+            , Font.color Palette.info4
+            , spacingXY 10 0
+            ]
+            [ el [] (Icon.info <| Icon.size 32)
+            , paragraph [] [ text "No builds have been run for project" ]
+            ]
+        , paragraph
+            [ Font.color Palette.info1 ]
+            [ newTabLink
+                [ Font.color Palette.primary4
+                , mouseOver
+                    [ Font.color Palette.primary2
+                    ]
+                ]
+                { url = "https://github.com/velocity-ci/velocity", label = text "Read the documentation" }
+            , text " to find out more about builds"
+            ]
+        ]
+
+
+viewProjectBuildsTable : Time.Zone -> PaginatedList Build -> Element Msg
+viewProjectBuildsTable tz builds =
     indexedTable
         [ width fill
         , height fill
         ]
-        { data = dummyBuilds
+        { data = PaginatedList.values builds
         , columns =
             [ { header = viewTableHeader (text "Started")
               , width = fillPortion 2
-              , view = \i person -> viewLeftTableCell (text person.started) i
-              }
-            , { header = viewTableHeader (text "Task")
-              , width = fill
-              , view = \i person -> viewLeftTableCell (text person.task) i
-              }
-            , { header = viewTableHeader (text "Commit")
-              , width = fill
               , view =
-                    \i person ->
-                        viewLeftTableCell
-                            (row []
-                                [ text person.commit
-                                , text " "
-                                , row [ Font.heavy ]
-                                    [ text "("
-                                    , text person.branch
-                                    , text ")"
-                                    ]
-                                ]
-                            )
-                            i
-              }
-            , { header = viewTableHeader (text "Status")
-              , width = fill
-              , view =
-                    \i person ->
-                        viewLeftTableCell
-                            (case person.status of
-                                Success ->
-                                    row [ Font.color Palette.success3, spacingXY 5 0 ]
-                                        [ el [ Font.heavy ] (Icon.check Icon.defaultOptions)
-                                        , text "Finished"
-                                        ]
+                    \i build ->
+                        el
+                            [ width fill
+                            , height (px 60)
 
-                                Failure ->
-                                    row [ Font.color Palette.danger3, spacingXY 5 0 ]
-                                        [ el [ Font.heavy ] (Icon.x Icon.defaultOptions)
-                                        , text "Finished"
-                                        ]
+                            --                                , Border.widthEach borders
+                            , Background.color Palette.neutral7
+                            , Border.color Palette.neutral6
+                            ]
+                        <|
+                            el [ centerY, paddingXY 10 0 ] <|
+                                (build
+                                    |> Build.createdAt
+                                    |> Timestamp.format tz
+                                    |> text
+                                )
+              }
 
-                                InProgress ->
-                                    row [] [ text "In progress" ]
-                            )
-                            i
-              }
-            , { header = viewTableHeader (text "")
-              , width = shrink
-              , view =
-                    \i _ ->
-                        viewRightTableCell (el [] (Icon.arrowRight Icon.defaultOptions)) i
-              }
+            --            , { header = viewTableHeader (text "Task")
+            --              , width = fill
+            --              , view = \i person -> viewLeftTableCell (text person.task) i
+            --              }
+            --            , { header = viewTableHeader (text "Commit")
+            --              , width = fill
+            --              , view =
+            --                    \i person ->
+            --                        viewLeftTableCell
+            --                            (row []
+            --                                [ text person.commit
+            --                                , text " "
+            --                                , row [ Font.heavy ]
+            --                                    [ text "("
+            --                                    , text person.branch
+            --                                    , text ")"
+            --                                    ]
+            --                                ]
+            --                            )
+            --                            i
+            --              }
+            --            , { header = viewTableHeader (text "Status")
+            --              , width = fill
+            --              , view =
+            --                    \i person ->
+            --                        viewLeftTableCell
+            --                            (case person.status of
+            --                                Success ->
+            --                                    row [ Font.color Palette.success3, spacingXY 5 0 ]
+            --                                        [ el [ Font.heavy ] (Icon.check Icon.defaultOptions)
+            --                                        , text "Finished"
+            --                                        ]
+            --
+            --                                Failure ->
+            --                                    row [ Font.color Palette.danger3, spacingXY 5 0 ]
+            --                                        [ el [ Font.heavy ] (Icon.x Icon.defaultOptions)
+            --                                        , text "Finished"
+            --                                        ]
+            --
+            --                                InProgress ->
+            --                                    row [] [ text "In progress" ]
+            --                            )
+            --                            i
+            --              }
+            --            , { header = viewTableHeader (text "")
+            --              , width = shrink
+            --              , view =
+            --                    \i _ ->
+            --                        viewRightTableCell (el [] (Icon.arrowRight Icon.defaultOptions)) i
+            --              }
             ]
         }
 
@@ -720,62 +774,6 @@ viewTableHeader contents =
             , Font.size 16
             ]
         <|
-            contents
-
-
-viewLeftTableCell : Element msg -> Int -> Element msg
-viewLeftTableCell contents i =
-    let
-        lastIndex =
-            List.length dummyBuilds - 1
-
-        borders =
-            if i == 0 then
-                { top = 2, bottom = 1, left = 0, right = 0 }
-
-            else if i == lastIndex then
-                { top = 0, bottom = 2, left = 0, right = 0 }
-
-            else
-                { top = 0, bottom = 1, left = 0, right = 0 }
-    in
-    el
-        [ width fill
-        , height (px 60)
-        , Border.widthEach borders
-        , Background.color Palette.neutral7
-        , Border.color Palette.neutral6
-        ]
-    <|
-        el [ centerY, paddingXY 10 0 ] <|
-            contents
-
-
-viewRightTableCell : Element msg -> Int -> Element msg
-viewRightTableCell contents i =
-    let
-        lastIndex =
-            List.length dummyBuilds - 1
-
-        borders =
-            if i == 0 then
-                { top = 2, bottom = 1, left = 0, right = 0 }
-
-            else if i == lastIndex then
-                { top = 0, bottom = 2, left = 0, right = 0 }
-
-            else
-                { top = 0, bottom = 1, left = 0, right = 0 }
-    in
-    el
-        [ width fill
-        , height (px 60)
-        , Border.widthEach borders
-        , Background.color Palette.neutral7
-        , Border.color Palette.neutral6
-        ]
-    <|
-        el [ centerY, paddingXY 10 0, alignRight ] <|
             contents
 
 

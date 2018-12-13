@@ -1,4 +1,4 @@
-module Project.Build exposing (Build, decoder, list)
+module Project.Build exposing (Build, createdAt, decoder, list)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint
@@ -30,6 +30,15 @@ type alias Internals =
     , updatedAt : Maybe Time.Posix
     , startedAt : Maybe Time.Posix
     }
+
+
+
+-- INFO
+
+
+createdAt : Build -> Time.Posix
+createdAt (Build rec) =
+    rec.createdAt
 
 
 
