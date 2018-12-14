@@ -456,7 +456,7 @@ viewMobileBody tz project tasks builds =
         , spacing 20
         , padding 20
         ]
-        [ viewProjectDetails project
+        [ el [ height shrink, width fill ] (viewProjectDetails project)
         , el [ height shrink, width fill ] (viewProjectHealthIconsContainer tasks)
         , viewProjectBuildsContainer tz builds
         ]
@@ -574,17 +574,6 @@ viewProjectBranchTab isSelected label =
 -- Project Builds
 
 
-viewProjectBuildsLoading : Element msg
-viewProjectBuildsLoading =
-    el
-        [ centerX
-        , centerY
-        , Font.color Palette.primary4
-        ]
-    <|
-        Loading.icon { width = 40, height = 40 }
-
-
 viewProjectBuildsContainer : Time.Zone -> Status (PaginatedList Build) -> Element Msg
 viewProjectBuildsContainer tz buildStatus =
     column
@@ -626,7 +615,7 @@ viewProjectBuilds tz buildStatus =
                 viewProjectBuildsTable tz builds
 
         LoadingSlowly ->
-            viewProjectBuildsLoading
+            viewLoadingSpinner
 
         Loading ->
             none
@@ -637,7 +626,7 @@ viewProjectBuilds tz buildStatus =
 
 viewProjectBuildsFailed : Element msg
 viewProjectBuildsFailed =
-    column [ width fill, spacingXY 0 20 ]
+    column [ width fill, spacingXY 0 20, Font.color Palette.danger1 ]
         [ row
             [ width shrink
             , centerX
@@ -649,7 +638,7 @@ viewProjectBuildsFailed =
             , paragraph [] [ text "There was a problem loading builds" ]
             ]
         , paragraph
-            [ Font.color Palette.danger1 ]
+            []
             [ text "If you think this is a bug we'd really appreciate it if you could "
             , newTabLink
                 [ Font.color Palette.primary4
@@ -795,7 +784,7 @@ viewProjectDetails : Project -> Element Msg
 viewProjectDetails project =
     column
         [ width fill
-        , height shrink
+        , height fill
         , Background.color Palette.white
         , Border.shadow
             { offset = ( 1, 1 )
@@ -810,66 +799,69 @@ viewProjectDetails project =
             , width fill
             , Font.alignLeft
             , paddingXY 10 20
+            , Border.widthEach { top = 0, bottom = 1, left = 0, right = 0 }
+            , Border.color Palette.neutral6
             ]
             (text "Details")
-        , row
-            [ width fill
-            , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
-            , paddingXY 10 0
-            , height (px 50)
-            , Border.color Palette.neutral6
-            , Font.size 15
-            , spaceEvenly
-            ]
-            [ el [ Font.color Palette.neutral2 ] (text "Repository")
-            , row
-                [ spacingXY 5 0
-                , Font.color Palette.primary3
-                , pointer
-                , mouseOver [ Font.color Palette.primary4 ]
+        , column [ width fill, centerY ]
+            [ row
+                [ width fill
+                , paddingXY 10 0
+                , height (px 50)
+                , Border.color Palette.neutral6
+                , Font.size 15
+                , spaceEvenly
                 ]
-                [ el [] (Icon.github Icon.defaultOptions)
-                , el [] (text (Project.name project))
-                ]
-            ]
-        , row
-            [ width fill
-            , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
-            , paddingXY 10 0
-            , Border.color Palette.neutral6
-            , Font.size 15
-            , spaceEvenly
-            , height (px 50)
-            , inFront
-                (el
-                    [ padding 5
-                    , Border.rounded 5
-                    , Background.color Palette.neutral6
-                    , alignRight
-                    , centerY
-                    , moveLeft 10
-                    , Font.size 13
-                    , Font.family [ Font.monospace ]
+                [ el [ Font.color Palette.neutral2 ] (text "Repository")
+                , row
+                    [ spacingXY 5 0
+                    , Font.color Palette.primary3
+                    , pointer
+                    , mouseOver [ Font.color Palette.primary4 ]
                     ]
-                    (text "master")
-                )
-            ]
-            [ el [ Font.color Palette.neutral2 ] (text "Default branch")
-            ]
-        , row
-            [ width fill
-            , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
-            , paddingXY 10 0
-            , height (px 50)
-            , Border.color Palette.neutral6
-            , Font.size 15
-            , spaceEvenly
-            ]
-            [ el [ Font.color Palette.neutral2 ] (text "Updated")
-            , el
-                [ Font.color Palette.neutral2
+                    [ el [] (Icon.github Icon.defaultOptions)
+                    , el [] (text (Project.name project))
+                    ]
                 ]
-                (text "2 weeks ago")
+            , row
+                [ width fill
+                , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
+                , paddingXY 10 0
+                , Border.color Palette.neutral6
+                , Font.size 15
+                , spaceEvenly
+                , height (px 50)
+                , inFront
+                    (el
+                        [ padding 5
+                        , Border.rounded 5
+                        , Background.color Palette.neutral6
+                        , alignRight
+                        , centerY
+                        , moveLeft 10
+                        , Font.size 13
+                        , Font.family [ Font.monospace ]
+                        ]
+                        (text "master")
+                    )
+                ]
+                [ el [ Font.color Palette.neutral2 ] (text "Default branch")
+                ]
+            , row
+                [ width fill
+                , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
+                , paddingXY 10 0
+                , height (px 50)
+                , Border.color Palette.neutral6
+                , Font.size 15
+                , spaceEvenly
+                ]
+                [ el [ Font.color Palette.neutral2 ] (text "Updated")
+                , el
+                    [ Font.color Palette.neutral2
+                    ]
+                    (text "2 weeks ago")
+                ]
             ]
         ]
 
@@ -955,7 +947,7 @@ viewProjectHealthIconsContainer tasksStatus =
             , Font.alignLeft
             , paddingXY 10 20
             ]
-            (text "BaseTasks")
+            (text "Tasks")
         , row
             [ width fill
             , height fill
@@ -978,7 +970,7 @@ viewProjectHealthIcons tasksStatus =
             [ none ]
 
         LoadingSlowly ->
-            [ viewProjectBuildsLoading ]
+            [ viewLoadingSpinner ]
 
         Failed ->
             [ viewProjectHealthIconsFailed ]
@@ -986,7 +978,7 @@ viewProjectHealthIcons tasksStatus =
 
 viewProjectHealthIconsFailed : Element msg
 viewProjectHealthIconsFailed =
-    column [ width fill, spacingXY 0 20, Font.size 14, paddingXY 20 0 ]
+    column [ width fill, spacingXY 0 20, padding 20, height fill, Font.color Palette.danger1 ]
         [ row
             [ width shrink
             , centerX
@@ -995,21 +987,27 @@ viewProjectHealthIconsFailed =
             , spacingXY 10 0
             ]
             [ el [] (Icon.alertCircle <| Icon.size 32)
-            , paragraph [] [ text "There was a problem loading tasks" ]
+            , text "There was a problem loading tasks"
             ]
-        , paragraph
-            [ Font.color Palette.danger1 ]
-            [ text "Velocity failed loading tasks from the commit at "
-            , el [ Font.heavy ] (text "HEAD")
-            , text " of the branch. If you think this is a bug we'd really appreciate it if you could "
-            , newTabLink
-                [ Font.color Palette.primary4
-                , mouseOver
-                    [ Font.color Palette.primary2
-                    ]
+        , textColumn [ width fill, spacingXY 0 20, Font.size 14 ]
+            [ paragraph
+                [ width fill
                 ]
-                { url = "https://github.com/velocity-ci/velocity", label = text "create an issue on our github" }
-            , text " with your configuration files"
+                [ text "Velocity failed loading tasks from the commit at "
+                , el [ Font.heavy ] (text "HEAD")
+                , text " of the branch."
+                ]
+            , paragraph []
+                [ text "If you think this is a bug we'd really appreciate it if you could "
+                , newTabLink
+                    [ Font.color Palette.primary4
+                    , mouseOver
+                        [ Font.color Palette.primary2
+                        ]
+                    ]
+                    { url = "https://github.com/velocity-ci/velocity", label = text "create an issue on our github" }
+                , text " with your configuration files and any other information that you think would be helpful"
+                ]
             ]
         ]
 
@@ -1397,3 +1395,18 @@ viewCommitListRowThree { top, bottom } =
             , el [ Font.size 14, Font.color Palette.neutral5, alignRight ] (text "2 days ago")
             ]
         ]
+
+
+
+-- MISC
+
+
+viewLoadingSpinner : Element msg
+viewLoadingSpinner =
+    el
+        [ centerX
+        , centerY
+        , Font.color Palette.primary4
+        ]
+    <|
+        Loading.icon { width = 40, height = 40 }
