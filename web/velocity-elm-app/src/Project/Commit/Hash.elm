@@ -1,4 +1,4 @@
-module Project.Commit.Hash exposing (Hash, decoder, urlParser)
+module Project.Commit.Hash exposing (Hash, decoder, toString, urlParser)
 
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
@@ -9,6 +9,15 @@ import Url.Parser exposing (Parser)
 
 type Hash
     = Hash String
+
+
+
+-- INFO
+
+
+toString : Hash -> String
+toString (Hash str) =
+    str
 
 
 

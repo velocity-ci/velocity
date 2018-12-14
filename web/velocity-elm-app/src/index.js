@@ -75,7 +75,6 @@ const ws = new Sockette('ws://localhost/v1/ws ', {
 });
 
 
-
 //
 
 // ws.send('Hello, world!');

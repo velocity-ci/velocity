@@ -1,4 +1,4 @@
-module Project.Branch exposing (Branch, list, text)
+module Project.Branch exposing (Branch, default, list, text)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -19,6 +19,14 @@ type alias Internals =
     { name : Name
     , active : Bool
     }
+
+
+default : Branch
+default =
+    Branch
+        { name = Name.default
+        , active = True
+        }
 
 
 

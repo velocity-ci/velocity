@@ -1,20 +1,25 @@
-module Api.Endpoint exposing
-    ( CollectionOptions
-    , Endpoint
-    , branches
-    , builds
-    , fromString
-    , knownHosts
-    , login
-    , projectSync
-    , projects
-    , request
-    , toWs
-    )
+module Api.Endpoint
+    exposing
+        ( CollectionOptions
+        , Endpoint
+        , branches
+        , builds
+        , commits
+        , fromString
+        , knownHosts
+        , login
+        , projectSync
+        , projects
+        , request
+        , tasks
+        , toWs
+        )
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Phoenix.Channel exposing (Channel)
+import Project.Branch.Name
+import Project.Commit.Hash
 import Project.Slug
 import Url.Builder exposing (QueryParameter, int, string)
 import Username exposing (Username)
@@ -76,7 +81,6 @@ toWs : Endpoint -> String
 toWs (Endpoint apiUrlBase) =
     if String.startsWith "http" apiUrlBase then
         "ws" ++ String.dropLeft 4 apiUrlBase
-
     else
         -- Not an http API URL - this will fail pretty quickly
         apiUrlBase
@@ -107,12 +111,36 @@ branches opts baseUrl projectSlug =
         (collectionParams opts)
 
 
+commits : Maybe CollectionOptions -> Endpoint -> Project.Slug.Slug -> Project.Branch.Name.Name -> Endpoint
+commits opts baseUrl projectSlug branchName =
+    url baseUrl
+        [ "projects"
+        , Project.Slug.toString projectSlug
+        , "branches"
+        , Project.Branch.Name.toString branchName
+        , "commits"
+        ]
+        (collectionParams opts)
+
+
 builds : Maybe CollectionOptions -> Endpoint -> Project.Slug.Slug -> Endpoint
 builds opts baseUrl projectSlug =
     url baseUrl
         [ "projects"
         , Project.Slug.toString projectSlug
         , "builds"
+        ]
+        (collectionParams opts)
+
+
+tasks : Maybe CollectionOptions -> Endpoint -> Project.Slug.Slug -> Project.Commit.Hash.Hash -> Endpoint
+tasks opts baseUrl projectSlug commitHash =
+    url baseUrl
+        [ "projects"
+        , Project.Slug.toString projectSlug
+        , "commits"
+        , Project.Commit.Hash.toString commitHash
+        , "tasks"
         ]
         (collectionParams opts)
 

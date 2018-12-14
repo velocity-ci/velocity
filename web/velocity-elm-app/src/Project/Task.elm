@@ -1,13 +1,19 @@
 module Project.Task exposing (Task, decoder)
 
+import Api exposing (BaseUrl, Cred)
+import Api.Endpoint as Endpoint
+import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, optional, required)
 import Json.Encode as Encode
+import Project.Branch.Name as BranchName
 import Project.Commit as Commit exposing (Commit)
+import Project.Slug as ProjectSlug
 import Project.Task.Id as Id exposing (Id)
 import Project.Task.Name as Name exposing (Name)
 import Project.Task.Slug as Slug exposing (Slug)
 import Project.Task.Step as Step exposing (Step)
+import Task as BaseTask
 
 
 type Task
@@ -138,3 +144,27 @@ basicParameterDecoder =
                             else
                                 choice
             )
+
+
+
+-- COLLECTION
+
+
+byCommit : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> BaseTask.Task Http.Error (List Task)
+byCommit cred baseUrl projectSlug branchName =
+    let
+        endpoint =
+            Endpoint.tasks (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
+    in
+        Commit.head cred baseUrl projectSlug branchName
+            |> BaseTask.andThen
+                (\maybeCommit ->
+                    case maybeCommit of
+                        Just commit ->
+                            Decode.list decoder
+                                |> Api.get (endpoint <| Commit.hash commit) (Just cred)
+                                |> Http.toTask
+
+                        Nothing ->
+                            BaseTask.succeed []
+                )
