@@ -24,8 +24,9 @@ import Project.Build as Build exposing (Build)
 import Project.Commit as Commit exposing (Commit)
 import Project.Id exposing (Id)
 import Project.Slug exposing (Slug)
+import Project.Task as Task exposing (Task)
 import Session exposing (Session)
-import Task
+import Task as BaseTask
 import Time
 import Timestamp
 
@@ -36,7 +37,7 @@ import Timestamp
 type alias Model msg =
     { session : Session
     , context : Context msg
-    , commit : Status Commit
+    , tasks : Status (List Task)
     , timeZone : Time.Zone
     , slug : Slug
     , branchDropdown : BranchDropdown
@@ -84,12 +85,12 @@ init session context projectSlug =
                 _ ->
                     ( Failed, Cmd.none )
 
-        ( commit, commitRequest ) =
+        ( tasks, tasksRequest ) =
             case ( maybeProject, maybeCred ) of
                 ( Just project, Just cred ) ->
                     ( Loading
-                    , Task.attempt CompletedLoadCommit <|
-                        Commit.head cred baseUrl projectSlug BranchName.default
+                    , BaseTask.attempt CompletedLoadTasks <|
+                        Task.byBranch cred baseUrl projectSlug BranchName.default
                     )
 
                 _ ->
@@ -97,7 +98,7 @@ init session context projectSlug =
     in
         ( { session = session
           , context = context
-          , commit = commit
+          , tasks = tasks
           , timeZone = Time.utc
           , slug = projectSlug
           , branchDropdown = BranchDropdown Closed
@@ -105,9 +106,9 @@ init session context projectSlug =
           }
         , Cmd.batch
             [ buildsRequest
-            , commitRequest
-            , Task.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
-            , Task.perform GotTimeZone Time.here
+            , tasksRequest
+            , BaseTask.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
+            , BaseTask.perform GotTimeZone Time.here
             ]
         )
 
@@ -141,7 +142,7 @@ type Msg
     | BranchDropdownListenClicks
     | BranchDropdownClose
     | CompletedLoadBuilds (Result Http.Error (PaginatedList Build))
-    | CompletedLoadCommit (Result Http.Error (Maybe Commit))
+    | CompletedLoadTasks (Result Http.Error (List Task))
     | PassedSlowLoadThreshold
     | GotTimeZone Time.Zone
 
@@ -184,13 +185,13 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedLoadCommit (Ok (Just commit)) ->
-            ( { model | commit = Loaded commit }
+        CompletedLoadTasks (Ok tasks) ->
+            ( { model | tasks = Loaded tasks }
             , Cmd.none
             )
 
-        CompletedLoadCommit _ ->
-            ( { model | commit = Failed }
+        CompletedLoadTasks (Err err) ->
+            ( { model | tasks = Failed }
             , Cmd.none
             )
 
@@ -204,8 +205,8 @@ update msg model =
                         other ->
                             other
 
-                commit =
-                    case model.commit of
+                tasks =
+                    case model.tasks of
                         Loading ->
                             LoadingSlowly
 
@@ -214,7 +215,7 @@ update msg model =
             in
                 ( { model
                     | builds = builds
-                    , commit = commit
+                    , tasks = tasks
                   }
                 , Cmd.none
                 )
@@ -425,18 +426,18 @@ viewDesktopSubHeader project branches branchDropdown =
 
 
 viewBody : Time.Zone -> Device -> Model msg -> Element Msg
-viewBody tz device { slug, session, builds, commit } =
+viewBody tz device { slug, session, builds, tasks } =
     case Session.projectWithSlug slug session of
         Just project ->
             case device.class of
                 Phone ->
-                    viewMobileBody tz project commit builds
+                    viewMobileBody tz project tasks builds
 
                 Tablet ->
-                    viewDesktopBody tz project commit builds
+                    viewDesktopBody tz project tasks builds
 
                 Desktop ->
-                    viewDesktopBody tz project commit builds
+                    viewDesktopBody tz project tasks builds
 
                 BigDesktop ->
                     viewBigDesktopBody tz project builds
@@ -445,8 +446,8 @@ viewBody tz device { slug, session, builds, commit } =
             none
 
 
-viewMobileBody : Time.Zone -> Project -> Status Commit -> Status (PaginatedList Build) -> Element Msg
-viewMobileBody tz project commit builds =
+viewMobileBody : Time.Zone -> Project -> Status (List Task) -> Status (PaginatedList Build) -> Element Msg
+viewMobileBody tz project tasks builds =
     column
         [ width fill
         , height fill
@@ -456,13 +457,13 @@ viewMobileBody tz project commit builds =
         , padding 20
         ]
         [ viewProjectDetails project
-        , el [ height shrink, width fill ] (viewProjectHealthIconsContainer commit)
+        , el [ height shrink, width fill ] (viewProjectHealthIconsContainer tasks)
         , viewProjectBuildsContainer tz builds
         ]
 
 
-viewDesktopBody : Time.Zone -> Project -> Status Commit -> Status (PaginatedList Build) -> Element Msg
-viewDesktopBody tz project commit builds =
+viewDesktopBody : Time.Zone -> Project -> Status (List Task) -> Status (PaginatedList Build) -> Element Msg
+viewDesktopBody tz project tasks builds =
     column
         [ width fill
         , height fill
@@ -488,7 +489,7 @@ viewDesktopBody tz project commit builds =
                 [ width (fillPortion 6)
                 , height fill
                 ]
-                [ viewProjectHealthIconsContainer commit ]
+                [ viewProjectHealthIconsContainer tasks ]
             ]
         , row
             [ width fill
@@ -716,7 +717,7 @@ viewProjectBuildsTable tz builds =
                                     |> text
                                 )
               }
-              --            , { header = viewTableHeader (text "Task")
+              --            , { header = viewTableHeader (text "BaseTask")
               --              , width = fill
               --              , view = \i person -> viewLeftTableCell (text person.task) i
               --              }
@@ -934,8 +935,8 @@ viewProjectHealth project =
         ]
 
 
-viewProjectHealthIconsContainer : Status Commit -> Element Msg
-viewProjectHealthIconsContainer commitStatus =
+viewProjectHealthIconsContainer : Status (List Task) -> Element Msg
+viewProjectHealthIconsContainer tasksStatus =
     column
         [ width fill
         , height fill
@@ -954,7 +955,7 @@ viewProjectHealthIconsContainer commitStatus =
             , Font.alignLeft
             , paddingXY 10 20
             ]
-            (text "Tasks")
+            (text "BaseTasks")
         , row
             [ width fill
             , height fill
@@ -963,15 +964,15 @@ viewProjectHealthIconsContainer commitStatus =
             , paddingXY 10 10
             , spacing 10
             ]
-            (viewProjectHealthIcons commitStatus)
+            (viewProjectHealthIcons tasksStatus)
         ]
 
 
-viewProjectHealthIcons : Status Commit -> List (Element Msg)
-viewProjectHealthIcons commitStatus =
-    case commitStatus of
-        Loaded commit ->
-            viewProjectHealthIconsLoaded commit
+viewProjectHealthIcons : Status (List Task) -> List (Element Msg)
+viewProjectHealthIcons tasksStatus =
+    case tasksStatus of
+        Loaded tasks ->
+            viewProjectHealthIconsLoaded tasks
 
         Loading ->
             [ none ]
@@ -1013,8 +1014,8 @@ viewProjectHealthIconsFailed =
         ]
 
 
-viewProjectHealthIconsLoaded : Commit -> List (Element Msg)
-viewProjectHealthIconsLoaded commit =
+viewProjectHealthIconsLoaded : List Task -> List (Element Msg)
+viewProjectHealthIconsLoaded tasks =
     let
         iconOpts =
             Icon.size 38

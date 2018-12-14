@@ -1,4 +1,4 @@
-module Project.Task exposing (Task, decoder)
+module Project.Task exposing (Task, byBranch, decoder)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint
@@ -150,8 +150,8 @@ basicParameterDecoder =
 -- COLLECTION
 
 
-byCommit : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> BaseTask.Task Http.Error (List Task)
-byCommit cred baseUrl projectSlug branchName =
+byBranch : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> BaseTask.Task Http.Error (List Task)
+byBranch cred baseUrl projectSlug branchName =
     let
         endpoint =
             Endpoint.tasks (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
