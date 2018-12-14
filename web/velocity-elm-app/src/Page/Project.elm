@@ -203,8 +203,19 @@ update msg model =
 
                         other ->
                             other
+
+                commit =
+                    case model.commit of
+                        Loading ->
+                            LoadingSlowly
+
+                        other ->
+                            other
             in
-                ( { model | builds = builds }
+                ( { model
+                    | builds = builds
+                    , commit = commit
+                  }
                 , Cmd.none
                 )
 
@@ -952,14 +963,24 @@ viewProjectHealthIconsContainer commitStatus =
             , paddingXY 10 10
             , spacing 10
             ]
-            (case commitStatus of
-                Loaded commit ->
-                    viewProjectHealthIcons commit
-
-                _ ->
-                    [ viewProjectHealthIconsFailed ]
-            )
+            (viewProjectHealthIcons commitStatus)
         ]
+
+
+viewProjectHealthIcons : Status Commit -> List (Element Msg)
+viewProjectHealthIcons commitStatus =
+    case commitStatus of
+        Loaded commit ->
+            viewProjectHealthIconsLoaded commit
+
+        Loading ->
+            [ none ]
+
+        LoadingSlowly ->
+            [ viewProjectBuildsLoading ]
+
+        Failed ->
+            [ viewProjectHealthIconsFailed ]
 
 
 viewProjectHealthIconsFailed : Element msg
@@ -992,8 +1013,8 @@ viewProjectHealthIconsFailed =
         ]
 
 
-viewProjectHealthIcons : Commit -> List (Element Msg)
-viewProjectHealthIcons commit =
+viewProjectHealthIconsLoaded : Commit -> List (Element Msg)
+viewProjectHealthIconsLoaded commit =
     let
         iconOpts =
             Icon.size 38
