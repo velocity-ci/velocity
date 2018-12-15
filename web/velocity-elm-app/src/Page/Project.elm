@@ -32,7 +32,6 @@ import Time
 import Timestamp
 
 
-
 -- Model
 
 
@@ -98,21 +97,21 @@ init session context projectSlug =
                 _ ->
                     ( Failed, Cmd.none )
     in
-    ( { session = session
-      , context = context
-      , tasks = tasks
-      , timeZone = Time.utc
-      , slug = projectSlug
-      , branchDropdown = BranchDropdown Closed
-      , builds = Loading
-      }
-    , Cmd.batch
-        [ buildsRequest
-        , tasksRequest
-        , BaseTask.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
-        , BaseTask.perform GotTimeZone Time.here
-        ]
-    )
+        ( { session = session
+          , context = context
+          , tasks = tasks
+          , timeZone = Time.utc
+          , slug = projectSlug
+          , branchDropdown = BranchDropdown Closed
+          , builds = Loading
+          }
+        , Cmd.batch
+            [ buildsRequest
+            , tasksRequest
+            , BaseTask.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
+            , BaseTask.perform GotTimeZone Time.here
+            ]
+        )
 
 
 
@@ -160,13 +159,12 @@ update msg model =
                 state =
                     if model.branchDropdown == BranchDropdown Open then
                         BranchDropdown Closed
-
                     else
                         BranchDropdown Open
             in
-            ( { model | branchDropdown = state }
-            , Cmd.none
-            )
+                ( { model | branchDropdown = state }
+                , Cmd.none
+                )
 
         BranchDropdownListenClicks ->
             ( { model | branchDropdown = BranchDropdown ListenClicks }
@@ -216,12 +214,12 @@ update msg model =
                         other ->
                             other
             in
-            ( { model
-                | builds = builds
-                , tasks = tasks
-              }
-            , Cmd.none
-            )
+                ( { model
+                    | builds = builds
+                    , tasks = tasks
+                  }
+                , Cmd.none
+                )
 
         GotTimeZone tz ->
             ( { model | timeZone = tz }
@@ -256,13 +254,13 @@ view model =
         projects =
             Session.projects model.session
     in
-    { title = "Project page"
-    , content =
-        column [ width fill, height fill ]
-            [ viewSubHeader device model
-            , viewBody model.timeZone device model
-            ]
-    }
+        { title = "Project page"
+        , content =
+            column [ width fill, height fill ]
+                [ viewSubHeader device model
+                , viewBody model.timeZone device model
+                ]
+        }
 
 
 viewErrored : Element msg
@@ -282,18 +280,18 @@ viewSubHeader device { session, slug, branchDropdown } =
                 branches =
                     Session.branches (Project.id project) session
             in
-            case device.class of
-                Phone ->
-                    viewMobileSubHeader project branches branchDropdown
+                case device.class of
+                    Phone ->
+                        viewMobileSubHeader project branches branchDropdown
 
-                Tablet ->
-                    viewDesktopSubHeader project branches branchDropdown
+                    Tablet ->
+                        viewDesktopSubHeader project branches branchDropdown
 
-                Desktop ->
-                    viewDesktopSubHeader project branches branchDropdown
+                    Desktop ->
+                        viewDesktopSubHeader project branches branchDropdown
 
-                BigDesktop ->
-                    viewDesktopSubHeader project branches branchDropdown
+                    BigDesktop ->
+                        viewDesktopSubHeader project branches branchDropdown
 
         Nothing ->
             none
@@ -325,7 +323,6 @@ viewMobileSubHeader project branches branchDropdown =
                     , Font.color Palette.primary5
                     ]
                     (viewBranchSelectDropdown branches)
-
              else
                 none
             )
@@ -412,7 +409,6 @@ viewDesktopSubHeader project branches branchDropdown =
                                 , viewBranchSelectDropdown branches
                                 ]
                             ]
-
                      else
                         none
                     )
@@ -462,7 +458,7 @@ viewMobileBody tz project tasks builds =
         , padding 20
         ]
         [ el [ height shrink, width fill ] (viewProjectDetails project)
-        , el [ height shrink, width fill ] (viewProjectHealthIconsContainer tasks)
+        , el [ height shrink, width fill ] (viewRecentTasksContainer tasks)
         , viewProjectBuildsContainer tz builds
         ]
 
@@ -494,7 +490,7 @@ viewDesktopBody tz project tasks builds =
                 [ width (fillPortion 6)
                 , height fill
                 ]
-                [ viewProjectHealthIconsContainer tasks ]
+                [ viewRecentTasksContainer tasks ]
             ]
         , row
             [ width fill
@@ -532,7 +528,6 @@ viewProjectBranchTab isSelected label =
                 , blur = 1
                 , color = Palette.neutral6
                 }
-
             else
                 { offset = ( 0, 0 )
                 , size = 0
@@ -540,43 +535,40 @@ viewProjectBranchTab isSelected label =
                 , color = Palette.transparent
                 }
     in
-    el
-        [ Font.size 14
-        , width fill
-        , Font.alignLeft
-        , paddingXY 25 20
-        , Background.color
-            (if isSelected then
-                Palette.white
-
-             else
-                Palette.transparent
-            )
-        , Border.shadow shadow
-        , Border.roundEach { topLeft = 5, topRight = 5, bottomLeft = 0, bottomRight = 0 }
-        , Border.color
-            (if isSelected then
-                Palette.neutral6
-
-             else
-                Palette.transparent
-            )
-        , inFront
-            (if isSelected then
-                el
-                    [ height (px 10)
-                    , alignBottom
-                    , moveDown 4
-                    , width fill
-                    , Background.color Palette.white
-                    ]
+        el
+            [ Font.size 14
+            , width fill
+            , Font.alignLeft
+            , paddingXY 25 20
+            , Background.color
+                (if isSelected then
+                    Palette.white
+                 else
+                    Palette.transparent
+                )
+            , Border.shadow shadow
+            , Border.roundEach { topLeft = 5, topRight = 5, bottomLeft = 0, bottomRight = 0 }
+            , Border.color
+                (if isSelected then
+                    Palette.neutral6
+                 else
+                    Palette.transparent
+                )
+            , inFront
+                (if isSelected then
+                    el
+                        [ height (px 10)
+                        , alignBottom
+                        , moveDown 4
+                        , width fill
+                        , Background.color Palette.white
+                        ]
+                        none
+                 else
                     none
-
-             else
-                none
-            )
-        ]
-        (text label)
+                )
+            ]
+            (text label)
 
 
 
@@ -620,7 +612,6 @@ viewProjectBuilds tz buildStatus =
         Loaded builds ->
             if PaginatedList.total builds == 0 then
                 viewProjectBuildsEmpty
-
             else
                 viewProjectBuildsTable tz builds
 
@@ -704,8 +695,7 @@ viewProjectBuildsTable tz builds =
                         el
                             [ width fill
                             , height (px 60)
-
-                            --                                , Border.widthEach borders
+                              --                                , Border.widthEach borders
                             , Background.color Palette.neutral7
                             , Border.color Palette.neutral6
                             ]
@@ -717,57 +707,56 @@ viewProjectBuildsTable tz builds =
                                     |> text
                                 )
               }
-
-            --            , { header = viewTableHeader (text "BaseTask")
-            --              , width = fill
-            --              , view = \i person -> viewLeftTableCell (text person.task) i
-            --              }
-            --            , { header = viewTableHeader (text "Commit")
-            --              , width = fill
-            --              , view =
-            --                    \i person ->
-            --                        viewLeftTableCell
-            --                            (row []
-            --                                [ text person.commit
-            --                                , text " "
-            --                                , row [ Font.heavy ]
-            --                                    [ text "("
-            --                                    , text person.branch
-            --                                    , text ")"
-            --                                    ]
-            --                                ]
-            --                            )
-            --                            i
-            --              }
-            --            , { header = viewTableHeader (text "Status")
-            --              , width = fill
-            --              , view =
-            --                    \i person ->
-            --                        viewLeftTableCell
-            --                            (case person.status of
-            --                                Success ->
-            --                                    row [ Font.color Palette.success3, spacingXY 5 0 ]
-            --                                        [ el [ Font.heavy ] (Icon.check Icon.defaultOptions)
-            --                                        , text "Finished"
-            --                                        ]
-            --
-            --                                Failure ->
-            --                                    row [ Font.color Palette.danger3, spacingXY 5 0 ]
-            --                                        [ el [ Font.heavy ] (Icon.x Icon.defaultOptions)
-            --                                        , text "Finished"
-            --                                        ]
-            --
-            --                                InProgress ->
-            --                                    row [] [ text "In progress" ]
-            --                            )
-            --                            i
-            --              }
-            --            , { header = viewTableHeader (text "")
-            --              , width = shrink
-            --              , view =
-            --                    \i _ ->
-            --                        viewRightTableCell (el [] (Icon.arrowRight Icon.defaultOptions)) i
-            --              }
+              --            , { header = viewTableHeader (text "BaseTask")
+              --              , width = fill
+              --              , view = \i person -> viewLeftTableCell (text person.task) i
+              --              }
+              --            , { header = viewTableHeader (text "Commit")
+              --              , width = fill
+              --              , view =
+              --                    \i person ->
+              --                        viewLeftTableCell
+              --                            (row []
+              --                                [ text person.commit
+              --                                , text " "
+              --                                , row [ Font.heavy ]
+              --                                    [ text "("
+              --                                    , text person.branch
+              --                                    , text ")"
+              --                                    ]
+              --                                ]
+              --                            )
+              --                            i
+              --              }
+              --            , { header = viewTableHeader (text "Status")
+              --              , width = fill
+              --              , view =
+              --                    \i person ->
+              --                        viewLeftTableCell
+              --                            (case person.status of
+              --                                Success ->
+              --                                    row [ Font.color Palette.success3, spacingXY 5 0 ]
+              --                                        [ el [ Font.heavy ] (Icon.check Icon.defaultOptions)
+              --                                        , text "Finished"
+              --                                        ]
+              --
+              --                                Failure ->
+              --                                    row [ Font.color Palette.danger3, spacingXY 5 0 ]
+              --                                        [ el [ Font.heavy ] (Icon.x Icon.defaultOptions)
+              --                                        , text "Finished"
+              --                                        ]
+              --
+              --                                InProgress ->
+              --                                    row [] [ text "In progress" ]
+              --                            )
+              --                            i
+              --              }
+              --            , { header = viewTableHeader (text "")
+              --              , width = shrink
+              --              , view =
+              --                    \i _ ->
+              --                        viewRightTableCell (el [] (Icon.arrowRight Icon.defaultOptions)) i
+              --              }
             ]
         }
 
@@ -939,8 +928,8 @@ viewProjectHealth project =
         ]
 
 
-viewProjectHealthIconsContainer : Status (List Task) -> Element Msg
-viewProjectHealthIconsContainer tasksStatus =
+viewRecentTasksContainer : Status (List Task) -> Element Msg
+viewRecentTasksContainer tasksStatus =
     column
         [ width fill
         , height fill
@@ -968,15 +957,15 @@ viewProjectHealthIconsContainer tasksStatus =
             , paddingXY 10 10
             , spacing 10
             ]
-            (viewProjectHealthIcons tasksStatus)
+            (viewRecentTasks tasksStatus)
         ]
 
 
-viewProjectHealthIcons : Status (List Task) -> List (Element Msg)
-viewProjectHealthIcons tasksStatus =
+viewRecentTasks : Status (List Task) -> List (Element Msg)
+viewRecentTasks tasksStatus =
     case tasksStatus of
         Loaded tasks ->
-            List.map viewProjectHealthIconsLoadedIcon tasks
+            List.map viewRecentTaskItem (List.take 1 tasks)
 
         Loading ->
             [ none ]
@@ -985,11 +974,11 @@ viewProjectHealthIcons tasksStatus =
             [ viewLoadingSpinner ]
 
         Failed ->
-            [ viewProjectHealthIconsFailed ]
+            [ viewRecentTasksFailed ]
 
 
-viewProjectHealthIconsFailed : Element msg
-viewProjectHealthIconsFailed =
+viewRecentTasksFailed : Element msg
+viewRecentTasksFailed =
     column [ width fill, spacingXY 0 20, padding 20, height fill, Font.color Palette.danger1 ]
         [ row
             [ width shrink
@@ -1024,34 +1013,34 @@ viewProjectHealthIconsFailed =
         ]
 
 
-viewProjectHealthIconsLoadedIcon : Task -> Element msg
-viewProjectHealthIconsLoadedIcon task =
+viewRecentTaskItem : Task -> Element msg
+viewRecentTaskItem task =
     let
         taskName =
             task
                 |> Task.name
                 |> TaskName.toString
     in
-    column
-        [ width fill
-        , paddingXY 0 20
-        , Font.size 15
-        , spacingXY 0 5
-        , height shrink
-        , centerY
-        , pointer
-        , mouseOver
-            [ Background.color Palette.neutral7
+        column
+            [ width fill
+            , paddingXY 10 20
+            , Font.size 15
+            , spacingXY 0 10
+            , height fill
+            , centerY
+            , pointer
+            , mouseOver
+                [ Background.color Palette.neutral7
+                ]
+            , Border.width 1
             , Border.color Palette.neutral6
+            , Border.rounded 10
+            , clipX
             ]
-        , Border.width 1
-        , Border.color Palette.transparent
-        , Border.rounded 10
-        ]
-        [ el [ Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle <| Icon.size 38)
-        , el [ Font.color Palette.neutral1, width shrink, centerX ] (text taskName)
-        , el [ Font.color Palette.neutral3, width shrink, centerX ] (text "3 months ago")
-        ]
+            [ el [ height fill, Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle <| Icon.size 38)
+            , paragraph [ width fill ] [ el [ Font.color Palette.neutral1, width fill, centerX, Font.alignLeft ] (text taskName) ]
+            , el [ height fill, Font.color Palette.neutral3, width shrink, centerX ] (el [ alignBottom ] (text "3 months ago"))
+            ]
 
 
 
@@ -1083,7 +1072,6 @@ viewBranchSelectButton widthLength (BranchDropdown state) =
             , scheme =
                 if state == Closed then
                     Button.Secondary
-
                 else
                     Button.Primary
             , content =
@@ -1137,7 +1125,6 @@ viewBranchSelectDropdown branches =
                                 , bottomLeft = 5
                                 , bottomRight = 5
                                 }
-
                             else
                                 { topLeft = 0
                                 , topRight = 0
@@ -1145,7 +1132,7 @@ viewBranchSelectDropdown branches =
                                 , bottomRight = 0
                                 }
                     in
-                    viewBranchSelectDropdownItem rounded b
+                        viewBranchSelectDropdownItem rounded b
                 )
                 branches
             )

@@ -2,9 +2,10 @@ defmodule ArchitectWeb.V2Router do
   use ArchitectWeb, :router
 
   scope "/swagger" do
-    forward "/", PhoenixSwagger.Plug.SwaggerUI,
+    forward("/", PhoenixSwagger.Plug.SwaggerUI,
       otp_app: :architect,
       swagger_file: "v2.swagger.json"
+    )
   end
 
   def swagger_info do
@@ -17,11 +18,18 @@ defmodule ArchitectWeb.V2Router do
   end
 
   pipeline :authenticated do
-    plug Architect.Pipelines.Guardian
-    plug Guardian.Plug.EnsureAuthenticated
+    plug(Architect.Pipelines.Guardian)
+    plug(Guardian.Plug.EnsureAuthenticated)
   end
 
   pipeline :api do
     plug(:accepts, ["json"])
+  end
+
+  scope "/" do
+    pipe_through(:api)
+
+    forward("/graphiql", Absinthe.Plug.GraphiQL, schema: ArchitectWeb.Schema)
+    forward("/", Absinthe.Plug, schema: ArchitectWeb.Schema)
   end
 end

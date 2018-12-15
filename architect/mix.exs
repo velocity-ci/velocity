@@ -49,7 +49,12 @@ defmodule Architect.MixProject do
       {:phoenix_swagger, "~> 0.8"},
       {:ex_json_schema, "~> 0.5"},
       {:excoveralls, "~> 0.10", only: :test},
-      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
+      {:absinthe, "~> 1.4.0"},
+      {:absinthe_phoenix, "~> 1.4.0"},
+      {:absinthe_ecto, "~> 0.1.3"},
+      {:commanded, "~> 0.17"},
+      {:poison, "~> 3.1 or ~> 4.0"}
     ]
   end
 

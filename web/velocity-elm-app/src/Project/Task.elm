@@ -144,16 +144,15 @@ basicParameterDecoder =
                     choice =
                         Decode.map ChoiceParam choiceParameterDecoder
                 in
-                case otherOptions of
-                    Nothing ->
-                        string
-
-                    Just options ->
-                        if List.isEmpty options then
+                    case otherOptions of
+                        Nothing ->
                             string
 
-                        else
-                            choice
+                        Just options ->
+                            if List.isEmpty options then
+                                string
+                            else
+                                choice
             )
 
 
@@ -167,16 +166,16 @@ byBranch cred baseUrl projectSlug branchName =
         endpoint =
             Endpoint.tasks (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
     in
-    Commit.head cred baseUrl projectSlug branchName
-        |> BaseTask.andThen
-            (\maybeCommit ->
-                case maybeCommit of
-                    Just commit ->
-                        PaginatedList.decoder decoder
-                            |> Api.get (endpoint <| Commit.hash commit) (Just cred)
-                            |> Http.toTask
-                            |> BaseTask.map PaginatedList.values
+        Commit.head cred baseUrl projectSlug branchName
+            |> BaseTask.andThen
+                (\maybeCommit ->
+                    case maybeCommit of
+                        Just commit ->
+                            PaginatedList.decoder decoder
+                                |> Api.get (endpoint <| Commit.hash commit) (Just cred)
+                                |> Http.toTask
+                                |> BaseTask.map PaginatedList.values
 
-                    Nothing ->
-                        BaseTask.succeed []
-            )
+                        Nothing ->
+                            BaseTask.succeed []
+                )

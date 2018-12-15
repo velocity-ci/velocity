@@ -1,18 +1,19 @@
-module Api.Endpoint exposing
-    ( CollectionOptions
-    , Endpoint
-    , branches
-    , builds
-    , commits
-    , fromString
-    , knownHosts
-    , login
-    , projectSync
-    , projects
-    , request
-    , tasks
-    , toWs
-    )
+module Api.Endpoint
+    exposing
+        ( CollectionOptions
+        , Endpoint
+        , branches
+        , builds
+        , commits
+        , fromString
+        , knownHosts
+        , login
+        , projectSync
+        , projects
+        , request
+        , tasks
+        , toWs
+        )
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -80,7 +81,6 @@ toWs : Endpoint -> String
 toWs (Endpoint apiUrlBase) =
     if String.startsWith "http" apiUrlBase then
         "ws" ++ String.dropLeft 4 apiUrlBase
-
     else
         -- Not an http API URL - this will fail pretty quickly
         apiUrlBase
