@@ -1,4 +1,4 @@
-module Project.Task exposing (Task, byBranch, decoder)
+module Project.Task exposing (Task, byBranch, decoder, name)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint
@@ -6,6 +6,7 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, optional, required)
 import Json.Encode as Encode
+import PaginatedList
 import Project.Branch.Name as BranchName
 import Project.Commit as Commit exposing (Commit)
 import Project.Slug as ProjectSlug
@@ -54,6 +55,15 @@ type alias ChoiceParameter =
 
 type alias DerivedParameter =
     { use : String }
+
+
+
+-- Info
+
+
+name : Task -> Name
+name (Task t) =
+    t.name
 
 
 
@@ -134,15 +144,16 @@ basicParameterDecoder =
                     choice =
                         Decode.map ChoiceParam choiceParameterDecoder
                 in
-                    case otherOptions of
-                        Nothing ->
+                case otherOptions of
+                    Nothing ->
+                        string
+
+                    Just options ->
+                        if List.isEmpty options then
                             string
 
-                        Just options ->
-                            if List.isEmpty options then
-                                string
-                            else
-                                choice
+                        else
+                            choice
             )
 
 
@@ -156,15 +167,16 @@ byBranch cred baseUrl projectSlug branchName =
         endpoint =
             Endpoint.tasks (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
     in
-        Commit.head cred baseUrl projectSlug branchName
-            |> BaseTask.andThen
-                (\maybeCommit ->
-                    case maybeCommit of
-                        Just commit ->
-                            Decode.list decoder
-                                |> Api.get (endpoint <| Commit.hash commit) (Just cred)
-                                |> Http.toTask
+    Commit.head cred baseUrl projectSlug branchName
+        |> BaseTask.andThen
+            (\maybeCommit ->
+                case maybeCommit of
+                    Just commit ->
+                        PaginatedList.decoder decoder
+                            |> Api.get (endpoint <| Commit.hash commit) (Just cred)
+                            |> Http.toTask
+                            |> BaseTask.map PaginatedList.values
 
-                        Nothing ->
-                            BaseTask.succeed []
-                )
+                    Nothing ->
+                        BaseTask.succeed []
+            )

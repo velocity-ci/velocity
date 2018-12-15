@@ -67,8 +67,8 @@ head cred baseUrl projectSlug branchName =
         l =
             list cred baseUrl projectSlug branchName { amount = 1, page = 1 }
     in
-        Http.toTask l
-            |> Task.andThen (PaginatedList.values >> List.head >> Task.succeed)
+    Http.toTask l
+        |> Task.andThen (PaginatedList.values >> List.head >> Task.succeed)
 
 
 
@@ -81,5 +81,5 @@ list cred baseUrl projectSlug branchName opts =
         endpoint =
             Endpoint.commits (Just opts) (Api.toEndpoint baseUrl) projectSlug branchName
     in
-        PaginatedList.decoder decoder
-            |> Api.get endpoint (Just cred)
+    PaginatedList.decoder decoder
+        |> Api.get endpoint (Just cred)

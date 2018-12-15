@@ -1,7 +1,8 @@
-module Project.Task.Name exposing (Name, decoder, urlParser)
+module Project.Task.Name exposing (Name, decoder, toString, urlParser)
 
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+
 
 
 -- TYPES
@@ -9,6 +10,15 @@ import Url.Parser exposing (Parser)
 
 type Name
     = Name String
+
+
+
+-- INFO
+
+
+toString : Name -> String
+toString (Name str) =
+    str
 
 
 

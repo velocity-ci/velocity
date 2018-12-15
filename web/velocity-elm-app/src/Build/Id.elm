@@ -1,4 +1,4 @@
-module Project.Task.Id exposing (Id, decoder, toString, urlParser)
+module Build.Id exposing (Id, decoder, toString, urlParser)
 
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
