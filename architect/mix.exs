@@ -54,7 +54,9 @@ defmodule Architect.MixProject do
       {:absinthe_phoenix, "~> 1.4.0"},
       {:absinthe_ecto, "~> 0.1.3"},
       {:commanded, "~> 0.17"},
-      {:poison, "~> 3.1 or ~> 4.0"}
+      {:poison, "~> 3.1 or ~> 4.0"},
+      {:kronky, "~> 0.5.0"},
+      {:dataloader, "~> 1.0.1"}
     ]
   end
 

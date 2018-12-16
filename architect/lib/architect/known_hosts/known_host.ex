@@ -3,11 +3,11 @@ defmodule Architect.KnownHosts.KnownHost do
   import Ecto.Changeset
 
   schema "known_hosts" do
-    field :comment, :string
-    field :entry, :string
-    field :fingerprint_md5, :string
-    field :fingerprint_sha256, :string
-    field :hosts, {:array, :string}
+    field(:comment, :string)
+    field(:entry, :string)
+    field(:fingerprint_md5, :string)
+    field(:fingerprint_sha256, :string)
+    field(:hosts, {:array, :string})
 
     timestamps()
   end
