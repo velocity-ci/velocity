@@ -7,7 +7,6 @@ module Session exposing
     , branches
     , changes
     , cred
-    , errorToString
     , fromViewer
     , joinChannels
     , joinProjectChannel
@@ -186,25 +185,6 @@ log session =
             Nothing
 
 
-errorToString : InitError -> String
-errorToString (HttpError httpError) =
-    case httpError of
-        Http.BadUrl error ->
-            "Bad URL: " ++ error
-
-        Http.NetworkError ->
-            "Network Error"
-
-        Http.BadStatus _ ->
-            "Bad Status"
-
-        Http.BadPayload payload _ ->
-            "Bad Payload: " ++ payload
-
-        Http.Timeout ->
-            "Timeout"
-
-
 
 -- CHANGES
 
@@ -333,14 +313,12 @@ fromViewer key context maybeViewer =
 
                 projectsRequest =
                     Project.list credVal baseUrl
-                        |> Http.toTask
                         |> Task.andThen
                             (\projectsResponse ->
                                 projectsResponse
                                     |> List.map
                                         (\p ->
                                             Branch.list credVal baseUrl (Project.slug p)
-                                                |> Http.toTask
                                                 |> Task.andThen
                                                     (\b ->
                                                         Task.succeed { project = p, branches = b }
@@ -352,7 +330,6 @@ fromViewer key context maybeViewer =
 
                 knownHostsRequest =
                     KnownHost.list credVal baseUrl
-                        |> Http.toTask
                         |> Task.mapError HttpError
             in
             Task.map2

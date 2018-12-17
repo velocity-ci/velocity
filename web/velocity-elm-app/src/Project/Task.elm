@@ -144,15 +144,16 @@ basicParameterDecoder =
                     choice =
                         Decode.map ChoiceParam choiceParameterDecoder
                 in
-                    case otherOptions of
-                        Nothing ->
+                case otherOptions of
+                    Nothing ->
+                        string
+
+                    Just options ->
+                        if List.isEmpty options then
                             string
 
-                        Just options ->
-                            if List.isEmpty options then
-                                string
-                            else
-                                choice
+                        else
+                            choice
             )
 
 
@@ -162,20 +163,23 @@ basicParameterDecoder =
 
 byBranch : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> BaseTask.Task Http.Error (List Task)
 byBranch cred baseUrl projectSlug branchName =
-    let
-        endpoint =
-            Endpoint.tasks (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
-    in
-        Commit.head cred baseUrl projectSlug branchName
-            |> BaseTask.andThen
-                (\maybeCommit ->
-                    case maybeCommit of
-                        Just commit ->
-                            PaginatedList.decoder decoder
-                                |> Api.get (endpoint <| Commit.hash commit) (Just cred)
-                                |> Http.toTask
-                                |> BaseTask.map PaginatedList.values
+    BaseTask.succeed []
 
-                        Nothing ->
-                            BaseTask.succeed []
-                )
+
+
+--    let
+--        endpoint =
+--            Endpoint.tasks (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
+--    in
+--    Commit.head cred baseUrl projectSlug branchName
+--        |> BaseTask.andThen
+--            (\maybeCommit ->
+--                case maybeCommit of
+--                    Just commit ->
+--                        PaginatedList.decoder decoder
+--                            |> Api.get (endpoint <| Commit.hash commit) (Just cred)
+--                            |> Cmd.map PaginatedList.values
+--
+--                    Nothing ->
+--                        BaseTask.succeed []
+--            )

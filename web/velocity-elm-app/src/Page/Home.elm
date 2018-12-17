@@ -25,7 +25,6 @@ import KnownHost exposing (KnownHost)
 import Loading
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Palette
-import Porter
 import Project exposing (Project)
 import Regex
 import Route
@@ -813,8 +812,7 @@ update msg model =
             ( model
             , case ( model.projectFormStatus, Session.cred model.session ) of
                 ( AddingKnownHost { publicKey }, Just cred ) ->
-                    KnownHost.create cred baseUrl publicKey
-                        |> Http.send KnownHostCreated
+                    KnownHost.create cred baseUrl publicKey KnownHostCreated
 
                 _ ->
                     Cmd.none
@@ -830,7 +828,7 @@ update msg model =
                         , repository = gitUrl.href
                         , privateKey = Nothing
                         }
-                        |> Http.send ProjectCreated
+                        ProjectCreated
 
                 _ ->
                     Cmd.none
@@ -909,8 +907,7 @@ update msg model =
               }
             , case Session.cred model.session of
                 Just cred ->
-                    Project.sync cred (Context.baseUrl model.context) (Project.slug project)
-                        |> Http.send (always NoOp)
+                    Project.sync cred (Context.baseUrl model.context) (Project.slug project) (always NoOp)
 
                 Nothing ->
                     Cmd.none

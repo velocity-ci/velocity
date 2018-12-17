@@ -183,7 +183,7 @@ update msg model =
             case validate model.form of
                 Ok validForm ->
                     ( { model | problems = [] }
-                    , Http.send CompletedLogin (login model.context validForm)
+                    , login model.context validForm CompletedLogin
                     )
 
                 Err problems ->
@@ -316,7 +316,7 @@ trimFields form =
 -- HTTP
 
 
-login : Context msg -> TrimmedForm -> Http.Request Viewer
+login : Context msg -> TrimmedForm -> (Result Http.Error Viewer -> msg) -> Http.Request Viewer
 login context (Trimmed form) =
     let
         body =

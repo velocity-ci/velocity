@@ -68,11 +68,11 @@ internalsDecoder =
 -- COLLECTION --
 
 
-list : Cred -> BaseUrl -> ProjectSlug.Slug -> Http.Request (PaginatedList Build)
-list cred baseUrl projectSlug =
+list : Cred -> BaseUrl -> ProjectSlug.Slug -> (Result Http.Error (PaginatedList Build) -> msg) -> Cmd msg
+list cred baseUrl projectSlug toMsg =
     let
         endpoint =
             Endpoint.builds (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
     in
     PaginatedList.decoder decoder
-        |> Api.get endpoint (Just cred)
+        |> Api.get endpoint (Just cred) toMsg

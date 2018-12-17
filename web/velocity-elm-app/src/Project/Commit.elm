@@ -1,7 +1,7 @@
-module Project.Commit exposing (Commit, decoder, hash, head)
+module Project.Commit exposing (Commit, decoder, hash)
 
 import Api exposing (BaseUrl, Cred)
-import Api.Endpoint as Endpoint
+import Api.Endpoint as Endpoint exposing (Endpoint)
 import Http
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
@@ -59,27 +59,28 @@ hash (Commit commit) =
 
 
 -- SINGLE --
-
-
-head : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> Task Http.Error (Maybe Commit)
-head cred baseUrl projectSlug branchName =
-    let
-        l =
-            list cred baseUrl projectSlug branchName { amount = 1, page = 1 }
-    in
-        Http.toTask l
-            |> Task.andThen (PaginatedList.values >> List.head >> Task.succeed)
-
-
-
+--head : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> (Result Http.Error a -> msg) -> Cmd msg
+--head cred baseUrl projectSlug branchName toMsg =
+--    let
+--        endpoint =
+--            commitsEndpoint cred baseUrl projectSlug branchName { amount = 1, page = 1 }
+--    in
+--    PaginatedList.decoder decoder
+--        |> Api.get endpoint (Just cred) toMsg
+--
+--        |> Task.andThen (PaginatedList.values >> List.head >> Task.succeed)
 -- COLLECTION --
 
 
-list : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> Endpoint.CollectionOptions -> Http.Request (PaginatedList Commit)
-list cred baseUrl projectSlug branchName opts =
+list : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> Endpoint.CollectionOptions -> (Result Http.Error (PaginatedList Commit) -> msg) -> Cmd msg
+list cred baseUrl projectSlug branchName opts toMsg =
     let
         endpoint =
-            Endpoint.commits (Just opts) (Api.toEndpoint baseUrl) projectSlug branchName
+            commitsEndpoint cred baseUrl projectSlug branchName opts
     in
-        PaginatedList.decoder decoder
-            |> Api.get endpoint (Just cred)
+    Api.get endpoint (Just cred) toMsg (PaginatedList.decoder decoder)
+
+
+commitsEndpoint : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> Endpoint.CollectionOptions -> Endpoint
+commitsEndpoint cred baseUrl projectSlug branchName opts =
+    Endpoint.commits (Just opts) (Api.toEndpoint baseUrl) projectSlug branchName

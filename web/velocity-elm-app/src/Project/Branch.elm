@@ -9,6 +9,7 @@ import Json.Decode.Pipeline exposing (custom, required)
 import Json.Encode as Encode
 import Project.Branch.Name as Name exposing (Name)
 import Project.Slug as ProjectSlug
+import Task exposing (Task)
 
 
 type Branch
@@ -59,11 +60,11 @@ internalsDecoder =
 -- COLLECTION --
 
 
-list : Cred -> BaseUrl -> ProjectSlug.Slug -> Http.Request (List Branch)
+list : Cred -> BaseUrl -> ProjectSlug.Slug -> Task Http.Error (List Branch)
 list cred baseUrl projectSlug =
     let
         endpoint =
             Endpoint.branches (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
     in
-        Decode.field "data" (Decode.list decoder)
-            |> Api.get endpoint (Just cred)
+    Decode.field "data" (Decode.list decoder)
+        |> Api.getTask endpoint (Just cred)

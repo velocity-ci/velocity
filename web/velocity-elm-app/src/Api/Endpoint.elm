@@ -1,19 +1,19 @@
-module Api.Endpoint
-    exposing
-        ( CollectionOptions
-        , Endpoint
-        , branches
-        , builds
-        , commits
-        , fromString
-        , knownHosts
-        , login
-        , projectSync
-        , projects
-        , request
-        , tasks
-        , toWs
-        )
+module Api.Endpoint exposing
+    ( CollectionOptions
+    , Endpoint
+    , branches
+    , builds
+    , commits
+    , fromString
+    , knownHosts
+    , login
+    , projectSync
+    , projects
+    , request
+    , task
+    , tasks
+    , toWs
+    )
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -21,6 +21,7 @@ import Phoenix.Channel exposing (Channel)
 import Project.Branch.Name
 import Project.Commit.Hash
 import Project.Slug
+import Task exposing (Task)
 import Url.Builder exposing (QueryParameter, int, string)
 import Username exposing (Username)
 
@@ -36,16 +37,53 @@ request :
     , url : Endpoint
     , withCredentials : Bool
     }
-    -> Http.Request a
+    -> Cmd a
 request config =
-    Http.request
+    let
+        req =
+            if config.withCredentials then
+                Http.riskyRequest
+
+            else
+                Http.request
+    in
+    req
         { body = config.body
         , expect = config.expect
         , headers = config.headers
         , method = config.method
         , timeout = config.timeout
         , url = unwrap config.url
-        , withCredentials = config.withCredentials
+        , tracker = Nothing
+        }
+
+
+task :
+    { body : Http.Body
+    , resolver : Http.Resolver e a
+    , headers : List Http.Header
+    , method : String
+    , timeout : Maybe Float
+    , url : Endpoint
+    , withCredentials : Bool
+    }
+    -> Task e a
+task config =
+    let
+        req =
+            if config.withCredentials then
+                Http.riskyTask
+
+            else
+                Http.task
+    in
+    req
+        { body = config.body
+        , resolver = config.resolver
+        , headers = config.headers
+        , method = config.method
+        , timeout = config.timeout
+        , url = unwrap config.url
         }
 
 
@@ -81,6 +119,7 @@ toWs : Endpoint -> String
 toWs (Endpoint apiUrlBase) =
     if String.startsWith "http" apiUrlBase then
         "ws" ++ String.dropLeft 4 apiUrlBase
+
     else
         -- Not an http API URL - this will fail pretty quickly
         apiUrlBase

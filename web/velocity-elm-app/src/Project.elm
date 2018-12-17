@@ -37,6 +37,7 @@ import Phoenix.Channel as Channel exposing (Channel)
 import Project.Branch as Branch exposing (Branch)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
+import Task exposing (Task)
 import Time
 
 
@@ -206,27 +207,27 @@ updateProject (Project a) projects =
 -- COLLECTION --
 
 
-list : Cred -> BaseUrl -> Http.Request (List Project)
+list : Cred -> BaseUrl -> Task Http.Error (List Project)
 list cred baseUrl =
     let
         endpoint =
             Endpoint.projects (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl)
     in
     Decode.field "data" (Decode.list decoder)
-        |> Api.get endpoint (Just cred)
+        |> Api.getTask endpoint (Just cred)
 
 
-sync : Cred -> BaseUrl -> Slug -> Http.Request Project
-sync cred baseUrl slug_ =
+sync : Cred -> BaseUrl -> Slug -> (Result Http.Error Project -> msg) -> Cmd msg
+sync cred baseUrl slug_ toMsg =
     let
         endpoint =
             Endpoint.projectSync (Api.toEndpoint baseUrl) slug_
     in
-    Api.post endpoint (Just cred) (Encode.object [] |> Http.jsonBody) decoder
+    Api.post endpoint (Just cred) (Encode.object [] |> Http.jsonBody) toMsg decoder
 
 
-create : Cred -> BaseUrl -> { a | name : String, repository : String, privateKey : Maybe String } -> Http.Request Project
-create cred baseUrl values =
+create : Cred -> BaseUrl -> { a | name : String, repository : String, privateKey : Maybe String } -> (Result Http.Error Project -> msg) -> Cmd msg
+create cred baseUrl values toMsg =
     let
         endpoint =
             Endpoint.projects Nothing (Api.toEndpoint baseUrl)
@@ -249,7 +250,7 @@ create cred baseUrl values =
                 |> Encode.object
                 |> Http.jsonBody
     in
-    Api.post endpoint (Just cred) body decoder
+    Api.post endpoint (Just cred) body toMsg decoder
 
 
 

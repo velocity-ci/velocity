@@ -2,9 +2,11 @@ port module Api exposing
     ( BaseUrl
     , Cred
     , application
-    , credPayload
-    , decodeErrors
+    ,  credPayload
+       --    , decodeErrors
+
     , get
+    , getTask
     , login
     , logout
     , post
@@ -27,6 +29,7 @@ import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, stri
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
 import Phoenix.Channel as Channel exposing (Channel)
+import Task exposing (Task)
 import Url exposing (Url)
 import Username exposing (Username)
 
@@ -220,12 +223,12 @@ storageDecoder viewerDecoder =
 -- HTTP
 
 
-get : Endpoint -> Maybe Cred -> Decoder a -> Http.Request a
-get url maybeCred decoder =
+get : Endpoint -> Maybe Cred -> (Result Http.Error a -> msg) -> Decoder a -> Cmd msg
+get url maybeCred toMsg decoder =
     Endpoint.request
         { method = "GET"
         , url = url
-        , expect = Http.expectJson decoder
+        , expect = Http.expectJson toMsg decoder
         , headers =
             case maybeCred of
                 Just cred ->
@@ -239,12 +242,54 @@ get url maybeCred decoder =
         }
 
 
-put : Endpoint -> Cred -> Body -> Decoder a -> Http.Request a
-put url cred body decoder =
+getTask : Endpoint -> Maybe Cred -> Decoder a -> Task Http.Error a
+getTask url maybeCred decoder =
+    Endpoint.task
+        { method = "GET"
+        , url = url
+        , resolver =
+            Http.stringResolver
+                (\res ->
+                    case res of
+                        Http.BadUrl_ url_ ->
+                            Err (Http.BadUrl url_)
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata body ->
+                            Err (Http.BadStatus metadata.statusCode)
+
+                        Http.GoodStatus_ _ body ->
+                            case Decode.decodeString decoder body of
+                                Ok value ->
+                                    Ok value
+
+                                Err err ->
+                                    Err (Http.BadBody (Decode.errorToString err))
+                )
+        , headers =
+            case maybeCred of
+                Just cred ->
+                    [ credHeader cred ]
+
+                Nothing ->
+                    []
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , withCredentials = False
+        }
+
+
+put : Endpoint -> Cred -> Body -> (Result Http.Error a -> msg) -> Decoder a -> Cmd msg
+put url cred body toMsg decoder =
     Endpoint.request
         { method = "PUT"
         , url = url
-        , expect = Http.expectJson decoder
+        , expect = Http.expectJson toMsg decoder
         , headers = [ credHeader cred ]
         , body = body
         , timeout = Nothing
@@ -252,12 +297,12 @@ put url cred body decoder =
         }
 
 
-post : Endpoint -> Maybe Cred -> Body -> Decoder a -> Http.Request a
-post url maybeCred body decoder =
+post : Endpoint -> Maybe Cred -> Body -> (Result Http.Error a -> msg) -> Decoder a -> Cmd msg
+post url maybeCred body toMsg decoder =
     Endpoint.request
         { method = "POST"
         , url = url
-        , expect = Http.expectJson decoder
+        , expect = Http.expectJson toMsg decoder
         , headers =
             case maybeCred of
                 Just cred ->
@@ -271,12 +316,12 @@ post url maybeCred body decoder =
         }
 
 
-delete : Endpoint -> Cred -> Body -> Decoder a -> Http.Request a
-delete url cred body decoder =
+delete : Endpoint -> Cred -> Body -> (Result Http.Error a -> msg) -> Decoder a -> Cmd msg
+delete url cred body toMsg decoder =
     Endpoint.request
         { method = "DELETE"
         , url = url
-        , expect = Http.expectJson decoder
+        , expect = Http.expectJson toMsg decoder
         , headers = [ credHeader cred ]
         , body = body
         , timeout = Nothing
@@ -289,9 +334,9 @@ delete url cred body decoder =
 --
 
 
-login : BaseUrl -> Http.Body -> Decoder (Cred -> a) -> Http.Request a
-login (BaseUrl baseUrl) body decoder =
-    post (Endpoint.login baseUrl) Nothing body (decoderFromCred decoder)
+login : BaseUrl -> Http.Body -> (Result Http.Error a -> msg) -> Decoder (Cred -> a) -> Cmd msg
+login (BaseUrl baseUrl) body toMsg decoder =
+    post (Endpoint.login baseUrl) Nothing body toMsg (decoderFromCred decoder)
 
 
 
@@ -326,16 +371,19 @@ addServerError list =
 
 {-| Many API endpoints include an "errors" field in their BadStatus responses.
 -}
-decodeErrors : Http.Error -> List String
-decodeErrors error =
-    case error of
-        Http.BadStatus response ->
-            response.body
-                |> decodeString (field "errors" errorsDecoder)
-                |> Result.withDefault [ "Server error" ]
 
-        err ->
-            [ "Server error" ]
+
+
+--decodeErrors : Http.Response a -> List String
+--decodeErrors response =
+--    case response of
+--        Http.BadStatus response ->
+--            response.body
+--                |> decodeString (field "errors" errorsDecoder)
+--                |> Result.withDefault [ "Server error" ]
+--
+--        _ ->
+--            [ "Server error" ]
 
 
 errorsDecoder : Decoder (List String)

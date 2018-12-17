@@ -7,6 +7,7 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, required)
 import Json.Encode as Encode
+import Task exposing (Task)
 
 
 type alias KnownHost =
@@ -92,18 +93,18 @@ idToString (Id id) =
 -- REQUESTS
 
 
-list : Cred -> BaseUrl -> Http.Request (List KnownHost)
+list : Cred -> BaseUrl -> Task Http.Error (List KnownHost)
 list cred baseUrl =
     let
         endpoint =
             Endpoint.knownHosts (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl)
     in
     Decode.field "data" (Decode.list decoder)
-        |> Api.get endpoint (Just cred)
+        |> Api.getTask endpoint (Just cred)
 
 
-create : Cred -> BaseUrl -> String -> Http.Request KnownHost
-create cred baseUrl publicKey =
+create : Cred -> BaseUrl -> String -> (Result Http.Error KnownHost -> msg) -> Cmd msg
+create cred baseUrl publicKey toMsg =
     let
         endpoint =
             Endpoint.knownHosts Nothing (Api.toEndpoint baseUrl)
@@ -112,4 +113,4 @@ create cred baseUrl publicKey =
             Encode.object [ ( "entry", Encode.string publicKey ) ]
                 |> Http.jsonBody
     in
-    Api.post endpoint (Just cred) body decoder
+    Api.post endpoint (Just cred) body toMsg decoder
