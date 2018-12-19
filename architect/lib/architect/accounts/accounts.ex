@@ -1,4 +1,4 @@
-defmodule Architect.Users do
+defmodule Architect.Accounts do
   @moduledoc """
   The Users context.
   """
@@ -38,12 +38,12 @@ defmodule Architect.Users do
   def get_user!(id), do: Repo.get!(User, id)
 
   def get_by_username(username) do
-    user = Repo.one(User, username: username)
+    case Repo.one(User, username: username) do
+      nil ->
+        {:error, :not_found}
 
-    if user != nil do
-      {:ok, user}
-    else
-      {:error}
+      user ->
+        {:ok, user}
     end
   end
 
@@ -113,6 +113,9 @@ defmodule Architect.Users do
   end
 
   def ensure_admin() do
+    case get_by_username("admin") do
+    end
+
     if get_by_username("admin") == {:error} do
       create_user(%{
         username: "admin",
