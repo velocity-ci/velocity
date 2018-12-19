@@ -450,7 +450,7 @@ update msg model =
                     )
 
                 StartApplication (Err err) ->
-                    ( InitError (Session.errorToString err)
+                    ( InitError "HTTP error"
                     , Cmd.none
                     )
 

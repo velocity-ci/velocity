@@ -198,15 +198,16 @@ update msg model =
             updateForm (\form -> { form | password = password }) model
 
         CompletedLogin (Err error) ->
-            let
-                serverErrors =
-                    Api.decodeErrors error
-                        |> List.map ServerError
-            in
-            ( { model | problems = List.append model.problems serverErrors }
-            , Cmd.none
-            )
+            ( model, Cmd.none )
 
+        --            let
+        --                serverErrors =
+        --                    Api.decodeErrors error
+        --                        |> List.map ServerError
+        --            in
+        --            ( { model | problems = List.append model.problems serverErrors }
+        --            , Cmd.none
+        --            )
         CompletedLogin (Ok viewer) ->
             ( model
             , Viewer.store viewer
@@ -316,7 +317,7 @@ trimFields form =
 -- HTTP
 
 
-login : Context msg -> TrimmedForm -> (Result Http.Error Viewer -> msg) -> Http.Request Viewer
+login : Context msg -> TrimmedForm -> (Result Http.Error Viewer -> Msg) -> Cmd Msg
 login context (Trimmed form) =
     let
         body =

@@ -314,17 +314,20 @@ fromViewer key context maybeViewer =
                 projectsRequest =
                     Project.list credVal baseUrl
                         |> Task.andThen
-                            (\projectsResponse ->
-                                projectsResponse
-                                    |> List.map
-                                        (\p ->
-                                            Branch.list credVal baseUrl (Project.slug p)
-                                                |> Task.andThen
-                                                    (\b ->
-                                                        Task.succeed { project = p, branches = b }
-                                                    )
-                                        )
-                                    |> Task.sequence
+                            (List.map
+                                (\project ->
+                                    project
+                                        |> Project.slug
+                                        |> Branch.list credVal baseUrl
+                                        |> Task.andThen
+                                            (\branches_ ->
+                                                Task.succeed
+                                                    { project = project
+                                                    , branches = branches_
+                                                    }
+                                            )
+                                )
+                                >> Task.sequence
                             )
                         |> Task.mapError HttpError
 

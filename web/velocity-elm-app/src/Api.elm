@@ -1,21 +1,21 @@
-port module Api exposing
-    ( BaseUrl
-    , Cred
-    , application
-    ,  credPayload
-       --    , decodeErrors
-
-    , get
-    , getTask
-    , login
-    , logout
-    , post
-    , storeCredWith
-    , toEndpoint
-    , toWsEndpoint
-    , username
-    , viewerChanges
-    )
+port module Api
+    exposing
+        ( BaseUrl
+        , Cred
+        , application
+        , credPayload
+          --    , decodeErrors
+        , get
+        , getTask
+        , login
+        , logout
+        , post
+        , storeCredWith
+        , toEndpoint
+        , toWsEndpoint
+        , username
+        , viewerChanges
+        )
 
 {-| This module is responsible for communicating to the Conduit API.
 It exposes an opaque Endpoint type which is guaranteed to point to the correct URL.
@@ -32,7 +32,6 @@ import Phoenix.Channel as Channel exposing (Channel)
 import Task exposing (Task)
 import Url exposing (Url)
 import Username exposing (Username)
-
 
 
 -- CRED
@@ -334,8 +333,8 @@ delete url cred body toMsg decoder =
 --
 
 
-login : BaseUrl -> Http.Body -> (Result Http.Error a -> msg) -> Decoder (Cred -> a) -> Cmd msg
-login (BaseUrl baseUrl) body toMsg decoder =
+login : BaseUrl -> Http.Body -> Decoder (Cred -> a) -> (Result Http.Error a -> msg) -> Cmd msg
+login (BaseUrl baseUrl) body decoder toMsg =
     post (Endpoint.login baseUrl) Nothing body toMsg (decoderFromCred decoder)
 
 
