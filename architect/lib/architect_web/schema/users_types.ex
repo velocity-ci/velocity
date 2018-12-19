@@ -6,4 +6,9 @@ defmodule ArchitectWeb.Schema.UsersTypes do
     field(:username, :string)
     field(:password, :string)
   end
+
+  @desc "token to authenticate user"
+  object :session do
+    field(:token, :string)
+  end
 end

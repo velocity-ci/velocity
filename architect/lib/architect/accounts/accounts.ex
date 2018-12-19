@@ -3,10 +3,54 @@ defmodule Architect.Accounts do
   The Users context.
   """
 
+  use Guardian, otp_app: :architect
+
   import Ecto.Query, warn: false
   alias Architect.Repo
 
-  alias Architect.Users.User
+  alias Architect.Accounts.User
+  alias Comeonin.Bcrypt
+
+  @doc """
+  Gets unique id of token subject
+  """
+  def subject_for_token(user, _claims) do
+    {:ok, to_string(user.id)}
+  end
+
+  @doc """
+  Gets user for token claims
+  """
+  def resource_from_claims(%{"sub" => id}) do
+    case get_user!(id) do
+      nil -> {:error, :resource_not_found}
+      user -> {:ok, user}
+    end
+  end
+
+  @doc """
+  Authenticate user with username and password
+  """
+  @spec authenticate(String.t(), String.t()) :: {:ok, User.t()} | {:error, String.t()}
+  def authenticate(username, password) when is_binary(username) and is_binary(password) do
+    user = Repo.one(User, username: username)
+
+    if check_password(user, password) do
+      {:ok, user}
+    else
+      {:error, :invalid_credentials}
+    end
+  end
+
+  def authenticate(_, _), do: {:error, :invalid_credential_types}
+
+  @spec check_password(User.t(), String.t()) :: boolean()
+  defp check_password(nil, _password) do
+    Bcrypt.dummy_checkpw()
+    false
+  end
+
+  defp check_password(user, password), do: Bcrypt.checkpw(password, user.password)
 
   @doc """
   Returns the list of users.

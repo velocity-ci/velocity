@@ -150,8 +150,9 @@ defmodule ArchitectWeb.V1.UserController do
   end
 
   def auth_create(conn, user_params) do
-    with changeset <- User.changeset(%User{}, user_params),
-         {:ok, user} <- Guardian.authenticate_user(changeset) do
+    with %{params: %{"username" => username, "password" => password}} <-
+           User.changeset(%User{}, user_params),
+         {:ok, user} <- Guardian.authenticate_user(username, password) do
       {:ok, token, claims} = Architect.Users.Guardian.encode_and_sign(user)
 
       conn

@@ -1,4 +1,4 @@
-defmodule Architect.Users.User do
+defmodule Architect.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 

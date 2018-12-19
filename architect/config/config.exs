@@ -17,6 +17,10 @@ config :architect, ArchitectWeb.Endpoint,
   render_errors: [view: ArchitectWeb.V1.ErrorView, accepts: ~w(json)],
   pubsub: [name: Architect.PubSub, adapter: Phoenix.PubSub.PG2]
 
+config :architect, Architect.Accounts,
+  issuer: "velocity_architect",
+  secret_key: "velocity_architect_dev_secret_key"
+
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
