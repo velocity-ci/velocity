@@ -3,6 +3,7 @@ defmodule Architect.Builders.Builder do
 
   """
   defstruct([
+    :id,
     :token,
     :state,
     :created_at,
@@ -12,6 +13,7 @@ defmodule Architect.Builders.Builder do
   @typedoc """
   """
   @type t :: %Architect.Builders.Builder{
+          id: String.t(),
           token: String.t(),
           state: String.t(),
           created_at: Time.t(),

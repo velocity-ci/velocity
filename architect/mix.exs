@@ -11,7 +11,16 @@ defmodule Architect.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      test_coverage: [tool: ExCoveralls]
+      test_coverage: [tool: ExCoveralls],
+      # Docs
+      name: "Velocity Architect",
+      source_url: "https://github.com/velocity-ci/velocity/architect",
+      homepage_url: "http://velocityci.io",
+      docs: [
+        # The main page in the docs
+        main: "Architect",
+        extras: ["README.md"]
+      ]
     ]
   end
 
@@ -56,7 +65,9 @@ defmodule Architect.MixProject do
       {:commanded, "~> 0.17"},
       {:poison, "~> 3.1 or ~> 4.0"},
       {:kronky, "~> 0.5.0"},
-      {:dataloader, "~> 1.0.1"}
+      {:dataloader, "~> 1.0.1"},
+      {:ex_doc, "~> 0.19", only: :dev, runtime: false},
+      {:timber, "~> 3.0.0"}
     ]
   end
 
