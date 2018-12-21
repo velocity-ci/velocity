@@ -19,7 +19,7 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
           {:ok, %{token: token}}
         else
           _ ->
-            {:error, generic_message("Invalid credentials")}
+            {:error, "Invalid credentials"}
         end
       end)
     end
