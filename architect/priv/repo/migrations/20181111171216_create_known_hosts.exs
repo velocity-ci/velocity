@@ -2,7 +2,7 @@ defmodule Architect.Repo.Migrations.CreateKnownHosts do
   use Ecto.Migration
 
   def change do
-    create table(:known_hosts) do
+    create table(:known_hosts, primary_key: false) do
       add :id, :uuid, primary_key: true
       add :entry, :string
       add :hosts, {:array, :string}
