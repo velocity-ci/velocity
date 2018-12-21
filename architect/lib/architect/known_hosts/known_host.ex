@@ -2,6 +2,7 @@ defmodule Architect.KnownHosts.KnownHost do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @primary_key {:id, :binary_id, autogenerate: true}
   schema "known_hosts" do
     field(:comment, :string)
     field(:entry, :string)

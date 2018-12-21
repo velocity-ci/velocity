@@ -6,8 +6,8 @@ defmodule ArchitectWeb.Schema.Middleware.Authorize do
 
   def call(resolution, _config) do
     case resolution.context do
-      %{current_user: %User{}} ->
-        resolution
+      # %{current_user: %User{}} ->
+      #   resolution
 
       _ ->
         message = "Vous devez vous connecter ou vous inscrire pour continuer."

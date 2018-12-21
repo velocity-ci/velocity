@@ -2,9 +2,9 @@ defmodule ArchitectWeb.V1.UserController do
   use ArchitectWeb, :controller
   use PhoenixSwagger
 
-  alias Architect.Users
-  alias Architect.Users.User
-  alias Architect.Users.Guardian
+  alias Architect.Accounts
+  alias Architect.Accounts.User
+  alias Architect.Accounts.Guardian
 
   action_fallback(ArchitectWeb.V1.FallbackController)
 
@@ -152,8 +152,8 @@ defmodule ArchitectWeb.V1.UserController do
   def auth_create(conn, user_params) do
     with %{params: %{"username" => username, "password" => password}} <-
            User.changeset(%User{}, user_params),
-         {:ok, user} <- Guardian.authenticate_user(username, password) do
-      {:ok, token, claims} = Architect.Users.Guardian.encode_and_sign(user)
+         {:ok, user} <- Accounts.authenticate(username, password) do
+      {:ok, token, claims} = Accounts.encode_and_sign(user)
 
       conn
       |> render("auth.json", %{user: user, token: token, claims: claims})

@@ -157,8 +157,8 @@ defmodule Architect.Accounts do
   end
 
   def ensure_admin() do
-    case get_by_username("admin") do
-    end
+    # case get_by_username("admin") do
+    # end
 
     if get_by_username("admin") == {:error} do
       create_user(%{
