@@ -5,8 +5,7 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
 
   alias ArchitectWeb.Schema.Middleware
   alias ArchitectWeb.Email
-  alias ArchitectWeb.{Accounts, Confirmations, Mailer}
-  alias Architect.Users.Guardian
+  alias Architect.Accounts
 
   object :auth_mutations do
     @desc "Sign in"
@@ -20,7 +19,7 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
           {:ok, %{token: token}}
         else
           _ ->
-            {:error, generic_message("Email ou mot de passe invalide.")}
+            {:error, generic_message("Invalid credentials")}
         end
       end)
     end

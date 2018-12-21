@@ -8,11 +8,14 @@ defmodule ArchitectWeb.Schema do
   import_types(ArchitectWeb.Schema.UsersTypes)
   import_types(ArchitectWeb.Schema.KnownHostsTypes)
   import_types(ArchitectWeb.Mutations.UsersMutations)
+  import_types(ArchitectWeb.Mutations.AuthMutations)
 
   payload_object(:user_payload, :user)
+  payload_object(:session_payload, :session)
 
   mutation do
-    import_fields(:users_migrations)
+    import_fields(:user_mutations)
+    import_fields(:auth_mutations)
   end
 
   query do

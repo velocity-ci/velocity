@@ -4,7 +4,7 @@ defmodule ArchitectWeb.Mutations.UsersMutations do
   alias Architect.Accounts
   alias Architect.Accounts.User
 
-  object :users_migrations do
+  object :user_mutations do
     @desc "Sign up"
 
     field :sign_up, :user_payload do
