@@ -5,46 +5,48 @@ defmodule Architect.Builders.Scheduler do
   use GenServer
   require Logger
 
-  defstruct(builders: MapSet.new())
+  @poll_timeout 5000
+
+  @enforce_keys [
+    :name,
+    :registry,
+    :supervisor
+  ]
+
+  defstruct [
+    :name,
+    :registry,
+    :supervisor
+  ]
 
   #
   # Client API
   #
+  def start_link(%__MODULE__{name: name} = state) do
+    Logger.debug("Starting process for scheduler #{inspect(state)}")
 
-  def register_builder(builder) do
-    {:ok, builder}
+    GenServer.start_link(__MODULE__, state, name: name)
   end
 
   #
   # Server
   #
 
-  def init(_opts) do
-    state = %Architect.Builders.Scheduler{}
-
-    Logger.info("-> started builder scheduler")
+  def init(state) do
+    Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
     # Poll for queued builds
-    Process.send_after(Architect.Builders.Scheduler, :poll_builds, 10000)
+    Process.send_after(__MODULE__, :poll_builds, @poll_timeout)
 
     {:ok, state}
   end
 
-  @doc """
-  Internal(register_builder): Registers a builder in memory (ERTS in the future?)
-  """
-  @spec handle_call(tuple, String.t(), Architect.Builders.Scheduler) :: tuple
-  def handle_call({:register_builder, builder}, _from, state) do
-    IO.inspect(state.builders)
+  def handle_info(:poll_builds, state) do
+    Logger.debug("checking for available builders")
+    Logger.debug("checking for waiting builds")
 
-    {:reply, "", state, :hibernate}
-  end
+    Process.send_after(__MODULE__, :poll_builds, @poll_timeout)
 
-  @doc """
-  Internal(poll_builds): Checks for any queued builds and attempts to schedule them onto a builder.
-  """
-  def handle_info(:poll_builds, _from, state) do
-    Logger.info("checking for available builders")
-    Logger.info("checking for waiting builds")
+    {:noreply, state}
   end
 end

@@ -1,10 +1,12 @@
 defmodule Architect.Builders do
-  alias Architect.Builders.Builder
+  alias Architect.Builders.{Builder, Scheduler}
   use Supervisor
+  use GenServer
   require Logger
 
   @registry Architect.Builders.Registry
   @supervisor Architect.Builders.Supervisor
+  @scheduler Architect.Builders.Scheduler
 
   @registry_str Atom.to_string(@registry)
 
@@ -76,19 +78,14 @@ defmodule Architect.Builders do
   def init(:ok) do
     children = [
       {Registry, keys: :unique, name: @registry},
-      {DynamicSupervisor, name: @supervisor, strategy: :one_for_one}
+      {DynamicSupervisor, name: @supervisor, strategy: :one_for_one},
+      {Scheduler, %Scheduler{name: @scheduler, registry: @registry, supervisor: @supervisor}}
     ]
 
     state = Supervisor.init(children, strategy: :one_for_one)
 
-    init_builders()
-
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
     state
-  end
-
-  defp init_builders() do
-    ### However we get the builders... Still not sure about this bit.
   end
 end
