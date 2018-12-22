@@ -17,7 +17,24 @@ defmodule Architect.Builders do
     Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
-  def start_builder(%Builder{id: id} = builder) do
+  def create_builder() do
+    builder = %Builder{
+      id: Integer.to_string(:rand.uniform(4_294_967_296), 32),
+      token: :crypto.strong_rand_bytes(64) |> Base.encode64() |> binary_part(0, 64),
+      state: Builder.state_disconnected(),
+      created_at: DateTime.utc_now(),
+      updated_at: DateTime.utc_now()
+    }
+
+    name = {:via, Registry, {@registry, builder.id}}
+    {:ok, _pid} = DynamicSupervisor.start_child(@supervisor, {Builder, {builder, name}})
+
+    Logger.debug("Created builder #{inspect(builder)} on #{@registry_str}")
+
+    {:ok, builder}
+  end
+
+  def register_builder(%Builder{id: id} = builder) do
     case Registry.lookup(@registry, id) do
       [_] ->
         Logger.error(
@@ -36,7 +53,7 @@ defmodule Architect.Builders do
     end
   end
 
-  def stop_builder(id) do
+  def deregister_builder(id) do
     case Registry.lookup(@registry, id) do
       [{pid, _}] ->
         DynamicSupervisor.terminate_child(@supervisor, pid)

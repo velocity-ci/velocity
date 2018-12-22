@@ -2,7 +2,7 @@ defmodule ArchitectWeb.V1.BuilderSocket do
   use Phoenix.Socket
 
   ## Channels
-  # channel "room:*", ArchitectWeb.RoomChannel
+  channel "builder:*", ArchitectWeb.V1.BuilderChannel
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After

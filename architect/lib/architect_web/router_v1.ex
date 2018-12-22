@@ -31,6 +31,7 @@ defmodule ArchitectWeb.V1Router do
     get "/health", HealthController, :index
 
     post "/auth", UserController, :auth_create
+    resources("/builders", BuilderController)
   end
 
   scope "/", ArchitectWeb.V1 do

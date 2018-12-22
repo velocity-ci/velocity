@@ -85,8 +85,8 @@ func (b *Builder) registerWithArchitect() error {
 		return err
 	}
 
-	b.id = respBuilder.ID
-	b.token = respBuilder.Token
+	b.id = respBuilder.Data.ID
+	b.token = respBuilder.Data.Token
 
 	velocity.GetLogger().Info("registered builder", zap.String("id", b.id))
 
@@ -95,7 +95,8 @@ func (b *Builder) registerWithArchitect() error {
 
 func (b *Builder) connect() {
 	wsAddress := strings.Replace(b.baseArchitectAddress, "http", "ws", 1)
-	wsAddress = fmt.Sprintf("%s/v1/builders/ws", wsAddress)
+	wsAddress = fmt.Sprintf("%s/socket/v1/builders/websocket", wsAddress)
+	// wsAddress = fmt.Sprintf("%s/v1/builders/ws", wsAddress)
 
 	ws, err := phoenix.NewClient(wsAddress, map[string]func(*phoenix.PhoenixMessage) error{
 		EventStartBuild: func(m *phoenix.PhoenixMessage) error {
@@ -189,9 +190,13 @@ type registerBuilderRequest struct {
 	Secret string `json:"secret"`
 }
 
-type registerBuilderResponse struct {
+type registeredBuilder struct {
 	ID    string `json:"id"`
 	Token string `json:"token"`
+}
+
+type registerBuilderResponse struct {
+	Data registeredBuilder `json:"data"`
 }
 
 func connectToArchitect(address string, secret string) *websocket.Conn {
