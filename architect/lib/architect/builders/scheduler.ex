@@ -32,20 +32,20 @@ defmodule Architect.Builders.Scheduler do
   # Server
   #
 
-  def init(state) do
+  def init(%__MODULE__{name: name} = state) do
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
     # Poll for queued builds
-    Process.send_after(__MODULE__, :poll_builds, @poll_timeout)
+    Process.send_after(name, :poll_builds, @poll_timeout)
 
     {:ok, state}
   end
 
-  def handle_info(:poll_builds, state) do
+  def handle_info(:poll_builds, %__MODULE__{name: name} = state) do
     Logger.debug("checking for available builders")
     Logger.debug("checking for waiting builds")
 
-    Process.send_after(__MODULE__, :poll_builds, @poll_timeout)
+    Process.send_after(name, :poll_builds, @poll_timeout)
 
     {:noreply, state}
   end
