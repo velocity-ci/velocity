@@ -11,11 +11,8 @@ defmodule Architect.Application do
     children = [
       # Start the Ecto repository
       Architect.Repo,
-      # Start the endpoint when the application starts
+      supervisor(Architect.Builders, []),
       ArchitectWeb.Endpoint,
-      # Starts a worker by calling: Architect.Worker.start_link(arg)
-      # {Architect.Worker, arg},
-      # {Absinthe.Subscription, [ArchitectWeb.Endpoint]}
       supervisor(Absinthe.Subscription, [ArchitectWeb.Endpoint])
     ]
 

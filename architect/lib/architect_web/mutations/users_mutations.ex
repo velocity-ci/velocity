@@ -2,7 +2,6 @@ defmodule ArchitectWeb.Mutations.UsersMutations do
   use Absinthe.Schema.Notation
 
   alias Architect.Accounts
-  alias Architect.Accounts.User
 
   object :user_mutations do
     @desc "Sign up"
@@ -12,7 +11,7 @@ defmodule ArchitectWeb.Mutations.UsersMutations do
       arg(:password, :string)
 
       resolve(fn user_params, _ ->
-        with {:ok, %User{} = user} <- Accounts.create_user(user_params) do
+        with {:ok, user} <- Accounts.create_user(user_params) do
           {:ok, user}
         else
           {:error, %Ecto.Changeset{} = changeset} ->

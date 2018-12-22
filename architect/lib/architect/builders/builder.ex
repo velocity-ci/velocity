@@ -1,24 +1,36 @@
 defmodule Architect.Builders.Builder do
+  use GenServer
+  require Logger
+
   @moduledoc """
 
   """
-  defstruct([
+
+  @enforce_keys [:id]
+
+  defstruct [
     :id,
     :token,
     :state,
     :created_at,
     :updated_at
-  ])
+  ]
 
-  @typedoc """
-  """
-  @type t :: %Architect.Builders.Builder{
-          id: String.t(),
-          token: String.t(),
-          state: String.t(),
-          created_at: Time.t(),
-          updated_at: Time.t()
-        }
+  #### Client
+
+  def start_link(%__MODULE__{} = state) do
+    Logger.debug("Starting process for builder #{inspect(state)}")
+
+    GenServer.start_link(__MODULE__, state)
+  end
+
+  ### Server
+
+  def init(%__MODULE__{} = state) do
+    Logger.info("Running process for builder #{inspect(state)}")
+
+    {:ok, state}
+  end
 
   def state_ready, do: "ready"
   def state_busy, do: "busy"
