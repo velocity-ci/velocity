@@ -28,6 +28,10 @@ defmodule Architect.Builders.Builder do
     GenServer.call(builder_pid, :echo)
   end
 
+  def get_token(builder_pid) do
+    GenServer.call(builder_pid, {:info, :token})
+  end
+
   ### Server
 
   def init(%__MODULE__{} = state) do
@@ -38,6 +42,10 @@ defmodule Architect.Builders.Builder do
 
   def handle_call(:state, _from, state) do
     {:reply, state, state}
+  end
+
+  def handle_call({:info, field}, _from, state) do
+    {:reply, Map.get(state, field), state}
   end
 
   def handle_call(:echo, _from, state) do

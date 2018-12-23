@@ -13,6 +13,9 @@ config :architect, ArchitectWeb.Endpoint,
   check_origin: false,
   watchers: []
 
+config :architect,
+  builder_secret: System.get_env("BUILDER_SECRET") || "local"
+
 config :architect, Architect.Users.Guardian,
   secret_key: "0KX53Pv1ph4WUdZxlWlSX1Mf9Eeg8qNA10X8Jtik5VTvwG4BlW0wxTnceS15Yhnw"
 

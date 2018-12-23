@@ -34,6 +34,21 @@ defmodule Architect.Builders do
     {:ok, builder}
   end
 
+  def authenticate_builder(id, token) do
+    case Registry.lookup(@registry, id) do
+      [] ->
+        Logger.debug("builder:#{id} does not exist in registry")
+        {:error, :not_found}
+
+      [{pid, _}] ->
+        if token == Builder.get_token(pid) do
+          {:ok, id}
+        else
+          {:error, :unauthorized}
+        end
+    end
+  end
+
   def register_builder(%Builder{id: id} = builder) do
     case Registry.lookup(@registry, id) do
       [_] ->

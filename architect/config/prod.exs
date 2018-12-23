@@ -15,6 +15,9 @@ config :architect, ArchitectWeb.Endpoint,
   url: [host: "example.com", port: 80],
   cache_static_manifest: "priv/static/cache_manifest.json"
 
+config :architect,
+  builder_secret: "${BUILDER_SECRET}"
+
 # Guardian Configuration
 config :architect, Architect.Users.Guardian, secret_key: "${GUARDIAN_SECRET_KEY}"
 

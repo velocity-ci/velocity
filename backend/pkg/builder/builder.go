@@ -48,12 +48,15 @@ func (b *Builder) Start() {
 
 	if !waitForService(b.http, fmt.Sprintf("%s/v1/health", b.baseArchitectAddress)) {
 		velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", b.baseArchitectAddress))
+		b.Stop()
+		return
 	}
 
 	if len(b.id) < 1 {
 		err := b.registerWithArchitect()
 		if err != nil {
 			velocity.GetLogger().Error("could not register builder", zap.Error(err))
+			b.Stop()
 			return
 		}
 	}
@@ -76,6 +79,9 @@ func (b *Builder) registerWithArchitect() error {
 	resp, err := b.http.Do(req)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf(resp.Status)
 	}
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
@@ -122,7 +128,7 @@ func (b *Builder) connect() {
 	})
 	if err != nil {
 		velocity.GetLogger().Error("could not establish websocket connection", zap.Error(err))
-		b.run = false
+		b.Stop()
 		return
 	}
 	velocity.GetLogger().Debug("established websocket connection", zap.String("address", wsAddress))
@@ -135,7 +141,7 @@ func (b *Builder) connect() {
 	)
 	if err != nil {
 		velocity.GetLogger().Error("could not subscribe to builder topic", zap.String("topic", topic), zap.Error(err))
-		b.run = false
+		b.Stop()
 		return
 	}
 
