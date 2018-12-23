@@ -43,6 +43,14 @@ defmodule Architect.Builders.Scheduler do
 
   def handle_info(:poll_builds, %__MODULE__{name: name} = state) do
     Logger.debug("checking for available builders")
+    builders = Supervisor.which_children(Architect.Builders.Supervisor)
+    # {:undefined, #PID<0.601.0>, :worker, [Architect.Builders.Builder]}
+    Enum.each(builders, fn x ->
+      {_undefined, pid, _something_else, _another_thing} = x
+      state = Architect.Builders.Builder.get_state(pid)
+      IO.inspect(state)
+    end)
+
     Logger.debug("checking for waiting builds")
 
     Process.send_after(name, :poll_builds, @poll_timeout)

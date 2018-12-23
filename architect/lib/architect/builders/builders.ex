@@ -49,6 +49,17 @@ defmodule Architect.Builders do
     end
   end
 
+  def connect_builder(id) do
+    case Registry.lookup(@registry, id) do
+      [] ->
+        Logger.debug("builder:#{id} does not exist in registry")
+        {:error, :not_found}
+
+      [{pid, _}] ->
+        Builder.connect(pid)
+    end
+  end
+
   def register_builder(%Builder{id: id} = builder) do
     case Registry.lookup(@registry, id) do
       [_] ->

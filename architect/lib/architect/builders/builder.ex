@@ -28,8 +28,16 @@ defmodule Architect.Builders.Builder do
     GenServer.call(builder_pid, :echo)
   end
 
+  def connect(builder_pid) do
+    GenServer.call(builder_pid, {:update, :state, state_ready()})
+  end
+
   def get_token(builder_pid) do
     GenServer.call(builder_pid, {:info, :token})
+  end
+
+  def get_state(builder_pid) do
+    GenServer.call(builder_pid, {:info, :state})
   end
 
   ### Server
@@ -46,6 +54,15 @@ defmodule Architect.Builders.Builder do
 
   def handle_call({:info, field}, _from, state) do
     {:reply, Map.get(state, field), state}
+  end
+
+  def handle_call({:info, field}, _from, state) do
+    {:reply, Map.get(state, field), state}
+  end
+
+  def handle_call({:update, field, value}, _from, state) do
+    state = Map.put(state, field, value)
+    {:reply, state, state}
   end
 
   def handle_call(:echo, _from, state) do
