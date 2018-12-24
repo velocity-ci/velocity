@@ -42,7 +42,22 @@ defmodule Architect.Builders.Scheduler do
 
     PubSub.subscribe(Architect.PubSub, Presence.topic())
 
+    Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
+
     {:ok, state}
+  end
+
+  def handle_info(:poll_builds, state) do
+    Logger.debug("checking for available builders")
+    builders = Presence.list()
+    Enum.each(builders, fn {id, %{metas: [%{online_at: _online_at, phx_ref: _phx_ref, socket: socket, status: status}]}} ->
+      Logger.debug("builder #{id} (#{inspect(socket)}) is #{status}")
+      # How do we emit messages direct to the socket?
+    end)
+
+
+    Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
+    {:noreply, state}
   end
 
   def handle_call(:history, _from, state) do
