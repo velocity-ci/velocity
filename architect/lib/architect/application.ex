@@ -11,9 +11,9 @@ defmodule Architect.Application do
     children = [
       # Start the Ecto repository
       Architect.Repo,
-      supervisor(Architect.Builders, []),
       ArchitectWeb.Endpoint,
-      supervisor(Absinthe.Subscription, [ArchitectWeb.Endpoint])
+      supervisor(Absinthe.Subscription, [ArchitectWeb.Endpoint]),
+      supervisor(Architect.Builders, [])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

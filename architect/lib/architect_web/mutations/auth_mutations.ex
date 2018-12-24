@@ -10,8 +10,8 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
   object :auth_mutations do
     @desc "Sign in"
     field :sign_in, :session_payload do
-      arg(:username, :string)
-      arg(:password, :string)
+      arg(:username, non_null(:string))
+      arg(:password, non_null(:string))
 
       resolve(fn args, %{context: context} ->
         with {:ok, user} <- Accounts.authenticate(args[:username], args[:password]),
