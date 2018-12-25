@@ -25,4 +25,10 @@ defmodule ArchitectWeb.V1.BuilderChannel do
 
     {:noreply, socket}
   end
+
+  def handle_info(:send_ping, socket) do
+    push(socket, "ping", %{"hello" => "world"})
+
+    {:noreply, socket}
+  end
 end
