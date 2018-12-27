@@ -14,7 +14,7 @@ const storageKey = "store";
 
 let app;
 
-const ws = new Sockette('ws://localhost/v1/ws ', {
+const ws = new Sockette('ws://localhost:4000/socket/websocket ', {
     timeout: 5e3,
     maxAttempts: 10,
     onopen: (e) => {

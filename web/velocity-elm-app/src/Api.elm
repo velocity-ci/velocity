@@ -14,6 +14,7 @@ port module Api
         , toEndpoint
         , toWsEndpoint
         , username
+        , signIn
         , viewerChanges
         )
 
@@ -32,8 +33,20 @@ import Phoenix.Channel as Channel exposing (Channel)
 import Task exposing (Task)
 import Url exposing (Url)
 import Username exposing (Username)
+import Api.Compiled.Object
+import Api.Compiled.Query as Query
+import Api.Compiled.Mutation as Mutation
+import Graphql.Http
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
+import RemoteData
+import Graphql.Operation exposing (RootQuery)
+import Api.Compiled.Object.SessionPayload as SessionPayload
+import Api.Compiled.Object.Session as Session
+import Maybe.Extra
 
 
+--import StarWars.Scalar exposing (Id(..))
+--
 -- CRED
 
 
@@ -91,7 +104,7 @@ credPayload (Cred _ val) channel =
         payload =
             Encode.object [ ( "token", Encode.string val ) ]
     in
-    Channel.withPayload payload channel
+        Channel.withPayload payload channel
 
 
 {-| It's important that this is never exposed!
@@ -149,7 +162,7 @@ storeCredWith (Cred uname token) =
                   )
                 ]
     in
-    storeCache (Just json)
+        storeCache (Just json)
 
 
 logout : Cmd msg
@@ -168,14 +181,13 @@ port storeCache : Maybe Value -> Cmd msg
 application :
     Decoder (Cred -> viewer)
     -> (BaseUrl -> { width : Int, height : Int } -> context)
-    ->
-        { init : Maybe viewer -> Result Decode.Error context -> Url -> Nav.Key -> ( model, Cmd msg )
-        , onUrlChange : Url -> msg
-        , onUrlRequest : Browser.UrlRequest -> msg
-        , subscriptions : model -> Sub msg
-        , update : msg -> model -> ( model, Cmd msg )
-        , view : model -> Browser.Document msg
-        }
+    -> { init : Maybe viewer -> Result Decode.Error context -> Url -> Nav.Key -> ( model, Cmd msg )
+       , onUrlChange : Url -> msg
+       , onUrlRequest : Browser.UrlRequest -> msg
+       , subscriptions : model -> Sub msg
+       , update : msg -> model -> ( model, Cmd msg )
+       , view : model -> Browser.Document msg
+       }
     -> Program Value model msg
 application viewerDecoder toContext config =
     let
@@ -201,16 +213,16 @@ application viewerDecoder toContext config =
                 contextResult =
                     Result.map2 toContext baseUrlResult deviceDimensionResult
             in
-            config.init maybeViewer contextResult url navKey
+                config.init maybeViewer contextResult url navKey
     in
-    Browser.application
-        { init = init
-        , onUrlChange = config.onUrlChange
-        , onUrlRequest = config.onUrlRequest
-        , subscriptions = config.subscriptions
-        , update = config.update
-        , view = config.view
-        }
+        Browser.application
+            { init = init
+            , onUrlChange = config.onUrlChange
+            , onUrlRequest = config.onUrlRequest
+            , subscriptions = config.subscriptions
+            , update = config.update
+            , view = config.view
+            }
 
 
 storageDecoder : Decoder (Cred -> viewer) -> Decoder viewer
@@ -339,6 +351,32 @@ login (BaseUrl baseUrl) body decoder toMsg =
 
 
 
+--query : SelectionSet Response RootQuery
+--query =
+--    SelectionSet.map Response Query.hello
+--sessionSelectionSet : SelectionSet String Api.Compiled.Object.SessionPayload
+--sessionSelectionSet =
+--    SelectionSet.map identity
+--query : SelectionSet Response SessionPayload
+--query =
+--    SelectionSet.map Response Query.hello
+--
+
+
+signIn : BaseUrl -> Mutation.SignInRequiredArguments -> Graphql.Http.Request (Maybe (Maybe (Maybe String)))
+signIn (BaseUrl baseUrl) values =
+    Mutation.signIn (Debug.log "sign in values" values) (SessionPayload.result Session.token)
+        |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+
+
+
+--signIn : BaseUrl -> Mutation.SignInRequiredArguments -> Decoder (Cred -> a) -> (Result Http.Error a -> msg) -> Cmd msg
+--signIn (BaseUrl baseUrl) body decoder toMsg =
+--    Mutation.signIn body (SelectionSet.map identity)
+--        |> Graphql.Http.mutationRequest "test"
+--        |> Graphql.Http.send (RemoteData.fromResult >> toMsg)
+--
+--
 --
 --
 --register : Http.Body -> Decoder (Cred -> a) -> Http.Request a

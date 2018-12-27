@@ -20,7 +20,9 @@ import Route exposing (Route)
 import Session exposing (Session)
 import Task exposing (Task)
 import Viewer exposing (Viewer)
-
+import Graphql.Http
+import Maybe.Extra
+import Graphql.Http.GraphqlError exposing (GraphqlError)
 
 
 -- MODEL
@@ -31,6 +33,7 @@ type alias Model msg =
     , context : Context msg
     , problems : List Problem
     , form : Form
+    , tempRes : Result String (Maybe String)
     }
 
 
@@ -78,6 +81,7 @@ init session context =
             { username = ""
             , password = ""
             }
+      , tempRes = Ok Nothing
       }
     , Cmd.none
     )
@@ -109,7 +113,7 @@ viewProblem problem =
                 ServerError str ->
                     str
     in
-    text errorMessage
+        text errorMessage
 
 
 viewForm : Form -> Element Msg
@@ -172,6 +176,7 @@ type Msg
     | EnteredUsername String
     | EnteredPassword String
     | CompletedLogin (Result Http.Error Viewer)
+    | CompletedGraphqlLogin (Result String (Maybe String))
     | UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
 
@@ -183,7 +188,7 @@ update msg model =
             case validate model.form of
                 Ok validForm ->
                     ( { model | problems = [] }
-                    , login model.context validForm CompletedLogin
+                    , login model.context validForm CompletedGraphqlLogin
                     )
 
                 Err problems ->
@@ -199,6 +204,9 @@ update msg model =
 
         CompletedLogin (Err error) ->
             ( model, Cmd.none )
+
+        CompletedGraphqlLogin res ->
+            ( { model | tempRes = res }, Cmd.none )
 
         --            let
         --                serverErrors =
@@ -275,12 +283,12 @@ validate form =
         trimmedForm =
             trimFields form
     in
-    case List.concatMap (validateField trimmedForm) fieldsToValidate of
-        [] ->
-            Ok trimmedForm
+        case List.concatMap (validateField trimmedForm) fieldsToValidate of
+            [] ->
+                Ok trimmedForm
 
-        problems ->
-            Err problems
+            problems ->
+                Err problems
 
 
 validateField : TrimmedForm -> ValidatedField -> List Problem
@@ -290,14 +298,12 @@ validateField (Trimmed form) field =
             Email ->
                 if String.isEmpty form.username then
                     [ "username can't be blank." ]
-
                 else
                     []
 
             Password ->
                 if String.isEmpty form.password then
                     [ "password can't be blank." ]
-
                 else
                     []
 
@@ -317,17 +323,25 @@ trimFields form =
 -- HTTP
 
 
-login : Context msg -> TrimmedForm -> (Result Http.Error Viewer -> Msg) -> Cmd Msg
-login context (Trimmed form) =
-    let
-        body =
-            Encode.object
-                [ ( "username", Encode.string form.username )
-                , ( "password", Encode.string form.password )
-                ]
-                |> Http.jsonBody
-    in
-    Api.login (Context.baseUrl context) body Viewer.decoder
+login :
+    Context msg
+    -> TrimmedForm
+    -> (Result String (Maybe String) -> Msg)
+    -> Cmd Msg
+login context (Trimmed form) msg =
+    Api.signIn (Context.baseUrl context) form
+        |> Graphql.Http.toTask
+        |> Task.mapError
+            (\e ->
+                case e of
+                    Graphql.Http.GraphqlError _ _ ->
+                        "graphql error"
+
+                    Graphql.Http.HttpError _ ->
+                        "http error"
+            )
+        |> Task.map (Maybe.Extra.join >> Maybe.Extra.join)
+        |> Task.attempt msg
 
 
 

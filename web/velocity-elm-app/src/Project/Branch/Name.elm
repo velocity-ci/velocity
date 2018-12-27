@@ -5,7 +5,6 @@ import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
 
 
-
 -- TYPES
 
 
