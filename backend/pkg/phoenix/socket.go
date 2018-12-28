@@ -1,6 +1,8 @@
 package phoenix
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -173,10 +175,25 @@ func (s *Socket) handleMessage(m *PhoenixMessage) {
 	}
 }
 
+func recoverWSReadJSON(message []byte) {
+	if r := recover(); r != nil {
+		velocity.GetLogger().Warn("recieved websocket message", zap.ByteString("message", message))
+		fmt.Println(r)
+	}
+}
+
 func (s *Socket) monitor() {
 	for s.connected {
 		m := &PhoenixMessage{}
-		err := s.ws.ReadJSON(m)
+		_, bytes, err := s.ws.ReadMessage()
+		if err != nil {
+			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
+			s.ws.Close()
+			s.connected = false
+			break
+		}
+		defer recoverWSReadJSON(bytes)
+		err = json.Unmarshal(bytes, &m)
 		if err != nil {
 			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
 			s.ws.Close()
