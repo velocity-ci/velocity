@@ -16,6 +16,11 @@ port module Api
         , username
         , signIn
         , viewerChanges
+        , Response
+        , responseMessages
+        , responseResult
+        , responseWasSuccessful
+        , ValidationMessage
         )
 
 {-| This module is responsible for communicating to the Conduit API.
@@ -42,6 +47,7 @@ import RemoteData
 import Graphql.Operation exposing (RootQuery)
 import Api.Compiled.Object.SessionPayload as SessionPayload
 import Api.Compiled.Object.Session as Session
+import Api.Compiled.Object.ValidationMessage as ValidationMessage
 import Maybe.Extra
 
 
@@ -363,10 +369,77 @@ login (BaseUrl baseUrl) body decoder toMsg =
 --
 
 
-signIn : BaseUrl -> Mutation.SignInRequiredArguments -> Graphql.Http.Request (Maybe (Maybe (Maybe String)))
+type ValidationMessage
+    = ValidationMessage ValidationMessageRec
+
+
+type alias ValidationMessageRec =
+    { field : Maybe String
+    , message : Maybe String
+    }
+
+
+type Response result
+    = Response (ResponseRec result)
+
+
+type alias ResponseRec result =
+    { successful : Bool
+    , messages : Maybe (List (Maybe ValidationMessage))
+    , result : Maybe result
+    }
+
+
+responseResult : Response a -> Maybe a
+responseResult (Response { result }) =
+    result
+
+
+type alias Message =
+    { field : String
+    , message : String
+    }
+
+
+responseMessages : Response a -> List Message
+responseMessages (Response { messages }) =
+    messages
+        |> Maybe.map (List.filterMap identity)
+        |> Maybe.withDefault []
+        |> List.filterMap (\(ValidationMessage m) -> Maybe.map2 Message m.field m.message)
+
+
+responseWasSuccessful : Response a -> Bool
+responseWasSuccessful (Response { successful }) =
+    successful
+
+
+validationErrorSelectionSet : SelectionSet ValidationMessage Api.Compiled.Object.ValidationMessage
+validationErrorSelectionSet =
+    SelectionSet.map2 (\field message -> ValidationMessage (ValidationMessageRec field message))
+        ValidationMessage.field
+        ValidationMessage.message
+
+
+signIn : BaseUrl -> Mutation.SignInRequiredArguments -> Graphql.Http.Request (Maybe (Response Cred))
 signIn (BaseUrl baseUrl) values =
-    Mutation.signIn (Debug.log "sign in values" values) (SessionPayload.result Session.token)
-        |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+    let
+        usernameSelectionSet =
+            SelectionSet.map (Maybe.map Username.fromString) (SessionPayload.result Session.username)
+
+        viewerSelectionSet =
+            SelectionSet.map2 Cred
+                (SelectionSet.nonNullOrFail usernameSelectionSet)
+                (SelectionSet.nonNullOrFail <| SessionPayload.result Session.token)
+
+        selectionSet =
+            SelectionSet.map3 (\successful messages result -> Response (ResponseRec successful messages result))
+                SessionPayload.successful
+                (SessionPayload.messages (validationErrorSelectionSet))
+                (SelectionSet.map Just viewerSelectionSet)
+    in
+        Mutation.signIn values selectionSet
+            |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
 
 
 

@@ -33,7 +33,7 @@ type alias Model msg =
     , context : Context msg
     , problems : List Problem
     , form : Form
-    , tempRes : Result String (Maybe String)
+    , tempRes : Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred))
     }
 
 
@@ -176,7 +176,7 @@ type Msg
     | EnteredUsername String
     | EnteredPassword String
     | CompletedLogin (Result Http.Error Viewer)
-    | CompletedGraphqlLogin (Result String (Maybe String))
+    | CompletedGraphqlLogin (Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred)))
     | UpdateSession (Task Session.InitError Session)
     | UpdatedSession (Result Session.InitError Session)
 
@@ -205,8 +205,38 @@ update msg model =
         CompletedLogin (Err error) ->
             ( model, Cmd.none )
 
-        CompletedGraphqlLogin res ->
-            ( { model | tempRes = res }, Cmd.none )
+        CompletedGraphqlLogin (Ok (Just response)) ->
+            if Api.responseWasSuccessful response then
+                ( model
+                , Api.responseResult response
+                    |> Maybe.map Api.storeCredWith
+                    |> Maybe.withDefault Cmd.none
+                )
+            else
+                let
+                    serverErrors =
+                        List.map (.message >> ServerError) (Api.responseMessages response)
+                in
+                    ( { model | problems = List.append model.problems serverErrors }
+                    , Cmd.none
+                    )
+
+        CompletedGraphqlLogin (Ok Nothing) ->
+            ( model
+            , Cmd.none
+            )
+
+        CompletedGraphqlLogin (Err (Graphql.Http.GraphqlError _ errors)) ->
+            let
+                serverErrors =
+                    List.map (.message >> ServerError) errors
+            in
+                ( { model | problems = List.append model.problems serverErrors }
+                , Cmd.none
+                )
+
+        CompletedGraphqlLogin (Err (Graphql.Http.HttpError _)) ->
+            ( model, Cmd.none )
 
         --            let
         --                serverErrors =
@@ -326,21 +356,11 @@ trimFields form =
 login :
     Context msg
     -> TrimmedForm
-    -> (Result String (Maybe String) -> Msg)
+    -> (Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred)) -> Msg)
     -> Cmd Msg
 login context (Trimmed form) msg =
     Api.signIn (Context.baseUrl context) form
         |> Graphql.Http.toTask
-        |> Task.mapError
-            (\e ->
-                case e of
-                    Graphql.Http.GraphqlError _ _ ->
-                        "graphql error"
-
-                    Graphql.Http.HttpError _ ->
-                        "http error"
-            )
-        |> Task.map (Maybe.Extra.join >> Maybe.Extra.join)
         |> Task.attempt msg
 
 
