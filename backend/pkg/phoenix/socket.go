@@ -14,8 +14,8 @@ func NewSocket(ws *websocket.Conn, customEvents map[string]func(*PhoenixMessage)
 		ws:               ws,
 		connected:        true,
 		messageQueue:     []*PhoenixMessage{},
-		lastHeartbeatRef: 0,
-		refCounter:       0,
+		lastHeartbeatRef: nil,
+		refCounter:       nil,
 		customEvents:     customEvents,
 		interlock:        interlock,
 	}
@@ -38,13 +38,13 @@ type Socket struct {
 	wsWriteLock      sync.Mutex
 	connected        bool
 	healthy          bool
-	lastHeartbeatRef uint64
+	lastHeartbeatRef *uint64
 
 	messageQueue    []*PhoenixMessage
 	sentUnacked     sync.Map
 	recievedUnacked sync.Map
 
-	refCounter     uint64
+	refCounter     *uint64
 	refCounterLock sync.Mutex
 
 	customEvents map[string]func(*PhoenixMessage) error
@@ -56,10 +56,16 @@ func (s Socket) IsConnected() bool {
 	return s.connected
 }
 
-func (s *Socket) getNewRef() uint64 {
+func (s *Socket) getNewRef() *uint64 {
 	s.refCounterLock.Lock()
 	defer s.refCounterLock.Unlock()
-	s.refCounter++
+	if s.refCounter == nil {
+		zero := uint64(0)
+		s.refCounter = &zero
+	} else {
+		incrementedCount := *s.refCounter + 1
+		s.refCounter = &incrementedCount
+	}
 	return s.refCounter
 }
 
@@ -73,10 +79,10 @@ func (s *Socket) worker() {
 			if m.Event == PhxReplyEvent || m.Event == PhxErrorEvent {
 				s.recievedUnacked.Delete(m.Ref)
 			} else {
-				if x, ok := s.sentUnacked.Load(m.Ref); ok {
+				if x, ok := s.sentUnacked.Load(*m.Ref); ok {
 					if v, ok := x.(*wsMessage); ok {
 						v.sent = time.Now()
-						s.sentUnacked.Store(m.Ref, v)
+						s.sentUnacked.Store(*m.Ref, v)
 					} else {
 						velocity.GetLogger().Debug("invalid value found in map", zap.String("map", "sentUnacked"))
 					}
@@ -91,8 +97,8 @@ func (s *Socket) worker() {
 
 func (s *Socket) heartbeat() {
 	for s.connected {
-		if s.lastHeartbeatRef != 0 {
-			velocity.GetLogger().Warn("heartbeat timed out", zap.Uint64("ref", s.lastHeartbeatRef))
+		if s.lastHeartbeatRef != nil {
+			velocity.GetLogger().Warn("heartbeat timed out", zap.Uint64("ref", *s.lastHeartbeatRef))
 			s.connected = false
 			break
 		}
@@ -103,7 +109,7 @@ func (s *Socket) heartbeat() {
 			Ref:     ref,
 			Payload: map[string]string{},
 		}
-		s.sentUnacked.Store(ref, &wsMessage{
+		s.sentUnacked.Store(*ref, &wsMessage{
 			sent:    time.Now(),
 			message: &m,
 		})
@@ -127,7 +133,7 @@ func (s *Socket) Send(m *PhoenixMessage, sync bool) *PhoenixReplyPayload {
 	// 	velocity.GetLogger().Error("not sending as not subscribed", zap.String("topic", m.Topic))
 	// 	return nil
 	// }
-	if m.Ref < 1 {
+	if m.Ref == nil {
 		m.Ref = s.getNewRef()
 	}
 	qM := wsMessage{message: m}
@@ -135,7 +141,7 @@ func (s *Socket) Send(m *PhoenixMessage, sync bool) *PhoenixReplyPayload {
 		qM.response = make(chan *PhoenixReplyPayload)
 	}
 	if s.interlock && m.Event != PhxReplyEvent {
-		s.sentUnacked.Store(m.Ref, &qM)
+		s.sentUnacked.Store(*m.Ref, &qM)
 	}
 	s.messageQueue = append(s.messageQueue, m)
 
@@ -197,11 +203,11 @@ func (s *Socket) ReplyOK(m *PhoenixMessage) {
 }
 
 func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
-	if _, ok := s.sentUnacked.Load(m.Ref); ok {
-		if m.Ref == s.lastHeartbeatRef {
-			s.lastHeartbeatRef = 0
-			if val, ok := s.sentUnacked.Load(m.Ref); ok {
-				velocity.GetLogger().Debug("heartbeat pong", zap.Uint64("ref", m.Ref), zap.Duration("latency", time.Now().Sub(val.(*wsMessage).sent)))
+	if _, ok := s.sentUnacked.Load(*m.Ref); ok {
+		if (s.lastHeartbeatRef == nil) || *m.Ref == *s.lastHeartbeatRef {
+			s.lastHeartbeatRef = nil
+			if val, ok := s.sentUnacked.Load(*m.Ref); ok {
+				velocity.GetLogger().Debug("heartbeat pong", zap.Uint64("ref", *m.Ref), zap.Duration("latency", time.Now().Sub(val.(*wsMessage).sent)))
 			}
 			s.healthy = true
 			// requeue
@@ -218,21 +224,21 @@ func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
 				return true
 			})
 		}
-		if val, ok := s.sentUnacked.Load(m.Ref); ok {
+		if val, ok := s.sentUnacked.Load(*m.Ref); ok {
 			if val, ok := val.(*wsMessage); ok {
 				if val.response != nil {
 					val.response <- m.Payload.(*PhoenixReplyPayload)
 					close(val.response)
 				}
-				s.sentUnacked.Delete(m.Ref)
+				s.sentUnacked.Delete(*m.Ref)
 			}
 		}
 	} else {
-		velocity.GetLogger().Warn("message not unacked (interlock is disabled?)", zap.Uint64("ref", m.Ref), zap.String("event", m.Event), zap.String("topic", m.Topic))
+		velocity.GetLogger().Warn("message not unacked (interlock is disabled?)", zap.Uint64("ref", *m.Ref), zap.String("event", m.Event), zap.String("topic", m.Topic))
 	}
 }
 
-func (s *Socket) handlePhxHeartbeatEvent(ref uint64) {
+func (s *Socket) handlePhxHeartbeatEvent(ref *uint64) {
 	s.wsWriteLock.Lock()
 	s.ws.WriteJSON(PhoenixMessage{
 		Event: PhxReplyEvent,

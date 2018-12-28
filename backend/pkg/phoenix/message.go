@@ -25,7 +25,7 @@ type PhoenixMessage struct {
 	Event   string      `json:"event"`
 	Topic   string      `json:"topic"`
 	Payload interface{} `json:"payload"`
-	Ref     uint64      `json:"ref"`
+	Ref     *uint64     `json:"ref"`
 }
 
 type PhoenixReplyPayload struct {
