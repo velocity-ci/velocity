@@ -68,7 +68,8 @@ defmodule Architect.MixProject do
       {:dataloader, "~> 1.0.1"},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:timber, "~> 3.0.0"},
-      {:cors_plug, "~> 2.0"}
+      {:cors_plug, "~> 2.0"},
+      {:ecto_autoslug_field, "~> 1.0"}
     ]
   end
 

@@ -8,10 +8,12 @@ defmodule ArchitectWeb.Schema do
   import_types(Kronky.ValidationMessageTypes)
   import_types(ArchitectWeb.Schema.UsersTypes)
   import_types(ArchitectWeb.Schema.KnownHostsTypes)
+  import_types(ArchitectWeb.Schema.ProjectsTypes)
   import_types(ArchitectWeb.Mutations.UsersMutations)
   import_types(ArchitectWeb.Mutations.AuthMutations)
   import_types(ArchitectWeb.Queries.UsersQueries)
   import_types(ArchitectWeb.Queries.KnownHostsQueries)
+  import_types(ArchitectWeb.Queries.ProjectsQueries)
 
   payload_object(:user_payload, :user)
   payload_object(:session_payload, :session)
@@ -24,6 +26,7 @@ defmodule ArchitectWeb.Schema do
   query do
     import_fields(:users_queries)
     import_fields(:known_hosts_queries)
+    import_fields(:projects_queries)
   end
 
   #  def middleware(middleware, %Absinthe.Type.Field{identifier: :sign_in}, %Absinthe.Type.Object{
