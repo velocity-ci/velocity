@@ -26,6 +26,11 @@ defmodule ArchitectWeb.V1.BuilderChannel do
     {:noreply, socket}
   end
 
+  def handle_in("new_msg", %{"uid" => uid, "body" => body}, socket) do
+    broadcast!(socket, "new_msg", %{uid: uid, body: body})
+    {:noreply, socket}
+  end
+
   def handle_info(:send_ping, socket) do
     push(socket, "ping", %{"hello" => "world"})
 

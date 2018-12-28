@@ -4,11 +4,11 @@ defmodule Architect.KnownHosts.KnownHost do
 
   @primary_key {:id, :binary_id, autogenerate: true}
   schema "known_hosts" do
-    field(:comment, :string)
     field(:entry, :string)
     field(:fingerprint_md5, :string)
     field(:fingerprint_sha256, :string)
-    field(:hosts, {:array, :string})
+    field(:host, :string)
+    field(:user_verified, :boolean)
 
     timestamps()
   end

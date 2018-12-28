@@ -20,4 +20,22 @@ defmodule Architect.Projects do
   def list_projects() do
     Repo.all(Project)
   end
+
+  @doc """
+  Creates a project.
+
+  ## Examples
+
+      iex> create_project(%{field: value})
+      {:ok, %Project{}}
+
+      iex> create_project(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_project(attrs \\ %{}) do
+    %Project{}
+    |> Project.changeset(attrs)
+    |> Repo.insert()
+  end
 end

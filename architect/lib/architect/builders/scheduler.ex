@@ -10,7 +10,7 @@ defmodule Architect.Builders.Scheduler do
 
   require Logger
 
-  @poll_timeout 5000
+  @poll_timeout 15000
 
   defstruct [
     :history
@@ -38,7 +38,7 @@ defmodule Architect.Builders.Scheduler do
 
     PubSub.subscribe(Architect.PubSub, Presence.topic())
 
-    Process.send_after(__MODULE__, :poll_builds, @poll_timeout)
+    #    Process.send_after(__MODULE__, :poll_builds, @poll_timeout)
 
     {:ok, state}
   end

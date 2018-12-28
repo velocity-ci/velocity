@@ -4,7 +4,6 @@ defmodule ArchitectWeb.Schema.UsersTypes do
   object :user do
     field(:id, :id)
     field(:username, non_null(:string))
-    field(:password, :string)
   end
 
   @desc "token to authenticate user"

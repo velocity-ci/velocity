@@ -5,6 +5,8 @@ defmodule ArchitectWeb.Schema do
   alias ArchitectWeb.Resolvers
   alias ArchitectWeb.Schema.Middleware.TranslateMessages
 
+  import_types(Absinthe.Type.Custom)
+
   import_types(Kronky.ValidationMessageTypes)
   import_types(ArchitectWeb.Schema.UsersTypes)
   import_types(ArchitectWeb.Schema.KnownHostsTypes)
