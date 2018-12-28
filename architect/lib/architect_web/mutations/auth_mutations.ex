@@ -13,10 +13,10 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
       arg(:username, non_null(:string))
       arg(:password, non_null(:string))
 
-      resolve(fn args, %{context: context} ->
-        with {:ok, user} <- Accounts.authenticate(args[:username], args[:password]),
+      resolve(fn %{username: username, password: password}, %{context: context} ->
+        with {:ok, user} <- Accounts.authenticate(username, password),
              {:ok, token, _} <- Accounts.encode_and_sign(user) do
-          {:ok, %{token: token}}
+          {:ok, %{token: token, username: username}}
         else
           _ ->
             {:error, "Invalid credentials"}

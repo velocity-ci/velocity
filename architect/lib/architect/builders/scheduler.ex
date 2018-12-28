@@ -29,10 +29,6 @@ defmodule Architect.Builders.Scheduler do
     GenServer.call(__MODULE__, :history)
   end
 
-  def list(), do: Presence.list()
-
-  def track(socket), do: Presence.track(socket)
-
   #
   # Server
   #

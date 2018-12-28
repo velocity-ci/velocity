@@ -50,6 +50,7 @@ defmodule ArchitectWeb.Endpoint do
   #   store: :cookie,
   #   key: "_architect_key",
   #   signing_salt: "/UQoasi3"
+  plug(CORSPlug)
 
   plug(ArchitectWeb.Router)
 end

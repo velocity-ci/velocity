@@ -67,7 +67,8 @@ defmodule Architect.MixProject do
       {:kronky, "~> 0.5.0"},
       {:dataloader, "~> 1.0.1"},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
-      {:timber, "~> 3.0.0"}
+      {:timber, "~> 3.0.0"},
+      {:cors_plug, "~> 2.0"}
     ]
   end
 

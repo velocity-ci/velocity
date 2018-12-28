@@ -5,6 +5,7 @@ defmodule ArchitectWeb.Helpers.ValidationMessageHelpers do
     %ValidationMessage{
       code: :unknown,
       field: "base",
+      key: 0,
       template: message,
       message: message,
       options: []
@@ -15,6 +16,7 @@ defmodule ArchitectWeb.Helpers.ValidationMessageHelpers do
     %ValidationMessage{
       code: :unknown,
       field: field,
+      key: 0,
       template: message,
       message: message,
       options: []
