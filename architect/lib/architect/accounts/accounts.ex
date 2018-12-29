@@ -33,7 +33,7 @@ defmodule Architect.Accounts do
   """
   @spec authenticate(String.t(), String.t()) :: {:ok, User.t()} | {:error, String.t()}
   def authenticate(username, password) when is_binary(username) and is_binary(password) do
-    user = Repo.one(User, username: username)
+    user = Repo.get_by(User, username: username)
 
     if check_password(user, password) do
       {:ok, user}
