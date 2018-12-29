@@ -4,7 +4,7 @@ defmodule ArchitectWeb.V1.UserController do
 
   alias Architect.Accounts
   alias Architect.Accounts.User
-  alias Architect.Accounts.Guardian
+  # alias Architect.Accounts.Guardian
 
   action_fallback(ArchitectWeb.V1.FallbackController)
 
@@ -96,8 +96,7 @@ defmodule ArchitectWeb.V1.UserController do
   end
 
   def index(conn, _params) do
-    users = Users.list_users()
-    Architect.Users.ensure_admin()
+    users = Accounts.list_users()
     render(conn, "index.json", users: users)
   end
 
@@ -118,7 +117,7 @@ defmodule ArchitectWeb.V1.UserController do
   end
 
   def create(conn, user_params) do
-    with {:ok, %User{} = user} <- Users.create_user(user_params) do
+    with {:ok, %User{} = user} <- Accounts.create_user(user_params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", V1Routes.user_path(conn, :show, user))
@@ -127,9 +126,9 @@ defmodule ArchitectWeb.V1.UserController do
   end
 
   def delete(conn, %{"id" => id}) do
-    user = Users.get_user!(id)
+    user = Accounts.get_user!(id)
 
-    with {:ok, %User{}} <- Users.delete_user(user) do
+    with {:ok, %User{}} <- Accounts.delete_user(user) do
       send_resp(conn, :no_content, "")
     end
   end
