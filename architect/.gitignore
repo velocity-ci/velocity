@@ -36,3 +36,6 @@ architect-*.tar
 /config/*.secret.exs
 
 .elixir_ls
+
+# Go binary to scan ssh keys
+v-ssh-keyscan

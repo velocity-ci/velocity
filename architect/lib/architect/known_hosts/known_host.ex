@@ -20,4 +20,14 @@ defmodule Architect.KnownHosts.KnownHost do
     # TODO: parse entry instead
     |> validate_required([:entry, :hosts, :comment, :fingerprint_sha256, :fingerprint_md5])
   end
+
+  def scan_host(host) do
+    {output, exit_code} = System.cmd("#{System.cwd()}/v-ssh-keyscan", [host])
+
+    if exit_code != 0 do
+      # panic
+    end
+
+    Poison.decode!(output)
+  end
 end

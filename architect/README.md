@@ -9,6 +9,7 @@ docker-compose up
 or 
 
 ```
+scripts/get-v-ssh-keyscan.sh
 docker-compose up -d db
 mix ecto.drop
 mix ecto.create
