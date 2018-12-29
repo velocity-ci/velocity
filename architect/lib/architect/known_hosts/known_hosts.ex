@@ -52,6 +52,7 @@ defmodule Architect.KnownHosts do
   def create_known_host(attrs \\ %{}) do
     %KnownHost{}
     |> KnownHost.changeset(attrs)
+    |> KnownHost.populate()
     |> Repo.insert()
   end
 
