@@ -5,7 +5,8 @@ defmodule Architect.Repo.Migrations.CreateProjects do
     create table(:projects, primary_key: false) do
       add(:id, :uuid, primary_key: true)
       add(:name, :string)
-      add(:repository, :string)
+      add(:address, :string)
+      add(:private_key, :text)
       add(:slug, :string)
 
       timestamps()

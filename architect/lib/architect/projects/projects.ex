@@ -22,6 +22,22 @@ defmodule Architect.Projects do
   end
 
   @doc """
+  Gets a single project by slug.
+
+  Raises `Ecto.NoResultsError` if the Project does not exist.
+
+  ## Examples
+
+      iex> get_project_by_slug!("velocity")
+      %KnownHost{}
+
+      iex> get_project_by_slug!("Not a slug")
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_project_by_slug!(slug), do: Repo.get_by!(Project, slug: slug)
+
+  @doc """
   Creates a project.
 
   ## Examples
