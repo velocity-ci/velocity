@@ -22,6 +22,10 @@ func NewSocket(ws *websocket.Conn, customEvents map[string]func(*PhoenixMessage)
 		interlock:        interlock,
 	}
 
+	for k := range customEvents {
+		velocity.GetLogger().Debug("registered handler for custom event", zap.String("event", k))
+	}
+
 	velocity.GetLogger().Debug("new socket", zap.String("ws", ws.LocalAddr().String()), zap.Bool("interlocked", interlock))
 
 	go s.monitor()

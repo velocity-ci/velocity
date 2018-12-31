@@ -3,21 +3,14 @@ defmodule ArchitectWeb.V1.BuilderChannel do
   alias Architect.Builders
   alias Phoenix.Socket
 
+  @event_prefix "vlcty_"
+
   def join("builders:pool", _, socket) do
     send(self(), :after_join)
 
     {:ok, socket}
   end
 
-  #  def set_ready(%Socket) when is_pid(pid) do
-  #    GenServer.
-  #  end
-
-  #  @doc ~S"""
-  #  Used to syncronize the client with the orderbook state.
-  #
-  #  Get all updates from sequence number given to current state
-  #  """
   def handle_info(:after_join, socket) do
     socket = assign(socket, :status, :ready)
 
@@ -27,12 +20,25 @@ defmodule ArchitectWeb.V1.BuilderChannel do
   end
 
   def handle_in("new_msg", %{"uid" => uid, "body" => body}, socket) do
-    broadcast!(socket, "new_msg", %{uid: uid, body: body})
+    # broadcast!(socket, "new_msg", %{uid: uid, body: body})
+
+    push(socket, "", %{})
+
     {:noreply, socket}
   end
 
-  def handle_info(:send_ping, socket) do
-    push(socket, "ping", %{"hello" => "world"})
+  @doc """
+  Builder will say when it is 'ready' to request any waiting jobs.
+  """
+  def handle_in("#{@event_prefix}builder-ready", nil, socket) do
+    {:noreply, socket}
+  end
+
+  @doc """
+  Starts a synchronisation job for a builder.
+  """
+  def handle_info(:job_synchronise, socket) do
+    push(socket, "#{@event_prefix}do-synchronise", %{})
 
     {:noreply, socket}
   end
