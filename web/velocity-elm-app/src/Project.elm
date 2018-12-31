@@ -1,23 +1,24 @@
-module Project exposing
-    ( Hydrated
-    , Project
-    , addProject
-    , channel
-    , channelName
-    , create
-    , decoder
-    , findProjectById
-    , findProjectBySlug
-    , id
-    , list
-    , name
-    , repository
-    , slug
-    , sync
-    , syncing
-    , thumbnail
-    , updateProject
-    )
+module Project
+    exposing
+        ( Hydrated
+        , Project
+        , addProject
+        , channel
+        , channelName
+        , create
+        , decoder
+        , findProjectById
+        , findProjectBySlug
+        , id
+        , list
+        , name
+        , repository
+        , slug
+        , sync
+        , syncing
+        , thumbnail
+        , updateProject
+        )
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -197,7 +198,6 @@ updateProject (Project a) projects =
             (\(Project b) ->
                 if a.id == b.id then
                     Project a
-
                 else
                     Project b
             )
@@ -213,8 +213,8 @@ list cred baseUrl =
         endpoint =
             Endpoint.projects (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl)
     in
-    Decode.field "data" (Decode.list decoder)
-        |> Api.getTask endpoint (Just cred)
+        Decode.field "data" (Decode.list decoder)
+            |> Api.getTask endpoint (Just cred)
 
 
 sync : Cred -> BaseUrl -> Slug -> (Result Http.Error Project -> msg) -> Cmd msg
@@ -223,7 +223,7 @@ sync cred baseUrl slug_ toMsg =
         endpoint =
             Endpoint.projectSync (Api.toEndpoint baseUrl) slug_
     in
-    Api.post endpoint (Just cred) (Encode.object [] |> Http.jsonBody) toMsg decoder
+        Api.post endpoint (Just cred) (Encode.object [] |> Http.jsonBody) toMsg decoder
 
 
 create : Cred -> BaseUrl -> { a | name : String, repository : String, privateKey : Maybe String } -> (Result Http.Error Project -> msg) -> Cmd msg
@@ -250,7 +250,7 @@ create cred baseUrl values toMsg =
                 |> Encode.object
                 |> Http.jsonBody
     in
-    Api.post endpoint (Just cred) body toMsg decoder
+        Api.post endpoint (Just cred) body toMsg decoder
 
 
 

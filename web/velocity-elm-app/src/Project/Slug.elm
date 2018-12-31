@@ -1,19 +1,19 @@
-module Project.Slug exposing
-    ( Dict
-    , Slug
-    , decoder
-    , empty
-    , get
-    , insert
-    , routePieces
-    , toString
-    , urlParser
-    )
+module Project.Slug
+    exposing
+        ( Dict
+        , Slug
+        , decoder
+        , empty
+        , get
+        , insert
+        , routePieces
+        , toString
+        , urlParser
+        )
 
 import Dict as BaseDict
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
-
 
 
 -- TYPES
