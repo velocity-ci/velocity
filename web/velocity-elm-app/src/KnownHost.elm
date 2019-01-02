@@ -1,4 +1,4 @@
-module KnownHost exposing (KnownHost, addKnownHost, create, findKnownHost, isUnknownHost, list)
+module KnownHost exposing (KnownHost, addKnownHost, create, findKnownHost, isUnknownHost, list, selectionSet)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -8,14 +8,24 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, required)
 import Json.Encode as Encode
 import Task exposing (Task)
+import Graphql.Http
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
+import Graphql.Operation exposing (RootQuery)
+import Api.Compiled.Object.KnownHost as KnownHost
+import Api.Compiled.Object
+import Api.Compiled.Scalar as Scalar
+import Api.Compiled.Query as Query
 
 
-type alias KnownHost =
+type KnownHost
+    = KnownHost Internals
+
+
+type alias Internals =
     { id : Id
-    , hosts : List String
-    , comment : String
-    , sha256 : String
+    , host : String
     , md5 : String
+    , sha256 : String
     }
 
 
@@ -26,11 +36,41 @@ type alias KnownHost =
 decoder : Decoder KnownHost
 decoder =
     Decode.succeed KnownHost
+        |> custom internalsDecoder
+
+
+internalsDecoder : Decoder Internals
+internalsDecoder =
+    Decode.succeed Internals
         |> required "id" decodeId
-        |> required "hosts" (Decode.list Decode.string)
-        |> required "comment" Decode.string
-        |> required "sha256" Decode.string
+        |> required "hosts" Decode.string
         |> required "md5" Decode.string
+        |> required "sha256" Decode.string
+
+
+internalSelectionSet : SelectionSet Internals Api.Compiled.Object.KnownHost
+internalSelectionSet =
+    SelectionSet.succeed Internals
+        |> with idSelectionSet
+        |> with KnownHost.host
+        |> with KnownHost.fingerprintMd5
+        |> with KnownHost.fingerprintSha256
+
+
+selectionSet : SelectionSet KnownHost Api.Compiled.Object.KnownHost
+selectionSet =
+    SelectionSet.succeed KnownHost
+        |> with internalSelectionSet
+
+
+
+--
+-- INFO
+
+
+hosts : KnownHost -> List String
+hosts (KnownHost knownHost) =
+    [ knownHost.host ]
 
 
 
@@ -52,12 +92,12 @@ isUnknownHost knownHosts maybeGitUrl =
 
 hostsFromKnownHosts : List KnownHost -> List String
 hostsFromKnownHosts knownHosts =
-    List.foldl (.hosts >> (++)) [] knownHosts
+    List.foldl (hosts >> (++)) [] knownHosts
 
 
 findKnownHost : List KnownHost -> KnownHost -> Maybe KnownHost
-findKnownHost knownHosts knownHost =
-    List.filter (\a -> a.id == knownHost.id) knownHosts
+findKnownHost knownHosts (KnownHost knownHost) =
+    List.filter (\(KnownHost a) -> a.id == knownHost.id) knownHosts
         |> List.head
 
 
@@ -87,6 +127,11 @@ decodeId =
 idToString : Id -> String
 idToString (Id id) =
     id
+
+
+idSelectionSet : SelectionSet Id Api.Compiled.Object.KnownHost
+idSelectionSet =
+    SelectionSet.map (\(Scalar.Id id) -> Id id) KnownHost.id
 
 
 

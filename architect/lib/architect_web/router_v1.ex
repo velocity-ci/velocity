@@ -2,9 +2,10 @@ defmodule ArchitectWeb.V1Router do
   use ArchitectWeb, :router
 
   scope "/swagger" do
-    forward "/", PhoenixSwagger.Plug.SwaggerUI,
+    forward("/", PhoenixSwagger.Plug.SwaggerUI,
       otp_app: :architect,
       swagger_file: "v1.swagger.json"
+    )
   end
 
   def swagger_info do
@@ -17,8 +18,8 @@ defmodule ArchitectWeb.V1Router do
   end
 
   pipeline :authenticated do
-    plug Architect.Pipelines.Guardian
-    plug Guardian.Plug.EnsureAuthenticated
+    plug(Architect.Pipelines.Guardian)
+    plug(Guardian.Plug.EnsureAuthenticated)
   end
 
   pipeline :api do
@@ -28,9 +29,9 @@ defmodule ArchitectWeb.V1Router do
   scope "/", ArchitectWeb.V1 do
     pipe_through(:api)
 
-    get "/health", HealthController, :index
+    get("/health", HealthController, :index)
 
-    post "/auth", UserController, :auth_create
+    post("/auth", UserController, :auth_create)
     # resources("/builders", BuilderController)
   end
 

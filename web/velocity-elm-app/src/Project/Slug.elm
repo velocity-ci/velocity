@@ -6,6 +6,7 @@ module Project.Slug
         , empty
         , get
         , insert
+        , selectionSet
         , routePieces
         , toString
         , urlParser
@@ -14,6 +15,10 @@ module Project.Slug
 import Dict as BaseDict
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
+import Api.Compiled.Object
+import Api.Compiled.Object.Project as Project
+import Api.Compiled.Scalar as Scalar
 
 
 -- TYPES
@@ -39,6 +44,11 @@ urlParser =
 decoder : Decoder Slug
 decoder =
     Decode.map Slug Decode.string
+
+
+selectionSet : SelectionSet Slug Api.Compiled.Object.Project
+selectionSet =
+    SelectionSet.map Slug Project.slug
 
 
 

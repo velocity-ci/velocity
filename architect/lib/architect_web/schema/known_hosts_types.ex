@@ -2,11 +2,10 @@ defmodule ArchitectWeb.Schema.KnownHostsTypes do
   use Absinthe.Schema.Notation
 
   object :known_host do
-    field(:id, :id)
-    field(:comment, :string)
-    field(:entry, :string)
-    field(:fingerprint_md5, :string)
-    field(:fingerprint_sha256, :string)
-    field(:hosts, :string)
+    field(:id, non_null(:id))
+    field(:entry, non_null(:string))
+    field(:host, non_null(:string))
+    field(:fingerprint_md5, non_null(:string))
+    field(:fingerprint_sha256, non_null(:string))
   end
 end

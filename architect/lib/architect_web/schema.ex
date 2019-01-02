@@ -12,6 +12,7 @@ defmodule ArchitectWeb.Schema do
   import_types(ArchitectWeb.Schema.KnownHostsTypes)
   import_types(ArchitectWeb.Schema.ProjectsTypes)
   import_types(ArchitectWeb.Mutations.UsersMutations)
+  import_types(ArchitectWeb.Mutations.KnownHostsMutations)
   import_types(ArchitectWeb.Mutations.AuthMutations)
   import_types(ArchitectWeb.Queries.UsersQueries)
   import_types(ArchitectWeb.Queries.KnownHostsQueries)
@@ -19,10 +20,12 @@ defmodule ArchitectWeb.Schema do
 
   payload_object(:user_payload, :user)
   payload_object(:session_payload, :session)
+  payload_object(:known_host_payload, :known_host)
 
   mutation do
     import_fields(:user_mutations)
     import_fields(:auth_mutations)
+    import_fields(:known_hosts_mutations)
   end
 
   query do
@@ -40,8 +43,6 @@ defmodule ArchitectWeb.Schema do
   #  end
   #
   def middleware(middleware, field, %Absinthe.Type.Object{identifier: :mutation}) do
-    IO.inspect("not ignored", label: "DAT FIELD")
-
     middleware ++ [&build_payload/2, TranslateMessages]
   end
 

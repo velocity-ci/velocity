@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Query exposing (knownHosts, projects, users)
+module Api.Compiled.Query exposing (forHost, knownHosts, projects, users)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -16,6 +16,13 @@ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
+
+
+{-| Get fingerprint for host
+-}
+forHost : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe decodesTo) RootQuery
+forHost object_ =
+    Object.selectionForCompositeField "forHost" [] object_ (identity >> Decode.nullable)
 
 
 {-| Get all known hosts

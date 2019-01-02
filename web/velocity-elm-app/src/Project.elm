@@ -18,6 +18,7 @@ module Project
         , syncing
         , thumbnail
         , updateProject
+        , selectionSet
         )
 
 import Api exposing (BaseUrl, Cred)
@@ -39,7 +40,14 @@ import Project.Branch as Branch exposing (Branch)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
 import Task exposing (Task)
-import Time
+import Time exposing (Posix)
+import Graphql.Http
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
+import Graphql.Operation exposing (RootQuery)
+import Api.Compiled.Object.Project as Project
+import Api.Compiled.Object
+import Api.Compiled.Scalar
+import Api.Compiled.Query as Query
 
 
 type alias Hydrated =
@@ -85,6 +93,39 @@ internalsDecoder =
         |> required "updatedAt" Iso8601.decoder
         |> required "synchronising" Decode.bool
         |> required "logo" (Decode.maybe Decode.string)
+
+
+selectionSet : SelectionSet Project Api.Compiled.Object.Project
+selectionSet =
+    SelectionSet.succeed Project
+        |> with internalSelectionSet
+
+
+internalSelectionSet : SelectionSet Internals Api.Compiled.Object.Project
+internalSelectionSet =
+    SelectionSet.succeed Internals
+        |> with Id.selectionSet
+        |> with Slug.selectionSet
+        |> with Project.name
+        |> with Project.repository
+        |> with (mapToDateTime Project.insertedAt)
+        |> with (mapToDateTime Project.updatedAt)
+        |> hardcoded False
+        |> hardcoded Nothing
+
+
+mapToDateTime : SelectionSet Api.Compiled.Scalar.NaiveDateTime typeLock -> SelectionSet Posix typeLock
+mapToDateTime =
+    SelectionSet.mapOrFail
+        (\(Api.Compiled.Scalar.NaiveDateTime value) ->
+            Iso8601.toTime value
+                |> Result.mapError
+                    (\_ ->
+                        "Failed to parse "
+                            ++ value
+                            ++ " as Iso8601 DateTime."
+                    )
+        )
 
 
 
@@ -207,14 +248,13 @@ updateProject (Project a) projects =
 -- COLLECTION --
 
 
-list : Cred -> BaseUrl -> Task Http.Error (List Project)
+list : Cred -> BaseUrl -> Graphql.Http.Request (List Project)
 list cred baseUrl =
-    let
-        endpoint =
-            Endpoint.projects (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl)
-    in
-        Decode.field "data" (Decode.list decoder)
-            |> Api.getTask endpoint (Just cred)
+    selectionSet
+        |> Query.projects
+        |> SelectionSet.nonNullOrFail
+        |> SelectionSet.nonNullElementsOrFail
+        |> Graphql.Http.queryRequest "http://localhost:4000/v2"
 
 
 sync : Cred -> BaseUrl -> Slug -> (Result Http.Error Project -> msg) -> Cmd msg

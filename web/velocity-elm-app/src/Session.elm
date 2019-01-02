@@ -36,6 +36,11 @@ import Project.Id
 import Project.Slug
 import Task exposing (Task)
 import Viewer exposing (Viewer)
+import Graphql.Http
+import Graphql.Http.GraphqlError as GraphqlError
+import Api.Compiled.Query as Query
+import Graphql.SelectionSet as SelectionSet
+import Set
 
 
 -- TYPES
@@ -57,7 +62,7 @@ type alias LoggedInInternals =
 
 
 type InitError
-    = HttpError Http.Error
+    = HttpError (Graphql.Http.Error StartupResponse)
 
 
 type SocketUpdate
@@ -296,6 +301,12 @@ socketUpdate update toMsg context session =
             ( session, context, Cmd.none )
 
 
+type alias StartupResponse =
+    { projects : List Project
+    , knownHosts : List KnownHost
+    }
+
+
 fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError Session
 fromViewer key context maybeViewer =
     -- It's stored in localStorage as a JSON String;
@@ -311,52 +322,34 @@ fromViewer key context maybeViewer =
                 credVal =
                     Viewer.cred viewerVal
 
-                projectsRequest =
-                    Project.list credVal baseUrl
-                        |> Task.andThen
-                            (List.map
-                                (\project ->
-                                    project
-                                        |> Project.slug
-                                        |> Branch.list credVal baseUrl
-                                        |> Task.andThen
-                                            (\branches_ ->
-                                                Task.succeed
-                                                    { project = project
-                                                    , branches = branches_
-                                                    }
-                                            )
-                                )
-                                >> Task.sequence
-                            )
-                        |> Task.mapError HttpError
+                projectsSet =
+                    Query.projects Project.selectionSet
+                        |> SelectionSet.nonNullOrFail
+                        |> SelectionSet.nonNullElementsOrFail
 
-                knownHostsRequest =
-                    KnownHost.list credVal baseUrl
+                knownHostSet =
+                    Query.knownHosts KnownHost.selectionSet
+                        |> SelectionSet.nonNullOrFail
+                        |> SelectionSet.nonNullElementsOrFail
+
+                request =
+                    SelectionSet.map2 StartupResponse projectsSet knownHostSet
+                        |> Graphql.Http.queryRequest "http://localhost:4000/v2"
+                        |> Graphql.Http.toTask
                         |> Task.mapError HttpError
             in
-                Task.map2
-                    (\projects_ knownHosts_ ->
-                        let
-                            branches_ =
-                                projects_
-                                    |> List.foldl
-                                        (\e acc ->
-                                            Project.Id.insert (Project.id e.project) e.branches acc
-                                        )
-                                        Project.Id.empty
-                        in
-                            LoggedIn <|
-                                { navKey = key
-                                , viewer = viewerVal
-                                , projects = List.map .project projects_
-                                , branches = branches_
-                                , knownHosts = knownHosts_
-                                , log = Activity.init
-                                }
+                Task.map
+                    (\res ->
+                        LoggedIn <|
+                            { navKey = key
+                            , viewer = viewerVal
+                            , projects = res.projects
+                            , branches = Project.Id.empty
+                            , knownHosts = res.knownHosts
+                            , log = Activity.init
+                            }
                     )
-                    projectsRequest
-                    knownHostsRequest
+                    request
 
         Nothing ->
             Task.succeed (Guest key)

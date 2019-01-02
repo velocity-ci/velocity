@@ -206,20 +206,11 @@ update msg model =
             ( model, Cmd.none )
 
         CompletedGraphqlLogin (Ok (Just response)) ->
-            if Api.responseWasSuccessful response then
-                ( model
-                , Api.responseResult response
-                    |> Maybe.map Api.storeCredWith
-                    |> Maybe.withDefault Cmd.none
-                )
-            else
-                let
-                    serverErrors =
-                        List.map (.message >> ServerError) (Api.responseMessages response)
-                in
-                    ( { model | problems = List.append model.problems serverErrors }
-                    , Cmd.none
-                    )
+            ( model
+            , Api.responseResult response
+                |> Maybe.map Api.storeCredWith
+                |> Maybe.withDefault Cmd.none
+            )
 
         CompletedGraphqlLogin (Ok Nothing) ->
             ( model
@@ -235,8 +226,14 @@ update msg model =
                 , Cmd.none
                 )
 
-        CompletedGraphqlLogin (Err (Graphql.Http.HttpError _)) ->
-            ( model, Cmd.none )
+        CompletedGraphqlLogin (Err e) ->
+            let
+                _ =
+                    Debug.log "Unhandled e" e
+            in
+                ( model
+                , Cmd.none
+                )
 
         --            let
         --                serverErrors =

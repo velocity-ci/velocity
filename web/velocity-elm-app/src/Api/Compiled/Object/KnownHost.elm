@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.KnownHost exposing (comment, entry, fingerprintMd5, fingerprintSha256, hosts, id)
+module Api.Compiled.Object.KnownHost exposing (entry, fingerprintMd5, fingerprintSha256, host, id)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -16,11 +16,6 @@ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode
-
-
-comment : SelectionSet String Api.Compiled.Object.KnownHost
-comment =
-    Object.selectionForField "String" "comment" [] Decode.string
 
 
 entry : SelectionSet String Api.Compiled.Object.KnownHost
@@ -38,9 +33,9 @@ fingerprintSha256 =
     Object.selectionForField "String" "fingerprintSha256" [] Decode.string
 
 
-hosts : SelectionSet String Api.Compiled.Object.KnownHost
-hosts =
-    Object.selectionForField "String" "hosts" [] Decode.string
+host : SelectionSet String Api.Compiled.Object.KnownHost
+host =
+    Object.selectionForField "String" "host" [] Decode.string
 
 
 id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.KnownHost

@@ -8,11 +8,16 @@ module Project.Id
         , insert
         , routePieces
         , urlParser
+        , selectionSet
         )
 
 import Dict as BaseDict
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
+import Api.Compiled.Object
+import Api.Compiled.Object.Project as Project
+import Api.Compiled.Scalar as Scalar
 
 
 -- TYPES
@@ -38,6 +43,11 @@ urlParser =
 decoder : Decoder Id
 decoder =
     Decode.map Id Decode.string
+
+
+selectionSet : SelectionSet Id Api.Compiled.Object.Project
+selectionSet =
+    SelectionSet.map (\(Scalar.Id id) -> Id id) Project.id
 
 
 
