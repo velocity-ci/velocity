@@ -10,6 +10,7 @@ module Api.Endpoint exposing
     , projectSync
     , projects
     , request
+    , unwrap
     , task
     , tasks
     , toWs

@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Mutation exposing (SignInRequiredArguments, SignUpOptionalArguments, signIn, signUp)
+module Api.Compiled.Mutation exposing (ForHostRequiredArguments, SignInRequiredArguments, SignUpOptionalArguments, forHost, signIn, signUp)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -16,6 +16,17 @@ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
+
+
+type alias ForHostRequiredArguments =
+    { host : String }
+
+
+{-| Create unverified known host
+-}
+forHost : ForHostRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet (Maybe decodesTo) RootMutation
+forHost requiredArgs object_ =
+    Object.selectionForCompositeField "forHost" [ Argument.required "host" requiredArgs.host Encode.string ] object_ (identity >> Decode.nullable)
 
 
 type alias SignInRequiredArguments =

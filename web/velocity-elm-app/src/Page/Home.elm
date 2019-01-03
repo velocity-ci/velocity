@@ -34,7 +34,10 @@ import Url.Builder
 import Url.Parser.Query as Query
 import Username exposing (Username)
 import Validate exposing (ifBlank)
-
+import Api.Compiled.Mutation as Mutation
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
+import Api.Compiled.Object.KnownHostPayload as KnownHostPayload
+import Graphql.Http
 
 
 ---- Ports
@@ -60,6 +63,7 @@ type alias Model msg =
 type ProjectFormStatus
     = NotOpen
     | SettingRepository { value : String, dirty : Bool, problems : List String }
+    | CreatingKnownHost
     | AddingKnownHost { gitUrl : GitUrl, publicKey : String }
     | ConfiguringRepository { gitUrl : GitUrl, projectName : String }
 
@@ -96,18 +100,18 @@ view model =
         device =
             Context.device model.context
     in
-    { title = "Home"
-    , content =
-        column
-            [ width fill
-            , height fill
-            , Background.color Palette.white
-            , centerX
-            ]
-            [ viewSubHeader (model.projectFormStatus /= NotOpen) device
-            , viewPanelGrid device model.projectFormStatus model.session
-            ]
-    }
+        { title = "Home"
+        , content =
+            column
+                [ width fill
+                , height fill
+                , Background.color Palette.white
+                , centerX
+                ]
+                [ viewSubHeader (model.projectFormStatus /= NotOpen) device
+                , viewPanelGrid device model.projectFormStatus model.session
+                ]
+        }
 
 
 iconOptions : Icon.Options
@@ -246,12 +250,12 @@ viewPanelGrid device projectFormStatus session =
                     columnIndex =
                         remainderBy (colAmount device) i
                 in
-                case Array.get columnIndex columns of
-                    Just columnItems ->
-                        Array.set columnIndex (List.append columnItems [ panel ]) columns
+                    case Array.get columnIndex columns of
+                        Just columnItems ->
+                            Array.set columnIndex (List.append columnItems [ panel ]) columns
 
-                    Nothing ->
-                        columns
+                        Nothing ->
+                            columns
             )
             (List.range 1 (colAmount device)
                 |> List.map (always [])
@@ -285,11 +289,10 @@ toPanels projectFormStatus session =
                 |> Session.projects
                 |> List.map ProjectPanel
     in
-    if projectFormStatus /= NotOpen then
-        ProjectFormPanel projectFormStatus :: projectPanels
-
-    else
-        projectPanels
+        if projectFormStatus /= NotOpen then
+            ProjectFormPanel projectFormStatus :: projectPanels
+        else
+            projectPanels
 
 
 viewPanel : Device -> Panel -> Element Msg
@@ -300,6 +303,9 @@ viewPanel device panel =
 
         ProjectFormPanel (SettingRepository repositoryField) ->
             viewAddProjectPanel repositoryField
+
+        ProjectFormPanel CreatingKnownHost ->
+            none
 
         ProjectFormPanel (AddingKnownHost configurationValues) ->
             viewAddKnownHostPanel configurationValues
@@ -467,7 +473,7 @@ viewAddKnownHostPanel { gitUrl, publicKey } =
                     }
                 )
             , el [ width (fillPortion 2) ]
-                (Button.button AddKnownHostButtonClicked
+                (Button.button VerifyKnownHostButtonClicked
                     { rightIcon = Just Icon.arrowRight
                     , centerRightIcon = Nothing
                     , leftIcon = Nothing
@@ -605,24 +611,23 @@ viewNewProjectPanelHeader headerText ( currentPanel, totalPanels ) =
         , paddingEach { top = 5, left = 5, bottom = 10, right = 10 }
         , clip
         , Font.color Palette.primary4
-
-        --- X button
-        --        , inFront
-        --            (Route.link
-        --                [ width (px 20)
-        --                , height (px 20)
-        --                , Border.width 1
-        --                , Border.rounded 5
-        --                , Border.color Palette.neutral4
-        --                , alignRight
-        --                , mouseOver
-        --                    [ Background.color Palette.neutral2
-        --                    , Font.color Palette.white
-        --                    ]
-        --                ]
-        --                (Icon.x Icon.defaultOptions)
-        --                (Route.Home ActivePanel.None)
-        --            )
+          --- X button
+          --        , inFront
+          --            (Route.link
+          --                [ width (px 20)
+          --                , height (px 20)
+          --                , Border.width 1
+          --                , Border.rounded 5
+          --                , Border.color Palette.neutral4
+          --                , alignRight
+          --                , mouseOver
+          --                    [ Background.color Palette.neutral2
+          --                    , Font.color Palette.white
+          --                    ]
+          --                ]
+          --                (Icon.x Icon.defaultOptions)
+          --                (Route.Home ActivePanel.None)
+          --            )
         ]
         [ text headerText ]
 
@@ -634,7 +639,6 @@ viewRepositoryField { value, dirty, problems } =
         , rightIcon =
             if dirty && List.isEmpty problems then
                 Just Icon.check
-
             else
                 Nothing
         , label = Input.labelHidden "Repository URL"
@@ -714,13 +718,13 @@ viewProjectPanel project =
                     ]
                 ]
     in
-    viewPanelContainer
-        [ row
-            [ width fill, height fill, spacingXY 10 0 ]
-            [ thumbnail
-            , details
+        viewPanelContainer
+            [ row
+                [ width fill, height fill, spacingXY 10 0 ]
+                [ thumbnail
+                , details
+                ]
             ]
-        ]
 
 
 viewPanelContainer : List (Element msg) -> Element msg
@@ -747,16 +751,15 @@ validateRepository repository =
             "(?:git|ssh|https?|git@[-\\w.]+):(\\/\\/)?(.*?)(\\.git)(\\/?|\\#[-\\d\\w._]+?)$"
                 |> Regex.fromStringWith { caseInsensitive = False, multiline = False }
     in
-    case maybeRegex of
-        Just regex ->
-            if Regex.contains regex repository then
+        case maybeRegex of
+            Just regex ->
+                if Regex.contains regex repository then
+                    []
+                else
+                    [ "Invalid repository" ]
+
+            Nothing ->
                 []
-
-            else
-                [ "Invalid repository" ]
-
-        Nothing ->
-            []
 
 
 
@@ -772,8 +775,8 @@ type Msg
     | EnteredRepositorySourcePublicKey String
     | CompleteProjectButtonClicked
     | NewProjectBackButtonClicked
-    | AddKnownHostButtonClicked
-    | KnownHostCreated (Result Http.Error KnownHost)
+    | VerifyKnownHostButtonClicked
+    | KnownHostCreated (Result (Graphql.Http.Error (Maybe KnownHost.CreateResponse)) (Maybe KnownHost.CreateResponse))
     | ProjectCreated (Result Http.Error Project)
     | PassedSlowLoadThreshold
     | NoOp
@@ -781,172 +784,179 @@ type Msg
 
 update : Msg -> Model msg -> ( Model msg, Cmd Msg )
 update msg model =
+    case Session.cred model.session of
+        Just cred ->
+            updateAuthenticated cred msg model
+
+        Nothing ->
+            -- Handle unauthenticated
+            ( model, Cmd.none )
+
+
+updateAuthenticated : Cred -> Msg -> Model msg -> ( Model msg, Cmd Msg )
+updateAuthenticated cred msg model =
     let
         baseUrl =
             Context.baseUrl model.context
     in
-    case msg of
-        NoOp ->
-            ( model, Cmd.none )
+        case msg of
+            NoOp ->
+                ( model, Cmd.none )
 
-        NewProjectBackButtonClicked ->
-            ( { model
-                | projectFormStatus =
-                    case model.projectFormStatus of
-                        NotOpen ->
-                            NotOpen
+            NewProjectBackButtonClicked ->
+                ( { model
+                    | projectFormStatus =
+                        case model.projectFormStatus of
+                            NotOpen ->
+                                NotOpen
 
-                        SettingRepository _ ->
-                            NotOpen
+                            SettingRepository _ ->
+                                NotOpen
 
-                        AddingKnownHost { gitUrl } ->
-                            SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
+                            CreatingKnownHost ->
+                                model.projectFormStatus
 
-                        ConfiguringRepository { gitUrl } ->
-                            SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
-              }
-            , Cmd.none
-            )
+                            AddingKnownHost { gitUrl } ->
+                                SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
 
-        AddKnownHostButtonClicked ->
-            ( model
-            , case ( model.projectFormStatus, Session.cred model.session ) of
-                ( AddingKnownHost { publicKey }, Just cred ) ->
-                    KnownHost.create cred baseUrl publicKey KnownHostCreated
+                            ConfiguringRepository { gitUrl } ->
+                                SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
+                  }
+                , Cmd.none
+                )
 
-                _ ->
-                    Cmd.none
-            )
+            VerifyKnownHostButtonClicked ->
+                ( model
+                , Cmd.none
+                )
 
-        CompleteProjectButtonClicked ->
-            ( model
-            , case ( model.projectFormStatus, Session.cred model.session ) of
-                ( ConfiguringRepository { gitUrl, projectName }, Just cred ) ->
-                    Project.create cred
-                        baseUrl
-                        { name = gitUrl.fullName
-                        , repository = gitUrl.href
-                        , privateKey = Nothing
-                        }
-                        ProjectCreated
+            CompleteProjectButtonClicked ->
+                ( model
+                , case model.projectFormStatus of
+                    ConfiguringRepository { gitUrl, projectName } ->
+                        Project.create cred
+                            baseUrl
+                            { name = gitUrl.fullName
+                            , repository = gitUrl.href
+                            , privateKey = Nothing
+                            }
+                            ProjectCreated
 
-                _ ->
-                    Cmd.none
-            )
-
-        EnteredRepositoryUrl repositoryUrl ->
-            ( { model
-                | projectFormStatus =
-                    SettingRepository
-                        { value = repositoryUrl
-                        , dirty = True
-                        , problems = validateRepository repositoryUrl
-                        }
-              }
-            , Cmd.none
-            )
-
-        EnteredRepositorySourcePublicKey publicKey ->
-            ( { model
-                | projectFormStatus =
-                    case model.projectFormStatus of
-                        AddingKnownHost internals ->
-                            AddingKnownHost { internals | publicKey = publicKey }
-
-                        _ ->
-                            model.projectFormStatus
-              }
-            , Cmd.none
-            )
-
-        UpdateSession task ->
-            ( model, Task.attempt UpdatedSession task )
-
-        UpdatedSession (Ok session) ->
-            ( { model | session = session }, Cmd.none )
-
-        UpdatedSession (Err _) ->
-            ( model, Cmd.none )
-
-        ConfigureRepositoryButtonClicked ->
-            ( model
-            , case model.projectFormStatus of
-                SettingRepository { value, problems } ->
-                    if List.isEmpty problems then
-                        parseRepository (Encode.string value)
-
-                    else
+                    _ ->
                         Cmd.none
+                )
 
-                _ ->
-                    Cmd.none
-            )
-
-        ParsedRepository (Ok { gitUrl }) ->
-            ( { model
-                | projectFormStatus =
-                    if KnownHost.isUnknownHost (Session.knownHosts model.session) (Just gitUrl) then
-                        AddingKnownHost
-                            { gitUrl = gitUrl
-                            , publicKey = ""
+            EnteredRepositoryUrl repositoryUrl ->
+                ( { model
+                    | projectFormStatus =
+                        SettingRepository
+                            { value = repositoryUrl
+                            , dirty = True
+                            , problems = validateRepository repositoryUrl
                             }
+                  }
+                , Cmd.none
+                )
 
-                    else
-                        ConfiguringRepository
-                            { gitUrl = gitUrl
-                            , projectName = gitUrl.fullName
-                            }
-              }
-            , Cmd.none
-            )
+            EnteredRepositorySourcePublicKey publicKey ->
+                ( { model
+                    | projectFormStatus =
+                        case model.projectFormStatus of
+                            AddingKnownHost internals ->
+                                AddingKnownHost { internals | publicKey = publicKey }
 
-        ProjectCreated (Ok project) ->
-            ( { model
-                | session = Session.addProject project model.session
-                , projectFormStatus = NotOpen
-              }
-            , case Session.cred model.session of
-                Just cred ->
-                    Project.sync cred (Context.baseUrl model.context) (Project.slug project) (always NoOp)
+                            _ ->
+                                model.projectFormStatus
+                  }
+                , Cmd.none
+                )
 
-                Nothing ->
-                    Cmd.none
-            )
+            UpdateSession task ->
+                ( model, Task.attempt UpdatedSession task )
 
-        KnownHostCreated (Ok knownHost) ->
-            ( { model
-                | session = Session.addKnownHost knownHost model.session
-                , projectFormStatus =
-                    case model.projectFormStatus of
-                        AddingKnownHost { gitUrl } ->
-                            ConfiguringRepository
+            UpdatedSession (Ok session) ->
+                ( { model | session = session }, Cmd.none )
+
+            UpdatedSession (Err _) ->
+                ( model, Cmd.none )
+
+            ConfigureRepositoryButtonClicked ->
+                ( model
+                , case model.projectFormStatus of
+                    SettingRepository { value, problems } ->
+                        if List.isEmpty problems then
+                            parseRepository (Encode.string value)
+                        else
+                            Cmd.none
+
+                    _ ->
+                        Cmd.none
+                )
+
+            ParsedRepository (Ok { gitUrl }) ->
+                let
+                    isUnknownHost =
+                        KnownHost.isUnknownHost (Session.knownHosts model.session) (Just gitUrl)
+
+                    ( projectFormStatus, createKnownHostCmd ) =
+                        if isUnknownHost then
+                            ( CreatingKnownHost
+                            , KnownHost.createUnverified cred (Context.baseUrl model.context)
+                                |> Graphql.Http.send KnownHostCreated
+                            )
+                        else
+                            ( ConfiguringRepository
                                 { gitUrl = gitUrl
                                 , projectName = gitUrl.fullName
                                 }
+                            , Cmd.none
+                            )
+                in
+                    ( { model | projectFormStatus = projectFormStatus }
+                    , createKnownHostCmd
+                    )
 
-                        _ ->
-                            model.projectFormStatus
-              }
-            , Cmd.none
-            )
+            ProjectCreated (Ok project) ->
+                ( { model
+                    | session = Session.addProject project model.session
+                    , projectFormStatus = NotOpen
+                  }
+                , Project.sync cred (Context.baseUrl model.context) (Project.slug project) (always NoOp)
+                )
 
-        ProjectCreated (Err _) ->
-            ( model, Cmd.none )
+            KnownHostCreated (Ok knownHost) ->
+                ( { model
+                    | projectFormStatus =
+                        case model.projectFormStatus of
+                            AddingKnownHost { gitUrl } ->
+                                ConfiguringRepository
+                                    { gitUrl = gitUrl
+                                    , projectName = gitUrl.fullName
+                                    }
 
-        KnownHostCreated (Err _) ->
-            ( model, Cmd.none )
+                            _ ->
+                                model.projectFormStatus
+                  }
+                , Cmd.none
+                )
 
-        ParsedRepository (Err _) ->
-            ( model, Cmd.none )
+            ProjectCreated (Err _) ->
+                ( model, Cmd.none )
 
-        PassedSlowLoadThreshold ->
-            let
-                -- If any data is still Loading, change it to LoadingSlowly
-                -- so `view` knows to render a spinner.
-                model_ =
-                    model
-            in
-            ( model_, Cmd.none )
+            KnownHostCreated (Err _) ->
+                ( model, Cmd.none )
+
+            ParsedRepository (Err _) ->
+                ( model, Cmd.none )
+
+            PassedSlowLoadThreshold ->
+                let
+                    -- If any data is still Loading, change it to LoadingSlowly
+                    -- so `view` knows to render a spinner.
+                    model_ =
+                        model
+                in
+                    ( model_, Cmd.none )
 
 
 scrollToTop : Task x ()
@@ -954,10 +964,24 @@ scrollToTop =
     Dom.setViewport 0 0
         -- It's not worth showing the user anything special if scrolling fails.
         -- If anything, we'd log this to an error recording service.
-        |> Task.onError (\_ -> Task.succeed ())
+        |>
+            Task.onError (\_ -> Task.succeed ())
 
 
 
+--unverifiedKnownHostMutation : GitUrl -> SelectionSet KnownHost
+--type alias ResponseRec =
+--    {}
+--
+--unverifiedKnownHostMutation host =
+--    let
+--        selectionSet =
+--            SelectionSet.map3 (\successful messages result -> Response (ResponseRec successful messages result))
+--                SessionPayload.successful
+--                (SessionPayload.messages (validationErrorSelectionSet))
+--                (SelectionSet.map Just viewerSelectionSet)
+--    in
+--    Mutation.forHost { host = host } KnownHost.selectionSet
 -- SUBSCRIPTIONS
 
 
@@ -978,7 +1002,7 @@ parsedRepositorySub =
                 (Decode.field "repository" Decode.string)
                 (Decode.field "gitUrl" GitUrl.decoder)
     in
-    parsedRepository (Decode.decodeValue decoder >> ParsedRepository)
+        parsedRepository (Decode.decodeValue decoder >> ParsedRepository)
 
 
 
@@ -1003,6 +1027,5 @@ viewIf : Bool -> Element msg -> Element msg
 viewIf condition content =
     if condition then
         content
-
     else
         none

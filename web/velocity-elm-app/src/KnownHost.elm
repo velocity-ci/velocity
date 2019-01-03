@@ -1,4 +1,4 @@
-module KnownHost exposing (KnownHost, addKnownHost, create, findKnownHost, isUnknownHost, list, selectionSet)
+module KnownHost exposing (KnownHost, CreateResponse(..), addKnownHost, create, findKnownHost, isUnknownHost, list, selectionSet, createUnverified)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -15,6 +15,8 @@ import Api.Compiled.Object.KnownHost as KnownHost
 import Api.Compiled.Object
 import Api.Compiled.Scalar as Scalar
 import Api.Compiled.Query as Query
+import Api.Compiled.Object.KnownHostPayload as KnownHostPayload
+import Api.Compiled.Mutation as Mutation
 
 
 type KnownHost
@@ -136,6 +138,44 @@ idSelectionSet =
 
 
 -- REQUESTS
+
+
+type CreateResponse
+    = CreateSuccess KnownHost
+    | ValidationFailure (List Api.ValidationMessage)
+    | UnknownError
+
+
+createResponseSelectionSet : SelectionSet CreateResponse Api.Compiled.Object.KnownHostPayload
+createResponseSelectionSet =
+    let
+        messageSelectionSet =
+            KnownHostPayload.messages Api.validationErrorSelectionSet
+                |> SelectionSet.withDefault []
+                |> SelectionSet.nonNullElementsOrFail
+
+        toResponse messages result =
+            case result of
+                Just knownHost ->
+                    CreateSuccess knownHost
+
+                Nothing ->
+                    ValidationFailure messages
+    in
+        SelectionSet.succeed toResponse
+            |> SelectionSet.with messageSelectionSet
+            |> SelectionSet.with (KnownHostPayload.result selectionSet)
+
+
+createUnverified : Cred -> BaseUrl -> Graphql.Http.Request (Maybe CreateResponse)
+createUnverified cred baseUrl =
+    let
+        endpoint =
+            Api.toEndpoint baseUrl
+                |> Endpoint.unwrap
+    in
+        Mutation.forHost { host = "gesg" } createResponseSelectionSet
+            |> Graphql.Http.mutationRequest endpoint
 
 
 list : Cred -> BaseUrl -> Task Http.Error (List KnownHost)

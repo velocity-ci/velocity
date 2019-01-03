@@ -19,6 +19,7 @@ port module Api
         , Response
         , responseMessages
         , responseResult
+        , validationErrorSelectionSet
         , responseWasSuccessful
         , ValidationMessage
         )
@@ -421,6 +422,14 @@ validationErrorSelectionSet =
         ValidationMessage.message
 
 
+
+--
+--
+--responseSelectionSet =
+--    SelectionSet.succeed Response
+--        |> with internalSelectionSet
+
+
 signIn : BaseUrl -> Mutation.SignInRequiredArguments -> Graphql.Http.Request (Maybe (Response Cred))
 signIn (BaseUrl baseUrl) values =
     let
@@ -443,6 +452,10 @@ signIn (BaseUrl baseUrl) values =
 
 
 
+--
+--createKnownHost : BaseUrl -> Mutation.ForHostRequiredArguments -> Graphql.Http.Request (Maybe (Response KnownHost))
+--createKnownHost (BaseUrl baseUrl) values =
+--
 --signIn : BaseUrl -> Mutation.SignInRequiredArguments -> Decoder (Cred -> a) -> (Result Http.Error a -> msg) -> Cmd msg
 --signIn (BaseUrl baseUrl) body decoder toMsg =
 --    Mutation.signIn body (SelectionSet.map identity)
