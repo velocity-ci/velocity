@@ -2,7 +2,6 @@ defmodule ArchitectWeb.Schema do
   use Absinthe.Schema
 
   import Kronky.Payload
-  alias ArchitectWeb.Resolvers
   alias ArchitectWeb.Schema.Middleware.TranslateMessages
 
   import_types(Absinthe.Type.Custom)
@@ -42,7 +41,7 @@ defmodule ArchitectWeb.Schema do
   #    middleware
   #  end
   #
-  def middleware(middleware, field, %Absinthe.Type.Object{identifier: :mutation}) do
+  def middleware(middleware, _field, %Absinthe.Type.Object{identifier: :mutation}) do
     middleware ++ [&build_payload/2, TranslateMessages]
   end
 
