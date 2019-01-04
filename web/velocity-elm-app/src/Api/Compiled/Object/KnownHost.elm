@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.KnownHost exposing (entry, fingerprintMd5, fingerprintSha256, host, id)
+module Api.Compiled.Object.KnownHost exposing (entry, fingerprintMd5, fingerprintSha256, host, id, verified)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -41,3 +41,8 @@ host =
 id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.KnownHost
 id =
     Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)
+
+
+verified : SelectionSet Bool Api.Compiled.Object.KnownHost
+verified =
+    Object.selectionForField "Bool" "verified" [] Decode.bool

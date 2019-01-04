@@ -1,4 +1,17 @@
-module KnownHost exposing (KnownHost, CreateResponse(..), addKnownHost, create, findKnownHost, isUnknownHost, list, selectionSet, createUnverified)
+module KnownHost
+    exposing
+        ( KnownHost
+        , CreateResponse(..)
+        , addKnownHost
+        , findKnownHost
+        , isUnknownHost
+        , findForGitUrl
+        , isVerified
+        , md5
+        , sha256
+        , selectionSet
+        , createUnverified
+        )
 
 import Api exposing (BaseUrl, Cred)
 import Api.Endpoint as Endpoint exposing (Endpoint)
@@ -28,26 +41,12 @@ type alias Internals =
     , host : String
     , md5 : String
     , sha256 : String
+    , verified : Bool
     }
 
 
 
 -- SERIALIZATION --
-
-
-decoder : Decoder KnownHost
-decoder =
-    Decode.succeed KnownHost
-        |> custom internalsDecoder
-
-
-internalsDecoder : Decoder Internals
-internalsDecoder =
-    Decode.succeed Internals
-        |> required "id" decodeId
-        |> required "hosts" Decode.string
-        |> required "md5" Decode.string
-        |> required "sha256" Decode.string
 
 
 internalSelectionSet : SelectionSet Internals Api.Compiled.Object.KnownHost
@@ -57,6 +56,7 @@ internalSelectionSet =
         |> with KnownHost.host
         |> with KnownHost.fingerprintMd5
         |> with KnownHost.fingerprintSha256
+        |> with KnownHost.verified
 
 
 selectionSet : SelectionSet KnownHost Api.Compiled.Object.KnownHost
@@ -66,17 +66,38 @@ selectionSet =
 
 
 
---
 -- INFO
 
 
-hosts : KnownHost -> List String
-hosts (KnownHost knownHost) =
-    [ knownHost.host ]
+md5 : KnownHost -> String
+md5 (KnownHost knownHost) =
+    knownHost.md5
+
+
+sha256 : KnownHost -> String
+sha256 (KnownHost knownHost) =
+    knownHost.sha256
+
+
+host : KnownHost -> String
+host (KnownHost knownHost) =
+    knownHost.host
+
+
+isVerified : KnownHost -> Bool
+isVerified (KnownHost knownHost) =
+    knownHost.verified
 
 
 
 -- HELPERS --
+
+
+findForGitUrl : List KnownHost -> GitUrl -> Maybe KnownHost
+findForGitUrl knownHosts { source } =
+    knownHosts
+        |> List.filter (\(KnownHost a) -> a.host == source)
+        |> List.head
 
 
 isUnknownHost : List KnownHost -> Maybe GitUrl -> Bool
@@ -94,7 +115,7 @@ isUnknownHost knownHosts maybeGitUrl =
 
 hostsFromKnownHosts : List KnownHost -> List String
 hostsFromKnownHosts knownHosts =
-    List.foldl (hosts >> (++)) [] knownHosts
+    List.map host knownHosts
 
 
 findKnownHost : List KnownHost -> KnownHost -> Maybe KnownHost
@@ -176,26 +197,3 @@ createUnverified cred baseUrl =
     in
         Mutation.forHost { host = "gesg" } createResponseSelectionSet
             |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
-
-
-list : Cred -> BaseUrl -> Task Http.Error (List KnownHost)
-list cred baseUrl =
-    let
-        endpoint =
-            Endpoint.knownHosts (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl)
-    in
-        Decode.field "data" (Decode.list decoder)
-            |> Api.getTask endpoint (Just cred)
-
-
-create : Cred -> BaseUrl -> String -> (Result Http.Error KnownHost -> msg) -> Cmd msg
-create cred baseUrl publicKey toMsg =
-    let
-        endpoint =
-            Endpoint.knownHosts Nothing (Api.toEndpoint baseUrl)
-
-        body =
-            Encode.object [ ( "entry", Encode.string publicKey ) ]
-                |> Http.jsonBody
-    in
-        Api.post endpoint (Just cred) body toMsg decoder

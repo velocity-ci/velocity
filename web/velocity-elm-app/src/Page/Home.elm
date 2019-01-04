@@ -62,10 +62,11 @@ type alias Model msg =
 
 type ProjectFormStatus
     = NotOpen
-    | SettingRepository { value : String, dirty : Bool, problems : List String }
-    | CreatingKnownHost
-    | AddingKnownHost { gitUrl : GitUrl, publicKey : String }
-    | ConfiguringRepository { gitUrl : GitUrl, projectName : String }
+    | RepositoryForm { value : String, dirty : Bool, problems : List String }
+    | WaitingForKnownHostCreation { gitUrl : GitUrl }
+    | VerifyKnownHostForm { gitUrl : GitUrl, knownHost : KnownHost }
+    | WaitingForKnownHostVerification { gitUrl : GitUrl }
+    | ConfigureForm { gitUrl : GitUrl, projectName : String }
 
 
 init : Session -> Context msg -> ActivePanel -> ( Model msg, Cmd Msg )
@@ -84,7 +85,7 @@ activePanelToProjectFormStatus : ActivePanel -> ProjectFormStatus
 activePanelToProjectFormStatus activePanel =
     case activePanel of
         ActivePanel.ProjectForm ->
-            SettingRepository { value = "", dirty = False, problems = validateRepository "" }
+            RepositoryForm { value = "", dirty = False, problems = validateRepository "" }
 
         ActivePanel.None ->
             NotOpen
@@ -301,17 +302,20 @@ viewPanel device panel =
         ProjectFormPanel NotOpen ->
             none
 
-        ProjectFormPanel (SettingRepository repositoryField) ->
-            viewAddProjectPanel repositoryField
+        ProjectFormPanel (RepositoryForm values) ->
+            viewAddProjectPanel values
 
-        ProjectFormPanel CreatingKnownHost ->
+        ProjectFormPanel (WaitingForKnownHostCreation values) ->
             none
 
-        ProjectFormPanel (AddingKnownHost configurationValues) ->
-            viewAddKnownHostPanel configurationValues
+        ProjectFormPanel (VerifyKnownHostForm values) ->
+            viewAddKnownHostPanel values
 
-        ProjectFormPanel (ConfiguringRepository configurationValues) ->
-            viewConfigureProjectPanel configurationValues
+        ProjectFormPanel (WaitingForKnownHostVerification _) ->
+            none
+
+        ProjectFormPanel (ConfigureForm values) ->
+            viewConfigureProjectPanel values
 
         ProjectPanel project ->
             viewProjectPanel project
@@ -393,8 +397,8 @@ viewAddProjectPanel repositoryField =
         ]
 
 
-viewAddKnownHostPanel : { gitUrl : GitUrl, publicKey : String } -> Element Msg
-viewAddKnownHostPanel { gitUrl, publicKey } =
+viewAddKnownHostPanel : { gitUrl : GitUrl, knownHost : KnownHost } -> Element Msg
+viewAddKnownHostPanel { gitUrl, knownHost } =
     viewPanelContainer
         [ viewNewProjectPanelHeader "New repository source" ( 3, 3 )
         , row
@@ -404,7 +408,7 @@ viewAddKnownHostPanel { gitUrl, publicKey } =
                 { top = 10
                 , left = 5
                 , right = 5
-                , bottom = 0
+                , bottom = 20
                 }
             ]
             [ el
@@ -422,40 +426,19 @@ viewAddKnownHostPanel { gitUrl, publicKey } =
                 , width <| fillPortion 10
                 , Font.size 15
                 , Font.alignLeft
-                , paddingEach { top = 10, left = 10, right = 0, bottom = 0 }
+                , paddingEach { top = 0, left = 10, right = 0, bottom = 0 }
                 ]
                 [ paragraph []
                     [ text ("Because this is your first repository hosted on " ++ gitUrl.source ++ " we need you to ")
-                    , text "tell Velocity their public SSH key."
-                    ]
-                , paragraph []
-                    [ text "You can find their public SSH key by running"
+                    , text "verify the SSH key fingerprints for it."
                     ]
                 , paragraph [ Font.color Palette.primary2, Font.family [ Font.monospace ] ]
-                    [ text ("ssh-keyscan " ++ gitUrl.source ++ "") ]
-                , paragraph []
-                    [ text "If the results of the command match the sources published public key, "
-                    , link [ Font.color Palette.primary1 ]
-                        { url = "https://help.github.com/articles/github-s-ssh-key-fingerprints/"
-                        , label = text "for example GitHub"
-                        }
-                    , text " then we can fully trust Velocity is talking to the correct servers."
+                    [ text (KnownHost.md5 knownHost)
+                    ]
+                , paragraph [ Font.color Palette.primary2, Font.family [ Font.monospace ] ]
+                    [ text (KnownHost.sha256 knownHost)
                     ]
                 ]
-            ]
-        , row [ width fill, height shrink ]
-            [ el [ height (px 125), width fill, paddingEach { top = 20, left = 0, right = 0, bottom = 20 } ]
-                (Input.multilineText
-                    { leftIcon = Nothing
-                    , rightIcon = Nothing
-                    , label = Input.labelHidden "Public key"
-                    , placeholder = Just <| "ssh-keyscan " ++ gitUrl.source
-                    , dirty = False
-                    , value = publicKey
-                    , problems = []
-                    , onChange = EnteredRepositorySourcePublicKey
-                    }
-                )
             ]
         , row [ width fill, spacingXY 10 0 ]
             [ el [ width fill ]
@@ -478,7 +461,7 @@ viewAddKnownHostPanel { gitUrl, publicKey } =
                     , centerRightIcon = Nothing
                     , leftIcon = Nothing
                     , centerLeftIcon = Nothing
-                    , content = text "Allow source"
+                    , content = text "Verify source"
                     , scheme = Button.Primary
                     , size = Button.Medium
                     , widthLength = fill
@@ -772,7 +755,6 @@ type Msg
     | ConfigureRepositoryButtonClicked
     | ParsedRepository (Result Decode.Error { repository : String, gitUrl : GitUrl })
     | EnteredRepositoryUrl String
-    | EnteredRepositorySourcePublicKey String
     | CompleteProjectButtonClicked
     | NewProjectBackButtonClicked
     | VerifyKnownHostButtonClicked
@@ -810,17 +792,20 @@ updateAuthenticated cred msg model =
                             NotOpen ->
                                 NotOpen
 
-                            SettingRepository _ ->
+                            RepositoryForm _ ->
                                 NotOpen
 
-                            CreatingKnownHost ->
-                                model.projectFormStatus
+                            WaitingForKnownHostCreation { gitUrl } ->
+                                RepositoryForm { value = gitUrl.href, dirty = True, problems = [] }
 
-                            AddingKnownHost { gitUrl } ->
-                                SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
+                            VerifyKnownHostForm { gitUrl } ->
+                                RepositoryForm { value = gitUrl.href, dirty = True, problems = [] }
 
-                            ConfiguringRepository { gitUrl } ->
-                                SettingRepository { value = gitUrl.href, dirty = True, problems = [] }
+                            WaitingForKnownHostVerification { gitUrl } ->
+                                RepositoryForm { value = gitUrl.href, dirty = True, problems = [] }
+
+                            ConfigureForm { gitUrl } ->
+                                RepositoryForm { value = gitUrl.href, dirty = True, problems = [] }
                   }
                 , Cmd.none
                 )
@@ -833,7 +818,7 @@ updateAuthenticated cred msg model =
             CompleteProjectButtonClicked ->
                 ( model
                 , case model.projectFormStatus of
-                    ConfiguringRepository { gitUrl, projectName } ->
+                    ConfigureForm { gitUrl, projectName } ->
                         Project.create cred
                             baseUrl
                             { name = gitUrl.fullName
@@ -849,24 +834,11 @@ updateAuthenticated cred msg model =
             EnteredRepositoryUrl repositoryUrl ->
                 ( { model
                     | projectFormStatus =
-                        SettingRepository
+                        RepositoryForm
                             { value = repositoryUrl
                             , dirty = True
                             , problems = validateRepository repositoryUrl
                             }
-                  }
-                , Cmd.none
-                )
-
-            EnteredRepositorySourcePublicKey publicKey ->
-                ( { model
-                    | projectFormStatus =
-                        case model.projectFormStatus of
-                            AddingKnownHost internals ->
-                                AddingKnownHost { internals | publicKey = publicKey }
-
-                            _ ->
-                                model.projectFormStatus
                   }
                 , Cmd.none
                 )
@@ -883,7 +855,7 @@ updateAuthenticated cred msg model =
             ConfigureRepositoryButtonClicked ->
                 ( model
                 , case model.projectFormStatus of
-                    SettingRepository { value, problems } ->
+                    RepositoryForm { value, problems } ->
                         if List.isEmpty problems then
                             parseRepository (Encode.string value)
                         else
@@ -894,27 +866,28 @@ updateAuthenticated cred msg model =
                 )
 
             ParsedRepository (Ok { gitUrl }) ->
-                let
-                    isUnknownHost =
-                        KnownHost.isUnknownHost (Session.knownHosts model.session) (Just gitUrl)
-
-                    ( projectFormStatus, createKnownHostCmd ) =
-                        if isUnknownHost then
-                            ( CreatingKnownHost
-                            , KnownHost.createUnverified cred (Context.baseUrl model.context)
-                                |> Graphql.Http.send KnownHostCreated
-                            )
-                        else
-                            ( ConfiguringRepository
-                                { gitUrl = gitUrl
-                                , projectName = gitUrl.fullName
-                                }
+                case KnownHost.findForGitUrl (Session.knownHosts model.session) gitUrl of
+                    Just knownHost ->
+                        if KnownHost.isVerified knownHost then
+                            ( { model
+                                | projectFormStatus = ConfigureForm { gitUrl = gitUrl, projectName = gitUrl.fullName }
+                              }
                             , Cmd.none
                             )
-                in
-                    ( { model | projectFormStatus = projectFormStatus }
-                    , createKnownHostCmd
-                    )
+                        else
+                            ( { model
+                                | projectFormStatus = VerifyKnownHostForm { gitUrl = gitUrl, knownHost = knownHost }
+                              }
+                            , Cmd.none
+                            )
+
+                    Nothing ->
+                        ( { model
+                            | projectFormStatus = WaitingForKnownHostCreation { gitUrl = gitUrl }
+                          }
+                        , KnownHost.createUnverified cred (Context.baseUrl model.context)
+                            |> Graphql.Http.send KnownHostCreated
+                        )
 
             ProjectCreated (Ok project) ->
                 ( { model
@@ -924,21 +897,21 @@ updateAuthenticated cred msg model =
                 , Project.sync cred (Context.baseUrl model.context) (Project.slug project) (always NoOp)
                 )
 
-            KnownHostCreated (Ok knownHost) ->
+            KnownHostCreated (Ok (Just (KnownHost.CreateSuccess knownHost))) ->
                 ( { model
                     | projectFormStatus =
                         case model.projectFormStatus of
-                            AddingKnownHost { gitUrl } ->
-                                ConfiguringRepository
-                                    { gitUrl = gitUrl
-                                    , projectName = gitUrl.fullName
-                                    }
+                            WaitingForKnownHostCreation { gitUrl } ->
+                                VerifyKnownHostForm { gitUrl = gitUrl, knownHost = knownHost }
 
                             _ ->
                                 model.projectFormStatus
                   }
                 , Cmd.none
                 )
+
+            KnownHostCreated (Ok _) ->
+                ( model, Cmd.none )
 
             ProjectCreated (Err _) ->
                 ( model, Cmd.none )
