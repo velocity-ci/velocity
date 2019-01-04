@@ -4,7 +4,7 @@ defmodule Architect.KnownHosts.Scanned do
 
   Does this by running the v-ssh-keyscan executable and decoding the output to json.
 
-  Tries to scan for 5 seconds, then will fail with :keyscan_timeout.
+  Tries to scan for 20 seconds, then will fail with :keyscan_timeout.
 
   Possible errors:
 
@@ -32,6 +32,7 @@ defmodule Architect.KnownHosts.Scanned do
   defstruct [:md5, :sha256, :entry]
 
   @keyscan_bin "v-ssh-keyscan"
+  @timeout 20_000
 
   @doc """
   Scan a host and get either a :ok or :error tuple
@@ -41,7 +42,7 @@ defmodule Architect.KnownHosts.Scanned do
       Task.async(fn ->
         System.cmd("#{System.cwd()}/#{@keyscan_bin}", [host], stderr_to_stdout: true)
       end)
-      |> Task.await()
+      |> Task.await(@timeout)
       |> handle_scan()
     catch
       :exit, _ ->
