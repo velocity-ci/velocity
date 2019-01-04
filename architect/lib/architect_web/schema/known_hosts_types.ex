@@ -7,5 +7,6 @@ defmodule ArchitectWeb.Schema.KnownHostsTypes do
     field(:host, non_null(:string))
     field(:fingerprint_md5, non_null(:string))
     field(:fingerprint_sha256, non_null(:string))
+    field(:verified, non_null(:boolean))
   end
 end

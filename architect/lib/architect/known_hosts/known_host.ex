@@ -22,13 +22,12 @@ defmodule Architect.KnownHosts.KnownHost do
     |> cast(attrs, [:host])
     |> validate_required([:host])
     |> unique_constraint(:host)
+    |> populate()
   end
 
   @doc """
   Populate a KnownHost changeset by scanning the value specified at host, if changeset is valid
   """
-  def populate(%Changeset{valid?: false} = changeset), do: changeset
-
   def populate(%Changeset{valid?: true, changes: %{host: host}} = changeset) do
     case Scanned.generate(host) do
       {:error, _} ->
@@ -39,11 +38,11 @@ defmodule Architect.KnownHosts.KnownHost do
     end
   end
 
+  def populate(changeset), do: changeset
+
   @doc """
   Populate a KnownHost changeset with the values specified in the Scanned struct, if valid
   """
-  def populate(%Changeset{valid?: false} = changeset, _scanned), do: changeset
-
   def populate(%Changeset{valid?: true} = changeset, %Scanned{} = scanned) do
     changeset
     |> put_change(:entry, scanned.entry)
@@ -51,4 +50,6 @@ defmodule Architect.KnownHosts.KnownHost do
     |> put_change(:fingerprint_sha256, scanned.sha256)
     |> put_change(:verified, false)
   end
+
+  def populate(changeset, _scanned), do: changeset
 end
