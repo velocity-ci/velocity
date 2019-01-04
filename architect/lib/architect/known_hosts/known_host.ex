@@ -19,7 +19,7 @@ defmodule Architect.KnownHosts.KnownHost do
   @doc false
   def changeset(%__MODULE__{} = known_host, attrs) do
     known_host
-    |> cast(attrs, [:host])
+    |> cast(attrs, [:host, :verified])
     |> validate_required([:host])
     |> unique_constraint(:host)
     |> populate()

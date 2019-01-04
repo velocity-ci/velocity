@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Mutation exposing (ForHostRequiredArguments, SignInRequiredArguments, SignUpOptionalArguments, forHost, signIn, signUp)
+module Api.Compiled.Mutation exposing (ForHostRequiredArguments, SignInRequiredArguments, SignUpOptionalArguments, VerifyRequiredArguments, forHost, signIn, signUp, verify)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -61,3 +61,12 @@ signUp fillInOptionals object_ =
                 |> List.filterMap identity
     in
         Object.selectionForCompositeField "signUp" optionalArgs object_ (identity >> Decode.nullable)
+
+
+type alias VerifyRequiredArguments =
+    { id : String }
+
+
+verify : VerifyRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe decodesTo) RootMutation
+verify requiredArgs object_ =
+    Object.selectionForCompositeField "verify" [ Argument.required "id" requiredArgs.id Encode.string ] object_ (identity >> Decode.nullable)

@@ -11,6 +11,7 @@ module KnownHost
         , sha256
         , selectionSet
         , createUnverified
+        , verify
         )
 
 import Api exposing (BaseUrl, Cred)
@@ -128,10 +129,22 @@ addKnownHost : List KnownHost -> KnownHost -> List KnownHost
 addKnownHost knownHosts knownHost =
     case findKnownHost knownHosts knownHost of
         Just _ ->
-            knownHosts
+            updateKnownHost knownHosts knownHost
 
         Nothing ->
             knownHost :: knownHosts
+
+
+updateKnownHost : List KnownHost -> KnownHost -> List KnownHost
+updateKnownHost knownHosts (KnownHost b) =
+    List.map
+        (\(KnownHost a) ->
+            if a.id == b.id then
+                KnownHost b
+            else
+                KnownHost a
+        )
+        knownHosts
 
 
 
@@ -196,4 +209,15 @@ createUnverified cred baseUrl =
                 |> Endpoint.unwrap
     in
         Mutation.forHost { host = "gesg" } createResponseSelectionSet
+            |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+
+
+verify : Cred -> BaseUrl -> KnownHost -> Graphql.Http.Request (Maybe KnownHost)
+verify cred baseUrl (KnownHost { id }) =
+    let
+        endpoint =
+            Api.toEndpoint baseUrl
+                |> Endpoint.unwrap
+    in
+        Mutation.verify { id = idToString id } selectionSet
             |> Graphql.Http.mutationRequest "http://localhost:4000/v2"

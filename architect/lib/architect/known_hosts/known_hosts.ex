@@ -38,6 +38,20 @@ defmodule Architect.KnownHosts do
   def get_known_host!(id), do: Repo.get!(KnownHost, id)
 
   @doc """
+  Gets a single known_host by id.
+
+  ## Examples
+
+      iex> get_known_host!(123)
+      %KnownHost{}
+
+      iex> get_known_host!(456)
+      nil
+
+  """
+  def get_known_host(id), do: Repo.get(KnownHost, id)
+
+  @doc """
   Gets a single known_host by host.
 
   Raises `Ecto.NoResultsError` if the Known host does not exist.
@@ -83,9 +97,9 @@ defmodule Architect.KnownHosts do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_known_host(%KnownHost{} = known_host) do
+  def update_known_host(%KnownHost{} = known_host, attrs) do
     known_host
-    |> KnownHost.changeset(%{})
+    |> KnownHost.changeset(attrs)
     |> Repo.update()
   end
 
@@ -103,18 +117,5 @@ defmodule Architect.KnownHosts do
   """
   def delete_known_host(%KnownHost{} = known_host) do
     Repo.delete(known_host)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking known_host changes.
-
-  ## Examples
-
-      iex> change_known_host(known_host)
-      %Ecto.Changeset{source: %KnownHost{}}
-
-  """
-  def change_known_host(%KnownHost{} = known_host) do
-    KnownHost.changeset(known_host, %{})
   end
 end

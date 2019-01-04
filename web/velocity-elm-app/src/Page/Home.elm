@@ -759,6 +759,7 @@ type Msg
     | NewProjectBackButtonClicked
     | VerifyKnownHostButtonClicked
     | KnownHostCreated (Result (Graphql.Http.Error (Maybe KnownHost.CreateResponse)) (Maybe KnownHost.CreateResponse))
+    | KnownHostVerified (Result (Graphql.Http.Error (Maybe KnownHost)) (Maybe KnownHost))
     | ProjectCreated (Result Http.Error Project)
     | PassedSlowLoadThreshold
     | NoOp
@@ -811,9 +812,17 @@ updateAuthenticated cred msg model =
                 )
 
             VerifyKnownHostButtonClicked ->
-                ( model
-                , Cmd.none
-                )
+                case model.projectFormStatus of
+                    VerifyKnownHostForm { gitUrl, knownHost } ->
+                        ( { model
+                            | projectFormStatus = WaitingForKnownHostVerification { gitUrl = gitUrl }
+                          }
+                        , KnownHost.verify cred baseUrl knownHost
+                            |> Graphql.Http.send KnownHostVerified
+                        )
+
+                    _ ->
+                        ( model, Cmd.none )
 
             CompleteProjectButtonClicked ->
                 ( model
@@ -913,10 +922,30 @@ updateAuthenticated cred msg model =
             KnownHostCreated (Ok _) ->
                 ( model, Cmd.none )
 
-            ProjectCreated (Err _) ->
+            KnownHostCreated (Err _) ->
                 ( model, Cmd.none )
 
-            KnownHostCreated (Err _) ->
+            KnownHostVerified (Ok (Just knownHost)) ->
+                ( { model
+                    | session = Session.addKnownHost knownHost model.session
+                    , projectFormStatus =
+                        case model.projectFormStatus of
+                            WaitingForKnownHostVerification { gitUrl } ->
+                                ConfigureForm { gitUrl = gitUrl, projectName = gitUrl.fullName }
+
+                            _ ->
+                                model.projectFormStatus
+                  }
+                , Cmd.none
+                )
+
+            KnownHostVerified (Ok _) ->
+                ( model, Cmd.none )
+
+            KnownHostVerified (Err _) ->
+                ( model, Cmd.none )
+
+            ProjectCreated (Err _) ->
                 ( model, Cmd.none )
 
             ParsedRepository (Err _) ->
