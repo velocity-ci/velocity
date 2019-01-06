@@ -201,14 +201,14 @@ createResponseSelectionSet =
             |> SelectionSet.with (KnownHostPayload.result selectionSet)
 
 
-createUnverified : Cred -> BaseUrl -> Graphql.Http.Request (Maybe CreateResponse)
-createUnverified cred baseUrl =
+createUnverified : Cred -> BaseUrl -> Mutation.ForHostRequiredArguments -> Graphql.Http.Request (Maybe CreateResponse)
+createUnverified cred baseUrl values =
     let
         endpoint =
             Api.toEndpoint baseUrl
                 |> Endpoint.unwrap
     in
-        Mutation.forHost { host = "gesg" } createResponseSelectionSet
+        Mutation.forHost values createResponseSelectionSet
             |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
 
 

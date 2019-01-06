@@ -22,6 +22,7 @@ port module Api
         , validationErrorSelectionSet
         , responseWasSuccessful
         , ValidationMessage
+        , validationMessages
         )
 
 {-| This module is responsible for communicating to the Conduit API.
@@ -389,6 +390,11 @@ type alias ResponseRec result =
     , messages : Maybe (List (Maybe ValidationMessage))
     , result : Maybe result
     }
+
+
+validationMessages : List ValidationMessage -> List ( String, String )
+validationMessages =
+    List.filterMap (\(ValidationMessage { field, message }) -> Maybe.map2 Tuple.pair field message)
 
 
 responseResult : Response a -> Maybe a

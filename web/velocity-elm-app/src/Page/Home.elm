@@ -67,6 +67,7 @@ type ProjectFormStatus
     | VerifyKnownHostForm { gitUrl : GitUrl, knownHost : KnownHost }
     | WaitingForKnownHostVerification { gitUrl : GitUrl }
     | ConfigureForm { gitUrl : GitUrl, projectName : String }
+    | WaitingForProjectCreation { gitUrl : GitUrl, projectName : String }
 
 
 init : Session -> Context msg -> ActivePanel -> ( Model msg, Cmd Msg )
@@ -303,16 +304,19 @@ viewPanel device panel =
             none
 
         ProjectFormPanel (RepositoryForm values) ->
-            viewAddProjectPanel values
+            viewAddProjectPanel values False
 
         ProjectFormPanel (WaitingForKnownHostCreation values) ->
-            none
+            viewLoadingPanel
 
         ProjectFormPanel (VerifyKnownHostForm values) ->
             viewAddKnownHostPanel values
 
         ProjectFormPanel (WaitingForKnownHostVerification _) ->
-            none
+            viewLoadingPanel
+
+        ProjectFormPanel (WaitingForProjectCreation _) ->
+            viewLoadingPanel
 
         ProjectFormPanel (ConfigureForm values) ->
             viewConfigureProjectPanel values
@@ -332,8 +336,8 @@ defaultIconOpts =
 
 {-| This is a panel that is used to for the the simple form to add a new project, its a bit of a CTA.
 -}
-viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Element Msg
-viewAddProjectPanel repositoryField =
+viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Bool -> Element Msg
+viewAddProjectPanel repositoryField submitting =
     viewPanelContainer
         [ viewNewProjectPanelHeader "New project" ( 2, 3 )
         , row
@@ -394,6 +398,19 @@ viewAddProjectPanel repositoryField =
                     ]
                 ]
             ]
+        ]
+
+
+viewLoadingPanel : Element Msg
+viewLoadingPanel =
+    viewPanelContainer
+        [ el
+            [ centerX
+            , centerY
+            , Font.color Palette.primary2
+            , paddingXY 0 40
+            ]
+            (Loading.icon { width = 100, height = 100 })
         ]
 
 
@@ -760,7 +777,7 @@ type Msg
     | VerifyKnownHostButtonClicked
     | KnownHostCreated (Result (Graphql.Http.Error (Maybe KnownHost.CreateResponse)) (Maybe KnownHost.CreateResponse))
     | KnownHostVerified (Result (Graphql.Http.Error (Maybe KnownHost)) (Maybe KnownHost))
-    | ProjectCreated (Result Http.Error Project)
+    | ProjectCreated (Result (Graphql.Http.Error (Maybe Project.CreateResponse)) (Maybe Project.CreateResponse))
     | PassedSlowLoadThreshold
     | NoOp
 
@@ -807,6 +824,9 @@ updateAuthenticated cred msg model =
 
                             ConfigureForm { gitUrl } ->
                                 RepositoryForm { value = gitUrl.href, dirty = True, problems = [] }
+
+                            WaitingForProjectCreation { gitUrl } ->
+                                RepositoryForm { value = gitUrl.href, dirty = True, problems = [] }
                   }
                 , Cmd.none
                 )
@@ -828,13 +848,8 @@ updateAuthenticated cred msg model =
                 ( model
                 , case model.projectFormStatus of
                     ConfigureForm { gitUrl, projectName } ->
-                        Project.create cred
-                            baseUrl
-                            { name = gitUrl.fullName
-                            , repository = gitUrl.href
-                            , privateKey = Nothing
-                            }
-                            ProjectCreated
+                        Project.create cred baseUrl { name = gitUrl.fullName, address = gitUrl.href }
+                            |> Graphql.Http.send ProjectCreated
 
                     _ ->
                         Cmd.none
@@ -894,17 +909,36 @@ updateAuthenticated cred msg model =
                         ( { model
                             | projectFormStatus = WaitingForKnownHostCreation { gitUrl = gitUrl }
                           }
-                        , KnownHost.createUnverified cred (Context.baseUrl model.context)
+                        , KnownHost.createUnverified cred (Context.baseUrl model.context) { host = gitUrl.source }
                             |> Graphql.Http.send KnownHostCreated
                         )
 
-            ProjectCreated (Ok project) ->
+            ProjectCreated (Ok (Just (Project.CreateSuccess project))) ->
                 ( { model
                     | session = Session.addProject project model.session
                     , projectFormStatus = NotOpen
                   }
                 , Project.sync cred (Context.baseUrl model.context) (Project.slug project) (always NoOp)
                 )
+
+            ProjectCreated (Ok (Just (Project.ValidationFailure messages))) ->
+                ( { model
+                    | projectFormStatus =
+                        case model.projectFormStatus of
+                            WaitingForProjectCreation { gitUrl } ->
+                                RepositoryForm { value = gitUrl.href, dirty = True, problems = (List.map Tuple.first <| Api.validationMessages messages) }
+
+                            _ ->
+                                model.projectFormStatus
+                  }
+                , Cmd.none
+                )
+
+            ProjectCreated (Ok (Just (Project.UnknownError))) ->
+                ( model, Cmd.none )
+
+            ProjectCreated (Ok Nothing) ->
+                ( model, Cmd.none )
 
             KnownHostCreated (Ok (Just (KnownHost.CreateSuccess knownHost))) ->
                 ( { model
@@ -919,7 +953,23 @@ updateAuthenticated cred msg model =
                 , Cmd.none
                 )
 
-            KnownHostCreated (Ok _) ->
+            KnownHostCreated (Ok (Just (KnownHost.ValidationFailure messages))) ->
+                ( { model
+                    | projectFormStatus =
+                        case model.projectFormStatus of
+                            WaitingForKnownHostCreation { gitUrl } ->
+                                RepositoryForm { value = gitUrl.href, dirty = True, problems = (List.map Tuple.first <| Api.validationMessages messages) }
+
+                            _ ->
+                                model.projectFormStatus
+                  }
+                , Cmd.none
+                )
+
+            KnownHostCreated (Ok (Just (KnownHost.UnknownError))) ->
+                ( model, Cmd.none )
+
+            KnownHostCreated (Ok Nothing) ->
                 ( model, Cmd.none )
 
             KnownHostCreated (Err _) ->
@@ -939,7 +989,7 @@ updateAuthenticated cred msg model =
                 , Cmd.none
                 )
 
-            KnownHostVerified (Ok _) ->
+            KnownHostVerified (Ok Nothing) ->
                 ( model, Cmd.none )
 
             KnownHostVerified (Err _) ->

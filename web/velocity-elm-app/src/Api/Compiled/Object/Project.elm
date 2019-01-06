@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.Project exposing (id, insertedAt, name, repository, slug, updatedAt)
+module Api.Compiled.Object.Project exposing (address, id, insertedAt, name, slug, updatedAt)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,6 +18,11 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode
 
 
+address : SelectionSet String Api.Compiled.Object.Project
+address =
+    Object.selectionForField "String" "address" [] Decode.string
+
+
 id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.Project
 id =
     Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)
@@ -31,11 +36,6 @@ insertedAt =
 name : SelectionSet String Api.Compiled.Object.Project
 name =
     Object.selectionForField "String" "name" [] Decode.string
-
-
-repository : SelectionSet String Api.Compiled.Object.Project
-repository =
-    Object.selectionForField "String" "repository" [] Decode.string
 
 
 slug : SelectionSet String Api.Compiled.Object.Project

@@ -18,6 +18,7 @@ module Project
         , syncing
         , thumbnail
         , updateProject
+        , CreateResponse(..)
         , selectionSet
         )
 
@@ -48,6 +49,8 @@ import Api.Compiled.Object.Project as Project
 import Api.Compiled.Object
 import Api.Compiled.Scalar
 import Api.Compiled.Query as Query
+import Api.Compiled.Object.ProjectPayload as ProjectPayload
+import Api.Compiled.Mutation as Mutation
 
 
 type alias Hydrated =
@@ -64,9 +67,10 @@ type alias Internals =
     { id : Id
     , slug : Slug
     , name : String
-    , repository : String
-    , createdAt : Time.Posix
-    , updatedAt : Time.Posix
+    , address :
+        String
+        --    , createdAt : Time.Posix
+        --    , updatedAt : Time.Posix
     , synchronising : Bool
     , logo : Maybe String
     }
@@ -88,10 +92,11 @@ internalsDecoder =
         |> required "id" Id.decoder
         |> required "slug" Slug.decoder
         |> required "name" Decode.string
-        |> required "repository" Decode.string
-        |> required "createdAt" Iso8601.decoder
-        |> required "updatedAt" Iso8601.decoder
-        |> required "synchronising" Decode.bool
+        |> required "address" Decode.string
+        --        |> required "createdAt" Iso8601.decoder
+        --        |> required "updatedAt" Iso8601.decoder
+        |>
+            required "synchronising" Decode.bool
         |> required "logo" (Decode.maybe Decode.string)
 
 
@@ -107,10 +112,11 @@ internalSelectionSet =
         |> with Id.selectionSet
         |> with Slug.selectionSet
         |> with Project.name
-        |> with Project.repository
-        |> with (mapToDateTime Project.insertedAt)
-        |> with (mapToDateTime Project.updatedAt)
-        |> hardcoded False
+        |> with Project.address
+        --        |> with (mapToDateTime Project.insertedAt)
+        --        |> with (mapToDateTime Project.updatedAt)
+        |>
+            hardcoded False
         |> hardcoded Nothing
 
 
@@ -121,9 +127,12 @@ mapToDateTime =
             Iso8601.toTime value
                 |> Result.mapError
                     (\_ ->
-                        "Failed to parse "
-                            ++ value
-                            ++ " as Iso8601 DateTime."
+                        (Debug.log "decode time error"
+                            ("Failed to parse "
+                                ++ value
+                                ++ " as Iso8601 DateTime."
+                            )
+                        )
                     )
         )
 
@@ -149,7 +158,7 @@ slug (Project project) =
 
 repository : Project -> String
 repository (Project project) =
-    project.repository
+    project.address
 
 
 channelName : Project -> String
@@ -266,31 +275,42 @@ sync cred baseUrl slug_ toMsg =
         Api.post endpoint (Just cred) (Encode.object [] |> Http.jsonBody) toMsg decoder
 
 
-create : Cred -> BaseUrl -> { a | name : String, repository : String, privateKey : Maybe String } -> (Result Http.Error Project -> msg) -> Cmd msg
-create cred baseUrl values toMsg =
+type CreateResponse
+    = CreateSuccess Project
+    | ValidationFailure (List Api.ValidationMessage)
+    | UnknownError
+
+
+createResponseSelectionSet : SelectionSet CreateResponse Api.Compiled.Object.ProjectPayload
+createResponseSelectionSet =
     let
-        endpoint =
-            Endpoint.projects Nothing (Api.toEndpoint baseUrl)
+        messageSelectionSet =
+            ProjectPayload.messages Api.validationErrorSelectionSet
+                |> SelectionSet.withDefault []
+                |> SelectionSet.nonNullElementsOrFail
 
-        baseValues =
-            [ ( "name", Encode.string values.name )
-            , ( "address", Encode.string values.repository )
-            ]
-
-        submitValues =
-            case values.privateKey of
-                Just privateKey ->
-                    ( "key", Encode.string privateKey ) :: baseValues
+        toResponse messages result =
+            case result of
+                Just knownHost ->
+                    CreateSuccess knownHost
 
                 Nothing ->
-                    baseValues
-
-        body =
-            submitValues
-                |> Encode.object
-                |> Http.jsonBody
+                    ValidationFailure messages
     in
-        Api.post endpoint (Just cred) body toMsg decoder
+        SelectionSet.succeed toResponse
+            |> SelectionSet.with messageSelectionSet
+            |> SelectionSet.with (ProjectPayload.result selectionSet)
+
+
+create : Cred -> BaseUrl -> Mutation.CreateProjectRequiredArguments -> Graphql.Http.Request (Maybe CreateResponse)
+create cred baseUrl values =
+    let
+        endpoint =
+            Api.toEndpoint baseUrl
+                |> Endpoint.unwrap
+    in
+        Mutation.createProject values createResponseSelectionSet
+            |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
 
 
 

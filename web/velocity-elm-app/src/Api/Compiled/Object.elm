@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object exposing (KnownHost(..), KnownHostPayload(..), Project(..), Session(..), SessionPayload(..), User(..), UserPayload(..), ValidationMessage(..), ValidationOption(..))
+module Api.Compiled.Object exposing (KnownHost(..), KnownHostPayload(..), Project(..), ProjectPayload(..), Session(..), SessionPayload(..), User(..), UserPayload(..), ValidationMessage(..), ValidationOption(..))
 
 
 type KnownHost
@@ -15,6 +15,10 @@ type KnownHostPayload
 
 type Project
     = Project
+
+
+type ProjectPayload
+    = ProjectPayload
 
 
 type Session

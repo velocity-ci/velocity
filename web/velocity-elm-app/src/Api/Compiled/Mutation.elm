@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Mutation exposing (ForHostRequiredArguments, SignInRequiredArguments, SignUpOptionalArguments, VerifyRequiredArguments, forHost, signIn, signUp, verify)
+module Api.Compiled.Mutation exposing (CreateProjectRequiredArguments, ForHostRequiredArguments, SignInRequiredArguments, SignUpOptionalArguments, VerifyRequiredArguments, createProject, forHost, signIn, signUp, verify)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -16,6 +16,19 @@ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
+
+
+type alias CreateProjectRequiredArguments =
+    { address : String
+    , name : String
+    }
+
+
+{-| Create project
+-}
+createProject : CreateProjectRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.ProjectPayload -> SelectionSet (Maybe decodesTo) RootMutation
+createProject requiredArgs object_ =
+    Object.selectionForCompositeField "createProject" [ Argument.required "address" requiredArgs.address Encode.string, Argument.required "name" requiredArgs.name Encode.string ] object_ (identity >> Decode.nullable)
 
 
 type alias ForHostRequiredArguments =
