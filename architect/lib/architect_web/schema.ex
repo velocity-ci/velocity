@@ -3,28 +3,33 @@ defmodule ArchitectWeb.Schema do
 
   import Kronky.Payload
   alias ArchitectWeb.Schema.Middleware.TranslateMessages
+  alias ArchitectWeb.{Schema, Mutations, Queries}
 
+  # Custom
   import_types(Absinthe.Type.Custom)
-
   import_types(Kronky.ValidationMessageTypes)
-  import_types(ArchitectWeb.Schema.UsersTypes)
-  import_types(ArchitectWeb.Schema.KnownHostsTypes)
-  import_types(ArchitectWeb.Schema.ProjectsTypes)
-  import_types(ArchitectWeb.Mutations.UsersMutations)
-  import_types(ArchitectWeb.Mutations.KnownHostsMutations)
-  import_types(ArchitectWeb.Mutations.AuthMutations)
-  import_types(ArchitectWeb.Queries.UsersQueries)
-  import_types(ArchitectWeb.Queries.KnownHostsQueries)
-  import_types(ArchitectWeb.Queries.ProjectsQueries)
+
+  import_types(Schema.UsersTypes)
+  import_types(Schema.KnownHostsTypes)
+  import_types(Schema.ProjectsTypes)
+  import_types(Mutations.UsersMutations)
+  import_types(Mutations.KnownHostsMutations)
+  import_types(Mutations.ProjectsMutations)
+  import_types(Mutations.AuthMutations)
+  import_types(Queries.UsersQueries)
+  import_types(Queries.KnownHostsQueries)
+  import_types(Queries.ProjectsQueries)
 
   payload_object(:user_payload, :user)
   payload_object(:session_payload, :session)
   payload_object(:known_host_payload, :known_host)
+  payload_object(:project_payload, :project)
 
   mutation do
     import_fields(:user_mutations)
     import_fields(:auth_mutations)
     import_fields(:known_hosts_mutations)
+    import_fields(:projects_mutations)
   end
 
   query do

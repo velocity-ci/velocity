@@ -54,4 +54,20 @@ defmodule Architect.Projects do
     |> Project.changeset(attrs)
     |> Repo.insert()
   end
+
+  @doc """
+  Deletes a Project.
+
+  ## Examples
+
+      iex> delete_project(project)
+      {:ok, %Project{}}
+
+      iex> delete_project(project)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_project(%Project{} = project) do
+    Repo.delete(project)
+  end
 end
