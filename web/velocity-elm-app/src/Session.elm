@@ -2,7 +2,6 @@ module Session
     exposing
         ( InitError
         , Session
-        , SocketUpdate
         , addKnownHost
         , addProject
         , branches
@@ -16,6 +15,8 @@ module Session
         , projectWithSlug
         , projects
         , viewer
+        , subscriptionDocument
+        , SubscriptionStatus(..)
         )
 
 import Activity
@@ -34,8 +35,10 @@ import Viewer exposing (Viewer)
 import Graphql.Http
 import Graphql.Http.GraphqlError as GraphqlError
 import Api.Compiled.Query as Query
-import Graphql.SelectionSet as SelectionSet
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Set
+import Api.Compiled.Subscription as Subscription
+import Graphql.Operation exposing (RootSubscription)
 
 
 -- TYPES
@@ -53,6 +56,7 @@ type alias LoggedInInternals =
     , branches : Project.Id.Dict (List Branch)
     , knownHosts : List KnownHost
     , log : Activity.Log
+    , subscriptionStatus : SubscriptionStatus
     }
 
 
@@ -60,10 +64,10 @@ type InitError
     = HttpError (Graphql.Http.Error StartupResponse)
 
 
-type SocketUpdate
-    = ProjectUpdated Project
-    | ProjectAdded Project
-    | NoOp
+type SubscriptionStatus
+    = NotConnected
+    | Connected
+    | Reconnecting
 
 
 
@@ -189,6 +193,11 @@ log session =
 -- CHANGES
 
 
+subscriptionDocument : SelectionSet KnownHost RootSubscription
+subscriptionDocument =
+    Subscription.newKnownHost KnownHost.selectionSet
+
+
 changes : (Task InitError Session -> msg) -> Context msg2 -> Session -> Sub msg
 changes toMsg context session =
     Api.viewerChanges (fromViewer (navKey session) context >> toMsg) Viewer.decoder
@@ -240,6 +249,7 @@ fromViewer key context maybeViewer =
                             , branches = Project.Id.empty
                             , knownHosts = res.knownHosts
                             , log = Activity.init
+                            , subscriptionStatus = NotConnected
                             }
                     )
                     request

@@ -1,114 +1,113 @@
 import './main.css';
-import {Elm} from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
 import * as parseGitUrl from 'git-url-parse';
-import Sockette from 'sockette';
+import * as AbsintheSocket from "@absinthe/socket";
+import { Socket as PhoenixSocket } from "phoenix";
+import { Elm } from './Main.elm';
+
+
 const storageKey = "store";
-
-
-
+let notifiers = [];
 
 /**
  * Sockets
  */
+document.addEventListener("DOMContentLoaded", function() {
 
-let app;
+    const absintheSocket = AbsintheSocket.create(
+        new PhoenixSocket("ws://localhost:4000/socket")
+    );
 
-app = Elm.Main.init({
-    node: document.getElementById('root'),
-    flags: {
-        viewer: localStorage.getItem(storageKey),
-        baseUrl: process.env.ARCHITECT_ADDRESS,
-        width: window.innerWidth,
-        height: window.innerHeight
-    }
-});
+    const app = Elm.Main.init({
+        node: document.getElementById('root'),
+        flags: {
+            viewer: localStorage.getItem(storageKey),
+            baseUrl: process.env.ARCHITECT_ADDRESS,
+            width: window.innerWidth,
+            height: window.innerHeight
+        }
+    });
 
-console.log(Object.keys(app.ports));
+    app.ports.createSubscriptions.subscribe(function(subscription) {
+        console.log("createSubscriptions called with", [subscription]);
+        // Remove existing notifiers
+        notifiers.map(notifier => AbsintheSocket.cancel(absintheSocket, notifier));
 
-app.ports.parseRepository.subscribe((repository) => {
-    console.log('repository', repository);
-    try {
-        const gitUrl = parseGitUrl(repository);
-        app.ports.parsedRepository.send({repository, gitUrl});
-    }
-    catch (e) {
-        console.warn('Could not parse git URL', e.message);
-        app.ports.parsedRepository.send({repository, gitUrl: null});
-    }
+        // Create new notifiers for each subscription sent
+        notifiers = [subscription].map(operation =>
+            AbsintheSocket.send(absintheSocket, {
+                operation,
+                variables: {}
+            })
+        );
 
-});
+        function onStart(data) {
+            console.log(">>> Start", JSON.stringify(data));
+            app.ports.socketStatusConnected.send(null);
+        }
 
+        function onAbort(data) {
+            console.log(">>> Abort", JSON.stringify(data));
+        }
 
-app.ports.storeCache.subscribe(function (val) {
-    if (val === null) {
-        localStorage.removeItem(storageKey);
-    } else {
-        localStorage.setItem(storageKey, JSON.stringify(val));
-    }
-    // Report that the new session was stored succesfully.
-    setTimeout(function () {
-        app.ports.onStoreChange.send(val);
-    }, 0);
-});
+        function onCancel(data) {
+            console.log(">>> Cancel", JSON.stringify(data));
+        }
 
-// app.ports.send_.subscribe((msg) => {
-//     console.log('PORT: send message', msg);
-//     ws.send(msg);
-// });
+        function onError(data) {
+            console.log(">>> Error", JSON.stringify(data));
+            app.ports.socketStatusReconnecting.send(null);
+        }
 
+        function onResult(res) {
+            console.log(">>> Result", JSON.stringify(res));
+            app.ports.gotSubscriptionData.send(res);
+        }
 
-// const ws = new Sockette('ws://localhost:4000/socket/websocket ', {
-//     timeout: 5e3,
-//     maxAttempts: 10,
-//     onopen: (e) => {
-//
-//
-//
-//     },
-//     onmessage: (msg) => {
-//         console.log('PORT: on message', msg.data);
-//         app.ports.onMessage.send(msg.data);
-//     },
-//     onreconnect: e => console.log('Reconnecting...', e),
-//     onmaximum: e => console.log('Stop Attempting!', e),
-//     onclose: e => console.log('Closed!', e),
-//     onerror: e => console.log('Error:', e)
-// });
+        notifiers.map(notifier =>
+            AbsintheSocket.observe(absintheSocket, notifier, {
+                onAbort,
+                onError,
+                onCancel,
+                onStart,
+                onResult
+            })
+        );
+    });
 
+    app.ports.parseRepository.subscribe((repository) => {
+        console.log('repository', repository);
+        try {
+            const gitUrl = parseGitUrl(repository);
+            app.ports.parsedRepository.send({repository, gitUrl});
+        } catch (e) {
+            console.warn('Could not parse git URL', e.message);
+            app.ports.parsedRepository.send({repository, gitUrl: null});
+        }
 
-//
-
-// ws.send('Hello, world!');
-// ws.json({type: 'ping'});
-// ws.close();
+    });
 
 
-// graceful shutdown
+    app.ports.storeCache.subscribe(function (val) {
+        if (val === null) {
+            localStorage.removeItem(storageKey);
+        } else {
+            localStorage.setItem(storageKey, JSON.stringify(val));
+        }
+        // Report that the new session was stored succesfully.
+        setTimeout(function () {
+            app.ports.onStoreChange.send(val);
+        }, 0);
+    });
 
-// Reconnect 10s later
-
-// const socket = new WebSocket('ws://localhost/ws');
-
-// socket.addEventListener('open', (event) => {
-//     console.info('Websocket opened', event);
-// });
-
-// app.ports.open_.subscribe(function (url) {
-//
-//
-//
-//
-//
-//
-// });
 
 // Whenever localStorage changes in another tab, report it if necessary.
-window.addEventListener("storage", function (event) {
-    if (event.storageArea === localStorage && event.key === storageKey) {
-        app.ports.onStoreChange.send(event.newValue);
-    }
-}, false);
+    window.addEventListener("storage", function (event) {
+        if (event.storageArea === localStorage && event.key === storageKey) {
+            app.ports.onStoreChange.send(event.newValue);
+        }
+    }, false);
 
+});
 
 registerServiceWorker();

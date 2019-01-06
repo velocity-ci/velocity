@@ -1,4 +1,4 @@
-module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
+port module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
 
 import Activity
 import Api
@@ -27,9 +27,14 @@ import Session exposing (Session)
 import Task exposing (Task)
 import Url exposing (Url)
 import Viewer exposing (Viewer)
+import Graphql.Document
+import Graphql.Http
 
 
 ---- MODEL ----
+
+
+port createSubscriptions : String -> Cmd msg
 
 
 type Model
@@ -52,13 +57,18 @@ init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
             ( InitialHTTPRequests context navKey
-            , Session.fromViewer navKey context maybeViewer
-                |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
-                |> Task.attempt StartApplication
+            , Cmd.batch
+                [ Session.fromViewer navKey context maybeViewer
+                    |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
+                    |> Task.attempt StartApplication
+                , createSubscriptions (Session.subscriptionDocument |> Graphql.Document.serializeSubscription)
+                ]
             )
 
         Err error ->
-            ( InitError (Decode.errorToString error), Cmd.none )
+            ( InitError (Decode.errorToString error)
+            , Cmd.none
+            )
 
 
 
@@ -161,6 +171,13 @@ type Msg
     | WindowResized Int Int
     | UpdateLayout Page.Layout
     | SetSession Session
+    | SubscriptionDataReceived Decode.Value
+    | SentMessage (Result (Graphql.Http.Error ()) ())
+    | NewSubscriptionStatus Session.SubscriptionStatus ()
+
+
+
+-- GraphQL Subscriptions
 
 
 toSession : Body -> Session
@@ -434,13 +451,32 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 -- SUBSCRIPTIONS
 
 
+port gotSubscriptionData : (Decode.Value -> msg) -> Sub msg
+
+
+port socketStatusConnected : (() -> msg) -> Sub msg
+
+
+port socketStatusReconnecting : (() -> msg) -> Sub msg
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ layoutSubscriptions model
         , pageSubscriptions model
         , socketSubscriptions model
+        , sessionSubscriptions model
         , Browser.Events.onResize WindowResized
+        ]
+
+
+sessionSubscriptions : Model -> Sub Msg
+sessionSubscriptions model =
+    Sub.batch
+        [ gotSubscriptionData SubscriptionDataReceived
+        , socketStatusConnected (NewSubscriptionStatus Session.Connected)
+        , socketStatusReconnecting (NewSubscriptionStatus Session.Reconnecting)
         ]
 
 

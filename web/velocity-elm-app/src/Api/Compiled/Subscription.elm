@@ -18,6 +18,6 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 
 
-newKnownHost : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe decodesTo) RootSubscription
+newKnownHost : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet decodesTo RootSubscription
 newKnownHost object_ =
-    Object.selectionForCompositeField "newKnownHost" [] object_ (identity >> Decode.nullable)
+    Object.selectionForCompositeField "newKnownHost" [] object_ identity
