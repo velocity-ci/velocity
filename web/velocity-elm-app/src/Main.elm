@@ -21,7 +21,6 @@ import Page.Home.ActivePanel as ActivePanel
 import Page.Login as LoginPage
 import Page.NotFound as NotFoundPage
 import Page.Project as ProjectPage
-import Phoenix.Socket as Socket
 import Project
 import Route exposing (Route)
 import Session exposing (Session)
@@ -161,8 +160,6 @@ type Msg
     | UpdatedSession (Result Session.InitError Session)
     | WindowResized Int Int
     | UpdateLayout Page.Layout
-    | SocketMsg (Socket.Msg Msg)
-    | SocketUpdate Session.SocketUpdate
     | SetSession Session
 
 
@@ -339,15 +336,6 @@ updatePage msg page =
         ( UpdatedSession (Err _), _ ) ->
             ( page, Cmd.none )
 
-        ( SocketMsg subMsg, _ ) ->
-            let
-                ( context, socketCmd ) =
-                    Context.updateSocket subMsg (toContext page)
-            in
-                ( updateContext context page
-                , Cmd.map SocketMsg socketCmd
-                )
-
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
@@ -407,24 +395,6 @@ update msg model =
                     , Cmd.none
                     )
 
-                SocketUpdate updateMsg ->
-                    let
-                        context =
-                            toContext page
-
-                        ( session, updatedContext, socketCmd ) =
-                            toSession page
-                                |> Session.socketUpdate updateMsg SocketUpdate context
-
-                        updatedPage =
-                            page
-                                |> updateSession session
-                                |> updateContext updatedContext
-                    in
-                        ( ApplicationStarted header updatedPage
-                        , Cmd.map SocketMsg socketCmd
-                        )
-
                 SetSession session ->
                     ( ApplicationStarted header (updateSession session page)
                     , Cmd.none
@@ -437,16 +407,9 @@ update msg model =
         InitialHTTPRequests _ _ ->
             case msg of
                 StartApplication (Ok ( app, pageCmd )) ->
-                    let
-                        ( context, socketCmd ) =
-                            Session.joinChannels (toSession app) SocketUpdate (toContext app)
-                    in
-                        ( ApplicationStarted Page.initLayout (updateContext context app)
-                        , Cmd.batch
-                            [ Cmd.map SocketMsg socketCmd
-                            , pageCmd
-                            ]
-                        )
+                    ( ApplicationStarted Page.initLayout (app)
+                    , pageCmd
+                    )
 
                 StartApplication (Err err) ->
                     ( InitError "HTTP error"
@@ -485,10 +448,10 @@ socketSubscriptions : Model -> Sub Msg
 socketSubscriptions model =
     case model of
         ApplicationStarted _ page ->
-            Context.socketSubscriptions SocketMsg (toContext page)
+            Sub.none
 
         InitialHTTPRequests context _ ->
-            Context.socketSubscriptions SocketMsg context
+            Sub.none
 
         InitError _ ->
             Sub.none

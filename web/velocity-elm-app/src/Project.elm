@@ -3,8 +3,6 @@ module Project
         ( Hydrated
         , Project
         , addProject
-        , channel
-        , channelName
         , create
         , decoder
         , findProjectById
@@ -36,7 +34,6 @@ import Json.Decode.Pipeline exposing (custom, required)
 import Json.Encode as Encode
 import PaginatedList exposing (PaginatedList)
 import Palette
-import Phoenix.Channel as Channel exposing (Channel)
 import Project.Branch as Branch exposing (Branch)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
@@ -159,16 +156,6 @@ slug (Project project) =
 repository : Project -> String
 repository (Project project) =
     project.address
-
-
-channelName : Project -> String
-channelName (Project project) =
-    "project:" ++ Slug.toString project.slug
-
-
-channel : Project -> Channel msg
-channel project =
-    Channel.init (channelName project)
 
 
 syncing : Project -> Bool

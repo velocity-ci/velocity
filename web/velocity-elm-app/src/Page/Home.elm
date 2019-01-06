@@ -913,6 +913,9 @@ updateAuthenticated cred msg model =
                             |> Graphql.Http.send KnownHostCreated
                         )
 
+            ParsedRepository (Err _) ->
+                ( model, Cmd.none )
+
             -- PROJECT CREATED
             ProjectCreated (Ok (Just (Project.CreateSuccess project))) ->
                 ( { model
@@ -1005,9 +1008,6 @@ updateAuthenticated cred msg model =
                 ( model, Cmd.none )
 
             KnownHostVerified (Err _) ->
-                ( model, Cmd.none )
-
-            ParsedRepository (Err _) ->
                 ( model, Cmd.none )
 
             PassedSlowLoadThreshold ->

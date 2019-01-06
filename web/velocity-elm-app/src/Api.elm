@@ -3,8 +3,6 @@ port module Api
         ( BaseUrl
         , Cred
         , application
-        , credPayload
-          --    , decodeErrors
         , get
         , getTask
         , login
@@ -36,7 +34,6 @@ import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
-import Phoenix.Channel as Channel exposing (Channel)
 import Task exposing (Task)
 import Url exposing (Url)
 import Username exposing (Username)
@@ -104,15 +101,6 @@ username (Cred val _) =
 credHeader : Cred -> Http.Header
 credHeader (Cred _ str) =
     Http.header "Authorization" ("Bearer " ++ str)
-
-
-credPayload : Cred -> Channel msg -> Channel msg
-credPayload (Cred _ val) channel =
-    let
-        payload =
-            Encode.object [ ( "token", Encode.string val ) ]
-    in
-        Channel.withPayload payload channel
 
 
 {-| It's important that this is never exposed!

@@ -1,24 +1,24 @@
-module Api.Endpoint exposing
-    ( CollectionOptions
-    , Endpoint
-    , branches
-    , builds
-    , commits
-    , fromString
-    , knownHosts
-    , login
-    , projectSync
-    , projects
-    , request
-    , unwrap
-    , task
-    , tasks
-    , toWs
-    )
+module Api.Endpoint
+    exposing
+        ( CollectionOptions
+        , Endpoint
+        , branches
+        , builds
+        , commits
+        , fromString
+        , knownHosts
+        , login
+        , projectSync
+        , projects
+        , request
+        , unwrap
+        , task
+        , tasks
+        , toWs
+        )
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
-import Phoenix.Channel exposing (Channel)
 import Project.Branch.Name
 import Project.Commit.Hash
 import Project.Slug
@@ -44,19 +44,18 @@ request config =
         req =
             if config.withCredentials then
                 Http.riskyRequest
-
             else
                 Http.request
     in
-    req
-        { body = config.body
-        , expect = config.expect
-        , headers = config.headers
-        , method = config.method
-        , timeout = config.timeout
-        , url = unwrap config.url
-        , tracker = Nothing
-        }
+        req
+            { body = config.body
+            , expect = config.expect
+            , headers = config.headers
+            , method = config.method
+            , timeout = config.timeout
+            , url = unwrap config.url
+            , tracker = Nothing
+            }
 
 
 task :
@@ -74,18 +73,17 @@ task config =
         req =
             if config.withCredentials then
                 Http.riskyTask
-
             else
                 Http.task
     in
-    req
-        { body = config.body
-        , resolver = config.resolver
-        , headers = config.headers
-        , method = config.method
-        , timeout = config.timeout
-        , url = unwrap config.url
-        }
+        req
+            { body = config.body
+            , resolver = config.resolver
+            , headers = config.headers
+            , method = config.method
+            , timeout = config.timeout
+            , url = unwrap config.url
+            }
 
 
 
@@ -120,7 +118,6 @@ toWs : Endpoint -> String
 toWs (Endpoint apiUrlBase) =
     if String.startsWith "http" apiUrlBase then
         "ws" ++ String.dropLeft 4 apiUrlBase
-
     else
         -- Not an http API URL - this will fail pretty quickly
         apiUrlBase
