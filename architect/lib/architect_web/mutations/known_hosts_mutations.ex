@@ -22,7 +22,7 @@ defmodule ArchitectWeb.Mutations.KnownHostsMutations do
       end)
     end
 
-    field :verify, :known_host do
+    field :verify, :known_host_payload do
       arg(:id, non_null(:string))
 
       resolve(fn %{id: id}, %{context: _context} ->
@@ -35,8 +35,11 @@ defmodule ArchitectWeb.Mutations.KnownHostsMutations do
         with {:ok, known_host} <- KnownHosts.update_known_host(known_host, %{verified: true}) do
           {:ok, known_host}
         else
+          {:error, %Ecto.Changeset{} = changeset} ->
+            {:ok, changeset}
+
           error ->
-            Logger.error("verify error #{inspect(error)}")
+            Logger.error("Verify error #{inspect(error)}")
             {:error, "Unknown error"}
         end
       end)

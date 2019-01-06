@@ -1,7 +1,7 @@
 module KnownHost
     exposing
         ( KnownHost
-        , CreateResponse(..)
+        , MutationResponse(..)
         , addKnownHost
         , findKnownHost
         , isUnknownHost
@@ -174,14 +174,14 @@ idSelectionSet =
 -- REQUESTS
 
 
-type CreateResponse
+type MutationResponse
     = CreateSuccess KnownHost
     | ValidationFailure (List Api.ValidationMessage)
     | UnknownError
 
 
-createResponseSelectionSet : SelectionSet CreateResponse Api.Compiled.Object.KnownHostPayload
-createResponseSelectionSet =
+payloadSelectionSet : SelectionSet MutationResponse Api.Compiled.Object.KnownHostPayload
+payloadSelectionSet =
     let
         messageSelectionSet =
             KnownHostPayload.messages Api.validationErrorSelectionSet
@@ -201,23 +201,23 @@ createResponseSelectionSet =
             |> SelectionSet.with (KnownHostPayload.result selectionSet)
 
 
-createUnverified : Cred -> BaseUrl -> Mutation.ForHostRequiredArguments -> Graphql.Http.Request (Maybe CreateResponse)
+createUnverified : Cred -> BaseUrl -> Mutation.ForHostRequiredArguments -> Graphql.Http.Request (Maybe MutationResponse)
 createUnverified cred baseUrl values =
     let
         endpoint =
             Api.toEndpoint baseUrl
                 |> Endpoint.unwrap
     in
-        Mutation.forHost values createResponseSelectionSet
+        Mutation.forHost values payloadSelectionSet
             |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
 
 
-verify : Cred -> BaseUrl -> KnownHost -> Graphql.Http.Request (Maybe KnownHost)
+verify : Cred -> BaseUrl -> KnownHost -> Graphql.Http.Request (Maybe MutationResponse)
 verify cred baseUrl (KnownHost { id }) =
     let
         endpoint =
             Api.toEndpoint baseUrl
                 |> Endpoint.unwrap
     in
-        Mutation.verify { id = idToString id } selectionSet
+        Mutation.verify { id = idToString id } payloadSelectionSet
             |> Graphql.Http.mutationRequest "http://localhost:4000/v2"

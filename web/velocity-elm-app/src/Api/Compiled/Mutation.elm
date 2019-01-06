@@ -80,6 +80,6 @@ type alias VerifyRequiredArguments =
     { id : String }
 
 
-verify : VerifyRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe decodesTo) RootMutation
+verify : VerifyRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet (Maybe decodesTo) RootMutation
 verify requiredArgs object_ =
     Object.selectionForCompositeField "verify" [ Argument.required "id" requiredArgs.id Encode.string ] object_ (identity >> Decode.nullable)

@@ -45,7 +45,7 @@ defmodule ArchitectWeb.Schema do
   #
   #    middleware
   #  end
-  #
+
   def middleware(middleware, _field, %Absinthe.Type.Object{identifier: :mutation}) do
     middleware ++ [&build_payload/2, TranslateMessages]
   end
