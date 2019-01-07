@@ -47,11 +47,12 @@
     "uglifyjs-webpack-plugin": "^1.2.4",
     "url-loader": "^1.0.1",
     "webpack": "^4.2.0",
-    "webpack-dev-server": "^3.1.1",
+    "webpack-dev-server": "^3.1.14",
     "webpack-manifest-plugin": "^2.0.3",
     "whatwg-fetch": "2.0.4"
   },
   "dependencies": {
+    "@absinthe/socket": "^0.2.0",
     "git-url-parse": "^11.1.1",
     "phoenix": "^1.4.0",
     "sockette": "^2.0.3"

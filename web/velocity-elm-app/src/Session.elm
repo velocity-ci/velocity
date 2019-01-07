@@ -1,4 +1,4 @@
-module Session
+port module Session
     exposing
         ( InitError
         , Session
@@ -14,9 +14,10 @@ module Session
         , projectWithId
         , projectWithSlug
         , projects
+        , updateSubscriptionStatus
         , viewer
-        , subscriptionDocument
         , SubscriptionStatus(..)
+        , knownHostSubscription
         )
 
 import Activity
@@ -39,14 +40,15 @@ import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Set
 import Api.Compiled.Subscription as Subscription
 import Graphql.Operation exposing (RootSubscription)
+import Graphql.Document
 
 
 -- TYPES
 
 
 type Session
-    = LoggedIn LoggedInInternals
-    | Guest Nav.Key
+    = LoggedIn LoggedInInternals SubscriptionStatus
+    | Guest Nav.Key SubscriptionStatus
 
 
 type alias LoggedInInternals =
@@ -56,7 +58,6 @@ type alias LoggedInInternals =
     , branches : Project.Id.Dict (List Branch)
     , knownHosts : List KnownHost
     , log : Activity.Log
-    , subscriptionStatus : SubscriptionStatus
     }
 
 
@@ -70,6 +71,16 @@ type SubscriptionStatus
     | Reconnecting
 
 
+updateSubscriptionStatus : SubscriptionStatus -> Session -> Session
+updateSubscriptionStatus status session =
+    case session of
+        LoggedIn internals _ ->
+            LoggedIn internals status
+
+        Guest nav _ ->
+            Guest nav status
+
+
 
 -- COLLECTIONS
 
@@ -77,71 +88,71 @@ type SubscriptionStatus
 knownHosts : Session -> List KnownHost
 knownHosts session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             internals.knownHosts
 
-        Guest _ ->
+        Guest _ _ ->
             []
 
 
 addKnownHost : KnownHost -> Session -> Session
 addKnownHost knownHost session =
     case session of
-        LoggedIn internals ->
-            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost }
+        LoggedIn internals status ->
+            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost } status
 
-        Guest _ ->
+        Guest _ _ ->
             session
 
 
 projectWithId : Project.Id.Id -> Session -> Maybe Project
 projectWithId projectId session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             Project.findProjectById internals.projects projectId
 
-        Guest _ ->
+        Guest _ _ ->
             Nothing
 
 
 projectWithSlug : Project.Slug.Slug -> Session -> Maybe Project
 projectWithSlug projectSlug session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             Project.findProjectBySlug internals.projects projectSlug
 
-        Guest _ ->
+        Guest _ _ ->
             Nothing
 
 
 projects : Session -> List Project
 projects session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             internals.projects
 
-        Guest _ ->
+        Guest _ _ ->
             []
 
 
 branches : Project.Id.Id -> Session -> List Branch
 branches projectId session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             Project.Id.get projectId internals.branches
                 |> Maybe.withDefault []
 
-        Guest _ ->
+        Guest _ _ ->
             []
 
 
 addProject : Project -> Session -> Session
 addProject p session =
     case session of
-        LoggedIn internals ->
-            LoggedIn { internals | projects = Project.addProject p internals.projects }
+        LoggedIn internals status ->
+            LoggedIn { internals | projects = Project.addProject p internals.projects } status
 
-        Guest _ ->
+        Guest _ _ ->
             session
 
 
@@ -152,40 +163,40 @@ addProject p session =
 viewer : Session -> Maybe Viewer
 viewer session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             Just internals.viewer
 
-        Guest _ ->
+        Guest _ _ ->
             Nothing
 
 
 cred : Session -> Maybe Cred
 cred session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             Just (Viewer.cred internals.viewer)
 
-        Guest _ ->
+        Guest _ _ ->
             Nothing
 
 
 navKey : Session -> Nav.Key
 navKey session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             internals.navKey
 
-        Guest key ->
+        Guest key _ ->
             key
 
 
 log : Session -> Maybe Activity.Log
 log session =
     case session of
-        LoggedIn internals ->
+        LoggedIn internals _ ->
             Just internals.log
 
-        Guest _ ->
+        Guest _ _ ->
             Nothing
 
 
@@ -193,9 +204,9 @@ log session =
 -- CHANGES
 
 
-subscriptionDocument : SelectionSet KnownHost RootSubscription
-subscriptionDocument =
-    Subscription.newKnownHost KnownHost.selectionSet
+knownHostSubscription : SelectionSet KnownHost RootSubscription
+knownHostSubscription =
+    Subscription.knownHostAdded KnownHost.selectionSet
 
 
 changes : (Task InitError Session -> msg) -> Context msg2 -> Session -> Sub msg
@@ -242,17 +253,17 @@ fromViewer key context maybeViewer =
             in
                 Task.map
                     (\res ->
-                        LoggedIn <|
+                        LoggedIn
                             { navKey = key
                             , viewer = viewerVal
                             , projects = res.projects
                             , branches = Project.Id.empty
                             , knownHosts = res.knownHosts
                             , log = Activity.init
-                            , subscriptionStatus = NotConnected
                             }
+                            NotConnected
                     )
                     request
 
         Nothing ->
-            Task.succeed (Guest key)
+            Task.succeed (Guest key NotConnected)

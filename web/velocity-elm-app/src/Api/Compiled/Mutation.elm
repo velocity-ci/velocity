@@ -26,9 +26,9 @@ type alias CreateProjectRequiredArguments =
 
 {-| Create project
 -}
-createProject : CreateProjectRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.ProjectPayload -> SelectionSet (Maybe decodesTo) RootMutation
+createProject : CreateProjectRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.ProjectPayload -> SelectionSet decodesTo RootMutation
 createProject requiredArgs object_ =
-    Object.selectionForCompositeField "createProject" [ Argument.required "address" requiredArgs.address Encode.string, Argument.required "name" requiredArgs.name Encode.string ] object_ (identity >> Decode.nullable)
+    Object.selectionForCompositeField "createProject" [ Argument.required "address" requiredArgs.address Encode.string, Argument.required "name" requiredArgs.name Encode.string ] object_ identity
 
 
 type alias ForHostRequiredArguments =
@@ -37,9 +37,9 @@ type alias ForHostRequiredArguments =
 
 {-| Create unverified known host
 -}
-forHost : ForHostRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet (Maybe decodesTo) RootMutation
+forHost : ForHostRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet decodesTo RootMutation
 forHost requiredArgs object_ =
-    Object.selectionForCompositeField "forHost" [ Argument.required "host" requiredArgs.host Encode.string ] object_ (identity >> Decode.nullable)
+    Object.selectionForCompositeField "forHost" [ Argument.required "host" requiredArgs.host Encode.string ] object_ identity
 
 
 type alias SignInRequiredArguments =
@@ -63,7 +63,7 @@ type alias SignUpOptionalArguments =
 
 {-| Sign up
 -}
-signUp : (SignUpOptionalArguments -> SignUpOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.UserPayload -> SelectionSet (Maybe decodesTo) RootMutation
+signUp : (SignUpOptionalArguments -> SignUpOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.UserPayload -> SelectionSet decodesTo RootMutation
 signUp fillInOptionals object_ =
     let
         filledInOptionals =
@@ -73,13 +73,13 @@ signUp fillInOptionals object_ =
             [ Argument.optional "password" filledInOptionals.password Encode.string, Argument.optional "username" filledInOptionals.username Encode.string ]
                 |> List.filterMap identity
     in
-        Object.selectionForCompositeField "signUp" optionalArgs object_ (identity >> Decode.nullable)
+        Object.selectionForCompositeField "signUp" optionalArgs object_ identity
 
 
 type alias VerifyRequiredArguments =
     { id : String }
 
 
-verify : VerifyRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet (Maybe decodesTo) RootMutation
+verify : VerifyRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet decodesTo RootMutation
 verify requiredArgs object_ =
-    Object.selectionForCompositeField "verify" [ Argument.required "id" requiredArgs.id Encode.string ] object_ (identity >> Decode.nullable)
+    Object.selectionForCompositeField "verify" [ Argument.required "id" requiredArgs.id Encode.string ] object_ identity

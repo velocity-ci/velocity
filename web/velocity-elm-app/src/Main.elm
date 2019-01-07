@@ -31,10 +31,27 @@ import Graphql.Document
 import Graphql.Http
 
 
----- MODEL ----
+-- Input ports
+
+
+port gotSubscriptionData : (Value -> msg) -> Sub msg
+
+
+port socketStatusConnected : (() -> msg) -> Sub msg
+
+
+port socketStatusReconnecting : (() -> msg) -> Sub msg
+
+
+
+-- Output ports
 
 
 port createSubscriptions : String -> Cmd msg
+
+
+
+---- MODEL ----
 
 
 type Model
@@ -61,7 +78,7 @@ init maybeViewer contextResult url navKey =
                 [ Session.fromViewer navKey context maybeViewer
                     |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
                     |> Task.attempt StartApplication
-                , createSubscriptions (Session.subscriptionDocument |> Graphql.Document.serializeSubscription)
+                , Cmd.none
                 ]
             )
 
@@ -353,6 +370,17 @@ updatePage msg page =
         ( UpdatedSession (Err _), _ ) ->
             ( page, Cmd.none )
 
+        --
+        --        SubscriptionDataReceived newData ->
+        --            case Json.Decode.decodeValue (subscriptionDocument |> Graphql.Document.decoder) newData of
+        --                Ok chatMessage ->
+        --                    ( { page | data = chatMessage :: model.data }, Cmd.none )
+        --
+        --                Err error ->
+        --                    ( page, Cmd.none )
+        --
+        --        SentMessage _ ->
+        --            ( page, Cmd.none )
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
@@ -417,6 +445,16 @@ update msg model =
                     , Cmd.none
                     )
 
+                NewSubscriptionStatus status () ->
+                    let
+                        updatedSession =
+                            toSession page
+                                |> Session.updateSubscriptionStatus (Debug.log "New Status" status)
+                    in
+                        ( ApplicationStarted header (updateSession updatedSession page)
+                        , Cmd.none
+                        )
+
                 _ ->
                     updatePage msg page
                         |> Tuple.mapFirst (ApplicationStarted header)
@@ -425,7 +463,12 @@ update msg model =
             case msg of
                 StartApplication (Ok ( app, pageCmd )) ->
                     ( ApplicationStarted Page.initLayout (app)
-                    , pageCmd
+                    , Cmd.batch
+                        [ pageCmd
+                        , Session.knownHostSubscription
+                            |> Graphql.Document.serializeSubscription
+                            |> createSubscriptions
+                        ]
                     )
 
                 StartApplication (Err err) ->
@@ -451,32 +494,13 @@ updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
 -- SUBSCRIPTIONS
 
 
-port gotSubscriptionData : (Decode.Value -> msg) -> Sub msg
-
-
-port socketStatusConnected : (() -> msg) -> Sub msg
-
-
-port socketStatusReconnecting : (() -> msg) -> Sub msg
-
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ layoutSubscriptions model
         , pageSubscriptions model
         , socketSubscriptions model
-        , sessionSubscriptions model
         , Browser.Events.onResize WindowResized
-        ]
-
-
-sessionSubscriptions : Model -> Sub Msg
-sessionSubscriptions model =
-    Sub.batch
-        [ gotSubscriptionData SubscriptionDataReceived
-        , socketStatusConnected (NewSubscriptionStatus Session.Connected)
-        , socketStatusReconnecting (NewSubscriptionStatus Session.Reconnecting)
         ]
 
 
@@ -484,7 +508,11 @@ socketSubscriptions : Model -> Sub Msg
 socketSubscriptions model =
     case model of
         ApplicationStarted _ page ->
-            Sub.none
+            Sub.batch
+                [ gotSubscriptionData SubscriptionDataReceived
+                , socketStatusConnected (NewSubscriptionStatus Session.Connected)
+                , socketStatusReconnecting (NewSubscriptionStatus Session.Reconnecting)
+                ]
 
         InitialHTTPRequests context _ ->
             Sub.none

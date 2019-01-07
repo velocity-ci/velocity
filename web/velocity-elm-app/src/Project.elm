@@ -289,7 +289,7 @@ createResponseSelectionSet =
             |> SelectionSet.with (ProjectPayload.result selectionSet)
 
 
-create : Cred -> BaseUrl -> Mutation.CreateProjectRequiredArguments -> Graphql.Http.Request (Maybe CreateResponse)
+create : Cred -> BaseUrl -> Mutation.CreateProjectRequiredArguments -> Graphql.Http.Request CreateResponse
 create cred baseUrl values =
     let
         endpoint =

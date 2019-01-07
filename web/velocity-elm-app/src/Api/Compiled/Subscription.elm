@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Subscription exposing (newKnownHost)
+module Api.Compiled.Subscription exposing (knownHostAdded, knownHostVerified)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,6 +18,11 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 
 
-newKnownHost : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet decodesTo RootSubscription
-newKnownHost object_ =
-    Object.selectionForCompositeField "newKnownHost" [] object_ identity
+knownHostAdded : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet decodesTo RootSubscription
+knownHostAdded object_ =
+    Object.selectionForCompositeField "knownHostAdded" [] object_ identity
+
+
+knownHostVerified : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet decodesTo RootSubscription
+knownHostVerified object_ =
+    Object.selectionForCompositeField "knownHostVerified" [] object_ identity

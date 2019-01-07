@@ -775,9 +775,9 @@ type Msg
     | CompleteProjectButtonClicked
     | NewProjectBackButtonClicked
     | VerifyKnownHostButtonClicked
-    | KnownHostCreated (Result (Graphql.Http.Error (Maybe KnownHost.MutationResponse)) (Maybe KnownHost.MutationResponse))
-    | KnownHostVerified (Result (Graphql.Http.Error (Maybe KnownHost.MutationResponse)) (Maybe KnownHost.MutationResponse))
-    | ProjectCreated (Result (Graphql.Http.Error (Maybe Project.CreateResponse)) (Maybe Project.CreateResponse))
+    | KnownHostCreated (Result (Graphql.Http.Error KnownHost.MutationResponse) KnownHost.MutationResponse)
+    | KnownHostVerified (Result (Graphql.Http.Error KnownHost.MutationResponse) KnownHost.MutationResponse)
+    | ProjectCreated (Result (Graphql.Http.Error Project.CreateResponse) Project.CreateResponse)
     | PassedSlowLoadThreshold
     | NoOp
 
@@ -917,7 +917,7 @@ updateAuthenticated cred msg model =
                 ( model, Cmd.none )
 
             -- PROJECT CREATED
-            ProjectCreated (Ok (Just (Project.CreateSuccess project))) ->
+            ProjectCreated (Ok (Project.CreateSuccess project)) ->
                 ( { model
                     | session = Session.addProject project model.session
                     , projectFormStatus = NotOpen
@@ -925,7 +925,7 @@ updateAuthenticated cred msg model =
                 , Project.sync cred (Context.baseUrl model.context) (Project.slug project) (always NoOp)
                 )
 
-            ProjectCreated (Ok (Just (Project.ValidationFailure messages))) ->
+            ProjectCreated (Ok (Project.ValidationFailure messages)) ->
                 ( { model
                     | projectFormStatus =
                         case model.projectFormStatus of
@@ -938,17 +938,14 @@ updateAuthenticated cred msg model =
                 , Cmd.none
                 )
 
-            ProjectCreated (Ok (Just (Project.UnknownError))) ->
-                ( model, Cmd.none )
-
-            ProjectCreated (Ok Nothing) ->
+            ProjectCreated (Ok (Project.UnknownError)) ->
                 ( model, Cmd.none )
 
             ProjectCreated (Err _) ->
                 ( model, Cmd.none )
 
             -- KNOWN HOST CREATED
-            KnownHostCreated (Ok (Just (KnownHost.CreateSuccess knownHost))) ->
+            KnownHostCreated (Ok (KnownHost.CreateSuccess knownHost)) ->
                 ( { model
                     | projectFormStatus =
                         case model.projectFormStatus of
@@ -961,7 +958,7 @@ updateAuthenticated cred msg model =
                 , Cmd.none
                 )
 
-            KnownHostCreated (Ok (Just (KnownHost.ValidationFailure messages))) ->
+            KnownHostCreated (Ok (KnownHost.ValidationFailure messages)) ->
                 ( { model
                     | projectFormStatus =
                         case model.projectFormStatus of
@@ -974,17 +971,14 @@ updateAuthenticated cred msg model =
                 , Cmd.none
                 )
 
-            KnownHostCreated (Ok (Just (KnownHost.UnknownError))) ->
-                ( model, Cmd.none )
-
-            KnownHostCreated (Ok Nothing) ->
+            KnownHostCreated (Ok (KnownHost.UnknownError)) ->
                 ( model, Cmd.none )
 
             KnownHostCreated (Err _) ->
                 ( model, Cmd.none )
 
             -- KNOWN HOST VERIFIED
-            KnownHostVerified (Ok (Just (KnownHost.CreateSuccess knownHost))) ->
+            KnownHostVerified (Ok (KnownHost.CreateSuccess knownHost)) ->
                 ( { model
                     | session = Session.addKnownHost knownHost model.session
                     , projectFormStatus =
@@ -998,13 +992,10 @@ updateAuthenticated cred msg model =
                 , Cmd.none
                 )
 
-            KnownHostVerified (Ok (Just (KnownHost.ValidationFailure _))) ->
+            KnownHostVerified (Ok (KnownHost.ValidationFailure _)) ->
                 ( model, Cmd.none )
 
-            KnownHostVerified (Ok (Just (KnownHost.UnknownError))) ->
-                ( model, Cmd.none )
-
-            KnownHostVerified (Ok Nothing) ->
+            KnownHostVerified (Ok (KnownHost.UnknownError)) ->
                 ( model, Cmd.none )
 
             KnownHostVerified (Err _) ->
