@@ -2,7 +2,7 @@ defmodule ArchitectWeb.V2.UserSocket do
   use Phoenix.Socket
 
   use Absinthe.Phoenix.Socket,
-    schema: MyAppWeb.Schema
+    schema: ArchitectWeb.Schema
 
   ## Channels
   # channel "room:*", ArchitectWeb.RoomChannel

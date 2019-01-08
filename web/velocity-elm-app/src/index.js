@@ -28,51 +28,51 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    app.ports.createSubscriptions.subscribe(function(subscription) {
-        console.log("createSubscriptions called with", [subscription]);
+    app.ports.createSubscriptions.subscribe(function(subscriptions) {
+
+        console.log("createSubscriptions called with", subscriptions);
         // Remove existing notifiers
         notifiers.map(notifier => AbsintheSocket.cancel(absintheSocket, notifier));
 
         // Create new notifiers for each subscription sent
-        notifiers = [subscription].map(operation =>
-            AbsintheSocket.send(absintheSocket, {
+        notifiers = subscriptions.map(([operation, callbackType]) => {
+
+            const notifier = AbsintheSocket.send(absintheSocket, {
                 operation,
                 variables: {}
-            })
-        );
+            });
 
-        function onStart(data) {
-            console.log(">>> Start", JSON.stringify(data));
-            app.ports.socketStatusConnected.send(null);
-        }
+            function onStart(data) {
+                console.log(">>> Start", JSON.stringify(data));
+                app.ports.socketStatusConnected.send(null);
+            }
 
-        function onAbort(data) {
-            console.log(">>> Abort", JSON.stringify(data));
-        }
+            function onAbort(data) {
+                console.log(">>> Abort", JSON.stringify(data));
+            }
 
-        function onCancel(data) {
-            console.log(">>> Cancel", JSON.stringify(data));
-        }
 
-        function onError(data) {
-            console.log(">>> Error", JSON.stringify(data));
-            app.ports.socketStatusReconnecting.send(null);
-        }
+            function onError(data) {
+                console.log(">>> Error", JSON.stringify(data));
+                app.ports.socketStatusReconnecting.send(null);
+            }
 
-        function onResult(res) {
-            console.log(">>> Result", JSON.stringify(res));
-            app.ports.gotSubscriptionData.send(res);
-        }
+            function onResult(res) {
+                console.log(">>> Result", JSON.stringify(res));
+                app.ports.gotSubscriptionData.send(res);
+            }
 
-        notifiers.map(notifier =>
             AbsintheSocket.observe(absintheSocket, notifier, {
                 onAbort,
                 onError,
-                onCancel,
                 onStart,
                 onResult
             })
-        );
+
+        });
+
+
+
     });
 
     app.ports.parseRepository.subscribe((repository) => {

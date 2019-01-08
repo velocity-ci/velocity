@@ -5,7 +5,7 @@ defmodule ArchitectWeb.Mutations.ProjectsMutations do
 
   object :projects_mutations do
     @desc "Create project"
-    field :create_project, :project_payload do
+    field :create_project, non_null(:project_payload) do
       arg(:name, non_null(:string))
       arg(:address, non_null(:string))
 

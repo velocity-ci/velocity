@@ -6,7 +6,7 @@ defmodule ArchitectWeb.Mutations.UsersMutations do
   object :user_mutations do
     @desc "Sign up"
 
-    field :sign_up, :user_payload do
+    field :sign_up, non_null(:user_payload) do
       arg(:username, :string)
       arg(:password, :string)
 

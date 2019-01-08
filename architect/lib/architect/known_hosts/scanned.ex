@@ -32,7 +32,7 @@ defmodule Architect.KnownHosts.Scanned do
   defstruct [:md5, :sha256, :entry]
 
   @keyscan_bin "v-ssh-keyscan"
-  @timeout 20_000
+  @timeout 7_000
 
   @doc """
   Scan a host and get either a :ok or :error tuple

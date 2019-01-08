@@ -3,7 +3,7 @@ defmodule ArchitectWeb.Endpoint do
 
   use Absinthe.Phoenix.Endpoint
 
-  socket("/socket", ArchitectWeb.V1.UserSocket,
+  socket("/socket", ArchitectWeb.V2.UserSocket,
     websocket: true,
     longpoll: false
   )

@@ -2,6 +2,8 @@ defmodule ArchitectWeb.Schema do
   use Absinthe.Schema
 
   import Kronky.Payload
+  alias Ecto.Changeset
+  alias Architect.KnownHosts.KnownHost
   alias ArchitectWeb.Schema.Middleware.TranslateMessages
   alias ArchitectWeb.{Schema, Mutations, Queries}
 
@@ -36,6 +38,40 @@ defmodule ArchitectWeb.Schema do
     import_fields(:users_queries)
     import_fields(:known_hosts_queries)
     import_fields(:projects_queries)
+  end
+
+  subscription do
+    field :known_host_added, non_null(:known_host) do
+      trigger(:for_host,
+        topic: fn
+          %KnownHost{id: id} ->
+            ["all", id]
+
+          %Changeset{} ->
+            []
+        end
+      )
+
+      config(fn args, _info ->
+        {:ok, topic: "all"}
+      end)
+    end
+
+    field :known_host_verified, non_null(:known_host) do
+      trigger(:verify,
+        topic: fn
+          %KnownHost{id: id} ->
+            ["all", id]
+
+          %Changeset{} ->
+            []
+        end
+      )
+
+      config(fn args, _info ->
+        {:ok, topic: "all"}
+      end)
+    end
   end
 
   #  def middleware(middleware, %Absinthe.Type.Field{identifier: :sign_in}, %Absinthe.Type.Object{

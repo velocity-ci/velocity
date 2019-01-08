@@ -17,7 +17,8 @@ port module Session
         , updateSubscriptionStatus
         , viewer
         , SubscriptionStatus(..)
-        , knownHostSubscription
+        , knownHostAddedSubscription
+        , knownHostVerifiedSubscription
         )
 
 import Activity
@@ -204,9 +205,14 @@ log session =
 -- CHANGES
 
 
-knownHostSubscription : SelectionSet KnownHost RootSubscription
-knownHostSubscription =
+knownHostAddedSubscription : SelectionSet KnownHost RootSubscription
+knownHostAddedSubscription =
     Subscription.knownHostAdded KnownHost.selectionSet
+
+
+knownHostVerifiedSubscription : SelectionSet KnownHost RootSubscription
+knownHostVerifiedSubscription =
+    Subscription.knownHostVerified KnownHost.selectionSet
 
 
 changes : (Task InitError Session -> msg) -> Context msg2 -> Session -> Sub msg

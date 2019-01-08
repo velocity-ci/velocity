@@ -29,6 +29,7 @@ import Url exposing (Url)
 import Viewer exposing (Viewer)
 import Graphql.Document
 import Graphql.Http
+import Subscriptions
 
 
 -- Input ports
@@ -47,7 +48,7 @@ port socketStatusReconnecting : (() -> msg) -> Sub msg
 -- Output ports
 
 
-port createSubscriptions : String -> Cmd msg
+port createSubscriptions : List ( String, String ) -> Cmd msg
 
 
 
@@ -465,9 +466,10 @@ update msg model =
                     ( ApplicationStarted Page.initLayout (app)
                     , Cmd.batch
                         [ pageCmd
-                        , Session.knownHostSubscription
-                            |> Graphql.Document.serializeSubscription
-                            |> createSubscriptions
+                        , createSubscriptions
+                            [ ( Graphql.Document.serializeSubscription Session.knownHostAddedSubscription, "KnownHost" )
+                            , ( Graphql.Document.serializeSubscription Session.knownHostVerifiedSubscription, "Project" )
+                            ]
                         ]
                     )
 
