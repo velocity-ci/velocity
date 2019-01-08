@@ -1,29 +1,36 @@
 port module Subscriptions exposing (Subscriptions)
 
-import Graphql.Operation exposing (RootSubscription)
-import Graphql.Document
-import KnownHost exposing (KnownHost)
-import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Api.Compiled.Subscription
 import Dict exposing (Dict)
+import Graphql.Document as Document
+import Graphql.Operation exposing (RootSubscription)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
+import KnownHost exposing (KnownHost)
 
 
-type Subscriptions
-    = Subscriptions Internals
+
+-- OUTWARDS PORT
 
 
-type alias Internals =
-    { subscriptions : Dict Int Subscription
-    }
+port subscribeTo : ( Int, String ) -> Cmd msg
 
 
-type alias Subscription =
+
+-- TYPES
+
+
+type Subscriptions msg
+    = Subscriptions (Dict Int (SubscriptionType msg))
+
+
+type SubscriptionType msg
+    = KnownHostSubscription Status (SelectionSet KnownHost RootSubscription) (KnownHost -> msg)
+
+
+type alias Subscription msg =
     { status : Status
-    , subscriptionType : SubscriptionType
+    , subscriptionType : SubscriptionType msg
     }
-
-
-port subscribeTo : List ( String, String ) -> Cmd msg
 
 
 type Status
@@ -32,56 +39,30 @@ type Status
     | Reconnecting
 
 
-type SubscriptionType
-    = KnownHostSubscription (SelectionSet KnownHost RootSubscription)
-
-
-init : Subscriptions
+init : Subscriptions msg
 init =
-    Subscriptions
-        { subscriptions = Dict.empty
-        }
+    Subscriptions Dict.empty
 
 
-subscribe : Subscriptions -> SubscriptionType -> ( Subscriptions, Cmd msg )
-subscribe (Subscriptions internals) subscriptionType =
+subscribeToKnownHostAdded : (KnownHost -> msg) -> Subscriptions msg -> ( Subscriptions msg, Cmd msg )
+subscribeToKnownHostAdded toMsg subscriptions =
+    Api.Compiled.Subscription.knownHostAdded KnownHost.selectionSet
+        |> knownHostSubscription toMsg subscriptions
+
+
+knownHostSubscription :
+    (KnownHost -> msg)
+    -> Subscriptions msg
+    -> SelectionSet KnownHost RootSubscription
+    -> ( Subscriptions msg, Cmd msg )
+knownHostSubscription toMsg (Subscriptions subscriptions) selectionSet =
     let
-        subscription =
-            { status = NotConnected
-            , subscriptionType = subscriptionType
-            }
+        sub =
+            KnownHostSubscription NotConnected selectionSet toMsg
 
-        id =
-            (Dict.size internals.subscriptions) + 1
+        nextId =
+            Dict.size subscriptions
     in
-        ( Subscriptions { internals | subscriptions = Dict.insert id subscription internals.subscriptions }
-        , Cmd.none
-        )
-
-
-subscribe2 : Subscriptions -> SelectionSet decodesTo RootSubscription -> ( Subscriptions, Cmd msg )
-subscribe2 (Subscriptions internals) subscriptionType =
-    let
-        subscription =
-            { status = NotConnected
-            , subscriptionType = subscriptionType
-            }
-
-        id =
-            (Dict.size internals.subscriptions) + 1
-    in
-        ( Subscriptions { internals | subscriptions = Dict.insert id subscription internals.subscriptions }
-        , Cmd.none
-        )
-
-
-knownHostAddedSubscription : SubscriptionType
-knownHostAddedSubscription =
-    KnownHostSubscription <|
-        Api.Compiled.Subscription.knownHostAdded KnownHost.selectionSet
-
-
-knownHostVerifiedSubscription : SubscriptionType
-knownHostVerifiedSubscription =
-    KnownHostSubscription <|
-        Api.Compiled.Subscription.knownHostVerified KnownHost.selectionSet
+    ( Subscriptions (Dict.insert nextId sub subscriptions)
+    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+    )
