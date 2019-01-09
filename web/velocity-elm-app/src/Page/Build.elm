@@ -11,13 +11,13 @@ import Session exposing (Session)
 
 
 type alias Model msg =
-    { session : Session
+    { session : Session msg
     , context : Context msg
     , id : Id
     }
 
 
-init : Session -> Context msg -> Id -> ( Model msg, Cmd Msg )
+init : Session msg -> Context msg -> Id -> ( Model msg, Cmd Msg )
 init session context buildId =
     ( { session = session
       , context = context
@@ -55,7 +55,7 @@ update msg model =
 -- Export
 
 
-toSession : Model msg -> Session
+toSession : Model msg -> Session msg
 toSession model =
     model.session
 

@@ -14,6 +14,7 @@ import Json.Encode as Encode exposing (Value)
 import Project exposing (Project)
 import Task exposing (Task)
 import Username exposing (Username)
+import Api.Subscriptions as Subscriptions
 
 
 -- TYPES

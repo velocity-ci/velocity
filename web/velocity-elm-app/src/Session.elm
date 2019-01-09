@@ -38,23 +38,25 @@ import Set
 import Api.Compiled.Subscription as Subscription
 import Graphql.Operation exposing (RootSubscription)
 import Graphql.Document
+import Api.Subscriptions as Subscriptions
 
 
 -- TYPES
 
 
-type Session
-    = LoggedIn LoggedInInternals
+type Session msg
+    = LoggedIn (LoggedInInternals msg)
     | Guest Nav.Key
 
 
-type alias LoggedInInternals =
+type alias LoggedInInternals msg =
     { navKey : Nav.Key
     , viewer : Viewer
     , projects : List Project
     , branches : Project.Id.Dict (List Branch)
     , knownHosts : List KnownHost
     , log : Activity.Log
+    , subscriptions : Subscriptions.State msg
     }
 
 
@@ -66,7 +68,7 @@ type InitError
 -- COLLECTIONS
 
 
-knownHosts : Session -> List KnownHost
+knownHosts : Session msg -> List KnownHost
 knownHosts session =
     case session of
         LoggedIn internals ->
@@ -76,7 +78,7 @@ knownHosts session =
             []
 
 
-addKnownHost : KnownHost -> Session -> Session
+addKnownHost : KnownHost -> Session msg -> Session msg
 addKnownHost knownHost session =
     case session of
         LoggedIn internals ->
@@ -86,7 +88,7 @@ addKnownHost knownHost session =
             session
 
 
-projectWithId : Project.Id.Id -> Session -> Maybe Project
+projectWithId : Project.Id.Id -> Session msg -> Maybe Project
 projectWithId projectId session =
     case session of
         LoggedIn internals ->
@@ -96,7 +98,7 @@ projectWithId projectId session =
             Nothing
 
 
-projectWithSlug : Project.Slug.Slug -> Session -> Maybe Project
+projectWithSlug : Project.Slug.Slug -> Session msg -> Maybe Project
 projectWithSlug projectSlug session =
     case session of
         LoggedIn internals ->
@@ -106,7 +108,7 @@ projectWithSlug projectSlug session =
             Nothing
 
 
-projects : Session -> List Project
+projects : Session msg -> List Project
 projects session =
     case session of
         LoggedIn internals ->
@@ -116,7 +118,7 @@ projects session =
             []
 
 
-branches : Project.Id.Id -> Session -> List Branch
+branches : Project.Id.Id -> Session msg -> List Branch
 branches projectId session =
     case session of
         LoggedIn internals ->
@@ -127,7 +129,7 @@ branches projectId session =
             []
 
 
-addProject : Project -> Session -> Session
+addProject : Project -> Session msg -> Session msg
 addProject p session =
     case session of
         LoggedIn internals ->
@@ -141,7 +143,7 @@ addProject p session =
 -- INFO
 
 
-viewer : Session -> Maybe Viewer
+viewer : Session msg -> Maybe Viewer
 viewer session =
     case session of
         LoggedIn internals ->
@@ -151,7 +153,7 @@ viewer session =
             Nothing
 
 
-cred : Session -> Maybe Cred
+cred : Session msg -> Maybe Cred
 cred session =
     case session of
         LoggedIn internals ->
@@ -161,7 +163,7 @@ cred session =
             Nothing
 
 
-navKey : Session -> Nav.Key
+navKey : Session msg -> Nav.Key
 navKey session =
     case session of
         LoggedIn internals ->
@@ -171,7 +173,7 @@ navKey session =
             key
 
 
-log : Session -> Maybe Activity.Log
+log : Session msg -> Maybe Activity.Log
 log session =
     case session of
         LoggedIn internals ->
@@ -185,7 +187,7 @@ log session =
 -- CHANGES
 
 
-changes : (Task InitError Session -> msg) -> Context msg2 -> Session -> Sub msg
+changes : (Task InitError (Session msg) -> msg2) -> Context msg -> Session msg -> Sub msg2
 changes toMsg context session =
     Api.viewerChanges (fromViewer (navKey session) context >> toMsg) Viewer.decoder
 
@@ -196,7 +198,7 @@ type alias StartupResponse =
     }
 
 
-fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError Session
+fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError (Session msg)
 fromViewer key context maybeViewer =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
@@ -236,6 +238,7 @@ fromViewer key context maybeViewer =
                             , branches = Project.Id.empty
                             , knownHosts = res.knownHosts
                             , log = Activity.init
+                            , subscriptions = Subscriptions.init
                             }
                     )
                     request

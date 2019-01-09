@@ -1,4 +1,4 @@
-port module Subscriptions exposing (Subscriptions, init, subscriptions, subscribeToKnownHostAdded)
+port module Api.Subscriptions exposing (State, init, subscriptions, subscribeToKnownHostAdded)
 
 import Api.Compiled.Subscription
 import Dict exposing (Dict)
@@ -34,7 +34,7 @@ port subscribeTo : ( Int, String ) -> Cmd msg
 -- Subscriptions
 
 
-subscriptions : (Subscriptions msg -> msg) -> Subscriptions msg -> Sub msg
+subscriptions : (State msg -> msg) -> State msg -> Sub msg
 subscriptions toMsg state =
     Sub.batch
         [ socketStatusConnected (\id -> toMsg <| newSubscriptionStatus ( id, Connected ) state)
@@ -43,15 +43,15 @@ subscriptions toMsg state =
         ]
 
 
-newSubscriptionStatus : ( Int, Status ) -> Subscriptions msg -> Subscriptions msg
-newSubscriptionStatus ( id, status ) (Subscriptions subs) =
+newSubscriptionStatus : ( Int, Status ) -> State msg -> State msg
+newSubscriptionStatus ( id, status ) (State subs) =
     subs
         |> Dict.update id (Maybe.map (updateStatus status))
-        |> Subscriptions
+        |> State
 
 
-newSubscriptionData : (Subscriptions msg -> msg) -> { id : Int, value : Value } -> Subscriptions msg -> msg
-newSubscriptionData toMsg { id, value } (Subscriptions subs) =
+newSubscriptionData : (State msg -> msg) -> { id : Int, value : Value } -> State msg -> msg
+newSubscriptionData toMsg { id, value } (State subs) =
     case Dict.get id subs of
         Just (Subscription _ (KnownHostSubscription selectionSet handler)) ->
             case Decode.decodeValue (Graphql.Document.decoder selectionSet) value of
@@ -59,18 +59,18 @@ newSubscriptionData toMsg { id, value } (Subscriptions subs) =
                     handler data
 
                 Err _ ->
-                    toMsg (Subscriptions subs)
+                    toMsg (State subs)
 
         Nothing ->
-            toMsg (Subscriptions subs)
+            toMsg (State subs)
 
 
 
 -- TYPES
 
 
-type Subscriptions msg
-    = Subscriptions (Dict Int (Subscription msg))
+type State msg
+    = State (Dict Int (Subscription msg))
 
 
 type Subscription msg
@@ -87,9 +87,9 @@ type Status
     | Reconnecting
 
 
-init : Subscriptions msg
+init : State msg
 init =
-    Subscriptions Dict.empty
+    State Dict.empty
 
 
 updateStatus : Status -> Subscription msg -> Subscription msg
@@ -101,7 +101,7 @@ updateStatus status (Subscription _ type_) =
 -- Subscribe to
 
 
-subscribeToKnownHostAdded : (KnownHost -> msg) -> Subscriptions msg -> ( Subscriptions msg, Cmd msg )
+subscribeToKnownHostAdded : (KnownHost -> msg) -> State msg -> ( State msg, Cmd msg )
 subscribeToKnownHostAdded toMsg state =
     Api.Compiled.Subscription.knownHostAdded KnownHost.selectionSet
         |> knownHostSubscription toMsg state
@@ -109,10 +109,10 @@ subscribeToKnownHostAdded toMsg state =
 
 knownHostSubscription :
     (KnownHost -> msg)
-    -> Subscriptions msg
+    -> State msg
     -> SelectionSet KnownHost RootSubscription
-    -> ( Subscriptions msg, Cmd msg )
-knownHostSubscription toMsg (Subscriptions internals) selectionSet =
+    -> ( State msg, Cmd msg )
+knownHostSubscription toMsg (State internals) selectionSet =
     let
         sub =
             Subscription NotConnected <|
@@ -121,6 +121,6 @@ knownHostSubscription toMsg (Subscriptions internals) selectionSet =
         nextId =
             Dict.size internals
     in
-        ( Subscriptions (Dict.insert nextId sub internals)
+        ( State (Dict.insert nextId sub internals)
         , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
         )

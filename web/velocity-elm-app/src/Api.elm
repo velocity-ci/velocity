@@ -42,7 +42,6 @@ import Api.Compiled.Query as Query
 import Api.Compiled.Mutation as Mutation
 import Graphql.Http
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import RemoteData
 import Graphql.Operation exposing (RootQuery)
 import Api.Compiled.Object.SessionPayload as SessionPayload
 import Api.Compiled.Object.Session as Session

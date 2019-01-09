@@ -54,7 +54,7 @@ port parsedRepository : (Decode.Value -> msg) -> Sub msg
 
 
 type alias Model msg =
-    { session : Session
+    { session : Session msg
     , context : Context msg
     , projectFormStatus : ProjectFormStatus
     }
@@ -70,7 +70,7 @@ type ProjectFormStatus
     | WaitingForProjectCreation { gitUrl : GitUrl, projectName : String }
 
 
-init : Session -> Context msg -> ActivePanel -> ( Model msg, Cmd Msg )
+init : Session msg -> Context msg -> ActivePanel -> ( Model msg, Cmd (Msg msg) )
 init session context activePanel =
     ( { session = session
       , context = context
@@ -96,7 +96,7 @@ activePanelToProjectFormStatus activePanel =
 ---- View
 
 
-view : Model msg -> { title : String, content : Element Msg }
+view : Model msg -> { title : String, content : Element (Msg msg) }
 view model =
     let
         device =
@@ -242,7 +242,7 @@ colAmount device =
 {-| Splits up the all of the data in the model in to "panels" and inserts them into a grid, of size specified by
 the device. Finally wraps all of this in a row with a max-width
 -}
-viewPanelGrid : Device -> ProjectFormStatus -> Session -> Element Msg
+viewPanelGrid : Device -> ProjectFormStatus -> Session msg -> Element (Msg msg)
 viewPanelGrid device projectFormStatus session =
     toPanels projectFormStatus session
         |> List.indexedMap Tuple.pair
@@ -283,7 +283,7 @@ viewPanelGrid device projectFormStatus session =
             ]
 
 
-toPanels : ProjectFormStatus -> Session -> List Panel
+toPanels : ProjectFormStatus -> Session msg -> List Panel
 toPanels projectFormStatus session =
     let
         projectPanels =
@@ -297,7 +297,7 @@ toPanels projectFormStatus session =
             projectPanels
 
 
-viewPanel : Device -> Panel -> Element Msg
+viewPanel : Device -> Panel -> Element (Msg msg)
 viewPanel device panel =
     case panel of
         ProjectFormPanel NotOpen ->
@@ -336,7 +336,7 @@ defaultIconOpts =
 
 {-| This is a panel that is used to for the the simple form to add a new project, its a bit of a CTA.
 -}
-viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Bool -> Element Msg
+viewAddProjectPanel : { value : String, dirty : Bool, problems : List String } -> Bool -> Element (Msg msg)
 viewAddProjectPanel repositoryField submitting =
     viewPanelContainer
         [ viewNewProjectPanelHeader "New project" ( 2, 3 )
@@ -401,7 +401,7 @@ viewAddProjectPanel repositoryField submitting =
         ]
 
 
-viewLoadingPanel : Element Msg
+viewLoadingPanel : Element (Msg msg)
 viewLoadingPanel =
     viewPanelContainer
         [ el
@@ -414,7 +414,7 @@ viewLoadingPanel =
         ]
 
 
-viewAddKnownHostPanel : { gitUrl : GitUrl, knownHost : KnownHost } -> Element Msg
+viewAddKnownHostPanel : { gitUrl : GitUrl, knownHost : KnownHost } -> Element (Msg msg)
 viewAddKnownHostPanel { gitUrl, knownHost } =
     viewPanelContainer
         [ viewNewProjectPanelHeader "New repository source" ( 3, 3 )
@@ -490,7 +490,7 @@ viewAddKnownHostPanel { gitUrl, knownHost } =
         ]
 
 
-viewConfigureProjectPanel : { gitUrl : GitUrl, projectName : String } -> Element Msg
+viewConfigureProjectPanel : { gitUrl : GitUrl, projectName : String } -> Element (Msg msg)
 viewConfigureProjectPanel { gitUrl, projectName } =
     viewPanelContainer
         [ viewNewProjectPanelHeader "New project / configure" ( 2, 3 )
@@ -575,7 +575,7 @@ viewConfigureProjectPanel { gitUrl, projectName } =
         ]
 
 
-viewGitSourceLogo : GitUrl -> Icon.Options -> Element msg
+viewGitSourceLogo : GitUrl -> Icon.Options -> Element (Msg msg)
 viewGitSourceLogo gitUrl opts =
     column [ height fill, width fill ]
         [ el
@@ -596,7 +596,7 @@ viewGitSourceLogo gitUrl opts =
         ]
 
 
-viewNewProjectPanelHeader : String -> ( Int, Int ) -> Element msg
+viewNewProjectPanelHeader : String -> ( Int, Int ) -> Element (Msg msg)
 viewNewProjectPanelHeader headerText ( currentPanel, totalPanels ) =
     row
         [ alignTop
@@ -632,7 +632,7 @@ viewNewProjectPanelHeader headerText ( currentPanel, totalPanels ) =
         [ text headerText ]
 
 
-viewRepositoryField : { value : String, dirty : Bool, problems : List String } -> Element Msg
+viewRepositoryField : { value : String, dirty : Bool, problems : List String } -> Element (Msg msg)
 viewRepositoryField { value, dirty, problems } =
     Input.text
         { leftIcon = Just Icon.link
@@ -650,7 +650,7 @@ viewRepositoryField { value, dirty, problems } =
         }
 
 
-viewProjectPanel : Project -> Element msg
+viewProjectPanel : Project -> Element (Msg msg)
 viewProjectPanel project =
     let
         thumbnail =
@@ -766,9 +766,9 @@ validateRepository repository =
 -- UPDATE
 
 
-type Msg
-    = UpdateSession (Task Session.InitError Session)
-    | UpdatedSession (Result Session.InitError Session)
+type Msg msg
+    = UpdateSession (Task Session.InitError (Session msg))
+    | UpdatedSession (Result Session.InitError (Session msg))
     | ConfigureRepositoryButtonClicked
     | ParsedRepository (Result Decode.Error { repository : String, gitUrl : GitUrl })
     | EnteredRepositoryUrl String
@@ -782,7 +782,7 @@ type Msg
     | NoOp
 
 
-update : Msg -> Model msg -> ( Model msg, Cmd Msg )
+update : Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
 update msg model =
     case Session.cred model.session of
         Just cred ->
@@ -793,7 +793,7 @@ update msg model =
             ( model, Cmd.none )
 
 
-updateAuthenticated : Cred -> Msg -> Model msg -> ( Model msg, Cmd Msg )
+updateAuthenticated : Cred -> Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
 updateAuthenticated cred msg model =
     let
         baseUrl =
@@ -1037,7 +1037,7 @@ scrollToTop =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model msg -> Sub Msg
+subscriptions : Model msg -> Sub (Msg msg)
 subscriptions model =
     Sub.batch
         [ Session.changes UpdateSession model.context model.session
@@ -1045,7 +1045,7 @@ subscriptions model =
         ]
 
 
-parsedRepositorySub : Sub Msg
+parsedRepositorySub : Sub (Msg msg)
 parsedRepositorySub =
     let
         decoder =
@@ -1061,7 +1061,7 @@ parsedRepositorySub =
 -- EXPORT
 
 
-toSession : Model msg -> Session
+toSession : Model msg -> Session msg
 toSession model =
     model.session
 

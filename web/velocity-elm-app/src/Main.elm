@@ -29,7 +29,6 @@ import Url exposing (Url)
 import Viewer exposing (Viewer)
 import Graphql.Document
 import Graphql.Http
-import Subscriptions
 
 
 ---- MODEL ----
@@ -42,8 +41,8 @@ type Model
 
 
 type Body
-    = Redirect Session (Context Msg)
-    | NotFound Session (Context Msg)
+    = Redirect (Session Msg) (Context Msg)
+    | NotFound (Session Msg) (Context Msg)
     | Home (HomePage.Model Msg)
     | Login (LoginPage.Model Msg)
     | Project (ProjectPage.Model Msg)
@@ -110,7 +109,7 @@ viewCurrentPage layout currentPage =
                 viewPage Page.Build GotBuildMsg (BuildPage.view page)
 
 
-activityLog : Session -> Activity.ViewConfiguration
+activityLog : Session Msg -> Activity.ViewConfiguration
 activityLog session =
     Maybe.map2 Activity.ViewConfiguration (Session.log session) (Just <| Session.projects session)
         |> Maybe.withDefault { activities = Activity.init, projects = [] }
@@ -159,18 +158,18 @@ type Msg
     | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
-    | GotHomeMsg HomePage.Msg
-    | GotLoginMsg LoginPage.Msg
+    | GotHomeMsg (HomePage.Msg Msg)
+    | GotLoginMsg (LoginPage.Msg Msg)
     | GotProjectMsg ProjectPage.Msg
     | GotBuildMsg BuildPage.Msg
-    | UpdateSession (Task Session.InitError Session)
-    | UpdatedSession (Result Session.InitError Session)
+    | UpdateSession (Task Session.InitError (Session Msg))
+    | UpdatedSession (Result Session.InitError (Session Msg))
     | WindowResized Int Int
     | UpdateLayout Page.Layout
-    | SetSession Session
+    | SetSession (Session Msg)
 
 
-toSession : Body -> Session
+toSession : Body -> Session Msg
 toSession page =
     case page of
         Redirect session _ ->
@@ -370,7 +369,7 @@ updateContext context page =
             Build { build | context = context }
 
 
-updateSession : Session -> Body -> Body
+updateSession : Session Msg -> Body -> Body
 updateSession session page =
     case page of
         Redirect _ context ->
