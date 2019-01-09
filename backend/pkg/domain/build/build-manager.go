@@ -108,9 +108,9 @@ func (m *BuildManager) GetAllForCommit(c *githistory.Commit, q *domain.PagingQue
 	return m.db.getAllForCommit(c, q)
 }
 
-// func (m *BuildManager) GetAllForBranch(b *githistory.Branch, q *domain.PagingQuery) ([]*Build, int) {
-// 	return m.db.getAllForBranch(b, q)
-// }
+//func (m *BuildManager) GetAllForBranch(b *githistory.Branch, q *domain.PagingQuery) ([]*Build, int) {
+//	return m.db.getAllForBranch(b, q)
+//}
 
 func (m *BuildManager) GetAllForTask(t *task.Task, q *domain.PagingQuery) ([]*Build, int) {
 	return m.db.getAllForTask(t, q)

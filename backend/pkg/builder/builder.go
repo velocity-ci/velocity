@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -18,8 +17,9 @@ import (
 )
 
 const (
-	EventStartBuild    = "build:start"
-	EventSetKnownHosts = "knownhosts:set"
+	// EventStartBuild    = "build:start"
+	// EventSetKnownHosts = "knownhosts:set"
+	PoolTopic = "builders:pool"
 )
 
 type Builder struct {
@@ -28,8 +28,8 @@ type Builder struct {
 	baseArchitectAddress string
 	secret               string
 
-	id    string
-	token string
+	//id    string
+	//token string
 
 	http *http.Client
 	ws   *phoenix.Client
@@ -48,95 +48,76 @@ func (b *Builder) Start() {
 
 	if !waitForService(b.http, fmt.Sprintf("%s/v1/health", b.baseArchitectAddress)) {
 		velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", b.baseArchitectAddress))
+		b.Stop()
+		return
 	}
 
-	if len(b.id) < 1 {
-		err := b.registerWithArchitect()
-		if err != nil {
-			velocity.GetLogger().Error("could not register builder", zap.Error(err))
-			return
-		}
-	}
-
-	velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress), zap.String("builderID", b.id))
+	velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress))
 	b.connect()
-}
-
-func (b *Builder) registerWithArchitect() error {
-	address := fmt.Sprintf("%s/v1/builders", b.baseArchitectAddress)
-	body, err := json.Marshal(&registerBuilderRequest{Secret: b.secret})
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", address, bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := b.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	decoder := json.NewDecoder(resp.Body)
-	var respBuilder registerBuilderResponse
-	err = decoder.Decode(&respBuilder)
-	if err != nil {
-		return err
-	}
-
-	b.id = respBuilder.ID
-	b.token = respBuilder.Token
-
-	velocity.GetLogger().Info("registered builder", zap.String("id", b.id))
-
-	return nil
 }
 
 func (b *Builder) connect() {
 	wsAddress := strings.Replace(b.baseArchitectAddress, "http", "ws", 1)
-	wsAddress = fmt.Sprintf("%s/v1/builders/ws", wsAddress)
+	wsAddress = fmt.Sprintf("%s/socket/v1/builders/websocket", wsAddress)
 
-	ws, err := phoenix.NewClient(wsAddress, map[string]func(*phoenix.PhoenixMessage) error{
-		EventStartBuild: func(m *phoenix.PhoenixMessage) error {
-			p := BuildPayload{}
-			err := json.Unmarshal(m.Payload.(json.RawMessage), &p)
+	eventHandlers := map[string]func(*phoenix.PhoenixMessage) error{}
+	for _, j := range jobs {
+		eventHandlers[fmt.Sprintf("%s%s", EventJobDoPrefix, j.GetName())] = func(m *phoenix.PhoenixMessage) error {
+			payloadBytes, _ := json.Marshal(m.Payload)
+			j.Parse(payloadBytes)
+
+			err := j.Do(b.ws)
 			if err != nil {
-				return err
+				b.ws.Socket.Send(&phoenix.PhoenixMessage{
+					Event: EventJobStatus,
+					Topic: fmt.Sprintf("job:%s", j.GetID()),
+					Payload: map[string]interface{}{
+						"status": "error",
+						"errors": []map[string]string{
+							map[string]string{
+								"message": err.Error(),
+							},
+						},
+					},
+				}, false)
 			}
-			b.ws.Socket.ReplyOK(m)
-			b.runBuild(&p)
-			return nil
-		},
-		EventSetKnownHosts: func(m *phoenix.PhoenixMessage) error {
-			p := KnownHostPayload{}
-			err := json.Unmarshal(m.Payload.(json.RawMessage), &p)
-			if err != nil {
-				return err
-			}
-			b.updateKnownHosts(&p)
-			b.ws.Socket.ReplyOK(m)
-			return nil
-		},
-	})
+
+			b.ws.Socket.Send(&phoenix.PhoenixMessage{
+				Event: EventJobStatus,
+				Topic: fmt.Sprintf("job:%s", j.GetID()),
+				Payload: map[string]interface{}{
+					"status": "success",
+				},
+			}, false)
+
+			SendBuilderReady(b.ws)
+			return err
+		}
+	}
+	eventHandlers[EventJobStop] = func(*phoenix.PhoenixMessage) error {
+		return nil
+	}
+	ws, err := phoenix.NewClient(wsAddress, eventHandlers)
+
 	if err != nil {
 		velocity.GetLogger().Error("could not establish websocket connection", zap.Error(err))
-		b.run = false
+		b.Stop()
 		return
 	}
 	velocity.GetLogger().Debug("established websocket connection", zap.String("address", wsAddress))
 	b.ws = ws
 
-	topic := fmt.Sprintf("builder:%s", b.id)
 	err = b.ws.Subscribe(
-		topic,
-		b.token,
+		PoolTopic,
+		b.secret,
 	)
 	if err != nil {
-		velocity.GetLogger().Error("could not subscribe to builder topic", zap.String("topic", topic), zap.Error(err))
-		b.run = false
+		velocity.GetLogger().Error("could not subscribe to builder topic", zap.String("topic", PoolTopic), zap.Error(err))
+		b.Stop()
 		return
 	}
+
+	SendBuilderReady(b.ws)
 
 	b.ws.Wait(5)
 }
@@ -189,9 +170,13 @@ type registerBuilderRequest struct {
 	Secret string `json:"secret"`
 }
 
-type registerBuilderResponse struct {
+type registeredBuilder struct {
 	ID    string `json:"id"`
 	Token string `json:"token"`
+}
+
+type registerBuilderResponse struct {
+	Data registeredBuilder `json:"data"`
 }
 
 func connectToArchitect(address string, secret string) *websocket.Conn {

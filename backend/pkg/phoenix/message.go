@@ -25,7 +25,7 @@ type PhoenixMessage struct {
 	Event   string      `json:"event"`
 	Topic   string      `json:"topic"`
 	Payload interface{} `json:"payload"`
-	Ref     uint64      `json:"ref"`
+	Ref     *uint64     `json:"ref"`
 }
 
 type PhoenixReplyPayload struct {
@@ -56,9 +56,13 @@ func (m *PhoenixMessage) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	// Deserialize Ref
-	err = json.Unmarshal(*objMap["ref"], &m.Ref)
-	if err != nil {
-		return err
+	if val, ok := objMap["ref"]; ok {
+		if val != nil {
+			err = json.Unmarshal(*val, &m.Ref)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// Deserialize Payload by Event
