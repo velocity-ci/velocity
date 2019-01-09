@@ -8,6 +8,7 @@ port module Session
         , changes
         , cred
         , fromViewer
+        , subscriptions
         , knownHosts
         , log
         , navKey
@@ -184,12 +185,34 @@ log session =
 
 
 
+-- SUBSCRIPTIONS
+
+
+subscriptions : (Session msg -> msg) -> Session msg -> Sub msg
+subscriptions toMsg session =
+    case session of
+        LoggedIn internals ->
+            Sub.none
+
+        Guest _ ->
+            Sub.none
+
+
+
 -- CHANGES
 
 
 changes : (Task InitError (Session msg) -> msg2) -> Context msg -> Session msg -> Sub msg2
 changes toMsg context session =
-    Api.viewerChanges (fromViewer (navKey session) context >> toMsg) Viewer.decoder
+    Api.viewerChanges
+        (\maybeViewer ->
+            let
+                ( newSession, sessionCmd ) =
+                    fromViewer (navKey session) context maybeViewer
+            in
+                toMsg newSession
+        )
+        Viewer.decoder
 
 
 type alias StartupResponse =
@@ -198,7 +221,7 @@ type alias StartupResponse =
     }
 
 
-fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError (Session msg)
+fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> ( Task InitError (Session msg), Cmd msg )
 fromViewer key context maybeViewer =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
@@ -228,8 +251,14 @@ fromViewer key context maybeViewer =
                         |> Graphql.Http.queryRequest "http://localhost:4000/v2"
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError
+
+                --
+                --                (subscriptions, cmd) =
+                --                    Subscriptions.init
+                --                        |> subscribeToKnownHostAdded
+                --
             in
-                Task.map
+                ( Task.map
                     (\res ->
                         LoggedIn
                             { navKey = key
@@ -242,6 +271,10 @@ fromViewer key context maybeViewer =
                             }
                     )
                     request
+                , Cmd.none
+                )
 
         Nothing ->
-            Task.succeed (Guest key)
+            ( Task.succeed (Guest key)
+            , Cmd.none
+            )

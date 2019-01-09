@@ -53,13 +53,18 @@ init : Maybe Viewer -> Result Decode.Error (Context Msg) -> Url -> Nav.Key -> ( 
 init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
-            ( InitialHTTPRequests context navKey
-            , Cmd.batch
-                [ Session.fromViewer navKey context maybeViewer
-                    |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
-                    |> Task.attempt StartApplication
-                ]
-            )
+            let
+                ( sessionTask, subscriptionCmd ) =
+                    Session.fromViewer navKey context maybeViewer
+            in
+                ( InitialHTTPRequests context navKey
+                , Cmd.batch
+                    [ sessionTask
+                        |> Task.map (\s -> changeRouteTo (Route.fromUrl url) (Redirect s context))
+                        |> Task.attempt StartApplication
+                    , subscriptionCmd
+                    ]
+                )
 
         Err error ->
             ( InitError (Decode.errorToString error)
@@ -445,16 +450,16 @@ subscriptions model =
     Sub.batch
         [ layoutSubscriptions model
         , pageSubscriptions model
-        , socketSubscriptions model
+        , sessionSubscriptions model
         , Browser.Events.onResize WindowResized
         ]
 
 
-socketSubscriptions : Model -> Sub Msg
-socketSubscriptions model =
+sessionSubscriptions : Model -> Sub Msg
+sessionSubscriptions model =
     case model of
         ApplicationStarted _ page ->
-            Sub.none
+            Session.subscriptions SetSession (toSession page)
 
         InitialHTTPRequests context _ ->
             Sub.none
