@@ -1,4 +1,4 @@
-port module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
+module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
 
 import Activity
 import Api
@@ -32,26 +32,6 @@ import Graphql.Http
 import Subscriptions
 
 
--- Input ports
-
-
-port gotSubscriptionData : (Value -> msg) -> Sub msg
-
-
-port socketStatusConnected : (() -> msg) -> Sub msg
-
-
-port socketStatusReconnecting : (() -> msg) -> Sub msg
-
-
-
--- Output ports
-
-
-port createSubscriptions : List ( String, String ) -> Cmd msg
-
-
-
 ---- MODEL ----
 
 
@@ -79,7 +59,6 @@ init maybeViewer contextResult url navKey =
                 [ Session.fromViewer navKey context maybeViewer
                     |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
                     |> Task.attempt StartApplication
-                , Cmd.none
                 ]
             )
 
@@ -189,13 +168,6 @@ type Msg
     | WindowResized Int Int
     | UpdateLayout Page.Layout
     | SetSession Session
-    | SubscriptionDataReceived Decode.Value
-    | SentMessage (Result (Graphql.Http.Error ()) ())
-    | NewSubscriptionStatus Session.SubscriptionStatus ()
-
-
-
--- GraphQL Subscriptions
 
 
 toSession : Body -> Session
@@ -371,17 +343,6 @@ updatePage msg page =
         ( UpdatedSession (Err _), _ ) ->
             ( page, Cmd.none )
 
-        --
-        --        SubscriptionDataReceived newData ->
-        --            case Json.Decode.decodeValue (subscriptionDocument |> Graphql.Document.decoder) newData of
-        --                Ok chatMessage ->
-        --                    ( { page | data = chatMessage :: model.data }, Cmd.none )
-        --
-        --                Err error ->
-        --                    ( page, Cmd.none )
-        --
-        --        SentMessage _ ->
-        --            ( page, Cmd.none )
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
@@ -446,16 +407,6 @@ update msg model =
                     , Cmd.none
                     )
 
-                NewSubscriptionStatus status () ->
-                    let
-                        updatedSession =
-                            toSession page
-                                |> Session.updateSubscriptionStatus (Debug.log "New Status" status)
-                    in
-                        ( ApplicationStarted header (updateSession updatedSession page)
-                        , Cmd.none
-                        )
-
                 _ ->
                     updatePage msg page
                         |> Tuple.mapFirst (ApplicationStarted header)
@@ -464,13 +415,7 @@ update msg model =
             case msg of
                 StartApplication (Ok ( app, pageCmd )) ->
                     ( ApplicationStarted Page.initLayout (app)
-                    , Cmd.batch
-                        [ pageCmd
-                        , createSubscriptions
-                            [ ( Graphql.Document.serializeSubscription Session.knownHostAddedSubscription, "KnownHost" )
-                            , ( Graphql.Document.serializeSubscription Session.knownHostVerifiedSubscription, "Project" )
-                            ]
-                        ]
+                    , pageCmd
                     )
 
                 StartApplication (Err err) ->
@@ -510,11 +455,7 @@ socketSubscriptions : Model -> Sub Msg
 socketSubscriptions model =
     case model of
         ApplicationStarted _ page ->
-            Sub.batch
-                [ gotSubscriptionData SubscriptionDataReceived
-                , socketStatusConnected (NewSubscriptionStatus Session.Connected)
-                , socketStatusReconnecting (NewSubscriptionStatus Session.Reconnecting)
-                ]
+            Sub.none
 
         InitialHTTPRequests context _ ->
             Sub.none
