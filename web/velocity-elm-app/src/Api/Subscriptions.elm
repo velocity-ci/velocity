@@ -1,14 +1,14 @@
-port module Api.Subscriptions exposing (State, init, subscriptions, subscribeToKnownHostAdded)
+port module Api.Subscriptions exposing (State, init, subscribeToKnownHostAdded, subscriptions)
 
 import Api.Compiled.Subscription
 import Dict exposing (Dict)
 import Graphql.Document as Document
 import Graphql.Operation exposing (RootSubscription)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import KnownHost exposing (KnownHost)
-import Json.Encode as Encode exposing (Value)
 import Json.Decode as Decode
-import Graphql.Document
+import Json.Encode as Encode exposing (Value)
+import KnownHost exposing (KnownHost)
+
 
 
 -- INWARDS PORTs
@@ -54,7 +54,7 @@ newSubscriptionData : (State msg -> msg) -> { id : Int, value : Value } -> State
 newSubscriptionData toMsg { id, value } (State subs) =
     case Dict.get id subs of
         Just (Subscription _ (KnownHostSubscription selectionSet handler)) ->
-            case Decode.decodeValue (Graphql.Document.decoder selectionSet) value of
+            case Decode.decodeValue (Document.decoder selectionSet) value of
                 Ok data ->
                     handler data
 
@@ -101,7 +101,7 @@ updateStatus status (Subscription _ type_) =
 -- Subscribe to
 
 
-subscribeToKnownHostAdded : (KnownHost -> msg) -> State msg -> ( State msg, Cmd msg )
+subscribeToKnownHostAdded : (KnownHost -> msg2) -> State msg2 -> ( State msg2, Cmd msg2 )
 subscribeToKnownHostAdded toMsg state =
     Api.Compiled.Subscription.knownHostAdded KnownHost.selectionSet
         |> knownHostSubscription toMsg state
@@ -121,6 +121,6 @@ knownHostSubscription toMsg (State internals) selectionSet =
         nextId =
             Dict.size internals
     in
-        ( State (Dict.insert nextId sub internals)
-        , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
-        )
+    ( State (Dict.insert nextId sub internals)
+    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+    )

@@ -1,27 +1,37 @@
-port module Session
-    exposing
-        ( InitError
-        , Session
-        , addKnownHost
-        , addProject
-        , branches
-        , changes
-        , cred
-        , fromViewer
-        , subscriptions
-        , knownHosts
-        , log
-        , navKey
-        , projectWithId
-        , projectWithSlug
-        , projects
-        , viewer
-        )
+port module Session exposing
+    ( InitError
+    , Session
+    , SubscriptionMsg
+    , addKnownHost
+    , addProject
+    , branches
+    , changes
+    , cred
+    , fromViewer
+    , knownHosts
+    , log
+    , navKey
+    , projectWithId
+    , projectWithSlug
+    , projects
+    , subscribe
+    , subscriptionUpdate
+    , subscriptions
+    , viewer
+    )
 
 import Activity
 import Api exposing (BaseUrl, Cred)
+import Api.Compiled.Query as Query
+import Api.Compiled.Subscription as Subscription
+import Api.Subscriptions as Subscriptions
 import Browser.Navigation as Nav
 import Context exposing (Context)
+import Graphql.Document
+import Graphql.Http
+import Graphql.Http.GraphqlError as GraphqlError
+import Graphql.Operation exposing (RootSubscription)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Http
 import Json.Decode as Decode
 import KnownHost exposing (KnownHost)
@@ -29,17 +39,10 @@ import Project exposing (Project)
 import Project.Branch as Branch exposing (Branch)
 import Project.Id
 import Project.Slug
+import Set
 import Task exposing (Task)
 import Viewer exposing (Viewer)
-import Graphql.Http
-import Graphql.Http.GraphqlError as GraphqlError
-import Api.Compiled.Query as Query
-import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import Set
-import Api.Compiled.Subscription as Subscription
-import Graphql.Operation exposing (RootSubscription)
-import Graphql.Document
-import Api.Subscriptions as Subscriptions
+
 
 
 -- TYPES
@@ -63,6 +66,10 @@ type alias LoggedInInternals msg =
 
 type InitError
     = HttpError (Graphql.Http.Error StartupResponse)
+
+
+type SubscriptionMsg
+    = KnownHostAdded KnownHost
 
 
 
@@ -188,6 +195,30 @@ log session =
 -- SUBSCRIPTIONS
 
 
+subscribe : (SubscriptionMsg -> msg) -> Session msg -> ( Session msg, Cmd msg )
+subscribe toMsg session =
+    case session of
+        LoggedIn internals ->
+            let
+                ( subs, cmd ) =
+                    internals.subscriptions
+                        |> Subscriptions.subscribeToKnownHostAdded (KnownHostAdded >> toMsg)
+            in
+            ( LoggedIn { internals | subscriptions = subs }
+            , cmd
+            )
+
+        Guest _ ->
+            ( session, Cmd.none )
+
+
+subscriptionUpdate : SubscriptionMsg -> Session msg -> Session msg
+subscriptionUpdate subMsg session =
+    case subMsg of
+        KnownHostAdded knownHost ->
+            addKnownHost knownHost session
+
+
 subscriptions : (Session msg -> msg) -> Session msg -> Sub msg
 subscriptions toMsg session =
     case session of
@@ -207,10 +238,10 @@ changes toMsg context session =
     Api.viewerChanges
         (\maybeViewer ->
             let
-                ( newSession, sessionCmd ) =
+                newSession =
                     fromViewer (navKey session) context maybeViewer
             in
-                toMsg newSession
+            toMsg newSession
         )
         Viewer.decoder
 
@@ -221,7 +252,7 @@ type alias StartupResponse =
     }
 
 
-fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> ( Task InitError (Session msg), Cmd msg )
+fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError (Session msg)
 fromViewer key context maybeViewer =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
@@ -251,30 +282,20 @@ fromViewer key context maybeViewer =
                         |> Graphql.Http.queryRequest "http://localhost:4000/v2"
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError
-
-                --
-                --                (subscriptions, cmd) =
-                --                    Subscriptions.init
-                --                        |> subscribeToKnownHostAdded
-                --
             in
-                ( Task.map
-                    (\res ->
-                        LoggedIn
-                            { navKey = key
-                            , viewer = viewerVal
-                            , projects = res.projects
-                            , branches = Project.Id.empty
-                            , knownHosts = res.knownHosts
-                            , log = Activity.init
-                            , subscriptions = Subscriptions.init
-                            }
-                    )
-                    request
-                , Cmd.none
+            Task.map
+                (\res ->
+                    LoggedIn
+                        { navKey = key
+                        , viewer = viewerVal
+                        , projects = res.projects
+                        , branches = Project.Id.empty
+                        , knownHosts = res.knownHosts
+                        , log = Activity.init
+                        , subscriptions = Subscriptions.init
+                        }
                 )
+                request
 
         Nothing ->
-            ( Task.succeed (Guest key)
-            , Cmd.none
-            )
+            Task.succeed (Guest key)

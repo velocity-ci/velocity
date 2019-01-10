@@ -11,6 +11,8 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Graphql.Document
+import Graphql.Http
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Loading
 import Page exposing (Layout)
@@ -27,8 +29,7 @@ import Session exposing (Session)
 import Task exposing (Task)
 import Url exposing (Url)
 import Viewer exposing (Viewer)
-import Graphql.Document
-import Graphql.Http
+
 
 
 ---- MODEL ----
@@ -54,17 +55,14 @@ init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
             let
-                ( sessionTask, subscriptionCmd ) =
+                sessionTask =
                     Session.fromViewer navKey context maybeViewer
             in
-                ( InitialHTTPRequests context navKey
-                , Cmd.batch
-                    [ sessionTask
-                        |> Task.map (\s -> changeRouteTo (Route.fromUrl url) (Redirect s context))
-                        |> Task.attempt StartApplication
-                    , subscriptionCmd
-                    ]
-                )
+            ( InitialHTTPRequests context navKey
+            , sessionTask
+                |> Task.map (\s -> changeRouteTo (Route.fromUrl url) (Redirect s context))
+                |> Task.attempt StartApplication
+            )
 
         Err error ->
             ( InitError (Decode.errorToString error)
@@ -94,24 +92,24 @@ viewCurrentPage layout currentPage =
                 , log = activityLog session
                 }
     in
-        case currentPage of
-            Redirect _ _ ->
-                viewPage Page.Other (always Ignored) BlankPage.view
+    case currentPage of
+        Redirect _ _ ->
+            viewPage Page.Other (always Ignored) BlankPage.view
 
-            NotFound _ _ ->
-                viewPage Page.Other (always Ignored) NotFoundPage.view
+        NotFound _ _ ->
+            viewPage Page.Other (always Ignored) NotFoundPage.view
 
-            Home page ->
-                viewPage Page.Home GotHomeMsg (HomePage.view page)
+        Home page ->
+            viewPage Page.Home GotHomeMsg (HomePage.view page)
 
-            Login page ->
-                viewPage Page.Login GotLoginMsg (LoginPage.view page)
+        Login page ->
+            viewPage Page.Login GotLoginMsg (LoginPage.view page)
 
-            Project page ->
-                viewPage Page.Project GotProjectMsg (ProjectPage.view page)
+        Project page ->
+            viewPage Page.Project GotProjectMsg (ProjectPage.view page)
 
-            Build page ->
-                viewPage Page.Build GotBuildMsg (BuildPage.view page)
+        Build page ->
+            viewPage Page.Build GotBuildMsg (BuildPage.view page)
 
 
 activityLog : Session Msg -> Activity.ViewConfiguration
@@ -172,6 +170,7 @@ type Msg
     | WindowResized Int Int
     | UpdateLayout Page.Layout
     | SetSession (Session Msg)
+    | SessionSubscription Session.SubscriptionMsg
 
 
 toSession : Body -> Session Msg
@@ -227,63 +226,63 @@ changeRouteTo maybeRoute currentPage =
         context =
             toContext currentPage
     in
-        case maybeRoute of
-            Nothing ->
-                ( NotFound session context, Cmd.none )
+    case maybeRoute of
+        Nothing ->
+            ( NotFound session context, Cmd.none )
 
-            Just (Route.Root) ->
-                ( currentPage
-                , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-                )
+        Just Route.Root ->
+            ( currentPage
+            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+            )
 
-            Just (Route.Logout) ->
-                ( Redirect session context
-                , Api.logout
-                )
+        Just Route.Logout ->
+            ( Redirect session context
+            , Api.logout
+            )
 
-            Just (Route.Home activePanel) ->
-                case Session.viewer session of
-                    Nothing ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) Route.Login
-                        )
+        Just (Route.Home activePanel) ->
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
 
-                    Just _ ->
-                        HomePage.init session context activePanel
-                            |> updateWith Home GotHomeMsg currentPage
+                Just _ ->
+                    HomePage.init session context activePanel
+                        |> updateWith Home GotHomeMsg currentPage
 
-            Just (Route.Login) ->
-                case Session.viewer session of
-                    Just _ ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-                        )
+        Just Route.Login ->
+            case Session.viewer session of
+                Just _ ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+                    )
 
-                    Nothing ->
-                        LoginPage.init session context
-                            |> updateWith Login GotLoginMsg currentPage
+                Nothing ->
+                    LoginPage.init session context
+                        |> updateWith Login GotLoginMsg currentPage
 
-            Just (Route.Build id) ->
-                case Session.viewer session of
-                    Nothing ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) Route.Login
-                        )
+        Just (Route.Build id) ->
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
 
-                    Just _ ->
-                        BuildPage.init session context id
-                            |> updateWith Build GotBuildMsg currentPage
+                Just _ ->
+                    BuildPage.init session context id
+                        |> updateWith Build GotBuildMsg currentPage
 
-            Just (Route.Project slug) ->
-                case Session.viewer session of
-                    Nothing ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) Route.Login
-                        )
+        Just (Route.Project slug) ->
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
 
-                    Just _ ->
-                        ProjectPage.init session context slug
-                            |> updateWith Project GotProjectMsg currentPage
+                Just _ ->
+                    ProjectPage.init session context slug
+                        |> updateWith Project GotProjectMsg currentPage
 
 
 updatePage : Msg -> Body -> ( Body, Cmd Msg )
@@ -303,6 +302,11 @@ updatePage msg page =
                     ( page
                     , Nav.load href
                     )
+
+        ( SessionSubscription subMsg, _ ) ->
+            ( updateSession (Session.subscriptionUpdate subMsg (toSession page)) page
+            , Cmd.none
+            )
 
         ( ChangedUrl url, _ ) ->
             changeRouteTo (Route.fromUrl url) page
@@ -418,7 +422,11 @@ update msg model =
         InitialHTTPRequests _ _ ->
             case msg of
                 StartApplication (Ok ( app, pageCmd )) ->
-                    ( ApplicationStarted Page.initLayout (app)
+                    let
+                        ( subscribedSession, subscribeCmd ) =
+                            Session.subscribe SessionSubscription (toSession app)
+                    in
+                    ( ApplicationStarted Page.initLayout app
                     , pageCmd
                     )
 
