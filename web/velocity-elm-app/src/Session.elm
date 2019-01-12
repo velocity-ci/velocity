@@ -1,7 +1,7 @@
 port module Session exposing
     ( InitError
     , Session
-    , SubscriptionMsg
+    , SubscriptionDataMsg
     , addKnownHost
     , addProject
     , branches
@@ -15,8 +15,7 @@ port module Session exposing
     , projectWithSlug
     , projects
     , subscribe
-    , subscriptionUpdate
-    , subscriptions
+    , subscriptionDataUpdate
     , viewer
     )
 
@@ -68,8 +67,12 @@ type InitError
     = HttpError (Graphql.Http.Error StartupResponse)
 
 
-type SubscriptionMsg
+type SubscriptionDataMsg
     = KnownHostAdded KnownHost
+
+
+type SubscriptionStatusMsg
+    = SubscriptionStatus Subscriptions.StatusMsg
 
 
 
@@ -195,7 +198,7 @@ log session =
 -- SUBSCRIPTIONS
 
 
-subscribe : (SubscriptionMsg -> msg) -> Session msg -> ( Session msg, Cmd msg )
+subscribe : (SubscriptionDataMsg -> msg) -> Session msg -> ( Session msg, Cmd msg )
 subscribe toMsg session =
     case session of
         LoggedIn internals ->
@@ -212,23 +215,14 @@ subscribe toMsg session =
             ( session, Cmd.none )
 
 
-subscriptionUpdate : SubscriptionMsg -> Session msg -> Session msg
-subscriptionUpdate subMsg session =
+subscriptionDataUpdate : SubscriptionDataMsg -> Session msg -> Session msg
+subscriptionDataUpdate subMsg session =
     case subMsg of
         KnownHostAdded knownHost ->
             addKnownHost knownHost session
 
 
-subscriptions : (Session msg -> msg) -> Session msg -> Sub msg
-subscriptions toMsg session =
-    case session of
-        LoggedIn internals ->
-            Sub.none
-
-        Guest _ ->
-            Sub.none
-
-
+subscriptionStatus
 
 -- CHANGES
 

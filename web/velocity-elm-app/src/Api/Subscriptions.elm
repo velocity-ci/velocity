@@ -1,4 +1,4 @@
-port module Api.Subscriptions exposing (State, init, subscribeToKnownHostAdded, subscriptions)
+port module Api.Subscriptions exposing (State, StatusMsg, init, subscribeToKnownHostAdded, subscriptions)
 
 import Api.Compiled.Subscription
 import Dict exposing (Dict)
@@ -28,6 +28,37 @@ port socketStatusReconnecting : (Int -> msg) -> Sub msg
 
 
 port subscribeTo : ( Int, String ) -> Cmd msg
+
+
+
+-- TYPES
+
+
+type State msg
+    = State (Dict Int (Subscription msg))
+
+
+type Subscription msg
+    = Subscription Status (SubscriptionType msg)
+
+
+type SubscriptionType msg
+    = KnownHostSubscription (SelectionSet KnownHost RootSubscription) (KnownHost -> msg)
+
+
+type Status
+    = NotConnected
+    | Connected
+    | Reconnecting
+
+
+type StatusMsg
+    = StatusMsg Int Status
+
+
+init : State msg
+init =
+    State Dict.empty
 
 
 
@@ -63,33 +94,6 @@ newSubscriptionData toMsg { id, value } (State subs) =
 
         Nothing ->
             toMsg (State subs)
-
-
-
--- TYPES
-
-
-type State msg
-    = State (Dict Int (Subscription msg))
-
-
-type Subscription msg
-    = Subscription Status (SubscriptionType msg)
-
-
-type SubscriptionType msg
-    = KnownHostSubscription (SelectionSet KnownHost RootSubscription) (KnownHost -> msg)
-
-
-type Status
-    = NotConnected
-    | Connected
-    | Reconnecting
-
-
-init : State msg
-init =
-    State Dict.empty
 
 
 updateStatus : Status -> Subscription msg -> Subscription msg

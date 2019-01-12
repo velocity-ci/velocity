@@ -169,8 +169,7 @@ type Msg
     | UpdatedSession (Result Session.InitError (Session Msg))
     | WindowResized Int Int
     | UpdateLayout Page.Layout
-    | SetSession (Session Msg)
-    | SessionSubscription Session.SubscriptionMsg
+    | SessionSubscription Session.SubscriptionDataMsg
 
 
 toSession : Body -> Session Msg
@@ -304,7 +303,7 @@ updatePage msg page =
                     )
 
         ( SessionSubscription subMsg, _ ) ->
-            ( updateSession (Session.subscriptionUpdate subMsg (toSession page)) page
+            ( updateSession (Session.subscriptionDataUpdate subMsg (toSession page)) page
             , Cmd.none
             )
 
@@ -410,11 +409,6 @@ update msg model =
                     , Cmd.none
                     )
 
-                SetSession session ->
-                    ( ApplicationStarted header (updateSession session page)
-                    , Cmd.none
-                    )
-
                 _ ->
                     updatePage msg page
                         |> Tuple.mapFirst (ApplicationStarted header)
@@ -426,8 +420,11 @@ update msg model =
                         ( subscribedSession, subscribeCmd ) =
                             Session.subscribe SessionSubscription (toSession app)
                     in
-                    ( ApplicationStarted Page.initLayout app
-                    , pageCmd
+                    ( ApplicationStarted Page.initLayout (updateSession subscribedSession app)
+                    , Cmd.batch
+                        [ pageCmd
+                        , subscribeCmd
+                        ]
                     )
 
                 StartApplication (Err err) ->
@@ -467,7 +464,7 @@ sessionSubscriptions : Model -> Sub Msg
 sessionSubscriptions model =
     case model of
         ApplicationStarted _ page ->
-            Session.subscriptions SetSession (toSession page)
+            Sub.none
 
         InitialHTTPRequests context _ ->
             Sub.none
