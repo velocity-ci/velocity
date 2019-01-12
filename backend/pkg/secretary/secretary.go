@@ -61,6 +61,9 @@ func (b *Secretary) connect() {
 	eventHandlers := map[string]func(*phoenix.PhoenixMessage) error{}
 	for _, j := range jobs {
 		eventHandlers[fmt.Sprintf("%s%s", EventJobDoPrefix, j.GetName())] = func(m *phoenix.PhoenixMessage) error {
+
+			var res interface{}
+
 			payloadBytes, _ := json.Marshal(m.Payload)
 			j.Parse(payloadBytes)
 
