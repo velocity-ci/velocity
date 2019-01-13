@@ -1,5 +1,11 @@
 package secretary
 
+import (
+	"fmt"
+
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+)
+
 // get commits
 /*
  {
@@ -35,6 +41,27 @@ type Repository struct {
 	KnownHostEntry string `json:"knownHostEntry"`
 }
 
+func getRepository(r *Repository) (*velocity.RawRepository, error) {
+	rawRepo, err := velocity.Clone(
+		&velocity.GitRepository{
+			Address:    r.Address,
+			PrivateKey: r.PrivateKey,
+		},
+		&velocity.BlankWriter{},
+		&velocity.CloneOptions{
+			Bare:      true,
+			Full:      true,
+			Submodule: false,
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rawRepo, err
+}
+
 type GetCommitsQuery struct {
 	Limit    uint64   `json:"limit"`
 	Page     uint64   `json:"page"`
@@ -43,7 +70,7 @@ type GetCommitsQuery struct {
 }
 
 type GetCommitsInput struct {
-	Repository string           `json:"repository"`
+	Repository *Repository      `json:"repository"`
 	Query      *GetCommitsQuery `json:"query"`
 }
 
@@ -56,7 +83,21 @@ type GetCommitsOutput struct {
 	Total   uint64    `json:"total"`
 }
 
-func getCommits(input *GetCommitsInput) (res *GetCommitsOutput, err error) {
+func getCommitsEvent(payload interface{}) (interface{}, error) {
+	if input, ok := payload.(GetCommitsInput); ok {
+		return getCommits(&input)
+	}
+	return nil, fmt.Errorf("invalid payload")
+}
+
+func getCommits(input *GetCommitsInput) (*GetCommitsOutput, error) {
+	rawRepo, err := getRepository(input.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	out := &GetCommitsOutput{}
+	out.Total = rawRepo.GetTotalCommits()
 
 	return nil, nil
 }

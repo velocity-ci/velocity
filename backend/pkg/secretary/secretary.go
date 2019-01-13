@@ -2,7 +2,6 @@ package secretary
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -26,9 +25,6 @@ type Secretary struct {
 	baseArchitectAddress string
 	secret               string
 
-	//id    string
-	//token string
-
 	http *http.Client
 	ws   *phoenix.Client
 }
@@ -38,6 +34,7 @@ func (b *Secretary) Stop() error {
 	return nil
 }
 func (b *Secretary) Start() {
+	velocity.GetLogger().Info("git version", zap.String("version", velocity.GetGitVersion()))
 	b.baseArchitectAddress = getArchitectAddress()
 	b.secret = getSecretarySecret()
 	b.http = &http.Client{
@@ -56,22 +53,25 @@ func (b *Secretary) Start() {
 
 func (b *Secretary) connect() {
 	wsAddress := strings.Replace(b.baseArchitectAddress, "http", "ws", 1)
-	wsAddress = fmt.Sprintf("%s/socket/v1/builders/websocket", wsAddress)
+	wsAddress = fmt.Sprintf("%s/socket/v1/secretaries/websocket", wsAddress)
+
+	jobs := map[string]func(payload interface{}) (interface{}, error){
+		"vlcty_health-check": func(interface{}) (interface{}, error) {
+			return "OK", nil
+		},
+		"vlcty_repo-get-commits": getCommitsEvent,
+	}
 
 	eventHandlers := map[string]func(*phoenix.PhoenixMessage) error{}
-	for _, j := range jobs {
-		eventHandlers[fmt.Sprintf("%s%s", EventJobDoPrefix, j.GetName())] = func(m *phoenix.PhoenixMessage) error {
+	for k, f := range jobs {
+		eventHandlers[k] = func(m *phoenix.PhoenixMessage) error {
+			res, err := f(m.Payload)
 
-			var res interface{}
-
-			payloadBytes, _ := json.Marshal(m.Payload)
-			j.Parse(payloadBytes)
-
-			err := j.Do(b.ws)
 			if err != nil {
 				b.ws.Socket.Send(&phoenix.PhoenixMessage{
-					Event: EventJobStatus,
-					Topic: fmt.Sprintf("job:%s", j.GetID()),
+					Event: phoenix.PhxReplyEvent,
+					Topic: PoolTopic,
+					Ref:   m.Ref,
 					Payload: map[string]interface{}{
 						"status": "error",
 						"errors": []map[string]string{
@@ -81,22 +81,19 @@ func (b *Secretary) connect() {
 						},
 					},
 				}, false)
+
+				return err
 			}
 
 			b.ws.Socket.Send(&phoenix.PhoenixMessage{
-				Event: EventJobStatus,
-				Topic: fmt.Sprintf("job:%s", j.GetID()),
-				Payload: map[string]interface{}{
-					"status": "success",
-				},
+				Event:   phoenix.PhxReplyEvent,
+				Topic:   PoolTopic,
+				Ref:     m.Ref,
+				Payload: res,
 			}, false)
 
-			SendSecretaryReady(b.ws)
-			return err
+			return nil
 		}
-	}
-	eventHandlers[EventJobStop] = func(*phoenix.PhoenixMessage) error {
-		return nil
 	}
 	ws, err := phoenix.NewClient(wsAddress, eventHandlers)
 

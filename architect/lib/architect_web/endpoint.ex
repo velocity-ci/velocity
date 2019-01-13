@@ -14,6 +14,12 @@ defmodule ArchitectWeb.Endpoint do
     longpoll: false
   )
 
+  # /socket/v1/secretaries/websocket
+  socket("/socket/v1/secretaries", ArchitectWeb.V1.SecretarySocket,
+    websocket: true,
+    longpoll: false
+  )
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phx.digest
