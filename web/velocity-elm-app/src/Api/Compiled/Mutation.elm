@@ -50,9 +50,9 @@ type alias SignInRequiredArguments =
 
 {-| Sign in
 -}
-signIn : SignInRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.SessionPayload -> SelectionSet (Maybe decodesTo) RootMutation
+signIn : SignInRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.SessionPayload -> SelectionSet decodesTo RootMutation
 signIn requiredArgs object_ =
-    Object.selectionForCompositeField "signIn" [ Argument.required "password" requiredArgs.password Encode.string, Argument.required "username" requiredArgs.username Encode.string ] object_ (identity >> Decode.nullable)
+    Object.selectionForCompositeField "signIn" [ Argument.required "password" requiredArgs.password Encode.string, Argument.required "username" requiredArgs.username Encode.string ] object_ identity
 
 
 type alias SignUpOptionalArguments =

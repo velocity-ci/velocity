@@ -79,7 +79,8 @@ init session context projectSlug =
             case ( maybeProject, maybeCred ) of
                 ( Just project, Just cred ) ->
                     ( Loading
-                    , Build.list cred baseUrl projectSlug CompletedLoadBuilds
+                    , Cmd.none
+                      --                    , Build.list cred baseUrl projectSlug CompletedLoadBuilds
                     )
 
                 _ ->

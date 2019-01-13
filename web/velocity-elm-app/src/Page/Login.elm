@@ -33,7 +33,6 @@ type alias Model msg =
     , context : Context msg
     , problems : List Problem
     , form : Form
-    , tempRes : Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred))
     }
 
 
@@ -81,7 +80,6 @@ init session context =
             { username = ""
             , password = ""
             }
-      , tempRes = Ok Nothing
       }
     , Cmd.none
     )
@@ -175,8 +173,7 @@ type Msg baseMsg
     = SubmittedForm
     | EnteredUsername String
     | EnteredPassword String
-    | CompletedLogin (Result Http.Error Viewer)
-    | CompletedGraphqlLogin (Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred)))
+    | CompletedLogin (Result (Graphql.Http.Error (Api.Response Cred)) (Api.Response Cred))
     | UpdateSession (Task Session.InitError (Session baseMsg))
     | UpdatedSession (Result Session.InitError (Session baseMsg))
 
@@ -188,7 +185,7 @@ update msg model =
             case validate model.form of
                 Ok validForm ->
                     ( { model | problems = [] }
-                    , login model.context validForm CompletedGraphqlLogin
+                    , login model.context validForm CompletedLogin
                     )
 
                 Err problems ->
@@ -202,22 +199,14 @@ update msg model =
         EnteredPassword password ->
             updateForm (\form -> { form | password = password }) model
 
-        CompletedLogin (Err error) ->
-            ( model, Cmd.none )
-
-        CompletedGraphqlLogin (Ok (Just response)) ->
+        CompletedLogin (Ok response) ->
             ( model
             , Api.responseResult response
                 |> Maybe.map Api.storeCredWith
                 |> Maybe.withDefault Cmd.none
             )
 
-        CompletedGraphqlLogin (Ok Nothing) ->
-            ( model
-            , Cmd.none
-            )
-
-        CompletedGraphqlLogin (Err (Graphql.Http.GraphqlError _ errors)) ->
+        CompletedLogin (Err (Graphql.Http.GraphqlError _ errors)) ->
             let
                 serverErrors =
                     List.map (.message >> ServerError) errors
@@ -226,7 +215,7 @@ update msg model =
                 , Cmd.none
                 )
 
-        CompletedGraphqlLogin (Err e) ->
+        CompletedLogin (Err e) ->
             let
                 _ =
                     Debug.log "Unhandled e" e
@@ -243,11 +232,6 @@ update msg model =
         --            ( { model | problems = List.append model.problems serverErrors }
         --            , Cmd.none
         --            )
-        CompletedLogin (Ok viewer) ->
-            ( model
-            , Viewer.store viewer
-            )
-
         UpdateSession task ->
             ( model, Task.attempt UpdatedSession task )
 
@@ -353,7 +337,7 @@ trimFields form =
 login :
     Context msg
     -> TrimmedForm
-    -> (Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred)) -> Msg msg)
+    -> (Result (Graphql.Http.Error (Api.Response Cred)) (Api.Response Cred) -> Msg msg)
     -> Cmd (Msg msg)
 login context (Trimmed form) msg =
     Api.signIn (Context.baseUrl context) form

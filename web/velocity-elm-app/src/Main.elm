@@ -2,7 +2,6 @@ module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, 
 
 import Activity
 import Api
-import Api.Endpoint as Endpoint exposing (Endpoint)
 import Browser exposing (Document)
 import Browser.Events
 import Browser.Navigation as Nav

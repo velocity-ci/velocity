@@ -12,7 +12,6 @@ module Project
         , name
         , repository
         , slug
-        , sync
         , syncing
         , thumbnail
         , updateProject
@@ -21,27 +20,21 @@ module Project
         )
 
 import Api exposing (BaseUrl, Cred)
-import Api.Endpoint as Endpoint exposing (Endpoint)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Http
 import Icon
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)
-import Json.Encode as Encode
-import PaginatedList exposing (PaginatedList)
 import Palette
-import Project.Branch as Branch exposing (Branch)
+import Project.Branch exposing (Branch)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
-import Task exposing (Task)
 import Time exposing (Posix)
 import Graphql.Http
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
-import Graphql.Operation exposing (RootQuery)
 import Api.Compiled.Object.Project as Project
 import Api.Compiled.Object
 import Api.Compiled.Scalar
@@ -253,15 +246,6 @@ list cred baseUrl =
         |> Graphql.Http.queryRequest "http://localhost:4000/v2"
 
 
-sync : Cred -> BaseUrl -> Slug -> (Result Http.Error Project -> msg) -> Cmd msg
-sync cred baseUrl slug_ toMsg =
-    let
-        endpoint =
-            Endpoint.projectSync (Api.toEndpoint baseUrl) slug_
-    in
-        Api.post endpoint (Just cred) (Encode.object [] |> Http.jsonBody) toMsg decoder
-
-
 type CreateResponse
     = CreateSuccess Project
     | ValidationFailure (List Api.ValidationMessage)
@@ -291,14 +275,5 @@ createResponseSelectionSet =
 
 create : Cred -> BaseUrl -> Mutation.CreateProjectRequiredArguments -> Graphql.Http.Request CreateResponse
 create cred baseUrl values =
-    let
-        endpoint =
-            Api.toEndpoint baseUrl
-                |> Endpoint.unwrap
-    in
-        Mutation.createProject values createResponseSelectionSet
-            |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
-
-
-
--- CHANNEL --
+    Mutation.createProject values createResponseSelectionSet
+        |> Graphql.Http.mutationRequest "http://localhost:4000/v2"

@@ -908,7 +908,7 @@ updateAuthenticated cred msg model =
                     | session = Session.addProject project model.session
                     , projectFormStatus = NotOpen
                   }
-                , Project.sync cred (Context.baseUrl model.context) (Project.slug project) (always NoOp)
+                , Cmd.none
                 )
 
             ProjectCreated (Ok (Project.ValidationFailure messages)) ->
