@@ -70,7 +70,8 @@ function getClientEnvironment(publicUrl) {
                 NODE_ENV: process.env.NODE_ENV || 'development',
 
                 // The Velocity architect api domain
-                ARCHITECT_ADDRESS: process.env.ARCHITECT_ADDRESS || 'http://localhost:4000',
+                ARCHITECT_GRAPHQL_HTTP_ADDRESS: process.env.ARCHITECT_GRAPHQL_HTTP_ADDRESS || 'http://localhost:4000/v2',
+                ARCHITECT_CHANNEL_WS_ADDRESS: process.env.ARCHITECT_CHANNEL_WS_ADDRESS || 'ws://localhost:4000/socket',
                 // Useful for resolving the correct path to static assets in `public`.
                 // For example, <img src={process.env.PUBLIC_URL + '/img/logo.png'} />.
                 // This should only be used as an escape hatch. Normally you would put

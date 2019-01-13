@@ -13,6 +13,7 @@ port module Api
         , responseResult
         , validationErrorSelectionSet
         , responseWasSuccessful
+        , mutationRequest
         , ValidationMessage
         , validationMessages
         )
@@ -31,7 +32,8 @@ import Url exposing (Url)
 import Username exposing (Username)
 import Api.Compiled.Object
 import Api.Compiled.Mutation as Mutation
-import Graphql.Http
+import Graphql.Http exposing (Request)
+import Graphql.Operation exposing (RootMutation, RootQuery)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Api.Compiled.Object.SessionPayload as SessionPayload
 import Api.Compiled.Object.Session as Session
@@ -146,7 +148,15 @@ port storeCache : Maybe Value -> Cmd msg
 
 
 
--- SERIALIZATION
+-- REQUESTS
+
+
+mutationRequest : BaseUrl -> SelectionSet decodesTo RootMutation -> Request decodesTo
+mutationRequest (BaseUrl baseUrl) mutationSelectionSet =
+    Graphql.Http.mutationRequest baseUrl mutationSelectionSet
+
+
+
 -- APPLICATION
 
 

@@ -197,10 +197,10 @@ payloadSelectionSet =
 createUnverified : Cred -> BaseUrl -> Mutation.ForHostRequiredArguments -> Graphql.Http.Request MutationResponse
 createUnverified cred baseUrl values =
     Mutation.forHost values payloadSelectionSet
-        |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+        |> Api.mutationRequest baseUrl
 
 
 verify : Cred -> BaseUrl -> KnownHost -> Graphql.Http.Request MutationResponse
 verify cred baseUrl (KnownHost { id }) =
     Mutation.verify { id = idToString id } payloadSelectionSet
-        |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+        |> Api.mutationRequest baseUrl

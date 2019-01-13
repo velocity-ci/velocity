@@ -15,14 +15,14 @@ let notifiers = [];
 document.addEventListener("DOMContentLoaded", function() {
 
     const absintheSocket = AbsintheSocket.create(
-        new PhoenixSocket("ws://localhost:4000/socket")
+        new PhoenixSocket(process.env.ARCHITECT_CHANNEL_WS_ADDRESS)
     );
 
     const app = Elm.Main.init({
         node: document.getElementById('root'),
         flags: {
             viewer: localStorage.getItem(storageKey),
-            baseUrl: process.env.ARCHITECT_ADDRESS,
+            baseUrl: process.env.ARCHITECT_GRAPHQL_HTTP_ADDRESS,
             width: window.innerWidth,
             height: window.innerHeight
         }

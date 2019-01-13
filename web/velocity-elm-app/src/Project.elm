@@ -276,4 +276,4 @@ createResponseSelectionSet =
 create : Cred -> BaseUrl -> Mutation.CreateProjectRequiredArguments -> Graphql.Http.Request CreateResponse
 create cred baseUrl values =
     Mutation.createProject values createResponseSelectionSet
-        |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+        |> Api.mutationRequest baseUrl
