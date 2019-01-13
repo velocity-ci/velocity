@@ -10,7 +10,6 @@ import Icon
 import Palette
 
 
-
 -- Proxy
 
 
@@ -99,44 +98,42 @@ text config =
         dirty =
             config.dirty
     in
-    el
-        (List.concat
-            [ statusAttrs valid dirty
-            , [ height (px 40)
-              , width fill
-
-              --              , Border.width 1
-              --              , Border.rounded 4
-              , Font.size 16
-              , inFront (maybeIconLeft config.leftIcon)
-              , inFront (maybeIconRight config.rightIcon)
-
-              --              , mouseOver
-              --                    [ Border.shadow
-              --                        { offset = ( 0, 0 )
-              --                        , size = 1
-              --                        , blur = 0
-              --                        , color = Palette.neutral5
-              --                        }
-              --                    ]
-              ]
-            ]
-        )
-        (Input.text
-            [ Input.focusedOnLoad
-            , Border.width 1
-            , Background.color Palette.transparent
-            , paddingXY 30 0
-            , height fill
-            , width fill
-            , focused (statusDecorations valid dirty)
-            ]
-            { onChange = config.onChange
-            , placeholder = maybePlaceholder config.placeholder
-            , text = config.value
-            , label = config.label
-            }
-        )
+        el
+            (List.concat
+                [ statusAttrs valid dirty
+                , [ height (px 40)
+                  , width fill
+                    --              , Border.width 1
+                    --              , Border.rounded 4
+                  , Font.size 16
+                  , inFront (maybeIconLeft config.leftIcon)
+                  , inFront (maybeIconRight config.rightIcon)
+                    --              , mouseOver
+                    --                    [ Border.shadow
+                    --                        { offset = ( 0, 0 )
+                    --                        , size = 1
+                    --                        , blur = 0
+                    --                        , color = Palette.neutral5
+                    --                        }
+                    --                    ]
+                  ]
+                ]
+            )
+            (Input.text
+                [ Input.focusedOnLoad
+                , Border.width 1
+                , Background.color Palette.transparent
+                , paddingXY 30 0
+                , height fill
+                , width fill
+                , focused (statusDecorations valid dirty)
+                ]
+                { onChange = config.onChange
+                , placeholder = maybePlaceholder config.placeholder
+                , text = config.value
+                , label = config.label
+                }
+            )
 
 
 search : Config msg -> Element msg
@@ -148,44 +145,42 @@ search config =
         dirty =
             config.dirty
     in
-    el
-        (List.concat
-            [ statusAttrs valid dirty
-            , [ height shrink
-              , width fill
-
-              --              , Border.width 1
-              --              , Border.rounded 4
-              , Font.size 16
-              , inFront (maybeIconLeft config.leftIcon)
-              , inFront (maybeIconRight config.rightIcon)
-
-              --              , mouseOver
-              --                    [ Border.shadow
-              --                        { offset = ( 0, 0 )
-              --                        , size = 1
-              --                        , blur = 0
-              --                        , color = Palette.neutral5
-              --                        }
-              --                    ]
-              ]
-            ]
-        )
-        (Input.search
-            [ Input.focusedOnLoad
-            , Border.width 1
-            , Background.color Palette.transparent
-            , paddingXY 30 10
-            , height fill
-            , width fill
-            , focused (statusDecorations valid dirty)
-            ]
-            { onChange = config.onChange
-            , placeholder = maybePlaceholder config.placeholder
-            , text = config.value
-            , label = config.label
-            }
-        )
+        el
+            (List.concat
+                [ statusAttrs valid dirty
+                , [ height shrink
+                  , width fill
+                    --              , Border.width 1
+                    --              , Border.rounded 4
+                  , Font.size 16
+                  , inFront (maybeIconLeft config.leftIcon)
+                  , inFront (maybeIconRight config.rightIcon)
+                    --              , mouseOver
+                    --                    [ Border.shadow
+                    --                        { offset = ( 0, 0 )
+                    --                        , size = 1
+                    --                        , blur = 0
+                    --                        , color = Palette.neutral5
+                    --                        }
+                    --                    ]
+                  ]
+                ]
+            )
+            (Input.search
+                [ Input.focusedOnLoad
+                , Border.width 1
+                , Background.color Palette.transparent
+                , paddingXY 30 10
+                , height fill
+                , width fill
+                , focused (statusDecorations valid dirty)
+                ]
+                { onChange = config.onChange
+                , placeholder = maybePlaceholder config.placeholder
+                , text = config.value
+                , label = config.label
+                }
+            )
 
 
 multilineText : Config msg -> Element msg
@@ -197,46 +192,43 @@ multilineText config =
         dirty =
             config.dirty
     in
-    el
-        (List.concat
-            [ statusAttrs valid dirty
-            , [ height fill
-              , width fill
-
-              --              , Border.width 1
-              --              , Border.rounded 4
-              , Font.size 16
-              , inFront (maybeIconLeft config.leftIcon)
-              , inFront (maybeIconRight config.rightIcon)
-
-              --              , mouseOver
-              --                    [ Border.shadow
-              --                        { offset = ( 0, 0 )
-              --                        , size = 1
-              --                        , blur = 0
-              --                        , color = Palette.neutral5
-              --                        }
-              --                    ]
-              ]
-            ]
-        )
-        (Input.multiline
-            [ Input.focusedOnLoad
-            , Border.width 1
-            , Background.color Palette.transparent
-
-            --            , paddingXY 30 0
-            , height fill
-            , width fill
-            , focused (statusDecorations valid dirty)
-            ]
-            { onChange = config.onChange
-            , placeholder = maybePlaceholder config.placeholder
-            , text = config.value
-            , label = config.label
-            , spellcheck = False
-            }
-        )
+        el
+            (List.concat
+                [ statusAttrs valid dirty
+                , [ height fill
+                  , width fill
+                    --              , Border.width 1
+                    --              , Border.rounded 4
+                  , Font.size 16
+                  , inFront (maybeIconLeft config.leftIcon)
+                  , inFront (maybeIconRight config.rightIcon)
+                    --              , mouseOver
+                    --                    [ Border.shadow
+                    --                        { offset = ( 0, 0 )
+                    --                        , size = 1
+                    --                        , blur = 0
+                    --                        , color = Palette.neutral5
+                    --                        }
+                    --                    ]
+                  ]
+                ]
+            )
+            (Input.multiline
+                [ Input.focusedOnLoad
+                , Border.width 1
+                , Background.color Palette.transparent
+                  --            , paddingXY 30 0
+                , height fill
+                , width fill
+                , focused (statusDecorations valid dirty)
+                ]
+                { onChange = config.onChange
+                , placeholder = maybePlaceholder config.placeholder
+                , text = config.value
+                , label = config.label
+                , spellcheck = False
+                }
+            )
 
 
 maybePlaceholder : Maybe String -> Maybe (Input.Placeholder msg)
@@ -277,7 +269,7 @@ iconOpts =
         opts =
             Icon.defaultOptions
     in
-    { opts | size = 16 }
+        { opts | size = 16 }
 
 
 rightIcon : (Icon.Options -> Element msg) -> Element msg

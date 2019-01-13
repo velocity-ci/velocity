@@ -18,8 +18,7 @@ type alias Internals =
     , status : Status
     , number :
         Int
-
-    --    , streams : List BuildStream
+        --    , streams : List BuildStream
     , startedAt : Maybe Time.Posix
     , updatedAt : Maybe Time.Posix
     }
@@ -38,5 +37,6 @@ internalsDecoder =
         |> required "status" Status.decoder
         |> required "number" Decode.int
         --        |> required "streams" (Decode.list BuildStream.decoder)
-        |> required "startedAt" (Decode.maybe Iso8601.decoder)
+        |>
+            required "startedAt" (Decode.maybe Iso8601.decoder)
         |> required "updatedAt" (Decode.maybe Iso8601.decoder)

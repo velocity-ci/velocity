@@ -144,16 +144,15 @@ basicParameterDecoder =
                     choice =
                         Decode.map ChoiceParam choiceParameterDecoder
                 in
-                case otherOptions of
-                    Nothing ->
-                        string
-
-                    Just options ->
-                        if List.isEmpty options then
+                    case otherOptions of
+                        Nothing ->
                             string
 
-                        else
-                            choice
+                        Just options ->
+                            if List.isEmpty options then
+                                string
+                            else
+                                choice
             )
 
 

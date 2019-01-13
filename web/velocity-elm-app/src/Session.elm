@@ -24,23 +24,16 @@ port module Session
 import Activity
 import Api exposing (BaseUrl, Cred)
 import Api.Compiled.Query as Query
-import Api.Compiled.Subscription as Subscription
 import Api.Subscriptions as Subscriptions
 import Browser.Navigation as Nav
 import Context exposing (Context)
-import Graphql.Document
 import Graphql.Http
-import Graphql.Http.GraphqlError as GraphqlError
-import Graphql.Operation exposing (RootSubscription)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import Http
-import Json.Decode as Decode
 import KnownHost exposing (KnownHost)
 import Project exposing (Project)
-import Project.Branch as Branch exposing (Branch)
+import Project.Branch exposing (Branch)
 import Project.Id
 import Project.Slug
-import Set
 import Task exposing (Task)
 import Viewer exposing (Viewer)
 
@@ -70,6 +63,7 @@ type InitError
 
 type SubscriptionDataMsg
     = KnownHostAdded KnownHost
+    | ProjectAdded Project
 
 
 type SubscriptionStatusMsg
@@ -220,8 +214,9 @@ subscribe toMsg session =
         LoggedIn internals ->
             let
                 ( subs, cmd ) =
-                    internals.subscriptions
-                        |> Subscriptions.subscribeToKnownHostAdded (KnownHostAdded >> toMsg)
+                    ( internals.subscriptions, Cmd.none )
+                        |> subscribeToKnownHostAdded toMsg
+                        |> subscribeToProjectAdded toMsg
             in
                 ( LoggedIn { internals | subscriptions = subs }
                 , cmd
@@ -231,11 +226,42 @@ subscribe toMsg session =
             ( session, Cmd.none )
 
 
+subscribeToKnownHostAdded :
+    (SubscriptionDataMsg -> msg)
+    -> ( Subscriptions.State msg, Cmd msg )
+    -> ( Subscriptions.State msg, Cmd msg )
+subscribeToKnownHostAdded toMsg ( subs, cmd ) =
+    let
+        ( subscribed, subCmd ) =
+            Subscriptions.subscribeToKnownHostAdded (KnownHostAdded >> toMsg) subs
+    in
+        ( subscribed
+        , Cmd.batch [ cmd, subCmd ]
+        )
+
+
+subscribeToProjectAdded :
+    (SubscriptionDataMsg -> msg)
+    -> ( Subscriptions.State msg, Cmd msg )
+    -> ( Subscriptions.State msg, Cmd msg )
+subscribeToProjectAdded toMsg ( subs, cmd ) =
+    let
+        ( subscribed, subCmd ) =
+            Subscriptions.subscribeToProjectAdded (ProjectAdded >> toMsg) subs
+    in
+        ( subscribed
+        , Cmd.batch [ cmd, subCmd ]
+        )
+
+
 subscriptionDataUpdate : SubscriptionDataMsg -> Session msg -> Session msg
 subscriptionDataUpdate subMsg session =
     case subMsg of
         KnownHostAdded knownHost ->
             addKnownHost knownHost session
+
+        ProjectAdded project ->
+            addProject project session
 
 
 

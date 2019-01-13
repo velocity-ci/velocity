@@ -1,4 +1,12 @@
-port module Api.Subscriptions exposing (State, StatusMsg, init, subscribeToKnownHostAdded, subscriptions)
+port module Api.Subscriptions
+    exposing
+        ( State
+        , StatusMsg
+        , init
+        , subscribeToKnownHostAdded
+        , subscribeToProjectAdded
+        , subscriptions
+        )
 
 import Api.Compiled.Subscription
 import Dict exposing (Dict)
@@ -8,6 +16,7 @@ import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import KnownHost exposing (KnownHost)
+import Project exposing (Project)
 
 
 -- INWARDS PORTs
@@ -43,6 +52,7 @@ type Subscription msg
 
 type SubscriptionType msg
     = KnownHostSubscription (SubConfig KnownHost msg)
+    | ProjectSubscription (SubConfig Project msg)
 
 
 type alias SubConfig type_ msg =
@@ -97,6 +107,14 @@ newSubscriptionData toMsg { id, value } (State subs) =
                 Err _ ->
                     toMsg (State subs)
 
+        Just (Subscription _ (ProjectSubscription { selectionSet, handler })) ->
+            case Decode.decodeValue (Document.decoder selectionSet) value of
+                Ok data ->
+                    handler data
+
+                Err _ ->
+                    toMsg (State subs)
+
         Nothing ->
             toMsg (State subs)
 
@@ -108,6 +126,31 @@ updateStatus status (Subscription _ type_) =
 
 
 -- Subscribe to
+
+
+subscribeToProjectAdded : (Project -> msg) -> State msg -> ( State msg, Cmd msg )
+subscribeToProjectAdded toMsg state =
+    Api.Compiled.Subscription.projectAdded Project.selectionSet
+        |> projectSubscription toMsg state
+
+
+projectSubscription :
+    (Project -> msg)
+    -> State msg
+    -> SelectionSet Project RootSubscription
+    -> ( State msg, Cmd msg )
+projectSubscription toMsg (State internals) selectionSet =
+    let
+        sub =
+            Subscription NotConnected <|
+                ProjectSubscription { selectionSet = selectionSet, handler = toMsg }
+
+        nextId =
+            Dict.size internals
+    in
+        ( State (Dict.insert nextId sub internals)
+        , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+        )
 
 
 subscribeToKnownHostAdded : (KnownHost -> msg2) -> State msg2 -> ( State msg2, Cmd msg2 )

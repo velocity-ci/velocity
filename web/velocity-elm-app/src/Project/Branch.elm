@@ -66,5 +66,5 @@ list cred baseUrl projectSlug =
         endpoint =
             Endpoint.branches (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
     in
-    Decode.field "data" (Decode.list decoder)
-        |> Api.getTask endpoint (Just cred)
+        Decode.field "data" (Decode.list decoder)
+            |> Api.getTask endpoint (Just cred)

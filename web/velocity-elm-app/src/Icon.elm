@@ -1,39 +1,40 @@
-module Icon exposing
-    ( Options
-    , SizeUnit(..)
-    , alertCircle
-    , arrowDown
-    , arrowLeft
-    , arrowRight
-    , bell
-    , check
-    , checkCircle
-    , cloudLightning
-    , cloudRain
-    , code
-    , defaultOptions
-    , edit
-    , edit2
-    , externalLink
-    , fullSizeOptions
-    , gitPullRequest
-    , github
-    , gitlab
-    , info
-    , link
-    , link2
-    , logOut
-    , plus
-    , plusCircle
-    , search
-    , settings
-    , size
-    , sun
-    , uploadCloud
-    , x
-    , xCircle
-    , xSquare
-    )
+module Icon
+    exposing
+        ( Options
+        , SizeUnit(..)
+        , alertCircle
+        , arrowDown
+        , arrowLeft
+        , arrowRight
+        , bell
+        , check
+        , checkCircle
+        , cloudLightning
+        , cloudRain
+        , code
+        , defaultOptions
+        , edit
+        , edit2
+        , externalLink
+        , fullSizeOptions
+        , gitPullRequest
+        , github
+        , gitlab
+        , info
+        , link
+        , link2
+        , logOut
+        , plus
+        , plusCircle
+        , search
+        , settings
+        , size
+        , sun
+        , uploadCloud
+        , x
+        , xCircle
+        , xSquare
+        )
 
 import Element exposing (Element)
 import FeatherIcons

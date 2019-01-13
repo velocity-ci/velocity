@@ -104,9 +104,9 @@ defmodule ArchitectWeb.V1.KnownHostControllerTest do
       conn = delete(conn, V1Routes.known_host_path(conn, :delete, known_host))
       assert response(conn, 204)
 
-      assert_error_sent 404, fn ->
+      assert_error_sent(404, fn ->
         get(conn, V1Routes.known_host_path(conn, :show, known_host))
-      end
+      end)
     end
   end
 

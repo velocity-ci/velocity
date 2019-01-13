@@ -1,23 +1,16 @@
 port module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession, update, view)
 
-{-| The homepage. You can get here via either the / route.
--}
-
 import Api exposing (Cred)
 import Array exposing (Array)
-import Asset
 import Browser.Dom as Dom
 import Context exposing (Context)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Button as Button
-import Element.Events exposing (onClick)
 import Element.Font as Font
-import Element.Input
 import Form.Input as Input
 import GitUrl exposing (GitUrl)
-import Http
 import Icon
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -30,13 +23,6 @@ import Regex
 import Route
 import Session exposing (Session)
 import Task exposing (Task)
-import Url.Builder
-import Url.Parser.Query as Query
-import Username exposing (Username)
-import Validate exposing (ifBlank)
-import Api.Compiled.Mutation as Mutation
-import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import Api.Compiled.Object.KnownHostPayload as KnownHostPayload
 import Graphql.Http
 
 

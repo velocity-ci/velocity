@@ -74,5 +74,5 @@ list cred baseUrl projectSlug toMsg =
         endpoint =
             Endpoint.builds (Just { amount = -1, page = 1 }) (Api.toEndpoint baseUrl) projectSlug
     in
-    PaginatedList.decoder decoder
-        |> Api.get endpoint (Just cred) toMsg
+        PaginatedList.decoder decoder
+            |> Api.get endpoint (Just cred) toMsg

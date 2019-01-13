@@ -78,7 +78,7 @@ list cred baseUrl projectSlug branchName opts toMsg =
         endpoint =
             commitsEndpoint cred baseUrl projectSlug branchName opts
     in
-    Api.get endpoint (Just cred) toMsg (PaginatedList.decoder decoder)
+        Api.get endpoint (Just cred) toMsg (PaginatedList.decoder decoder)
 
 
 commitsEndpoint : Cred -> BaseUrl -> ProjectSlug.Slug -> BranchName.Name -> Endpoint.CollectionOptions -> Endpoint

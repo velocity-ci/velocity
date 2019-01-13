@@ -5,7 +5,7 @@ defmodule Architect.Pipelines.Guardian do
     module: Architect.Users.Guardian
 
   # If there is an authorization header, restrict it to an access token and validate it
-  plug Guardian.Plug.VerifyHeader, claims: %{"typ" => "access"}
+  plug(Guardian.Plug.VerifyHeader, claims: %{"typ" => "access"})
   # Load the user if either of the verifications worked
-  plug Guardian.Plug.LoadResource, allow_blank: false
+  plug(Guardian.Plug.LoadResource, allow_blank: false)
 end
