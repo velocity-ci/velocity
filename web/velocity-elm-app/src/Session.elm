@@ -1,23 +1,25 @@
-port module Session exposing
-    ( InitError
-    , Session
-    , SubscriptionDataMsg
-    , addKnownHost
-    , addProject
-    , branches
-    , changes
-    , cred
-    , fromViewer
-    , knownHosts
-    , log
-    , navKey
-    , projectWithId
-    , projectWithSlug
-    , projects
-    , subscribe
-    , subscriptionDataUpdate
-    , viewer
-    )
+port module Session
+    exposing
+        ( InitError
+        , Session
+        , SubscriptionDataMsg
+        , addKnownHost
+        , addProject
+        , branches
+        , changes
+        , cred
+        , fromViewer
+        , knownHosts
+        , log
+        , navKey
+        , projectWithId
+        , projectWithSlug
+        , projects
+        , subscribe
+        , subscriptionDataUpdate
+        , viewer
+        , subscriptions
+        )
 
 import Activity
 import Api exposing (BaseUrl, Cred)
@@ -41,7 +43,6 @@ import Project.Slug
 import Set
 import Task exposing (Task)
 import Viewer exposing (Viewer)
-
 
 
 -- TYPES
@@ -198,6 +199,21 @@ log session =
 -- SUBSCRIPTIONS
 
 
+subscriptions : (Session msg -> msg) -> Session msg -> Sub msg
+subscriptions toMsg session =
+    case session of
+        LoggedIn internals ->
+            Subscriptions.subscriptions
+                (\state ->
+                    LoggedIn { internals | subscriptions = state }
+                        |> toMsg
+                )
+                internals.subscriptions
+
+        Guest _ ->
+            Sub.none
+
+
 subscribe : (SubscriptionDataMsg -> msg) -> Session msg -> ( Session msg, Cmd msg )
 subscribe toMsg session =
     case session of
@@ -207,9 +223,9 @@ subscribe toMsg session =
                     internals.subscriptions
                         |> Subscriptions.subscribeToKnownHostAdded (KnownHostAdded >> toMsg)
             in
-            ( LoggedIn { internals | subscriptions = subs }
-            , cmd
-            )
+                ( LoggedIn { internals | subscriptions = subs }
+                , cmd
+                )
 
         Guest _ ->
             ( session, Cmd.none )
@@ -222,7 +238,6 @@ subscriptionDataUpdate subMsg session =
             addKnownHost knownHost session
 
 
-subscriptionStatus
 
 -- CHANGES
 
@@ -235,7 +250,7 @@ changes toMsg context session =
                 newSession =
                     fromViewer (navKey session) context maybeViewer
             in
-            toMsg newSession
+                toMsg newSession
         )
         Viewer.decoder
 
@@ -277,19 +292,19 @@ fromViewer key context maybeViewer =
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError
             in
-            Task.map
-                (\res ->
-                    LoggedIn
-                        { navKey = key
-                        , viewer = viewerVal
-                        , projects = res.projects
-                        , branches = Project.Id.empty
-                        , knownHosts = res.knownHosts
-                        , log = Activity.init
-                        , subscriptions = Subscriptions.init
-                        }
-                )
-                request
+                Task.map
+                    (\res ->
+                        LoggedIn
+                            { navKey = key
+                            , viewer = viewerVal
+                            , projects = res.projects
+                            , branches = Project.Id.empty
+                            , knownHosts = res.knownHosts
+                            , log = Activity.init
+                            , subscriptions = Subscriptions.init
+                            }
+                    )
+                    request
 
         Nothing ->
             Task.succeed (Guest key)

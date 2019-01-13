@@ -10,7 +10,6 @@ import Json.Encode as Encode exposing (Value)
 import KnownHost exposing (KnownHost)
 
 
-
 -- INWARDS PORTs
 
 
@@ -43,7 +42,13 @@ type Subscription msg
 
 
 type SubscriptionType msg
-    = KnownHostSubscription (SelectionSet KnownHost RootSubscription) (KnownHost -> msg)
+    = KnownHostSubscription (SubConfig KnownHost msg)
+
+
+type alias SubConfig type_ msg =
+    { selectionSet : SelectionSet type_ RootSubscription
+    , handler : type_ -> msg
+    }
 
 
 type Status
@@ -84,7 +89,7 @@ newSubscriptionStatus ( id, status ) (State subs) =
 newSubscriptionData : (State msg -> msg) -> { id : Int, value : Value } -> State msg -> msg
 newSubscriptionData toMsg { id, value } (State subs) =
     case Dict.get id subs of
-        Just (Subscription _ (KnownHostSubscription selectionSet handler)) ->
+        Just (Subscription _ (KnownHostSubscription { selectionSet, handler })) ->
             case Decode.decodeValue (Document.decoder selectionSet) value of
                 Ok data ->
                     handler data
@@ -120,11 +125,11 @@ knownHostSubscription toMsg (State internals) selectionSet =
     let
         sub =
             Subscription NotConnected <|
-                KnownHostSubscription selectionSet toMsg
+                KnownHostSubscription { selectionSet = selectionSet, handler = toMsg }
 
         nextId =
             Dict.size internals
     in
-    ( State (Dict.insert nextId sub internals)
-    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
-    )
+        ( State (Dict.insert nextId sub internals)
+        , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+        )
