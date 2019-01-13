@@ -3,6 +3,7 @@ defmodule Architect.KnownHostsTest do
 
   alias Architect.KnownHosts
 
+  doctest KnownHosts
   @tag :slow
 
   describe "known_hosts" do

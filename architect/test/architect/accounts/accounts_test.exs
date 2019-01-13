@@ -1,10 +1,11 @@
 defmodule Architect.AccountsTest do
   use Architect.DataCase
+  alias Architect.Accounts
+  alias Architect.Accounts.User
+
+  doctest Accounts
 
   describe "users" do
-    alias Architect.Accounts
-    alias Architect.Accounts.User
-
     @valid_attrs %{username: "some username", password: "testPassword"}
     @invalid_attrs %{username: nil}
 
