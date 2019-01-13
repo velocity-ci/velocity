@@ -1,7 +1,6 @@
-defmodule ArchitectWeb.V1.BuilderChannel do
+defmodule ArchitectWeb.BuilderChannel do
   use Phoenix.Channel
   alias Architect.Builders
-  alias Phoenix.Socket
 
   @event_prefix "vlcty_"
 
@@ -11,15 +10,7 @@ defmodule ArchitectWeb.V1.BuilderChannel do
     {:ok, socket}
   end
 
-  def handle_info(:after_join, socket) do
-    socket = assign(socket, :status, :ready)
-
-    {:ok, _} = Builders.track(socket)
-
-    {:noreply, socket}
-  end
-
-  def handle_in("new_msg", %{"uid" => uid, "body" => body}, socket) do
+  def handle_in("new_msg", %{"uid" => _uid, "body" => _body}, socket) do
     # broadcast!(socket, "new_msg", %{uid: uid, body: body})
 
     push(socket, "", %{})
@@ -39,6 +30,14 @@ defmodule ArchitectWeb.V1.BuilderChannel do
   """
   def handle_info(:job_synchronise, socket) do
     push(socket, "#{@event_prefix}do-synchronise", %{})
+
+    {:noreply, socket}
+  end
+
+  def handle_info(:after_join, socket) do
+    socket = assign(socket, :status, :ready)
+
+    {:ok, _} = Builders.track(socket)
 
     {:noreply, socket}
   end

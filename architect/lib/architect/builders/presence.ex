@@ -12,7 +12,7 @@ defmodule Architect.Builders.Presence do
   @doc """
   Track a user on the @presence_topic by their username
   """
-  def track(%Socket{assigns: %{id: id, status: status}, channel_pid: pid} = socket) do
+  def track(%Socket{assigns: %{id: id, status: status}, channel_pid: pid}) do
     Presence.track(pid, topic(), id, %{
       online_at: inspect(System.system_time(:second)),
       status: status,

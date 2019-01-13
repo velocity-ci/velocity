@@ -1,9 +1,11 @@
-defmodule ArchitectWeb.V1.BuilderSocket do
+defmodule ArchitectWeb.UserSocket do
   use Phoenix.Socket
-  alias Architect.Builders
+
+  use Absinthe.Phoenix.Socket,
+    schema: ArchitectWeb.Schema
 
   ## Channels
-  channel("builders:pool", ArchitectWeb.V1.BuilderChannel)
+  # channel "room:*", ArchitectWeb.RoomChannel
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After
@@ -17,11 +19,6 @@ defmodule ArchitectWeb.V1.BuilderSocket do
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
   def connect(_params, socket, _connect_info) do
-    socket =
-      socket
-      |> assign(:id, Integer.to_string(:rand.uniform(4_294_967_296), 32))
-      |> assign(:status, :connecting)
-
     {:ok, socket}
   end
 
@@ -35,5 +32,5 @@ defmodule ArchitectWeb.V1.BuilderSocket do
   #     ArchitectWeb.Endpoint.broadcast("user_socket:#{user.id}", "disconnect", %{})
   #
   # Returning `nil` makes this socket anonymous.
-  def id(socket), do: socket.assigns.id
+  def id(_socket), do: nil
 end

@@ -1,10 +1,5 @@
 defmodule ArchitectWeb.Mutations.AuthMutations do
   use Absinthe.Schema.Notation
-
-  import ArchitectWeb.Helpers.ValidationMessageHelpers
-
-  alias ArchitectWeb.Schema.Middleware
-  alias ArchitectWeb.Email
   alias Architect.Accounts
 
   object :auth_mutations do
@@ -13,7 +8,7 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
       arg(:username, non_null(:string))
       arg(:password, non_null(:string))
 
-      resolve(fn %{username: username, password: password}, %{context: context} ->
+      resolve(fn %{username: username, password: password}, %{context: _context} ->
         with {:ok, user} <- Accounts.authenticate(username, password),
              {:ok, token, _} <- Accounts.encode_and_sign(user) do
           {:ok, %{token: token, username: username}}
