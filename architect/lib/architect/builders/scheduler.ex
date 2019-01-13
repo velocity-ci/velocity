@@ -32,15 +32,16 @@ defmodule Architect.Builders.Scheduler do
   #
   # Server
   #
-
   def init(state) do
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
     PubSub.subscribe(Architect.PubSub, Presence.topic())
 
-    #    Process.send_after(__MODULE__, :poll_builds, @poll_timeout)
-
     {:ok, state}
+  end
+
+  def handle_call(:history, _from, state) do
+    {:reply, state.history, state}
   end
 
   def handle_info(:poll_builds, state) do
@@ -57,10 +58,6 @@ defmodule Architect.Builders.Scheduler do
 
     Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
     {:noreply, state}
-  end
-
-  def handle_call(:history, _from, state) do
-    {:reply, state.history, state}
   end
 
   def handle_info(

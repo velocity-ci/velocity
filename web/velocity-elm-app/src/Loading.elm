@@ -58,15 +58,15 @@ loaderSvg =
                     []
                 ]
     in
-    g [ fill "none", fillRule "evenodd" ]
-        [ g [ transform "translate(2 1)" ]
-            [ spinnerCircle { cx = "42.601", cy = "11.462", fillOpacity = "1", animateValues = "1;0;0;0;0;0;0;0" }
-            , spinnerCircle { cx = "49.063", cy = "27.063", fillOpacity = "0", animateValues = "0;1;0;0;0;0;0;0" }
-            , spinnerCircle { cx = "42.601", cy = "42.663", fillOpacity = "0", animateValues = "0;0;1;0;0;0;0;0" }
-            , spinnerCircle { cx = "27.000", cy = "49.125", fillOpacity = "0", animateValues = "0;0;0;1;0;0;0;0" }
-            , spinnerCircle { cx = "11.399", cy = "42.663", fillOpacity = "0", animateValues = "0;0;0;0;1;0;0;0" }
-            , spinnerCircle { cx = "4.9380", cy = "27.063", fillOpacity = "0", animateValues = "0;0;0;0;0;1;0;0" }
-            , spinnerCircle { cx = "11.399", cy = "11.462", fillOpacity = "0", animateValues = "0;0;0;0;0;0;1;0" }
-            , spinnerCircle { cx = "27.000", cy = "5.0000", fillOpacity = "0", animateValues = "0;0;0;0;0;0;0;1" }
+        g [ fill "none", fillRule "evenodd" ]
+            [ g [ transform "translate(2 1)" ]
+                [ spinnerCircle { cx = "42.601", cy = "11.462", fillOpacity = "1", animateValues = "1;0;0;0;0;0;0;0" }
+                , spinnerCircle { cx = "49.063", cy = "27.063", fillOpacity = "0", animateValues = "0;1;0;0;0;0;0;0" }
+                , spinnerCircle { cx = "42.601", cy = "42.663", fillOpacity = "0", animateValues = "0;0;1;0;0;0;0;0" }
+                , spinnerCircle { cx = "27.000", cy = "49.125", fillOpacity = "0", animateValues = "0;0;0;1;0;0;0;0" }
+                , spinnerCircle { cx = "11.399", cy = "42.663", fillOpacity = "0", animateValues = "0;0;0;0;1;0;0;0" }
+                , spinnerCircle { cx = "4.9380", cy = "27.063", fillOpacity = "0", animateValues = "0;0;0;0;0;1;0;0" }
+                , spinnerCircle { cx = "11.399", cy = "11.462", fillOpacity = "0", animateValues = "0;0;0;0;0;0;1;0" }
+                , spinnerCircle { cx = "27.000", cy = "5.0000", fillOpacity = "0", animateValues = "0;0;0;0;0;0;0;1" }
+                ]
             ]
-        ]

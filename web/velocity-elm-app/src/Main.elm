@@ -1,8 +1,7 @@
-port module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
+module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
 
 import Activity
 import Api
-import Api.Endpoint as Endpoint exposing (Endpoint)
 import Browser exposing (Document)
 import Browser.Events
 import Browser.Navigation as Nav
@@ -11,6 +10,8 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Graphql.Document
+import Graphql.Http
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Loading
 import Page exposing (Layout)
@@ -27,29 +28,6 @@ import Session exposing (Session)
 import Task exposing (Task)
 import Url exposing (Url)
 import Viewer exposing (Viewer)
-import Graphql.Document
-import Graphql.Http
-import Subscriptions
-
-
--- Input ports
-
-
-port gotSubscriptionData : (Value -> msg) -> Sub msg
-
-
-port socketStatusConnected : (() -> msg) -> Sub msg
-
-
-port socketStatusReconnecting : (() -> msg) -> Sub msg
-
-
-
--- Output ports
-
-
-port createSubscriptions : List ( String, String ) -> Cmd msg
-
 
 
 ---- MODEL ----
@@ -62,8 +40,8 @@ type Model
 
 
 type Body
-    = Redirect Session (Context Msg)
-    | NotFound Session (Context Msg)
+    = Redirect (Session Msg) (Context Msg)
+    | NotFound (Session Msg) (Context Msg)
     | Home (HomePage.Model Msg)
     | Login (LoginPage.Model Msg)
     | Project (ProjectPage.Model Msg)
@@ -74,14 +52,15 @@ init : Maybe Viewer -> Result Decode.Error (Context Msg) -> Url -> Nav.Key -> ( 
 init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
-            ( InitialHTTPRequests context navKey
-            , Cmd.batch
-                [ Session.fromViewer navKey context maybeViewer
-                    |> Task.map (\session -> changeRouteTo (Route.fromUrl url) (Redirect session context))
+            let
+                sessionTask =
+                    Session.fromViewer navKey context maybeViewer
+            in
+                ( InitialHTTPRequests context navKey
+                , sessionTask
+                    |> Task.map (\s -> changeRouteTo (Route.fromUrl url) (Redirect s context))
                     |> Task.attempt StartApplication
-                , Cmd.none
-                ]
-            )
+                )
 
         Err error ->
             ( InitError (Decode.errorToString error)
@@ -131,7 +110,7 @@ viewCurrentPage layout currentPage =
                 viewPage Page.Build GotBuildMsg (BuildPage.view page)
 
 
-activityLog : Session -> Activity.ViewConfiguration
+activityLog : Session Msg -> Activity.ViewConfiguration
 activityLog session =
     Maybe.map2 Activity.ViewConfiguration (Session.log session) (Just <| Session.projects session)
         |> Maybe.withDefault { activities = Activity.init, projects = [] }
@@ -180,25 +159,18 @@ type Msg
     | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
-    | GotHomeMsg HomePage.Msg
-    | GotLoginMsg LoginPage.Msg
+    | GotHomeMsg (HomePage.Msg Msg)
+    | GotLoginMsg (LoginPage.Msg Msg)
     | GotProjectMsg ProjectPage.Msg
     | GotBuildMsg BuildPage.Msg
-    | UpdateSession (Task Session.InitError Session)
-    | UpdatedSession (Result Session.InitError Session)
+    | UpdateSession (Task Session.InitError (Session Msg))
+    | UpdatedSession (Result Session.InitError (Session Msg))
     | WindowResized Int Int
     | UpdateLayout Page.Layout
-    | SetSession Session
-    | SubscriptionDataReceived Decode.Value
-    | SentMessage (Result (Graphql.Http.Error ()) ())
-    | NewSubscriptionStatus Session.SubscriptionStatus ()
+    | SessionSubscription Session.SubscriptionDataMsg
 
 
-
--- GraphQL Subscriptions
-
-
-toSession : Body -> Session
+toSession : Body -> Session Msg
 toSession page =
     case page of
         Redirect session _ ->
@@ -328,6 +300,11 @@ updatePage msg page =
                     , Nav.load href
                     )
 
+        ( SessionSubscription subMsg, _ ) ->
+            ( updateSession (Session.subscriptionDataUpdate subMsg (toSession page)) page
+            , Cmd.none
+            )
+
         ( ChangedUrl url, _ ) ->
             changeRouteTo (Route.fromUrl url) page
 
@@ -371,17 +348,6 @@ updatePage msg page =
         ( UpdatedSession (Err _), _ ) ->
             ( page, Cmd.none )
 
-        --
-        --        SubscriptionDataReceived newData ->
-        --            case Json.Decode.decodeValue (subscriptionDocument |> Graphql.Document.decoder) newData of
-        --                Ok chatMessage ->
-        --                    ( { page | data = chatMessage :: model.data }, Cmd.none )
-        --
-        --                Err error ->
-        --                    ( page, Cmd.none )
-        --
-        --        SentMessage _ ->
-        --            ( page, Cmd.none )
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
@@ -409,7 +375,7 @@ updateContext context page =
             Build { build | context = context }
 
 
-updateSession : Session -> Body -> Body
+updateSession : Session Msg -> Body -> Body
 updateSession session page =
     case page of
         Redirect _ context ->
@@ -441,21 +407,6 @@ update msg model =
                     , Cmd.none
                     )
 
-                SetSession session ->
-                    ( ApplicationStarted header (updateSession session page)
-                    , Cmd.none
-                    )
-
-                NewSubscriptionStatus status () ->
-                    let
-                        updatedSession =
-                            toSession page
-                                |> Session.updateSubscriptionStatus (Debug.log "New Status" status)
-                    in
-                        ( ApplicationStarted header (updateSession updatedSession page)
-                        , Cmd.none
-                        )
-
                 _ ->
                     updatePage msg page
                         |> Tuple.mapFirst (ApplicationStarted header)
@@ -463,15 +414,16 @@ update msg model =
         InitialHTTPRequests _ _ ->
             case msg of
                 StartApplication (Ok ( app, pageCmd )) ->
-                    ( ApplicationStarted Page.initLayout (app)
-                    , Cmd.batch
-                        [ pageCmd
-                        , createSubscriptions
-                            [ ( Graphql.Document.serializeSubscription Session.knownHostAddedSubscription, "KnownHost" )
-                            , ( Graphql.Document.serializeSubscription Session.knownHostVerifiedSubscription, "Project" )
+                    let
+                        ( subscribedSession, subscribeCmd ) =
+                            Session.subscribe SessionSubscription (toSession app)
+                    in
+                        ( ApplicationStarted Page.initLayout (updateSession subscribedSession app)
+                        , Cmd.batch
+                            [ pageCmd
+                            , subscribeCmd
                             ]
-                        ]
-                    )
+                        )
 
                 StartApplication (Err err) ->
                     ( InitError "HTTP error"
@@ -501,20 +453,16 @@ subscriptions model =
     Sub.batch
         [ layoutSubscriptions model
         , pageSubscriptions model
-        , socketSubscriptions model
+        , sessionSubscriptions model
         , Browser.Events.onResize WindowResized
         ]
 
 
-socketSubscriptions : Model -> Sub Msg
-socketSubscriptions model =
+sessionSubscriptions : Model -> Sub Msg
+sessionSubscriptions model =
     case model of
         ApplicationStarted _ page ->
-            Sub.batch
-                [ gotSubscriptionData SubscriptionDataReceived
-                , socketStatusConnected (NewSubscriptionStatus Session.Connected)
-                , socketStatusReconnecting (NewSubscriptionStatus Session.Reconnecting)
-                ]
+            Session.subscriptions (Task.succeed >> UpdateSession) (toSession page)
 
         InitialHTTPRequests context _ ->
             Sub.none

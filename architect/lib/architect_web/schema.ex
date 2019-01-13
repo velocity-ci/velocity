@@ -4,6 +4,8 @@ defmodule ArchitectWeb.Schema do
   import Kronky.Payload
   alias Ecto.Changeset
   alias Architect.KnownHosts.KnownHost
+  alias Architect.Projects.Project
+
   alias ArchitectWeb.Schema.Middleware.TranslateMessages
   alias ArchitectWeb.{Schema, Mutations, Queries}
 
@@ -52,7 +54,23 @@ defmodule ArchitectWeb.Schema do
         end
       )
 
-      config(fn args, _info ->
+      config(fn _args, _info ->
+        {:ok, topic: "all"}
+      end)
+    end
+
+    field :project_added, non_null(:project) do
+      trigger(:create_project,
+        topic: fn
+          %Project{id: id} ->
+            ["all", id]
+
+          %Changeset{} ->
+            []
+        end
+      )
+
+      config(fn _args, _info ->
         {:ok, topic: "all"}
       end)
     end
@@ -68,7 +86,7 @@ defmodule ArchitectWeb.Schema do
         end
       )
 
-      config(fn args, _info ->
+      config(fn _args, _info ->
         {:ok, topic: "all"}
       end)
     end

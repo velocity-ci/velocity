@@ -78,7 +78,7 @@ buttonIconOptions fromSize =
         toSize =
             sizeFloat fromSize
     in
-    { opts | size = toSize }
+        { opts | size = toSize }
 
 
 link : Route -> ButtonConfig msg -> Element msg
@@ -91,17 +91,17 @@ link route ({ size, widthLength, heightLength, scheme, centerLeftIcon, centerRig
                 , el [] (viewMaybeIcon size centerRightIcon)
                 ]
     in
-    Route.link
-        (List.concat
-            [ baseAttrs widthLength heightLength
-            , sizeAttrs size
-            , sideIcons buttonConfig
-            , schemeAttrs scheme
-            , activeAttrs buttonConfig
-            ]
-        )
-        content
-        route
+        Route.link
+            (List.concat
+                [ baseAttrs widthLength heightLength
+                , sizeAttrs size
+                , sideIcons buttonConfig
+                , schemeAttrs scheme
+                , activeAttrs buttonConfig
+                ]
+            )
+            content
+            route
 
 
 button : msg -> ButtonConfig msg -> Element msg
@@ -197,7 +197,6 @@ activeAttrs : ButtonConfig msg -> List (Attribute msg)
 activeAttrs { disabled, scheme } =
     if disabled then
         [ alpha 0.6 ]
-
     else
         [ mouseOver (schemeMouseOverDecorations scheme)
         , pointer

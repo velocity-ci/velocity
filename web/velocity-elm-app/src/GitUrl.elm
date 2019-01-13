@@ -7,7 +7,6 @@ import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, optional, r
 import Json.Encode as Encode
 
 
-
 -- MODEL --
 
 

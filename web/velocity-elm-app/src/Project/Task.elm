@@ -1,12 +1,9 @@
 module Project.Task exposing (Task, byBranch, decoder, name)
 
 import Api exposing (BaseUrl, Cred)
-import Api.Endpoint as Endpoint
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, optional, required)
-import Json.Encode as Encode
-import PaginatedList
 import Project.Branch.Name as BranchName
 import Project.Commit as Commit exposing (Commit)
 import Project.Slug as ProjectSlug
@@ -144,16 +141,15 @@ basicParameterDecoder =
                     choice =
                         Decode.map ChoiceParam choiceParameterDecoder
                 in
-                case otherOptions of
-                    Nothing ->
-                        string
-
-                    Just options ->
-                        if List.isEmpty options then
+                    case otherOptions of
+                        Nothing ->
                             string
 
-                        else
-                            choice
+                        Just options ->
+                            if List.isEmpty options then
+                                string
+                            else
+                                choice
             )
 
 

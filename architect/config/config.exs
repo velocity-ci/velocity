@@ -31,18 +31,6 @@ config :phoenix, :json_library, Jason
 
 config :architect, Architect.Users.Guardian, issuer: "VelocityCI"
 
-config :architect, :phoenix_swagger,
-  swagger_files: %{
-    "priv/static/v1.swagger.json" => [
-      router: ArchitectWeb.V1Router,
-      endpoint: ArchitectWeb.Endpoint
-    ],
-    "priv/static/v2.swagger.json" => [
-      router: ArchitectWeb.V2Router,
-      endpoint: ArchitectWeb.Endpoint
-    ]
-  }
-
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{Mix.env()}.exs"

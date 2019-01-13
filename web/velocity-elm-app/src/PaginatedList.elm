@@ -7,7 +7,6 @@ import Json.Decode.Pipeline as Pipeline exposing (optional, required)
 import Url.Builder exposing (QueryParameter)
 
 
-
 -- TYPES
 
 
@@ -64,9 +63,9 @@ params { page, resultsPerPage } =
         offset =
             (page - 1) * resultsPerPage
     in
-    [ Url.Builder.string "limit" (String.fromInt resultsPerPage)
-    , Url.Builder.string "offset" (String.fromInt offset)
-    ]
+        [ Url.Builder.string "limit" (String.fromInt resultsPerPage)
+        , Url.Builder.string "offset" (String.fromInt offset)
+        ]
 
 
 

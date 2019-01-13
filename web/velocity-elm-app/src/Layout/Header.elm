@@ -27,7 +27,6 @@ notificationsToggle { amount, toggled, toggleMsg } =
             , bottom =
                 if toggled then
                     3
-
                 else
                     0
             }
@@ -119,6 +118,5 @@ viewIf : Bool -> Element msg -> Element msg
 viewIf condition content =
     if condition then
         content
-
     else
         none

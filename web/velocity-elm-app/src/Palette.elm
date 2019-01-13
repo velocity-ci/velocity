@@ -3,7 +3,6 @@ module Palette exposing (black, danger1, danger2, danger3, danger4, danger5, dan
 import Element exposing (..)
 
 
-
 -- Utils
 
 

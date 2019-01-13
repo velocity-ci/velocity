@@ -15,20 +15,13 @@ module KnownHost
         )
 
 import Api exposing (BaseUrl, Cred)
-import Api.Endpoint as Endpoint exposing (Endpoint)
 import GitUrl exposing (GitUrl)
-import Http
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, required)
-import Json.Encode as Encode
-import Task exposing (Task)
 import Graphql.Http
-import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
-import Graphql.Operation exposing (RootQuery)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
 import Api.Compiled.Object.KnownHost as KnownHost
 import Api.Compiled.Object
 import Api.Compiled.Scalar as Scalar
-import Api.Compiled.Query as Query
 import Api.Compiled.Object.KnownHostPayload as KnownHostPayload
 import Api.Compiled.Mutation as Mutation
 
@@ -203,21 +196,11 @@ payloadSelectionSet =
 
 createUnverified : Cred -> BaseUrl -> Mutation.ForHostRequiredArguments -> Graphql.Http.Request MutationResponse
 createUnverified cred baseUrl values =
-    let
-        endpoint =
-            Api.toEndpoint baseUrl
-                |> Endpoint.unwrap
-    in
-        Mutation.forHost values payloadSelectionSet
-            |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+    Mutation.forHost values payloadSelectionSet
+        |> Api.mutationRequest baseUrl
 
 
 verify : Cred -> BaseUrl -> KnownHost -> Graphql.Http.Request MutationResponse
 verify cred baseUrl (KnownHost { id }) =
-    let
-        endpoint =
-            Api.toEndpoint baseUrl
-                |> Endpoint.unwrap
-    in
-        Mutation.verify { id = idToString id } payloadSelectionSet
-            |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+    Mutation.verify { id = idToString id } payloadSelectionSet
+        |> Api.mutationRequest baseUrl

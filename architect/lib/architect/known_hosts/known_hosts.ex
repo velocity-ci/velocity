@@ -38,20 +38,6 @@ defmodule Architect.KnownHosts do
   def get_known_host!(id), do: Repo.get!(KnownHost, id)
 
   @doc """
-  Gets a single known_host by id.
-
-  ## Examples
-
-      iex> get_known_host!(123)
-      %KnownHost{}
-
-      iex> get_known_host!(456)
-      nil
-
-  """
-  def get_known_host(id), do: Repo.get(KnownHost, id)
-
-  @doc """
   Gets a single known_host by host.
 
   Raises `Ecto.NoResultsError` if the Known host does not exist.

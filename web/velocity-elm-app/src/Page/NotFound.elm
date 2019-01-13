@@ -4,7 +4,6 @@ import Asset
 import Element exposing (..)
 
 
-
 -- VIEW
 
 

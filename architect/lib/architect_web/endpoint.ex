@@ -3,13 +3,13 @@ defmodule ArchitectWeb.Endpoint do
 
   use Absinthe.Phoenix.Endpoint
 
-  socket("/socket", ArchitectWeb.V2.UserSocket,
+  socket("/socket", ArchitectWeb.UserSocket,
     websocket: true,
     longpoll: false
   )
 
   # /socket/v1/builders/websocket
-  socket("/socket/v1/builders", ArchitectWeb.V1.BuilderSocket,
+  socket("/socket/v1/builders", ArchitectWeb.BuilderSocket,
     websocket: true,
     longpoll: false
   )

@@ -4,7 +4,6 @@ import Json.Decode as Decode exposing (Decoder, fail, succeed)
 import Time exposing (Month(..))
 
 
-
 -- FORMAT
 
 
@@ -60,4 +59,4 @@ format zone time =
         year =
             String.fromInt (Time.toYear zone time)
     in
-    month ++ " " ++ day ++ ", " ++ year
+        month ++ " " ++ day ++ ", " ++ year

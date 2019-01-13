@@ -2,6 +2,7 @@ port module Session
     exposing
         ( InitError
         , Session
+        , SubscriptionDataMsg
         , addKnownHost
         , addProject
         , branches
@@ -14,51 +15,45 @@ port module Session
         , projectWithId
         , projectWithSlug
         , projects
-        , updateSubscriptionStatus
+        , subscribe
+        , subscriptionDataUpdate
         , viewer
-        , SubscriptionStatus(..)
-        , knownHostAddedSubscription
-        , knownHostVerifiedSubscription
+        , subscriptions
         )
 
 import Activity
 import Api exposing (BaseUrl, Cred)
+import Api.Compiled.Query as Query
+import Api.Subscriptions as Subscriptions
 import Browser.Navigation as Nav
 import Context exposing (Context)
-import Http
-import Json.Decode as Decode
+import Graphql.Http
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import KnownHost exposing (KnownHost)
 import Project exposing (Project)
-import Project.Branch as Branch exposing (Branch)
+import Project.Branch exposing (Branch)
 import Project.Id
 import Project.Slug
 import Task exposing (Task)
 import Viewer exposing (Viewer)
-import Graphql.Http
-import Graphql.Http.GraphqlError as GraphqlError
-import Api.Compiled.Query as Query
-import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import Set
-import Api.Compiled.Subscription as Subscription
-import Graphql.Operation exposing (RootSubscription)
-import Graphql.Document
 
 
 -- TYPES
 
 
-type Session
-    = LoggedIn LoggedInInternals SubscriptionStatus
-    | Guest Nav.Key SubscriptionStatus
+type Session msg
+    = LoggedIn (LoggedInInternals msg)
+    | Guest Nav.Key
 
 
-type alias LoggedInInternals =
+type alias LoggedInInternals msg =
     { navKey : Nav.Key
     , viewer : Viewer
     , projects : List Project
     , branches : Project.Id.Dict (List Branch)
     , knownHosts : List KnownHost
     , log : Activity.Log
+    , subscriptions : Subscriptions.State msg
     }
 
 
@@ -66,94 +61,87 @@ type InitError
     = HttpError (Graphql.Http.Error StartupResponse)
 
 
-type SubscriptionStatus
-    = NotConnected
-    | Connected
-    | Reconnecting
+type SubscriptionDataMsg
+    = KnownHostAdded KnownHost
+    | ProjectAdded Project
 
 
-updateSubscriptionStatus : SubscriptionStatus -> Session -> Session
-updateSubscriptionStatus status session =
-    case session of
-        LoggedIn internals _ ->
-            LoggedIn internals status
-
-        Guest nav _ ->
-            Guest nav status
+type SubscriptionStatusMsg
+    = SubscriptionStatus Subscriptions.StatusMsg
 
 
 
 -- COLLECTIONS
 
 
-knownHosts : Session -> List KnownHost
+knownHosts : Session msg -> List KnownHost
 knownHosts session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             internals.knownHosts
 
-        Guest _ _ ->
+        Guest _ ->
             []
 
 
-addKnownHost : KnownHost -> Session -> Session
+addKnownHost : KnownHost -> Session msg -> Session msg
 addKnownHost knownHost session =
     case session of
-        LoggedIn internals status ->
-            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost } status
+        LoggedIn internals ->
+            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost }
 
-        Guest _ _ ->
+        Guest _ ->
             session
 
 
-projectWithId : Project.Id.Id -> Session -> Maybe Project
+projectWithId : Project.Id.Id -> Session msg -> Maybe Project
 projectWithId projectId session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             Project.findProjectById internals.projects projectId
 
-        Guest _ _ ->
+        Guest _ ->
             Nothing
 
 
-projectWithSlug : Project.Slug.Slug -> Session -> Maybe Project
+projectWithSlug : Project.Slug.Slug -> Session msg -> Maybe Project
 projectWithSlug projectSlug session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             Project.findProjectBySlug internals.projects projectSlug
 
-        Guest _ _ ->
+        Guest _ ->
             Nothing
 
 
-projects : Session -> List Project
+projects : Session msg -> List Project
 projects session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             internals.projects
 
-        Guest _ _ ->
+        Guest _ ->
             []
 
 
-branches : Project.Id.Id -> Session -> List Branch
+branches : Project.Id.Id -> Session msg -> List Branch
 branches projectId session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             Project.Id.get projectId internals.branches
                 |> Maybe.withDefault []
 
-        Guest _ _ ->
+        Guest _ ->
             []
 
 
-addProject : Project -> Session -> Session
+addProject : Project -> Session msg -> Session msg
 addProject p session =
     case session of
-        LoggedIn internals status ->
-            LoggedIn { internals | projects = Project.addProject p internals.projects } status
+        LoggedIn internals ->
+            LoggedIn { internals | projects = Project.addProject p internals.projects }
 
-        Guest _ _ ->
+        Guest _ ->
             session
 
 
@@ -161,63 +149,136 @@ addProject p session =
 -- INFO
 
 
-viewer : Session -> Maybe Viewer
+viewer : Session msg -> Maybe Viewer
 viewer session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             Just internals.viewer
 
-        Guest _ _ ->
+        Guest _ ->
             Nothing
 
 
-cred : Session -> Maybe Cred
+cred : Session msg -> Maybe Cred
 cred session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             Just (Viewer.cred internals.viewer)
 
-        Guest _ _ ->
+        Guest _ ->
             Nothing
 
 
-navKey : Session -> Nav.Key
+navKey : Session msg -> Nav.Key
 navKey session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             internals.navKey
 
-        Guest key _ ->
+        Guest key ->
             key
 
 
-log : Session -> Maybe Activity.Log
+log : Session msg -> Maybe Activity.Log
 log session =
     case session of
-        LoggedIn internals _ ->
+        LoggedIn internals ->
             Just internals.log
 
-        Guest _ _ ->
+        Guest _ ->
             Nothing
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : (Session msg -> msg) -> Session msg -> Sub msg
+subscriptions toMsg session =
+    case session of
+        LoggedIn internals ->
+            Subscriptions.subscriptions
+                (\state ->
+                    LoggedIn { internals | subscriptions = state }
+                        |> toMsg
+                )
+                internals.subscriptions
+
+        Guest _ ->
+            Sub.none
+
+
+subscribe : (SubscriptionDataMsg -> msg) -> Session msg -> ( Session msg, Cmd msg )
+subscribe toMsg session =
+    case session of
+        LoggedIn internals ->
+            let
+                ( subs, cmd ) =
+                    ( internals.subscriptions, Cmd.none )
+                        |> subscribeToKnownHostAdded toMsg
+                        |> subscribeToProjectAdded toMsg
+            in
+                ( LoggedIn { internals | subscriptions = subs }
+                , cmd
+                )
+
+        Guest _ ->
+            ( session, Cmd.none )
+
+
+subscribeToKnownHostAdded :
+    (SubscriptionDataMsg -> msg)
+    -> ( Subscriptions.State msg, Cmd msg )
+    -> ( Subscriptions.State msg, Cmd msg )
+subscribeToKnownHostAdded toMsg ( subs, cmd ) =
+    let
+        ( subscribed, subCmd ) =
+            Subscriptions.subscribeToKnownHostAdded (KnownHostAdded >> toMsg) subs
+    in
+        ( subscribed
+        , Cmd.batch [ cmd, subCmd ]
+        )
+
+
+subscribeToProjectAdded :
+    (SubscriptionDataMsg -> msg)
+    -> ( Subscriptions.State msg, Cmd msg )
+    -> ( Subscriptions.State msg, Cmd msg )
+subscribeToProjectAdded toMsg ( subs, cmd ) =
+    let
+        ( subscribed, subCmd ) =
+            Subscriptions.subscribeToProjectAdded (ProjectAdded >> toMsg) subs
+    in
+        ( subscribed
+        , Cmd.batch [ cmd, subCmd ]
+        )
+
+
+subscriptionDataUpdate : SubscriptionDataMsg -> Session msg -> Session msg
+subscriptionDataUpdate subMsg session =
+    case subMsg of
+        KnownHostAdded knownHost ->
+            addKnownHost knownHost session
+
+        ProjectAdded project ->
+            addProject project session
 
 
 
 -- CHANGES
 
 
-knownHostAddedSubscription : SelectionSet KnownHost RootSubscription
-knownHostAddedSubscription =
-    Subscription.knownHostAdded KnownHost.selectionSet
-
-
-knownHostVerifiedSubscription : SelectionSet KnownHost RootSubscription
-knownHostVerifiedSubscription =
-    Subscription.knownHostVerified KnownHost.selectionSet
-
-
-changes : (Task InitError Session -> msg) -> Context msg2 -> Session -> Sub msg
+changes : (Task InitError (Session msg) -> msg2) -> Context msg -> Session msg -> Sub msg2
 changes toMsg context session =
-    Api.viewerChanges (fromViewer (navKey session) context >> toMsg) Viewer.decoder
+    Api.viewerChanges
+        (\maybeViewer ->
+            let
+                newSession =
+                    fromViewer (navKey session) context maybeViewer
+            in
+                toMsg newSession
+        )
+        Viewer.decoder
 
 
 type alias StartupResponse =
@@ -226,7 +287,7 @@ type alias StartupResponse =
     }
 
 
-fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError Session
+fromViewer : Nav.Key -> Context msg2 -> Maybe Viewer -> Task InitError (Session msg)
 fromViewer key context maybeViewer =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
@@ -266,10 +327,10 @@ fromViewer key context maybeViewer =
                             , branches = Project.Id.empty
                             , knownHosts = res.knownHosts
                             , log = Activity.init
+                            , subscriptions = Subscriptions.init
                             }
-                            NotConnected
                     )
                     request
 
         Nothing ->
-            Task.succeed (Guest key NotConnected)
+            Task.succeed (Guest key)

@@ -29,11 +29,10 @@ import Graphql.Http.GraphqlError exposing (GraphqlError)
 
 
 type alias Model msg =
-    { session : Session
+    { session : Session msg
     , context : Context msg
     , problems : List Problem
     , form : Form
-    , tempRes : Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred))
     }
 
 
@@ -72,7 +71,7 @@ type alias Form =
     }
 
 
-init : Session -> Context msg -> ( Model msg, Cmd Msg )
+init : Session msg -> Context msg -> ( Model msg, Cmd (Msg msg) )
 init session context =
     ( { session = session
       , context = context
@@ -81,7 +80,6 @@ init session context =
             { username = ""
             , password = ""
             }
-      , tempRes = Ok Nothing
       }
     , Cmd.none
     )
@@ -91,7 +89,7 @@ init session context =
 -- VIEW
 
 
-view : Model msg -> { title : String, content : Element Msg }
+view : Model msg -> { title : String, content : Element (Msg msg) }
 view model =
     { title = "Login"
     , content =
@@ -116,7 +114,7 @@ viewProblem problem =
         text errorMessage
 
 
-viewForm : Form -> Element Msg
+viewForm : Form -> Element (Msg msg)
 viewForm form =
     Element.column
         [ width (fill |> maximum 400)
@@ -171,24 +169,23 @@ viewForm form =
 -- UPDATE
 
 
-type Msg
+type Msg baseMsg
     = SubmittedForm
     | EnteredUsername String
     | EnteredPassword String
-    | CompletedLogin (Result Http.Error Viewer)
-    | CompletedGraphqlLogin (Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred)))
-    | UpdateSession (Task Session.InitError Session)
-    | UpdatedSession (Result Session.InitError Session)
+    | CompletedLogin (Result (Graphql.Http.Error (Api.Response Cred)) (Api.Response Cred))
+    | UpdateSession (Task Session.InitError (Session baseMsg))
+    | UpdatedSession (Result Session.InitError (Session baseMsg))
 
 
-update : Msg -> Model msg -> ( Model msg, Cmd Msg )
+update : Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
 update msg model =
     case msg of
         SubmittedForm ->
             case validate model.form of
                 Ok validForm ->
                     ( { model | problems = [] }
-                    , login model.context validForm CompletedGraphqlLogin
+                    , login model.context validForm CompletedLogin
                     )
 
                 Err problems ->
@@ -202,22 +199,14 @@ update msg model =
         EnteredPassword password ->
             updateForm (\form -> { form | password = password }) model
 
-        CompletedLogin (Err error) ->
-            ( model, Cmd.none )
-
-        CompletedGraphqlLogin (Ok (Just response)) ->
+        CompletedLogin (Ok response) ->
             ( model
             , Api.responseResult response
                 |> Maybe.map Api.storeCredWith
                 |> Maybe.withDefault Cmd.none
             )
 
-        CompletedGraphqlLogin (Ok Nothing) ->
-            ( model
-            , Cmd.none
-            )
-
-        CompletedGraphqlLogin (Err (Graphql.Http.GraphqlError _ errors)) ->
+        CompletedLogin (Err (Graphql.Http.GraphqlError _ errors)) ->
             let
                 serverErrors =
                     List.map (.message >> ServerError) errors
@@ -226,7 +215,7 @@ update msg model =
                 , Cmd.none
                 )
 
-        CompletedGraphqlLogin (Err e) ->
+        CompletedLogin (Err e) ->
             let
                 _ =
                     Debug.log "Unhandled e" e
@@ -243,11 +232,6 @@ update msg model =
         --            ( { model | problems = List.append model.problems serverErrors }
         --            , Cmd.none
         --            )
-        CompletedLogin (Ok viewer) ->
-            ( model
-            , Viewer.store viewer
-            )
-
         UpdateSession task ->
             ( model, Task.attempt UpdatedSession task )
 
@@ -263,7 +247,7 @@ update msg model =
 {-| Helper function for `update`. Updates the form and returns Cmd.none.
 Useful for recording form fields!
 -}
-updateForm : (Form -> Form) -> Model msg -> ( Model msg, Cmd Msg )
+updateForm : (Form -> Form) -> Model msg -> ( Model msg, Cmd (Msg msg) )
 updateForm transform model =
     ( { model | form = transform model.form }, Cmd.none )
 
@@ -272,7 +256,7 @@ updateForm transform model =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model msg -> Sub Msg
+subscriptions : Model msg -> Sub (Msg msg)
 subscriptions model =
     Session.changes UpdateSession model.context model.session
 
@@ -353,8 +337,8 @@ trimFields form =
 login :
     Context msg
     -> TrimmedForm
-    -> (Result (Graphql.Http.Error (Maybe (Api.Response Cred))) (Maybe (Api.Response Cred)) -> Msg)
-    -> Cmd Msg
+    -> (Result (Graphql.Http.Error (Api.Response Cred)) (Api.Response Cred) -> Msg msg)
+    -> Cmd (Msg msg)
 login context (Trimmed form) msg =
     Api.signIn (Context.baseUrl context) form
         |> Graphql.Http.toTask
@@ -365,7 +349,7 @@ login context (Trimmed form) msg =
 -- EXPORT
 
 
-toSession : Model msg -> Session
+toSession : Model msg -> Session msg
 toSession model =
     model.session
 

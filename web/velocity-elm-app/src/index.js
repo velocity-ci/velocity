@@ -15,63 +15,54 @@ let notifiers = [];
 document.addEventListener("DOMContentLoaded", function() {
 
     const absintheSocket = AbsintheSocket.create(
-        new PhoenixSocket("ws://localhost:4000/socket")
+        new PhoenixSocket(process.env.ARCHITECT_CHANNEL_WS_ADDRESS)
     );
 
     const app = Elm.Main.init({
         node: document.getElementById('root'),
         flags: {
             viewer: localStorage.getItem(storageKey),
-            baseUrl: process.env.ARCHITECT_ADDRESS,
+            baseUrl: process.env.ARCHITECT_GRAPHQL_HTTP_ADDRESS,
             width: window.innerWidth,
             height: window.innerHeight
         }
     });
 
-    app.ports.createSubscriptions.subscribe(function(subscriptions) {
+    console.log(Object.keys(app.ports));
 
-        console.log("createSubscriptions called with", subscriptions);
-        // Remove existing notifiers
-        notifiers.map(notifier => AbsintheSocket.cancel(absintheSocket, notifier));
+    app.ports.subscribeTo.subscribe(function ([id, operation]) {
+        console.log("subscribeTo called with", id, operation);
 
-        // Create new notifiers for each subscription sent
-        notifiers = subscriptions.map(([operation, callbackType]) => {
-
-            const notifier = AbsintheSocket.send(absintheSocket, {
-                operation,
-                variables: {}
-            });
-
-            function onStart(data) {
-                console.log(">>> Start", JSON.stringify(data));
-                app.ports.socketStatusConnected.send(null);
-            }
-
-            function onAbort(data) {
-                console.log(">>> Abort", JSON.stringify(data));
-            }
-
-
-            function onError(data) {
-                console.log(">>> Error", JSON.stringify(data));
-                app.ports.socketStatusReconnecting.send(null);
-            }
-
-            function onResult(res) {
-                console.log(">>> Result", JSON.stringify(res));
-                app.ports.gotSubscriptionData.send(res);
-            }
-
-            AbsintheSocket.observe(absintheSocket, notifier, {
-                onAbort,
-                onError,
-                onStart,
-                onResult
-            })
-
+        const notifier = AbsintheSocket.send(absintheSocket, {
+            operation,
+            variables: {}
         });
 
+        function onStart(data) {
+            console.log(">>> Start", JSON.stringify(data));
+            app.ports.socketStatusConnected.send(id);
+        }
 
+        function onAbort(data) {
+            console.log(">>> Abort", JSON.stringify(data));
+        }
+
+        function onError(value) {
+            console.log(">>> Error", JSON.stringify(value));
+            app.ports.socketStatusReconnecting.send(id);
+        }
+
+        function onResult(value) {
+            console.log(">>> Result", JSON.stringify(value));
+            app.ports.gotSubscriptionData.send({ id, value });
+        }
+
+        AbsintheSocket.observe(absintheSocket, notifier, {
+            onAbort,
+            onError,
+            onStart,
+            onResult
+        })
 
     });
 

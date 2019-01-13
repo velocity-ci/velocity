@@ -12,7 +12,6 @@ import Project.Id as Project
 import Set exposing (Set)
 
 
-
 -- TYPES
 
 
@@ -63,8 +62,8 @@ projectAdded id (Log internals) =
                 Project <|
                     ProjectAdded id
     in
-    Log <|
-        { internals | activities = activityItem :: internals.activities }
+        Log <|
+            { internals | activities = activityItem :: internals.activities }
 
 
 
@@ -77,7 +76,6 @@ unreadAmount (Log { activities, seenActivities }) =
         (\(ActivityItem id _) acc ->
             if not <| Set.member id seenActivities then
                 acc + 1
-
             else
                 acc
         )
@@ -101,14 +99,14 @@ view config =
         (Log { activities }) =
             config.activities
     in
-    column
-        [ Background.color Palette.primary2
-        , width fill
-        , height fill
-        , paddingEach { top = 80, bottom = 90, left = 20, right = 20 }
-        , spacing 10
-        ]
-        (viewNotificationsPanelHeading :: viewNotifications config)
+        column
+            [ Background.color Palette.primary2
+            , width fill
+            , height fill
+            , paddingEach { top = 80, bottom = 90, left = 20, right = 20 }
+            , spacing 10
+            ]
+            (viewNotificationsPanelHeading :: viewNotifications config)
 
 
 viewNotificationsPanelHeading : Element msg
@@ -128,7 +126,7 @@ viewNotifications config =
         (Log { activities }) =
             config.activities
     in
-    List.map (viewNotification config.projects) activities
+        List.map (viewNotification config.projects) activities
 
 
 viewNotification : List Project -> ActivityItem -> Element msg
@@ -144,36 +142,36 @@ viewProjectNotification projects category =
         maybeProject =
             projectFromCategory projects category
     in
-    case maybeProject of
-        Just project ->
-            row
-                [ Border.width 1
-                , Border.color Palette.primary4
-                , Font.color Palette.neutral4
-                , Font.light
-                , Border.dashed
-                , Border.rounded 5
-                , padding 10
-                , width fill
-                , mouseOver [ Background.color Palette.primary3, Font.color Palette.neutral5 ]
-                ]
-                [ el [ width (px 40), height (px 40) ] <| Project.thumbnail project
-                , el [ width fill ]
-                    (paragraph
-                        [ Font.size 15
-                        , alignLeft
-                        , paddingXY 10 0
-                        ]
-                        [ el [ alignLeft, Font.color Palette.neutral5 ] (text "Project ")
-                        , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text <| Project.name project)
-                        , el [ alignLeft, Font.color Palette.neutral5 ] (text " created ")
-                        , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text "8 hours ago")
-                        ]
-                    )
-                ]
+        case maybeProject of
+            Just project ->
+                row
+                    [ Border.width 1
+                    , Border.color Palette.primary4
+                    , Font.color Palette.neutral4
+                    , Font.light
+                    , Border.dashed
+                    , Border.rounded 5
+                    , padding 10
+                    , width fill
+                    , mouseOver [ Background.color Palette.primary3, Font.color Palette.neutral5 ]
+                    ]
+                    [ el [ width (px 40), height (px 40) ] <| Project.thumbnail project
+                    , el [ width fill ]
+                        (paragraph
+                            [ Font.size 15
+                            , alignLeft
+                            , paddingXY 10 0
+                            ]
+                            [ el [ alignLeft, Font.color Palette.neutral5 ] (text "Project ")
+                            , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text <| Project.name project)
+                            , el [ alignLeft, Font.color Palette.neutral5 ] (text " created ")
+                            , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text "8 hours ago")
+                            ]
+                        )
+                    ]
 
-        Nothing ->
-            none
+            Nothing ->
+                none
 
 
 projectFromCategory : List Project -> CategoryProject -> Maybe Project
