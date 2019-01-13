@@ -1,5 +1,5 @@
 defmodule Architect.Secretaries do
-  alias Architect.Secretaries.Presence
+  alias Architect.Secretaries.{Presence, Secretary}
   alias Phoenix.{Socket, PubSub}
 
   use Supervisor
@@ -19,11 +19,14 @@ defmodule Architect.Secretaries do
 
   def history(), do: Scheduler.history()
 
+  def get_commits(), do: Secretary.get_commits()
+
   ### Server
 
   def init(:ok) do
     children = [
-      Presence
+      Presence,
+      Secretary,
     ]
 
     state = Supervisor.init(children, strategy: :one_for_one)
@@ -32,4 +35,5 @@ defmodule Architect.Secretaries do
 
     state
   end
+
 end

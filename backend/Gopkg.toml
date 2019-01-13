@@ -76,3 +76,7 @@ ignored = ["github.com/velocity-ci/velocity"]
 [[constraint]]
   version = "v1.8.0"
   name = "go.uber.org/zap"
+
+[[constraint]]
+  version = "^v1.0.4"
+  name = "github.com/go-cmd/cmd"

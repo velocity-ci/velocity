@@ -31,14 +31,6 @@ func (s HostKeyError) Error() string {
 	return string(s)
 }
 
-func GetGitVersion() string {
-	shCmd := []string{"git", "--version"}
-	writer := &BlankWriter{}
-	s := runCmd(writer, shCmd, []string{})
-
-	return strings.TrimSpace(s.Stdout[0])[12:]
-}
-
 type GitRepository struct {
 	Address    string        `json:"address"`
 	PrivateKey string        `json:"privateKey"`

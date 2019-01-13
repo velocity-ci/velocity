@@ -2,6 +2,7 @@ package secretary
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 
+	"github.com/velocity-ci/velocity/backend/pkg/git"
 	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
@@ -34,7 +36,7 @@ func (b *Secretary) Stop() error {
 	return nil
 }
 func (b *Secretary) Start() {
-	velocity.GetLogger().Info("git version", zap.String("version", velocity.GetGitVersion()))
+	velocity.GetLogger().Info("git version", zap.String("version", git.GetVersion()))
 	b.baseArchitectAddress = getArchitectAddress()
 	b.secret = getSecretarySecret()
 	b.http = &http.Client{
@@ -55,8 +57,8 @@ func (b *Secretary) connect() {
 	wsAddress := strings.Replace(b.baseArchitectAddress, "http", "ws", 1)
 	wsAddress = fmt.Sprintf("%s/socket/v1/secretaries/websocket", wsAddress)
 
-	jobs := map[string]func(payload interface{}) (interface{}, error){
-		"vlcty_health-check": func(interface{}) (interface{}, error) {
+	jobs := map[string]func(payload json.RawMessage) (interface{}, error){
+		"vlcty_health-check": func(json.RawMessage) (interface{}, error) {
 			return "OK", nil
 		},
 		"vlcty_repo-get-commits": getCommitsEvent,
@@ -65,7 +67,7 @@ func (b *Secretary) connect() {
 	eventHandlers := map[string]func(*phoenix.PhoenixMessage) error{}
 	for k, f := range jobs {
 		eventHandlers[k] = func(m *phoenix.PhoenixMessage) error {
-			res, err := f(m.Payload)
+			res, err := f(m.Payload.(json.RawMessage))
 
 			if err != nil {
 				b.ws.Socket.Send(&phoenix.PhoenixMessage{
