@@ -1,6 +1,5 @@
 defmodule Architect.Builders do
   alias Architect.Builders.{Scheduler, Presence}
-  alias Phoenix.{Socket, PubSub}
 
   use Supervisor
 

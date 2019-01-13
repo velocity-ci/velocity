@@ -54,7 +54,7 @@ defmodule ArchitectWeb.Schema do
         end
       )
 
-      config(fn args, _info ->
+      config(fn _args, _info ->
         {:ok, topic: "all"}
       end)
     end
@@ -70,7 +70,7 @@ defmodule ArchitectWeb.Schema do
         end
       )
 
-      config(fn args, _info ->
+      config(fn _args, _info ->
         {:ok, topic: "all"}
       end)
     end
@@ -86,7 +86,7 @@ defmodule ArchitectWeb.Schema do
         end
       )
 
-      config(fn args, _info ->
+      config(fn _args, _info ->
         {:ok, topic: "all"}
       end)
     end

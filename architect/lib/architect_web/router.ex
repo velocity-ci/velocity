@@ -1,8 +1,20 @@
 defmodule ArchitectWeb.Router do
   use ArchitectWeb, :router
 
+  pipeline :api do
+    plug(:accepts, ["json"])
+
+    plug(Plug.Parsers,
+      parsers: [:urlencoded, :multipart, :json, Absinthe.Plug.Parser],
+      pass: ["*/*"],
+      json_decoder: Poison
+    )
+  end
+
   scope "/" do
-    forward("/v1", ArchitectWeb.V1Router)
-    forward("/v2", ArchitectWeb.V2Router)
+    pipe_through(:api)
+
+    forward("/graphiql", Absinthe.Plug.GraphiQL, schema: ArchitectWeb.Schema)
+    forward("/", Absinthe.Plug, schema: ArchitectWeb.Schema)
   end
 end

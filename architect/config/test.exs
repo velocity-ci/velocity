@@ -13,7 +13,7 @@ config :logger, level: :warn
 config :architect, Architect.Repo,
   username: System.get_env("DB_USERNAME") || "velocity",
   password: System.get_env("DB_PASSWORD") || "velocity",
-  database: System.get_env("DB_DBNAME") || "velocity",
+  database: System.get_env("DB_DBNAME") || "velocity_test",
   hostname: System.get_env("DB_HOSTNAME") || "localhost",
   port: String.to_integer(System.get_env("DB_PORT") || "5432"),
   pool: Ecto.Adapters.SQL.Sandbox

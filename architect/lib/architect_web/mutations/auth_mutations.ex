@@ -23,15 +23,5 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
         end
       end)
     end
-
-    #    @desc "Revoke token"
-    #    field :revoke_token, :boolean do
-    #      middleware(Middleware.Authorize)
-    #
-    #      resolve(fn _, %{context: context} ->
-    #        context[:current_user] |> Accounts.revoke_access_token()
-    #        {:ok, true}
-    #      end)
-    #    end
   end
 end
