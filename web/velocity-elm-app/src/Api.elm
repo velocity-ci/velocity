@@ -10,6 +10,7 @@ port module Api
         , viewerChanges
         , Response
         , responseMessages
+        , queryRequest
         , responseResult
         , validationErrorSelectionSet
         , responseWasSuccessful
@@ -154,6 +155,11 @@ port storeCache : Maybe Value -> Cmd msg
 mutationRequest : BaseUrl -> SelectionSet decodesTo RootMutation -> Request decodesTo
 mutationRequest (BaseUrl baseUrl) mutationSelectionSet =
     Graphql.Http.mutationRequest baseUrl mutationSelectionSet
+
+
+queryRequest : BaseUrl -> SelectionSet decodesTo RootQuery -> Request decodesTo
+queryRequest (BaseUrl baseUrl) querySelectionSet =
+    Graphql.Http.queryRequest baseUrl querySelectionSet
 
 
 

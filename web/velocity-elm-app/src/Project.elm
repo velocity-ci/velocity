@@ -215,7 +215,7 @@ addProject : Project -> List Project -> List Project
 addProject (Project internals) projects =
     case findProjectById projects internals.id of
         Just _ ->
-            projects
+            updateProject (Project internals) projects
 
         Nothing ->
             Project internals :: projects
@@ -243,7 +243,7 @@ list cred baseUrl =
         |> Query.projects
         |> SelectionSet.nonNullOrFail
         |> SelectionSet.nonNullElementsOrFail
-        |> Graphql.Http.queryRequest "http://localhost:4000/v2"
+        |> Api.queryRequest baseUrl
 
 
 type CreateResponse
