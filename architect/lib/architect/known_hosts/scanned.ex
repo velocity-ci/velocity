@@ -4,7 +4,7 @@ defmodule Architect.KnownHosts.Scanned do
 
   Does this by running the v-ssh-keyscan executable and decoding the output to json.
 
-  Tries to scan for 20 seconds, then will fail with :keyscan_timeout.
+  Tries to scan for *:architect, :keyscan_timeout* milliseconds, then will fail with :keyscan_timeout.
 
   Possible errors:
 
@@ -14,12 +14,12 @@ defmodule Architect.KnownHosts.Scanned do
     :json_decode_failed - Could not decode the executable output to JSON
     :unexpected_decode_values - Could decode the executable output to JSON, but could not find required keys
 
-  ## Examples
+  Examples
 
-      iex> Architect.KnownHosts.Scanned.generate("github.com")
+      ...> Architect.KnownHosts.Scanned.generate("github.com")
       {:ok,
         %Architect.KnownHosts.Scanned{
-         entry: "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==\n",
+         entry: "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHk...",
          md5: "16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48",
          sha256: "SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8"
         }
@@ -32,7 +32,6 @@ defmodule Architect.KnownHosts.Scanned do
   defstruct [:md5, :sha256, :entry]
 
   @keyscan_bin "v-ssh-keyscan"
-  @timeout 7_000
 
   @doc """
   Scan a host and get either a :ok or :error tuple
@@ -42,7 +41,7 @@ defmodule Architect.KnownHosts.Scanned do
       Task.async(fn ->
         System.cmd("#{System.cwd()}/#{@keyscan_bin}", [host], stderr_to_stdout: true)
       end)
-      |> Task.await(@timeout)
+      |> Task.await(Application.get_env(:architect, :keyscan_timeout))
       |> handle_scan()
     catch
       :exit, _ ->

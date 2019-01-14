@@ -6,6 +6,10 @@ config :architect, ArchitectWeb.Endpoint,
   http: [port: 4002],
   server: false
 
+config :architect,
+  ecto_repos: [Architect.Repo],
+  keyscan_timeout: 3_000
+
 # Print only warnings and errors during test
 config :logger, level: :warn
 

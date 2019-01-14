@@ -10,7 +10,8 @@ use Mix.Config
 config :elixir, ansi_enabled: true
 
 config :architect,
-  ecto_repos: [Architect.Repo]
+  ecto_repos: [Architect.Repo],
+  keyscan_timeout: 7_000
 
 # Configures the endpoint
 config :architect, ArchitectWeb.Endpoint,

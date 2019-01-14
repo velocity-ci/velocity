@@ -20,7 +20,6 @@ defmodule ArchitectWeb.Schema do
   import_types(Mutations.KnownHostsMutations)
   import_types(Mutations.ProjectsMutations)
   import_types(Mutations.AuthMutations)
-  import_types(Queries.UsersQueries)
   import_types(Queries.KnownHostsQueries)
   import_types(Queries.ProjectsQueries)
 
@@ -37,7 +36,6 @@ defmodule ArchitectWeb.Schema do
   end
 
   query do
-    import_fields(:users_queries)
     import_fields(:known_hosts_queries)
     import_fields(:projects_queries)
   end
