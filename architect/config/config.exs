@@ -15,7 +15,7 @@ config :architect,
 
 # Configures the endpoint
 config :architect, ArchitectWeb.Endpoint,
-  render_errors: [view: ArchitectWeb.V1.ErrorView, accepts: ~w(json)],
+#  render_errors: [view: ArchitectWeb.V1.ErrorView, accepts: ~w(json)],
   pubsub: [name: Architect.PubSub, adapter: Phoenix.PubSub.PG2]
 
 config :architect, Architect.Accounts,
