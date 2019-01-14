@@ -45,7 +45,7 @@ defmodule Architect.KnownHosts.Scanned do
       |> handle_scan()
     catch
       :exit, _ ->
-        Logger.error("v-ssh-keyscan timeout")
+        Logger.debug("v-ssh-keyscan timeout")
         {:error, :keyscan_timeout}
     end
   end

@@ -26,7 +26,8 @@ defmodule ArchitectWeb.Queries.KnownHostsTest do
     host: :string,
     entry: :string,
     fingerprint_md5: :string,
-    fingerprint_sha256: :string
+    fingerprint_sha256: :string,
+    verified: :boolean
   }
 
   setup do
@@ -43,7 +44,8 @@ defmodule ArchitectWeb.Queries.KnownHostsTest do
           host,
           entry,
           fingerprintMd5,
-          fingerprintSha256
+          fingerprintSha256,
+          verified
         }
       }
     """
@@ -53,6 +55,6 @@ defmodule ArchitectWeb.Queries.KnownHostsTest do
       |> post("/v2", %{query: query})
       |> json_response(200)
 
-    fields = assert_equivalent_graphql(known_hosts, actual, @fields)
+    assert_equivalent_graphql(known_hosts, actual, @fields)
   end
 end
