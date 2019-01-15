@@ -29,7 +29,9 @@ defmodule Architect.KnownHostsTest do
   end
 
   # This is a bit of a dance in order to do an ecto insert in setup_all. We do this because its slow-ish to run
-  # https://elixirforum.com/t/using-setup-all-with-database/8865/4
+  # because it actually does do a scan of github.com
+  #
+  # Taken from: https://elixirforum.com/t/using-setup-all-with-database/8865/4
   setup_all do
     :ok = SQL.Sandbox.checkout(Repo)
     SQL.Sandbox.mode(Repo, :auto)

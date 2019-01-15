@@ -19,11 +19,26 @@ defmodule ArchitectWeb.ConnCase do
     quote do
       # Import conveniences for testing with connections
       use Phoenix.ConnTest
-      alias ArchitectWeb.V1Router.Helpers, as: V1Routes
-      alias ArchitectWeb.V2Router.Helpers, as: V2Routes
+      alias ArchitectWeb.Router.Helpers, as: Routes
 
       # The default endpoint for testing
       @endpoint ArchitectWeb.Endpoint
+
+      def graphql_request(query) do
+        build_conn()
+        |> post("/v2", %{query: query})
+        |> json_response(200)
+      end
+
+      def expect_success!(response) do
+        case response do
+          %{"data" => data} ->
+            data
+
+          _ ->
+            flunk("graphql response failed: #{inspect(response)}}")
+        end
+      end
     end
   end
 

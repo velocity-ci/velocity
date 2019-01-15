@@ -31,10 +31,10 @@ defmodule ArchitectWeb.Queries.ProjectsTest do
         project
       end
 
-    [conn: build_conn(), projects: projects]
+    [projects: projects]
   end
 
-  test "gets a list of all projects", %{conn: conn, projects: projects} do
+  test "gets a list of all projects", %{projects: projects} do
     query = """
       {
         projects {
@@ -48,10 +48,9 @@ defmodule ArchitectWeb.Queries.ProjectsTest do
       }
     """
 
-    %{"data" => %{"projects" => actual}} =
-      conn
-      |> post("/v2", %{query: query})
-      |> json_response(200)
+    %{"projects" => actual} =
+      graphql_request(query)
+      |> expect_success!()
 
     assert_equivalent_graphql(projects, actual, @fields)
   end

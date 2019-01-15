@@ -33,10 +33,10 @@ defmodule ArchitectWeb.Queries.KnownHostsTest do
   setup do
     known_hosts = for known_host <- @known_hosts, do: Repo.insert!(known_host)
 
-    [conn: build_conn(), known_hosts: known_hosts]
+    [known_hosts: known_hosts]
   end
 
-  test "gets a list of all known hosts", %{conn: conn, known_hosts: known_hosts} do
+  test "gets a list of all known hosts", %{known_hosts: known_hosts} do
     query = """
       {
         knownHosts {
@@ -50,10 +50,9 @@ defmodule ArchitectWeb.Queries.KnownHostsTest do
       }
     """
 
-    %{"data" => %{"knownHosts" => actual}} =
-      conn
-      |> post("/v2", %{query: query})
-      |> json_response(200)
+    %{"knownHosts" => actual} =
+      graphql_request(query)
+      |> expect_success!()
 
     assert_equivalent_graphql(known_hosts, actual, @fields)
   end
