@@ -314,7 +314,7 @@ fromViewer key context maybeViewer =
 
                 request =
                     SelectionSet.map2 StartupResponse projectsSet knownHostSet
-                        |> Graphql.Http.queryRequest "http://localhost:4000/v2"
+                        |> Api.queryRequest baseUrl
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError
             in

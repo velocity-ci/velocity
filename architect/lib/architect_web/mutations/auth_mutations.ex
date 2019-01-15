@@ -1,6 +1,8 @@
 defmodule ArchitectWeb.Mutations.AuthMutations do
   use Absinthe.Schema.Notation
   alias Architect.Accounts
+  alias Ecto.Changeset
+  alias Kronky.ValidationMessage
 
   object :auth_mutations do
     @desc "Sign in"
@@ -13,8 +15,13 @@ defmodule ArchitectWeb.Mutations.AuthMutations do
              {:ok, token, _} <- Accounts.encode_and_sign(user) do
           {:ok, %{token: token, username: username}}
         else
-          _ ->
-            {:error, "Invalid credentials"}
+          {:error, :invalid_credentials} ->
+            {:ok,
+             %ValidationMessage{
+               field: nil,
+               code: :invalid_credentials,
+               template: "Incorrect username or password"
+             }}
         end
       end)
     end
