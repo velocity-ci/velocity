@@ -924,9 +924,6 @@ updateAuthenticated cred msg model =
                 , Cmd.none
                 )
 
-            ProjectCreated (Ok (Project.UnknownError)) ->
-                ( model, Cmd.none )
-
             ProjectCreated (Err _) ->
                 ( model, Cmd.none )
 

@@ -5,16 +5,20 @@ defmodule ArchitectWeb.Router do
     plug(:accepts, ["json"])
 
     plug(Plug.Parsers,
-      parsers: [:urlencoded, :multipart, :json, Absinthe.Plug.Parser],
-      pass: ["*/*"],
-      json_decoder: Poison
+      parsers: [Absinthe.Plug.Parser],
+      pass: ["*/*"]
     )
+
+    plug(ArchitectWeb.Context)
   end
 
   scope "/" do
     pipe_through(:api)
 
-    forward("/graphiql", Absinthe.Plug.GraphiQL, schema: ArchitectWeb.Schema)
+    if Mix.env() == :dev do
+      forward("/graphiql", Absinthe.Plug.GraphiQL, schema: ArchitectWeb.Schema)
+    end
+
     forward("/", Absinthe.Plug, schema: ArchitectWeb.Schema)
   end
 end

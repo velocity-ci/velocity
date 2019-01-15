@@ -2,12 +2,8 @@ defmodule ArchitectWeb.Schema do
   use Absinthe.Schema
 
   import Kronky.Payload
-  alias Ecto.Changeset
-  alias Architect.KnownHosts.KnownHost
-  alias Architect.Projects.Project
 
-  alias ArchitectWeb.Schema.Middleware.TranslateMessages
-  alias ArchitectWeb.{Schema, Mutations, Queries}
+  alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
 
   # Custom
   import_types(Absinthe.Type.Custom)
@@ -16,20 +12,19 @@ defmodule ArchitectWeb.Schema do
   import_types(Schema.UsersTypes)
   import_types(Schema.KnownHostsTypes)
   import_types(Schema.ProjectsTypes)
-  import_types(Mutations.UsersMutations)
   import_types(Mutations.KnownHostsMutations)
   import_types(Mutations.ProjectsMutations)
   import_types(Mutations.AuthMutations)
   import_types(Queries.KnownHostsQueries)
   import_types(Queries.ProjectsQueries)
+  import_types(Subscriptions.KnownHostSubscriptions)
+  import_types(Subscriptions.ProjectsSubscriptions)
 
-  payload_object(:user_payload, :user)
   payload_object(:session_payload, :session)
   payload_object(:known_host_payload, :known_host)
   payload_object(:project_payload, :project)
 
   mutation do
-    import_fields(:user_mutations)
     import_fields(:auth_mutations)
     import_fields(:known_hosts_mutations)
     import_fields(:projects_mutations)
@@ -41,65 +36,12 @@ defmodule ArchitectWeb.Schema do
   end
 
   subscription do
-    field :known_host_added, non_null(:known_host) do
-      trigger(:for_host,
-        topic: fn
-          %KnownHost{id: id} ->
-            ["all", id]
-
-          %Changeset{} ->
-            []
-        end
-      )
-
-      config(fn _args, _info ->
-        {:ok, topic: "all"}
-      end)
-    end
-
-    field :project_added, non_null(:project) do
-      trigger(:create_project,
-        topic: fn
-          %Project{id: id} ->
-            ["all", id]
-
-          %Changeset{} ->
-            []
-        end
-      )
-
-      config(fn _args, _info ->
-        {:ok, topic: "all"}
-      end)
-    end
-
-    field :known_host_verified, non_null(:known_host) do
-      trigger(:verify,
-        topic: fn
-          %KnownHost{id: id} ->
-            ["all", id]
-
-          %Changeset{} ->
-            []
-        end
-      )
-
-      config(fn _args, _info ->
-        {:ok, topic: "all"}
-      end)
-    end
+    import_fields(:known_hosts_subscriptions)
+    import_fields(:projects_subscriptions)
   end
 
-  #  def middleware(middleware, %Absinthe.Type.Field{identifier: :sign_in}, %Absinthe.Type.Object{
-  #        identifier: :mutation
-  #      }) do
-  #    IO.inspect("ignored", label: "DAT FIELD")
-  #
-  #    middleware
-  #  end
-
   def middleware(middleware, _field, %Absinthe.Type.Object{identifier: :mutation}) do
-    middleware ++ [&build_payload/2, TranslateMessages]
+    middleware ++ [&build_payload/2]
   end
 
   def middleware(middleware, _field, _object) do

@@ -26,8 +26,9 @@ defmodule ArchitectWeb.Mutations.AuthMutationsTest do
     [users: users]
   end
 
-  test "signIn success", %{users: [user | _]} do
-    mutation = "
+  describe "signIn" do
+    test "Success", %{users: [user | _]} do
+      mutation = "
       mutation {
         signIn(username: \"#{user.username}\", password: \"#{@valid_password}\") {
           result {
@@ -39,43 +40,73 @@ defmodule ArchitectWeb.Mutations.AuthMutationsTest do
       }
     "
 
-    %{"signIn" => actual} =
-      graphql_request(mutation)
-      |> expect_success!()
+      %{"signIn" => actual} =
+        unauthorized_graphql_request(mutation)
+        |> expect_success!()
 
-    token = get_in(actual, ["result", "token"])
+      token = get_in(actual, ["result", "token"])
 
-    expected = %{username: "eddy", token: token}
+      expected = %{username: "eddy", token: token}
 
-    assert_mutation_success(expected, actual, @fields)
-  end
+      assert_mutation_success(expected, actual, @fields)
+    end
 
-  test "signIn failure - wrong password", %{users: [user | _]} do
-    mutation = "
-      mutation {
-        signIn(username: \"#{user.username}\", password: \"#{@invalid_password}\") {
-          result {
-            token,
-            username
-          },
-          successful,
-          messages {
-            field,
-            code,
-            message
+    test "Failure - No user with supplied username", %{} do
+      mutation = "
+        mutation {
+          signIn(username: \"does-not-exist\", password: \"does-not-exist-password\") {
+            result {
+              token,
+              username
+            },
+            successful,
+            messages {
+              field,
+              code,
+              message
+            }
           }
         }
+        "
+
+      %{"signIn" => actual} =
+        unauthorized_graphql_request(mutation)
+        |> expect_success!()
+
+      expected = %ValidationMessage{
+        code: :invalid_credentials
       }
-      "
 
-    %{"signIn" => actual} =
-      graphql_request(mutation)
-      |> expect_success!()
+      assert_mutation_failure([expected], actual, [:code])
+    end
 
-    expected = %ValidationMessage{
-      code: :invalid_credentials
-    }
+    test "Failure - wrong password", %{users: [user | _]} do
+      mutation = "
+        mutation {
+          signIn(username: \"#{user.username}\", password: \"#{@invalid_password}\") {
+            result {
+              token,
+              username
+            },
+            successful,
+            messages {
+              field,
+              code,
+              message
+            }
+          }
+        }
+        "
 
-    assert_mutation_failure([expected], actual, [:code])
+      %{"signIn" => actual} =
+        unauthorized_graphql_request(mutation)
+        |> expect_success!()
+
+      expected = %ValidationMessage{
+        code: :invalid_credentials
+      }
+
+      assert_mutation_failure([expected], actual, [:code])
+    end
   end
 end

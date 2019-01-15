@@ -8,7 +8,7 @@ config :architect, ArchitectWeb.Endpoint,
 
 config :architect,
   ecto_repos: [Architect.Repo],
-  keyscan_timeout: 3_000
+  keyscan: [timeout: 7_000, log_errors: false]
 
 # Print only warnings and errors during test
 config :logger, level: :warn

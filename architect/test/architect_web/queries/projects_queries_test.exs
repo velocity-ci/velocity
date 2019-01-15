@@ -34,24 +34,42 @@ defmodule ArchitectWeb.Queries.ProjectsTest do
     [projects: projects]
   end
 
-  test "gets a list of all projects", %{projects: projects} do
-    query = """
-      {
-        projects {
-          id,
-          name,
-          slug,
-          address,
-          insertedAt,
-          updatedAt
+  describe "listProjects" do
+    test "Success", %{projects: projects} do
+      query = """
+        {
+          listProjects {
+            id,
+            name,
+            slug,
+            address,
+            insertedAt,
+            updatedAt
+          }
         }
-      }
-    """
+      """
 
-    %{"projects" => actual} =
-      graphql_request(query)
-      |> expect_success!()
+      %{"listProjects" => actual} =
+        graphql_request(query)
+        |> expect_success!()
 
-    assert_equivalent_graphql(projects, actual, @fields)
+      assert_equivalent_graphql(projects, actual, @fields)
+    end
+
+    test "Failure - Unauthorized", %{} do
+      query = """
+        {
+          listProjects {
+            id
+          }
+        }
+      """
+
+      messages =
+        unauthorized_graphql_request(query)
+        |> expect_failure!()
+
+      assert [%{"message" => "Unauthorized"}] = messages
+    end
   end
 end

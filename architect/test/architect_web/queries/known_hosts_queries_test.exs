@@ -36,24 +36,42 @@ defmodule ArchitectWeb.Queries.KnownHostsTest do
     [known_hosts: known_hosts]
   end
 
-  test "gets a list of all known hosts", %{known_hosts: known_hosts} do
-    query = """
-      {
-        knownHosts {
-          id,
-          host,
-          entry,
-          fingerprintMd5,
-          fingerprintSha256,
-          verified
+  describe "listKnownHosts" do
+    test "Success", %{known_hosts: known_hosts} do
+      query = """
+        {
+          listKnownHosts {
+            id,
+            host,
+            entry,
+            fingerprintMd5,
+            fingerprintSha256,
+            verified
+          }
         }
-      }
-    """
+      """
 
-    %{"knownHosts" => actual} =
-      graphql_request(query)
-      |> expect_success!()
+      %{"listKnownHosts" => actual} =
+        graphql_request(query)
+        |> expect_success!()
 
-    assert_equivalent_graphql(known_hosts, actual, @fields)
+      assert_equivalent_graphql(known_hosts, actual, @fields)
+    end
+
+    test "Failure - Unauthorized", %{} do
+      query = """
+        {
+          listKnownHosts {
+            id
+          }
+        }
+      """
+
+      messages =
+        unauthorized_graphql_request(query)
+        |> expect_failure!()
+
+      assert [%{"message" => "Unauthorized"}] = messages
+    end
   end
 end
