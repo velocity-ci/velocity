@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -361,6 +362,21 @@ func (r *RawRepository) Checkout(ref string) error {
 	GetLogger().Debug("checked out", zap.String("reference", ref), zap.String("repository", r.Directory))
 
 	return nil
+}
+
+func (r *RawRepository) GetTotalCommits() uint64 {
+	r.init()
+	defer r.done()
+	shCmd := []string{"git", "rev-list", "--all", "--count"}
+	writer := &BlankWriter{}
+	s := runCmd(writer, shCmd, []string{})
+
+	total, err := strconv.ParseUint(strings.TrimSpace(s.Stdout[0]), 10, 64)
+	if err != nil {
+		GetLogger().Error("could not get total commits", zap.Error(err))
+	}
+
+	return total
 }
 
 func (r *RawRepository) GetDefaultBranch() (string, error) {

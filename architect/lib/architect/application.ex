@@ -13,7 +13,8 @@ defmodule Architect.Application do
       Architect.Repo,
       ArchitectWeb.Endpoint,
       supervisor(Absinthe.Subscription, [ArchitectWeb.Endpoint]),
-      supervisor(Architect.Builders, [])
+      supervisor(Architect.Builders, []),
+      supervisor(Architect.Secretaries, [])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

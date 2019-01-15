@@ -5,12 +5,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/velocity-ci/velocity/backend/pkg/builder"
+	"github.com/velocity-ci/velocity/backend/pkg/secretary"
 )
 
 func main() {
 	flag.Parse()
-	a := builder.New()
+	a := secretary.New()
 
 	go a.Start()
 

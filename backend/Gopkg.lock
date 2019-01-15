@@ -142,12 +142,12 @@
   version = "v0.3.2"
 
 [[projects]]
-  digest = "1:302f0381f15e444dec05d6abba0c219264a69e6e16f1ef87ff4f72b22d0c80bf"
+  digest = "1:4a908eaa6d6859318963bc62670c6c31aaf2e042f8f2b271075ad8aa1c361f12"
   name = "github.com/go-cmd/cmd"
   packages = ["."]
   pruneopts = ""
-  revision = "b84ca4f2247327f07f46331c260675cba1a1dc7a"
-  version = "v1.0.3"
+  revision = "db1a8287640cedff487674c2f4439805b58f42aa"
+  version = "v1.0.4"
 
 [[projects]]
   digest = "1:68d892747cfa2f0638a70b8193bc12c83d9474d93c78f41e4b45a305b2f21e24"
