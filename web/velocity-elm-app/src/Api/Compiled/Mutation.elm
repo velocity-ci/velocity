@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Mutation exposing (CreateProjectRequiredArguments, ForHostRequiredArguments, SignInRequiredArguments, SignUpOptionalArguments, VerifyRequiredArguments, createProject, forHost, signIn, signUp, verify)
+module Api.Compiled.Mutation exposing (CreateKnownHostRequiredArguments, CreateProjectRequiredArguments, SignInRequiredArguments, VerifyKnownHostRequiredArguments, createKnownHost, createProject, signIn, verifyKnownHost)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,6 +18,17 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 
 
+type alias CreateKnownHostRequiredArguments =
+    { host : String }
+
+
+{-| Create unverified known host
+-}
+createKnownHost : CreateKnownHostRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet decodesTo RootMutation
+createKnownHost requiredArgs object_ =
+    Object.selectionForCompositeField "createKnownHost" [ Argument.required "host" requiredArgs.host Encode.string ] object_ identity
+
+
 type alias CreateProjectRequiredArguments =
     { address : String
     , name : String
@@ -29,17 +40,6 @@ type alias CreateProjectRequiredArguments =
 createProject : CreateProjectRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.ProjectPayload -> SelectionSet decodesTo RootMutation
 createProject requiredArgs object_ =
     Object.selectionForCompositeField "createProject" [ Argument.required "address" requiredArgs.address Encode.string, Argument.required "name" requiredArgs.name Encode.string ] object_ identity
-
-
-type alias ForHostRequiredArguments =
-    { host : String }
-
-
-{-| Create unverified known host
--}
-forHost : ForHostRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet decodesTo RootMutation
-forHost requiredArgs object_ =
-    Object.selectionForCompositeField "forHost" [ Argument.required "host" requiredArgs.host Encode.string ] object_ identity
 
 
 type alias SignInRequiredArguments =
@@ -55,31 +55,12 @@ signIn requiredArgs object_ =
     Object.selectionForCompositeField "signIn" [ Argument.required "password" requiredArgs.password Encode.string, Argument.required "username" requiredArgs.username Encode.string ] object_ identity
 
 
-type alias SignUpOptionalArguments =
-    { password : OptionalArgument String
-    , username : OptionalArgument String
-    }
-
-
-{-| Sign up
--}
-signUp : (SignUpOptionalArguments -> SignUpOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.UserPayload -> SelectionSet decodesTo RootMutation
-signUp fillInOptionals object_ =
-    let
-        filledInOptionals =
-            fillInOptionals { password = Absent, username = Absent }
-
-        optionalArgs =
-            [ Argument.optional "password" filledInOptionals.password Encode.string, Argument.optional "username" filledInOptionals.username Encode.string ]
-                |> List.filterMap identity
-    in
-        Object.selectionForCompositeField "signUp" optionalArgs object_ identity
-
-
-type alias VerifyRequiredArguments =
+type alias VerifyKnownHostRequiredArguments =
     { id : String }
 
 
-verify : VerifyRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet decodesTo RootMutation
-verify requiredArgs object_ =
-    Object.selectionForCompositeField "verify" [ Argument.required "id" requiredArgs.id Encode.string ] object_ identity
+{-| Verify a known host
+-}
+verifyKnownHost : VerifyKnownHostRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.KnownHostPayload -> SelectionSet decodesTo RootMutation
+verifyKnownHost requiredArgs object_ =
+    Object.selectionForCompositeField "verifyKnownHost" [ Argument.required "id" requiredArgs.id Encode.string ] object_ identity

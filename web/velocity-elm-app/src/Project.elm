@@ -240,7 +240,7 @@ updateProject (Project a) projects =
 list : Cred -> BaseUrl -> Graphql.Http.Request (List Project)
 list cred baseUrl =
     selectionSet
-        |> Query.projects
+        |> Query.listProjects
         |> SelectionSet.nonNullOrFail
         |> SelectionSet.nonNullElementsOrFail
         |> Api.queryRequest baseUrl
@@ -249,7 +249,6 @@ list cred baseUrl =
 type CreateResponse
     = CreateSuccess Project
     | ValidationFailure (List Api.ValidationMessage)
-    | UnknownError
 
 
 createResponseSelectionSet : SelectionSet CreateResponse Api.Compiled.Object.ProjectPayload

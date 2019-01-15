@@ -303,12 +303,12 @@ fromViewer key context maybeViewer =
                     Viewer.cred viewerVal
 
                 projectsSet =
-                    Query.projects Project.selectionSet
+                    Query.listProjects Project.selectionSet
                         |> SelectionSet.nonNullOrFail
                         |> SelectionSet.nonNullElementsOrFail
 
                 knownHostSet =
-                    Query.knownHosts KnownHost.selectionSet
+                    Query.listKnownHosts KnownHost.selectionSet
                         |> SelectionSet.nonNullOrFail
                         |> SelectionSet.nonNullElementsOrFail
 

@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Query exposing (forHost, knownHosts, projects, users)
+module Api.Compiled.Query exposing (listKnownHosts, listProjects)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,29 +18,15 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 
 
-{-| Get fingerprint for host
--}
-forHost : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe decodesTo) RootQuery
-forHost object_ =
-    Object.selectionForCompositeField "forHost" [] object_ (identity >> Decode.nullable)
-
-
 {-| Get all known hosts
 -}
-knownHosts : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
-knownHosts object_ =
-    Object.selectionForCompositeField "knownHosts" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+listKnownHosts : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
+listKnownHosts object_ =
+    Object.selectionForCompositeField "listKnownHosts" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
 
 
-{-| Get all projects
+{-| List projects
 -}
-projects : SelectionSet decodesTo Api.Compiled.Object.Project -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
-projects object_ =
-    Object.selectionForCompositeField "projects" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
-
-
-{-| Get all users
--}
-users : SelectionSet decodesTo Api.Compiled.Object.User -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
-users object_ =
-    Object.selectionForCompositeField "users" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+listProjects : SelectionSet decodesTo Api.Compiled.Object.Project -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
+listProjects object_ =
+    Object.selectionForCompositeField "listProjects" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
