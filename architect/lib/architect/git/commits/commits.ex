@@ -50,8 +50,6 @@ defmodule Architect.Git.Commits do
 
   """
   def create_commit(project, attrs \\ %{}) do
-    IO.inspect(project)
-
     %Commit{
       project_id: project.id
     }

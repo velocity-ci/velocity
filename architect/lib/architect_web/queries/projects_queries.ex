@@ -3,8 +3,10 @@ defmodule ArchitectWeb.Queries.ProjectsQueries do
   alias ArchitectWeb.Resolvers
 
   object :projects_queries do
-    @desc "Get all projects"
-    field :projects, list_of(:project) do
+    @desc "List projects"
+    field :list_projects, list_of(:project) do
+      middleware(ArchitectWeb.Middleware.Authorize)
+
       resolve(&Resolvers.Projects.list_projects/3)
     end
   end

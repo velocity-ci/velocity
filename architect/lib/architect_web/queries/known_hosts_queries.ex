@@ -4,7 +4,9 @@ defmodule ArchitectWeb.Queries.KnownHostsQueries do
 
   object :known_hosts_queries do
     @desc "Get all known hosts"
-    field :known_hosts, list_of(:known_host) do
+    field :list_known_hosts, list_of(:known_host) do
+      middleware(ArchitectWeb.Middleware.Authorize)
+
       resolve(&Resolvers.KnownHosts.list_known_hosts/3)
     end
   end

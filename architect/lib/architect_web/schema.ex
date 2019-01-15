@@ -12,7 +12,6 @@ defmodule ArchitectWeb.Schema do
   import_types(Schema.UsersTypes)
   import_types(Schema.KnownHostsTypes)
   import_types(Schema.ProjectsTypes)
-  import_types(Mutations.UsersMutations)
   import_types(Mutations.KnownHostsMutations)
   import_types(Mutations.ProjectsMutations)
   import_types(Mutations.AuthMutations)
@@ -21,13 +20,11 @@ defmodule ArchitectWeb.Schema do
   import_types(Subscriptions.KnownHostSubscriptions)
   import_types(Subscriptions.ProjectsSubscriptions)
 
-  payload_object(:user_payload, :user)
   payload_object(:session_payload, :session)
   payload_object(:known_host_payload, :known_host)
   payload_object(:project_payload, :project)
 
   mutation do
-    import_fields(:user_mutations)
     import_fields(:auth_mutations)
     import_fields(:known_hosts_mutations)
     import_fields(:projects_mutations)
@@ -42,14 +39,6 @@ defmodule ArchitectWeb.Schema do
     import_fields(:known_hosts_subscriptions)
     import_fields(:projects_subscriptions)
   end
-
-  #  def middleware(middleware, %Absinthe.Type.Field{identifier: :sign_in}, %Absinthe.Type.Object{
-  #        identifier: :mutation
-  #      }) do
-  #    IO.inspect("ignored", label: "DAT FIELD")
-  #
-  #    middleware
-  #  end
 
   def middleware(middleware, _field, %Absinthe.Type.Object{identifier: :mutation}) do
     middleware ++ [&build_payload/2]
