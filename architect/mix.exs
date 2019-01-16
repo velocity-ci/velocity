@@ -30,7 +30,7 @@ defmodule Architect.MixProject do
   def application do
     [
       mod: {Architect.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :porcelain]
     ]
   end
 
@@ -70,7 +70,8 @@ defmodule Architect.MixProject do
       {:timber, "~> 3.0.0"},
       {:cors_plug, "~> 2.0"},
       {:ecto_autoslug_field, "~> 1.0"},
-      {:mix_test_watch, "~> 0.9", only: :dev, runtime: false}
+      {:mix_test_watch, "~> 0.9", only: :dev, runtime: false},
+      {:porcelain, "~> 2.0"}
     ]
   end
 

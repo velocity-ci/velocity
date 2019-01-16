@@ -39,3 +39,6 @@ architect-*.tar
 
 # Go binary to scan ssh keys
 v-ssh-keyscan
+
+# Velocity Data
+*_data*
