@@ -28,4 +28,7 @@ defmodule Architect.Projects.Project do
     |> NameSlug.maybe_generate_slug()
     |> NameSlug.unique_constraint()
   end
+
+
+
 end

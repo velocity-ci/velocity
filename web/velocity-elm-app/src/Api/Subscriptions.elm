@@ -1,12 +1,11 @@
-port module Api.Subscriptions
-    exposing
-        ( State
-        , StatusMsg
-        , init
-        , subscribeToKnownHostAdded
-        , subscribeToProjectAdded
-        , subscriptions
-        )
+port module Api.Subscriptions exposing
+    ( State
+    , StatusMsg
+    , init
+    , subscribeToKnownHostAdded
+    , subscribeToProjectAdded
+    , subscriptions
+    )
 
 import Api.Compiled.Subscription
 import Dict exposing (Dict)
@@ -17,6 +16,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import KnownHost exposing (KnownHost)
 import Project exposing (Project)
+
 
 
 -- INWARDS PORTs
@@ -148,9 +148,9 @@ projectSubscription toMsg (State internals) selectionSet =
         nextId =
             Dict.size internals
     in
-        ( State (Dict.insert nextId sub internals)
-        , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
-        )
+    ( State (Dict.insert nextId sub internals)
+    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+    )
 
 
 subscribeToKnownHostAdded : (KnownHost -> msg2) -> State msg2 -> ( State msg2, Cmd msg2 )
@@ -173,6 +173,6 @@ knownHostSubscription toMsg (State internals) selectionSet =
         nextId =
             Dict.size internals
     in
-        ( State (Dict.insert nextId sub internals)
-        , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
-        )
+    ( State (Dict.insert nextId sub internals)
+    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+    )
