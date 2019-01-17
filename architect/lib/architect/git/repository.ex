@@ -25,12 +25,30 @@ defmodule Architect.Git.Repository do
   end
 
   def clean(repo) do
+    repo = get_repo(repo)
     Porcelain.exec("git", ["clean", "-fd"], dir: repo.directory)
   end
 
   def checkout(repo, ref) do
-    get_repo(repo)
+    repo = get_repo(repo)
     Porcelain.exec("git", ["checkout", "--force", ref], dir: repo.directory)
+  end
+
+  def describe(repo) do
+    repo = get_repo(repo)
+    res = Porcelain.exec("git", ["describe", "--always"])
+    String.trim(res.out)
+  end
+
+  def default_branch(repo) do
+    repo = get_repo(repo)
+    res = Porcelain.exec("git", ["remote", "show", "origin"], dir: repo.directory)
+
+    String.split(res.out, "\n")
+    |> Enum.at(3)
+    |> String.split(":")
+    |> List.last()
+    |> String.trim()
   end
 
   defp get_workspace do
