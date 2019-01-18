@@ -1,10 +1,7 @@
 defmodule ArchitectWeb.Mutations.ProjectMutationsTest do
   alias Architect.Projects
-  alias Architect.Projects.Project
   use ArchitectWeb.ConnCase
   import Kronky.TestHelper
-  alias Kronky.ValidationMessage
-  alias Architect.Repo
 
   @fields %{
     id: :string,
