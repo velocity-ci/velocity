@@ -5,8 +5,14 @@ defmodule Architect.Projects do
 
   import Ecto.Query, warn: false
   alias Architect.Repo
+  alias Architect.Projects.{Project, Repository, Starter}
+  use Supervisor
+  require Logger
 
-  alias Architect.Projects.Project
+  def start_link(_opts \\ []) do
+    Logger.debug("Starting #{Atom.to_string(__MODULE__)}")
+    Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  end
 
   @doc """
   Returns the list of projects.
@@ -70,4 +76,41 @@ defmodule Architect.Projects do
   def delete_project(%Project{} = project) do
     Repo.delete(project)
   end
+
+  ### Server
+
+  @impl true
+  def init(:ok) do
+    children = [
+      {Registry, keys: :unique, name: __MODULE__.RepositoryRegistry},
+      {DynamicSupervisor, name: __MODULE__.RepositorySupervisor, strategy: :one_for_one},
+      worker(Starter, [list_projects()], restart: :transient)
+    ]
+
+    Logger.info("Running #{Atom.to_string(__MODULE__)}")
+
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+end
+
+defmodule Architect.Projects.Starter do
+  use Task
+  alias Architect.Projects.{Project, Repository, RepositoryRegistry, RepositorySupervisor}
+
+  def start_link(projects) do
+    Task.start_link(__MODULE__, :run, [projects])
+  end
+
+  def start_link([]), do: :ok
+
+  def run(projects) do
+    for project <- projects do
+      DynamicSupervisor.start_child(
+        RepositorySupervisor,
+        {Repository, {project.address, {:via, Registry, {RepositoryRegistry, project.id}}}}
+      )
+    end
+  end
+
+  def run([]), do: nil
 end

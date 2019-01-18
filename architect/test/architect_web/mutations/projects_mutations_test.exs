@@ -42,7 +42,7 @@ defmodule ArchitectWeb.Mutations.ProjectMutationsTest do
         |> expect_success!()
 
       Projects.get_project_by_slug!("velocity")
-        |> assert_mutation_success(actual, @fields)
+      |> assert_mutation_success(actual, @fields)
     end
 
     test "Failure - Unauthorized" do
@@ -57,9 +57,9 @@ defmodule ArchitectWeb.Mutations.ProjectMutationsTest do
       "
 
       unauthorized_graphql_request(mutation)
-        |> expect_failure!()
-        |> Enum.find(fn %{"message" => message} -> message == "Unauthorized" end)
-        |> assert
+      |> expect_failure!()
+      |> Enum.find(fn %{"message" => message} -> message == "Unauthorized" end)
+      |> assert
     end
   end
 end

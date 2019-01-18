@@ -105,7 +105,6 @@ defmodule ArchitectWeb.Mutations.KnownHostsMutationsTest do
         |> expect_failure!()
         |> Enum.find(fn %{"message" => message} -> message == "Unauthorized" end)
         |> assert
-
     end
   end
 
