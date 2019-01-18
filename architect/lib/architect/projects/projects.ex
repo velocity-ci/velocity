@@ -107,7 +107,7 @@ defmodule Architect.Projects.Starter do
     for project <- projects do
       DynamicSupervisor.start_child(
         RepositorySupervisor,
-        {Repository, {project.address, {:via, Registry, {RepositoryRegistry, project.id}}}}
+        {Repository, {project.address, {:via, Registry, {RepositoryRegistry, project.address}}}}
       )
     end
   end
