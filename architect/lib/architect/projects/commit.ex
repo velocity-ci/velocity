@@ -1,7 +1,7 @@
 defmodule(Architect.Projects.Commit.Author, do: defstruct([:email, :name, :date]))
 
 defmodule Architect.Projects.Commit do
-  @enforce_keys [:sha]
+  @enforce_keys [:sha, :author, :gpg_fingerprint, :message]
   defstruct [:sha, :author, :gpg_fingerprint, :message]
 
   @doc ~S"""
@@ -25,7 +25,7 @@ defmodule Architect.Projects.Commit do
 
   ## Examples
 
-      ...> alias Architect.Projects.Commit
+      iex> alias Architect.Projects.Commit
       ...> alias Commit.Author
       ...> parsed = Commit.parse("4c2439630bbea0bcad61adc78b434cc804117090\n2019-01-17T17:39:27+00:00\nvj@vjpatel.me\nVJ Patel\n%GF\nadd parsing of git shell for commits and branches\n5697be45fa5cb5474a49f489c822e2d290693037\n2019-01-16T23:21:41+00:00\nvj@vjpatel.me\nVJ Patel\n%GF\nWip: added a few basic git funcs")
       ...> {:ok, dt_first, _} = DateTime.from_iso8601("2019-01-17T17:39:27+00:00")
