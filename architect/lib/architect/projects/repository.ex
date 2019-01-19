@@ -83,8 +83,10 @@ defmodule Architect.Projects.Repository do
   def handle_call(:list_branches, _from, %__MODULE__{repo: repo} = state) do
     Logger.debug("Performing 'branch' on #{inspect(repo)}")
 
-    {:ok, output} = Git.branch(repo, ["--remote"])
-    branches = Branch.parse(output)
+    branches =
+      repo
+      |> Git.branch(["--remote"])
+      |> Branch.parse()
 
     {:reply, branches, state}
   end
@@ -107,9 +109,10 @@ defmodule Architect.Projects.Repository do
       when is_binary(sha) do
     Logger.debug("Performing 'show' on #{inspect(repo)}")
 
-    {:ok, output} = Git.show(repo, ["-s", "--format=#{Commit.format()}", sha])
-
-    commit = Commit.parse_show(output)
+    commit =
+      repo
+      |> Git.show(["-s", "--format=#{Commit.format()}", sha])
+      |> Commit.parse_show()
 
     {:reply, commit, state}
   end
@@ -118,8 +121,10 @@ defmodule Architect.Projects.Repository do
   def handle_call(:default_branch, _from, %__MODULE__{repo: repo} = state) do
     Logger.debug("Performing 'remote show origin' on #{inspect(repo)}")
 
-    {:ok, output} = Git.remote(repo, ["show", "origin"])
-    branch = Branch.parse_remote(output)
+    branch =
+      repo
+      |> Git.remote(["show", "origin"])
+      |> Branch.parse_remote()
 
     {:reply, branch, state}
   end

@@ -108,6 +108,16 @@ defmodule Architect.Projects do
   def default_branch(%Project{} = project),
     do: call_repository(project, &Repository.default_branch/1)
 
+  def data() do
+    IO.inspect("DATALOADER DATA")
+    Dataloader.Ecto.new(Repo, query: &query/2)
+  end
+
+  def query(queryable, _) do
+    IO.inspect(queryable, label: "QUERYABLE")
+    queryable
+  end
+
   ### Server
 
   @impl true

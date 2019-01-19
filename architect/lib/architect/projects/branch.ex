@@ -1,6 +1,4 @@
 defmodule Architect.Projects.Branch do
-  alias Architect.Git.Repository
-
   @enforce_keys [:name]
   defstruct [:name]
 
@@ -14,6 +12,10 @@ defmodule Architect.Projects.Branch do
       [%Branch{name: "master"}, %Branch{name: "git-changes"}]
 
   """
+  def parse({:ok, stdout}), do: parse(stdout)
+
+  def parse({:error, error}), do: {:error, error}
+
   def parse(stdout) when is_binary(stdout) do
     stdout
     |> String.split("\n")
@@ -42,6 +44,10 @@ defmodule Architect.Projects.Branch do
       %Branch{name: "master"}
 
   """
+  def parse_remote({:ok, stdout}), do: parse_remote(stdout)
+
+  def parse_remote({:error, error}), do: {:error, error}
+
   def parse_remote(stdout) when is_binary(stdout) do
     name =
       stdout
