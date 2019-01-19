@@ -71,7 +71,9 @@ defmodule Architect.MixProject do
       {:cors_plug, "~> 2.0"},
       {:ecto_autoslug_field, "~> 1.0"},
       {:mix_test_watch, "~> 0.9", only: :dev, runtime: false},
-      {:porcelain, "~> 2.0"}
+      {:porcelain, "~> 2.0"},
+      {:git_cli, "~> 0.2"},
+      {:temp, "~> 0.4"}
     ]
   end
 

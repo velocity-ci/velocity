@@ -100,11 +100,10 @@ defmodule ArchitectWeb.Mutations.KnownHostsMutationsTest do
         }
       "
 
-      messages =
-        unauthorized_graphql_request(mutation)
-        |> expect_failure!()
-
-      assert [%{"message" => "Unauthorized"} | _] = messages
+      unauthorized_graphql_request(mutation)
+      |> expect_failure!()
+      |> Enum.find(fn %{"message" => message} -> message == "Unauthorized" end)
+      |> assert
     end
   end
 
@@ -154,11 +153,10 @@ defmodule ArchitectWeb.Mutations.KnownHostsMutationsTest do
         }
       "
 
-      messages =
-        unauthorized_graphql_request(mutation)
-        |> expect_failure!()
-
-      assert [%{"message" => "Unauthorized"} | _] = messages
+      unauthorized_graphql_request(mutation)
+      |> expect_failure!()
+      |> Enum.find(fn %{"message" => message} -> message == "Unauthorized" end)
+      |> assert
     end
   end
 end
