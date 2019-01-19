@@ -1,9 +1,9 @@
-module Project.Branch exposing (Branch, default, text)
+module Project.Branch exposing (Branch, text, selectionSet)
 
 import Element exposing (..)
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (custom, required)
 import Project.Branch.Name as Name exposing (Name)
+import Api.Compiled.Object
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
 
 
 type Branch
@@ -12,16 +12,7 @@ type Branch
 
 type alias Internals =
     { name : Name
-    , active : Bool
     }
-
-
-default : Branch
-default =
-    Branch
-        { name = Name.default
-        , active = True
-        }
 
 
 
@@ -37,14 +28,13 @@ text (Branch { name }) =
 -- SERIALIZATION --
 
 
-decoder : Decoder Branch
-decoder =
-    Decode.succeed Branch
-        |> custom internalsDecoder
+selectionSet : SelectionSet Branch Api.Compiled.Object.Branch
+selectionSet =
+    SelectionSet.succeed Branch
+        |> with internalSelectionSet
 
 
-internalsDecoder : Decoder Internals
-internalsDecoder =
-    Decode.succeed Internals
-        |> required "name" Name.decoder
-        |> required "active" Decode.bool
+internalSelectionSet : SelectionSet Internals Api.Compiled.Object.Branch
+internalSelectionSet =
+    SelectionSet.succeed Internals
+        |> with Name.selectionSet

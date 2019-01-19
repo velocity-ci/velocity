@@ -12,7 +12,7 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
     field(:inserted_at, non_null(:naive_datetime))
     field(:updated_at, non_null(:naive_datetime))
 
-    field :branches, list_of(:branch) do
+    field :branches, non_null(list_of(non_null(:branch))) do
       resolve(fn %Project{} = project, _args, _resolution ->
         {:ok, Projects.list_branches(project)}
       end)

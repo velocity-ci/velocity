@@ -1,4 +1,4 @@
-module Project.Task exposing (Task, byBranch, decoder, name)
+module Project.Task exposing (Task, byBranch, name)
 
 import Api exposing (BaseUrl, Cred)
 import Http
@@ -65,24 +65,6 @@ name (Task t) =
 
 
 -- Decoders
-
-
-decoder : Decoder Task
-decoder =
-    Decode.succeed Task
-        |> custom internalsDecoder
-
-
-internalsDecoder : Decoder Internals
-internalsDecoder =
-    Decode.succeed Internals
-        |> required "id" Id.decoder
-        |> required "slug" Slug.decoder
-        |> required "name" Name.decoder
-        |> optional "description" Decode.string ""
-        |> optional "steps" (Decode.list Step.decoder) []
-        |> optional "parameters" (Decode.list parameterDecoder) []
-        |> required "commit" Commit.decoder
 
 
 stringParameterDecoder : Decoder StringParameter

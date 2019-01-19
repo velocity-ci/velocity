@@ -4,7 +4,6 @@ module Project
         , Project
         , addProject
         , create
-        , decoder
         , findProjectById
         , findProjectBySlug
         , id
@@ -26,10 +25,8 @@ import Element.Border as Border
 import Element.Font as Font
 import Icon
 import Iso8601
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (custom, required)
 import Palette
-import Project.Branch exposing (Branch)
+import Project.Branch as Branch exposing (Branch)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
 import Time exposing (Posix)
@@ -63,31 +60,12 @@ type alias Internals =
         --    , updatedAt : Time.Posix
     , synchronising : Bool
     , logo : Maybe String
+    , branches : List Branch
     }
 
 
 
 -- SERIALIZATION --
-
-
-decoder : Decoder Project
-decoder =
-    Decode.succeed Project
-        |> custom internalsDecoder
-
-
-internalsDecoder : Decoder Internals
-internalsDecoder =
-    Decode.succeed Internals
-        |> required "id" Id.decoder
-        |> required "slug" Slug.decoder
-        |> required "name" Decode.string
-        |> required "address" Decode.string
-        --        |> required "createdAt" Iso8601.decoder
-        --        |> required "updatedAt" Iso8601.decoder
-        |>
-            required "synchronising" Decode.bool
-        |> required "logo" (Decode.maybe Decode.string)
 
 
 selectionSet : SelectionSet Project Api.Compiled.Object.Project
@@ -108,6 +86,7 @@ internalSelectionSet =
         |>
             hardcoded False
         |> hardcoded Nothing
+        |> with (Project.branches Branch.selectionSet)
 
 
 mapToDateTime : SelectionSet Api.Compiled.Scalar.NaiveDateTime typeLock -> SelectionSet Posix typeLock
@@ -241,8 +220,6 @@ list : Cred -> BaseUrl -> Graphql.Http.Request (List Project)
 list cred baseUrl =
     selectionSet
         |> Query.listProjects
-        |> SelectionSet.nonNullOrFail
-        |> SelectionSet.nonNullElementsOrFail
         |> Api.queryRequest baseUrl
 
 

@@ -5,7 +5,6 @@ port module Session
         , SubscriptionDataMsg
         , addKnownHost
         , addProject
-        , branches
         , changes
         , cred
         , fromViewer
@@ -50,7 +49,6 @@ type alias LoggedInInternals msg =
     { navKey : Nav.Key
     , viewer : Viewer
     , projects : List Project
-    , branches : Project.Id.Dict (List Branch)
     , knownHosts : List KnownHost
     , log : Activity.Log
     , subscriptions : Subscriptions.State msg
@@ -119,17 +117,6 @@ projects session =
     case session of
         LoggedIn internals ->
             internals.projects
-
-        Guest _ ->
-            []
-
-
-branches : Project.Id.Id -> Session msg -> List Branch
-branches projectId session =
-    case session of
-        LoggedIn internals ->
-            Project.Id.get projectId internals.branches
-                |> Maybe.withDefault []
 
         Guest _ ->
             []
@@ -296,25 +283,21 @@ fromViewer key context maybeViewer =
     case maybeViewer of
         Just viewerVal ->
             let
-                baseUrl =
-                    Context.baseUrl context
-
                 credVal =
                     Viewer.cred viewerVal
 
+                baseUrl =
+                    Context.baseUrl context
+
                 projectsSet =
                     Query.listProjects Project.selectionSet
-                        |> SelectionSet.nonNullOrFail
-                        |> SelectionSet.nonNullElementsOrFail
 
                 knownHostSet =
                     Query.listKnownHosts KnownHost.selectionSet
-                        |> SelectionSet.nonNullOrFail
-                        |> SelectionSet.nonNullElementsOrFail
 
                 request =
                     SelectionSet.map2 StartupResponse projectsSet knownHostSet
-                        |> Api.queryRequest baseUrl
+                        |> Api.authedQueryRequest baseUrl credVal
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError
             in
@@ -324,7 +307,6 @@ fromViewer key context maybeViewer =
                             { navKey = key
                             , viewer = viewerVal
                             , projects = res.projects
-                            , branches = Project.Id.empty
                             , knownHosts = res.knownHosts
                             , log = Activity.init
                             , subscriptions = Subscriptions.init

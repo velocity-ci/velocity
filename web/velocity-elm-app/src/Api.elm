@@ -15,6 +15,8 @@ port module Api
         , validationErrorSelectionSet
         , responseWasSuccessful
         , mutationRequest
+        , authedMutationRequest
+        , authedQueryRequest
         , ValidationMessage
         , validationMessages
         )
@@ -75,11 +77,6 @@ type Cred
 username : Cred -> Username
 username (Cred val _) =
     val
-
-
-credHeader : Cred -> Http.Header
-credHeader (Cred _ str) =
-    Http.header "Authorization" ("Bearer " ++ str)
 
 
 {-| It's important that this is never exposed!
@@ -160,6 +157,20 @@ mutationRequest (BaseUrl baseUrl) mutationSelectionSet =
 queryRequest : BaseUrl -> SelectionSet decodesTo RootQuery -> Request decodesTo
 queryRequest (BaseUrl baseUrl) querySelectionSet =
     Graphql.Http.queryRequest baseUrl querySelectionSet
+
+
+authedMutationRequest : BaseUrl -> Cred -> SelectionSet decodesTo RootMutation -> Request decodesTo
+authedMutationRequest (BaseUrl baseUrl) (Cred _ token) mutationSelectionSet =
+    Graphql.Http.mutationRequest baseUrl mutationSelectionSet
+        |> Graphql.Http.withHeader "authorization" ("Bearer " ++ token)
+        |> Graphql.Http.withCredentials
+
+
+authedQueryRequest : BaseUrl -> Cred -> SelectionSet decodesTo RootQuery -> Request decodesTo
+authedQueryRequest (BaseUrl baseUrl) (Cred _ token) querySelectionSet =
+    Graphql.Http.queryRequest baseUrl querySelectionSet
+        |> Graphql.Http.withHeader "authorization" ("Bearer " ++ token)
+        |> Graphql.Http.withCredentials
 
 
 
@@ -276,7 +287,7 @@ validationErrorSelectionSet =
 
 
 signIn : BaseUrl -> Mutation.SignInRequiredArguments -> Graphql.Http.Request (Response Cred)
-signIn (BaseUrl baseUrl) values =
+signIn baseUrl values =
     let
         usernameSelectionSet =
             SelectionSet.map (Maybe.map Username.fromString) (SessionPayload.result Session.username)
@@ -293,7 +304,7 @@ signIn (BaseUrl baseUrl) values =
                 (SelectionSet.map Just viewerSelectionSet)
     in
         Mutation.signIn values selectionSet
-            |> Graphql.Http.mutationRequest "http://localhost:4000/v2"
+            |> mutationRequest baseUrl
 
 
 decoderFromCred : Decoder (Cred -> a) -> Decoder a
