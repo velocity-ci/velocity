@@ -1,6 +1,11 @@
 defmodule Architect.Projects.Repository do
   @moduledoc """
   A process for interacting with a git repository
+
+  On init this will immediately succeed, but trigger the `handle_continue` message as the first message handler.
+  handle_continue will clone the repository to a new temporary directory.
+
+  When this process is killed this directory should be automatically removed
   """
 
   defstruct [:status, :url, :repo]
@@ -11,20 +16,35 @@ defmodule Architect.Projects.Repository do
 
   # Client
 
-  def start_link({url, _name}) when is_binary(url) do
+  def start_link({url, name}) when is_binary(url) do
     Logger.debug("Starting fresh repository process for #{url}")
 
-    GenServer.start_link(__MODULE__, url)
+    GenServer.start_link(__MODULE__, url, name: name)
   end
 
+  @doc ~S"""
+  Run `git fetch` on the repository
+  """
   def fetch(repository), do: GenServer.call(repository, :fetch)
 
+  @doc ~S"""
+  Get a single commit by its SHA value
+  """
   def commit_by_sha(repository, sha), do: GenServer.call(repository, {:get_commit_by_sha, sha})
 
+  @doc ~S"""
+  Get a list of commits by branch
+  """
   def list_commits(repository, branch), do: GenServer.call(repository, {:list_commits, branch})
 
+  @doc ~S"""
+  Get a list of branches
+  """
   def list_branches(repository), do: GenServer.call(repository, :list_branches)
 
+  @doc ~S"""
+  Get the default branch
+  """
   def default_branch(repository), do: GenServer.call(repository, :default_branch)
 
   # Server (callbacks)
