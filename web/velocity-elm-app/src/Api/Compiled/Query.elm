@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Query exposing (listKnownHosts, listProjects)
+module Api.Compiled.Query exposing (ListBranchesOptionalArguments, ListCommitsOptionalArguments, listBranches, listCommits, listKnownHosts, listProjects)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,15 +18,55 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 
 
+type alias ListBranchesOptionalArguments =
+    { projectId : OptionalArgument String }
+
+
+{-| List branches for project
+-}
+listBranches : (ListBranchesOptionalArguments -> ListBranchesOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.Branch -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
+listBranches fillInOptionals object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { projectId = Absent }
+
+        optionalArgs =
+            [ Argument.optional "projectId" filledInOptionals.projectId Encode.string ]
+                |> List.filterMap identity
+    in
+        Object.selectionForCompositeField "listBranches" optionalArgs object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+
+
+type alias ListCommitsOptionalArguments =
+    { branch : OptionalArgument String
+    , projectId : OptionalArgument String
+    }
+
+
+{-| List commits for project
+-}
+listCommits : (ListCommitsOptionalArguments -> ListCommitsOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.Commit -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
+listCommits fillInOptionals object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { branch = Absent, projectId = Absent }
+
+        optionalArgs =
+            [ Argument.optional "branch" filledInOptionals.branch Encode.string, Argument.optional "projectId" filledInOptionals.projectId Encode.string ]
+                |> List.filterMap identity
+    in
+        Object.selectionForCompositeField "listCommits" optionalArgs object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+
+
 {-| Get all known hosts
 -}
-listKnownHosts : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
+listKnownHosts : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (List decodesTo) RootQuery
 listKnownHosts object_ =
-    Object.selectionForCompositeField "listKnownHosts" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+    Object.selectionForCompositeField "listKnownHosts" [] object_ (identity >> Decode.list)
 
 
 {-| List projects
 -}
-listProjects : SelectionSet decodesTo Api.Compiled.Object.Project -> SelectionSet (Maybe (List (Maybe decodesTo))) RootQuery
+listProjects : SelectionSet decodesTo Api.Compiled.Object.Project -> SelectionSet (List decodesTo) RootQuery
 listProjects object_ =
-    Object.selectionForCompositeField "listProjects" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+    Object.selectionForCompositeField "listProjects" [] object_ (identity >> Decode.list)

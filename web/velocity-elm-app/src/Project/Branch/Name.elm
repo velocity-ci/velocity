@@ -1,8 +1,10 @@
-module Project.Branch.Name exposing (Name, decoder, default, name, text, toString, urlParser)
+module Project.Branch.Name exposing (Name, default, name, text, toString, urlParser, selectionSet)
 
 import Element exposing (..)
-import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+import Api.Compiled.Object.Branch as Branch
+import Api.Compiled.Object
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
 
 
 -- TYPES
@@ -45,6 +47,11 @@ urlParser =
     Url.Parser.custom "Name" (\str -> Just (Name str))
 
 
-decoder : Decoder Name
-decoder =
-    Decode.map Name Decode.string
+
+-- SERIALIZATION --
+
+
+selectionSet : SelectionSet Name Api.Compiled.Object.Branch
+selectionSet =
+    SelectionSet.succeed Name
+        |> with Branch.name

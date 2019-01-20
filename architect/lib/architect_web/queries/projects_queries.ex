@@ -10,10 +10,10 @@ defmodule ArchitectWeb.Queries.ProjectsQueries do
       resolve(&Resolvers.Projects.list_projects/3)
     end
 
-    @desc "List commits for projects"
+    @desc "List commits for project"
     field :list_commits, non_null(list_of(non_null(:commit))) do
-      arg(:project_id, :string)
-      arg(:branch, :string)
+      arg(:project_id, non_null(:string))
+      arg(:branch, non_null(:string))
 
       resolve(&Resolvers.Projects.list_commits_for_project/3)
     end

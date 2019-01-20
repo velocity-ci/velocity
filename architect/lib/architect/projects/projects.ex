@@ -114,7 +114,7 @@ defmodule Architect.Projects do
   def init(:ok) do
     children = [
       {Registry, keys: :unique, name: @registry},
-      {DynamicSupervisor, name: @supervisor, strategy: :one_for_one},
+      {DynamicSupervisor, name: @supervisor, strategy: :one_for_one, max_restarts: 1},
       worker(
         Starter,
         [%{registry: @registry, supervisor: @supervisor, projects: list_projects()}],
@@ -128,24 +128,26 @@ defmodule Architect.Projects do
   end
 
   @doc false
-  defp call_repository(%Project{id: id}, callback) do
-    case Registry.lookup(@registry, id) do
+  defp call_repository(%Project{address: address} = project, callback) do
+    case Registry.lookup(@registry, address) do
       [{repository, _}] ->
         try do
           callback.(repository)
         catch
           kind, reason ->
-            formatted = Exception.format(kind, reason, __STACKTRACE__)
-
-            Logger.error(
-              "Failed to call repository #{id} on #{inspect(@registry)} with #{formatted}"
+            Logger.warn(
+              "Failed to call repository #{address} (#{inspect(kind)} #{inspect(reason)}), retrying..."
             )
+
+            call_repository(project, callback)
         end
 
       [] ->
-        Logger.error("Failed to call builder #{id} on #{inspect(@registry)}; id does not exist")
+        Logger.warn(
+          "Failed to call builder #{address} on #{inspect(@registry)}; address does not exist"
+        )
 
-        {:error, :not_found}
+        {:error, "Not found"}
     end
   end
 end
@@ -164,7 +166,7 @@ defmodule Architect.Projects.Starter do
       {:ok, _} =
         DynamicSupervisor.start_child(
           supervisor,
-          {Repository, {project.address, {:via, Registry, {registry, project.id}}}}
+          {Repository, {project.address, {:via, Registry, {registry, project.address}}}}
         )
     end
   end

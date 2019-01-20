@@ -2,7 +2,19 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object exposing (KnownHost(..), KnownHostPayload(..), Project(..), ProjectPayload(..), Session(..), SessionPayload(..), ValidationMessage(..), ValidationOption(..))
+module Api.Compiled.Object exposing (Branch(..), Commit(..), CommitAuthor(..), KnownHost(..), KnownHostPayload(..), Project(..), ProjectPayload(..), Session(..), SessionPayload(..), ValidationMessage(..), ValidationOption(..))
+
+
+type Branch
+    = Branch
+
+
+type Commit
+    = Commit
+
+
+type CommitAuthor
+    = CommitAuthor
 
 
 type KnownHost

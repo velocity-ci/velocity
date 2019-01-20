@@ -278,7 +278,7 @@ viewSubHeader device { session, slug, branchDropdown } =
         Just project ->
             let
                 branches =
-                    Session.branches (Project.id project) session
+                    Project.branches project
             in
                 case device.class of
                     Phone ->

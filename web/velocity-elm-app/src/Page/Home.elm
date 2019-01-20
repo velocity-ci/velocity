@@ -1004,19 +1004,6 @@ scrollToTop =
 
 
 
---unverifiedKnownHostMutation : GitUrl -> SelectionSet KnownHost
---type alias ResponseRec =
---    {}
---
---unverifiedKnownHostMutation host =
---    let
---        selectionSet =
---            SelectionSet.map3 (\successful messages result -> Response (ResponseRec successful messages result))
---                SessionPayload.successful
---                (SessionPayload.messages (validationErrorSelectionSet))
---                (SelectionSet.map Just viewerSelectionSet)
---    in
---    Mutation.forHost { host = host } KnownHost.selectionSet
 -- SUBSCRIPTIONS
 
 

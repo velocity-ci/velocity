@@ -1,4 +1,4 @@
-module Project.Commit exposing (Commit, decoder, hash)
+module Project.Commit exposing (Commit, hash)
 
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
@@ -19,26 +19,6 @@ type alias Internals =
     , date : Time.Posix
     , message : String
     }
-
-
-
--- SERIALIZATION --
-
-
-decoder : Decoder Commit
-decoder =
-    Decode.succeed Commit
-        |> custom internalsDecoder
-
-
-internalsDecoder : Decoder Internals
-internalsDecoder =
-    Decode.succeed Internals
-        |> optional "branches" (Decode.list BranchName.decoder) []
-        |> required "hash" Hash.decoder
-        |> required "author" Decode.string
-        |> required "createdAt" Iso8601.decoder
-        |> required "message" Decode.string
 
 
 

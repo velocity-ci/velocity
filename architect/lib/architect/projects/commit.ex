@@ -34,6 +34,10 @@ defmodule Architect.Projects.Commit do
       :passed
 
   """
+  def parse({:ok, stdout}), do: parse(stdout)
+
+  def parse({:error, error}), do: {:error, error}
+
   def parse(stdout) when is_binary(stdout) do
     stdout
     |> String.split("\n")
@@ -55,6 +59,10 @@ defmodule Architect.Projects.Commit do
       :passed
 
   """
+  def parse_show({:ok, stdout}), do: parse_show(stdout)
+
+  def parse_show({:error, error}), do: {:error, error}
+
   def parse_show(stdout) when is_binary(stdout) do
     stdout
     |> String.split("\n")
