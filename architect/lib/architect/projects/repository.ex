@@ -19,8 +19,13 @@ defmodule Architect.Projects.Repository do
   def start_link({url, name}) when is_binary(url) do
     Logger.debug("Starting fresh repository process for #{url}")
 
-    GenServer.start_link(__MODULE__, url, name: name)
+    GenServer.start_link(__MODULE__, url, name: name, timeout: 10_000)
   end
+
+  @doc ~S"""
+  Check if cloned successfully
+  """
+  def cloned_successfully(repository), do: GenServer.call(repository, :clone_status) == :cloned
 
   @doc ~S"""
   Run `git fetch` on the repository
@@ -51,7 +56,7 @@ defmodule Architect.Projects.Repository do
 
   @impl true
   def init(url) when is_binary(url) do
-    {:ok, %__MODULE__{url: url}, {:continue, :clone}}
+    {:ok, %__MODULE__{url: url, status: :cloning}, {:continue, :clone}}
   end
 
   @impl true
@@ -63,12 +68,24 @@ defmodule Architect.Projects.Repository do
     case Git.clone([url, path]) do
       {:ok, repo} ->
         Logger.debug("Successfully cloned #{url} to #{path}")
-        {:noreply, %__MODULE__{state | repo: repo}}
+        {:noreply, %__MODULE__{state | repo: repo, status: :cloned}}
 
       {:error, %Git.Error{message: reason}} ->
         Logger.error("Failed cloning #{url} to #{path}: #{reason}")
-        {:stop, reason, url}
+        {:noreply, %__MODULE__{state | status: :failed}}
     end
+  end
+
+  @impl true
+  def handle_call(:clone_status, _from, %__MODULE__{status: status} = state) do
+    {:reply, status, state}
+  end
+
+  @impl true
+  def handle_call(_, _from, %__MODULE__{status: :failed} = state) do
+    Logger.warn("Cannot perform action on failed repository")
+
+    {:reply, :error, state}
   end
 
   @impl true

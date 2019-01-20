@@ -1,8 +1,7 @@
 defmodule ArchitectWeb.Schema.ProjectsTypes do
   use Absinthe.Schema.Notation
   import Absinthe.Resolution.Helpers
-  alias Architect.Projects
-  alias Architect.Projects.Project
+  alias ArchitectWeb.Resolvers.Projects
 
   object :project do
     field(:id, non_null(:id))
@@ -12,10 +11,12 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
     field(:inserted_at, non_null(:naive_datetime))
     field(:updated_at, non_null(:naive_datetime))
 
+    field :default_branch, non_null(:branch) do
+      resolve(&Projects.get_default_branch_for_project/3)
+    end
+
     field :branches, non_null(list_of(non_null(:branch))) do
-      resolve(fn %Project{} = project, _args, _resolution ->
-        {:ok, Projects.list_branches(project)}
-      end)
+      resolve(&Projects.list_branches_for_project/3)
     end
   end
 

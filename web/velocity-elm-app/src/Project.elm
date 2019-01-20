@@ -12,6 +12,7 @@ module Project
         , repository
         , slug
         , syncing
+        , branches
         , thumbnail
         , updateProject
         , CreateResponse(..)
@@ -61,6 +62,7 @@ type alias Internals =
     , synchronising : Bool
     , logo : Maybe String
     , branches : List Branch
+    , defaultBranch : Branch
     }
 
 
@@ -87,6 +89,7 @@ internalSelectionSet =
             hardcoded False
         |> hardcoded Nothing
         |> with (Project.branches Branch.selectionSet)
+        |> with (Project.defaultBranch Branch.selectionSet)
 
 
 mapToDateTime : SelectionSet Api.Compiled.Scalar.NaiveDateTime typeLock -> SelectionSet Posix typeLock
@@ -133,6 +136,11 @@ repository (Project project) =
 syncing : Project -> Bool
 syncing (Project project) =
     project.synchronising
+
+
+branches : Project -> List Branch
+branches (Project project) =
+    project.branches
 
 
 
@@ -252,4 +260,4 @@ createResponseSelectionSet =
 create : Cred -> BaseUrl -> Mutation.CreateProjectRequiredArguments -> Graphql.Http.Request CreateResponse
 create cred baseUrl values =
     Mutation.createProject values createResponseSelectionSet
-        |> Api.mutationRequest baseUrl
+        |> Api.authedMutationRequest baseUrl cred

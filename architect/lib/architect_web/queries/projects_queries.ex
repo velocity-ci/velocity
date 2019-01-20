@@ -11,18 +11,11 @@ defmodule ArchitectWeb.Queries.ProjectsQueries do
     end
 
     @desc "List commits for project"
-    field :list_commits, list_of(:commit) do
-      arg(:project_id, :string)
-      arg(:branch, :string)
+    field :list_commits, non_null(list_of(non_null(:commit))) do
+      arg(:project_id, non_null(:string))
+      arg(:branch, non_null(:string))
 
       resolve(&Resolvers.Projects.list_commits_for_project/3)
-    end
-
-    @desc "List branches for project"
-    field :list_branches, list_of(:branch) do
-      arg(:project_id, :string)
-
-      resolve(&Resolvers.Projects.list_branches_for_project/3)
     end
   end
 end
