@@ -1,12 +1,13 @@
 defmodule ArchitectWeb.Queries.ProjectsQueries do
   use Absinthe.Schema.Notation
   alias ArchitectWeb.Resolvers
+  alias Absinthe.Resolution
+  alias Architect.Projects
 
   object :projects_queries do
     @desc "List projects"
     field :list_projects, non_null(list_of(non_null(:project))) do
       middleware(ArchitectWeb.Middleware.Authorize)
-
       resolve(&Resolvers.Projects.list_projects/3)
     end
 
@@ -14,6 +15,12 @@ defmodule ArchitectWeb.Queries.ProjectsQueries do
     field :list_commits, non_null(list_of(non_null(:commit))) do
       arg(:project_id, non_null(:string))
       arg(:branch, non_null(:string))
+
+      middleware(fn res, _ ->
+        [%{argument_data: %{project_id: project_id}} | _] = res.path
+        project = Projects.get_project!(project_id)
+        %{res | context: Map.put(res.context, :project, project)}
+      end)
 
       resolve(&Resolvers.Projects.list_commits_for_project/3)
     end

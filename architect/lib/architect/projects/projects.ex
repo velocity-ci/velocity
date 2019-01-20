@@ -84,6 +84,18 @@ defmodule Architect.Projects do
     do: call_repository(project, &Repository.list_branches/1)
 
   @doc ~S"""
+  Get a list of branches for a specific commit SHA
+
+  ## Examples
+
+      iex> list_branches_for_commit("925fbc450c8bdb7665ec3af3129ce715927433fe")
+      [%Branch{}, ...]
+
+  """
+  def list_branches_for_commit(%Project{} = project, sha) when is_binary(sha),
+    do: call_repository(project, &Repository.list_branches_for_commit(&1, sha))
+
+  @doc ~S"""
   Get a list of commits by branch
 
 
@@ -93,7 +105,7 @@ defmodule Architect.Projects do
       [%Commit{}, ...]
 
   """
-  def list_commits(%Project{} = project, branch),
+  def list_commits(%Project{} = project, branch) when is_binary(branch),
     do: call_repository(project, &Repository.list_commits(&1, branch))
 
   @doc ~S"""
@@ -108,13 +120,37 @@ defmodule Architect.Projects do
   def default_branch(%Project{} = project),
     do: call_repository(project, &Repository.default_branch/1)
 
+  @doc ~S"""
+  Get the amount of commits for the project
+
+  ## Examples
+
+      iex> commit_count(project)
+      123
+
+  """
+  def commit_count(%Project{} = project),
+    do: call_repository(project, &Repository.commit_count/1)
+
+  @doc ~S"""
+  Get the amount of commits for the project, for a specific branch
+
+  ## Examples
+
+      iex> commit_count(project, "master")
+      42
+
+  """
+  def commit_count(%Project{} = project, branch) when is_binary(branch),
+    do: call_repository(project, &Repository.commit_count(&1, branch))
+
   ### Server
 
   @impl true
   def init(:ok) do
     children = [
       {Registry, keys: :unique, name: @registry},
-      {DynamicSupervisor, name: @supervisor, strategy: :one_for_one, max_restarts: 1},
+      {DynamicSupervisor, name: @supervisor, strategy: :one_for_one, max_restarts: 3},
       worker(
         Starter,
         [%{registry: @registry, supervisor: @supervisor, projects: list_projects()}],
@@ -128,7 +164,10 @@ defmodule Architect.Projects do
   end
 
   @doc false
-  defp call_repository(%Project{address: address} = project, callback) do
+  defp call_repository(project, callback, attempt \\ 1)
+
+  defp call_repository(%Project{address: address} = project, callback, attempt)
+       when attempt < 3 do
     case Registry.lookup(@registry, address) do
       [{repository, _}] ->
         try do
@@ -139,7 +178,9 @@ defmodule Architect.Projects do
               "Failed to call repository #{address} (#{inspect(kind)} #{inspect(reason)}), retrying..."
             )
 
-            call_repository(project, callback)
+            Process.sleep(1_000)
+
+            call_repository(project, callback, attempt + 1)
         end
 
       [] ->
@@ -149,6 +190,10 @@ defmodule Architect.Projects do
 
         {:error, "Not found"}
     end
+  end
+
+  defp call_repository(_, _, _) do
+    {:error, "Failed"}
   end
 end
 

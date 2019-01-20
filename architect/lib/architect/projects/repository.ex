@@ -28,6 +28,16 @@ defmodule Architect.Projects.Repository do
   def cloned_successfully?(repository), do: GenServer.call(repository, :clone_status) == :cloned
 
   @doc ~S"""
+  Get commit amount across all branches
+  """
+  def commit_count(repository), do: GenServer.call(repository, :commit_count)
+
+  @doc ~S"""
+  Get commit amount for branch
+  """
+  def commit_count(repository, branch), do: GenServer.call(repository, {:commit_count, branch})
+
+  @doc ~S"""
   Run `git fetch` on the repository
   """
   def fetch(repository), do: GenServer.call(repository, :fetch)
@@ -46,6 +56,12 @@ defmodule Architect.Projects.Repository do
   Get a list of branches
   """
   def list_branches(repository), do: GenServer.call(repository, :list_branches)
+
+  @doc ~S"""
+  Get a list of branches for a commit SHA value
+  """
+  def list_branches_for_commit(repository, sha),
+    do: GenServer.call(repository, {:list_branches_for_commit, sha})
 
   @doc ~S"""
   Get the default branch
@@ -109,16 +125,27 @@ defmodule Architect.Projects.Repository do
   end
 
   @impl true
+  def handle_call({:list_branches_for_commit, sha}, _from, %__MODULE__{repo: repo} = state) do
+    Logger.debug("Performing 'branch' on #{inspect(repo)}")
+
+    branches =
+      repo
+      |> Git.branch(["--remote", "--contains=#{sha}"])
+      |> Branch.parse()
+
+    {:reply, branches, state}
+  end
+
+  @impl true
   def handle_call({:list_commits, branch}, _from, %__MODULE{repo: repo} = state)
       when is_binary(branch) do
     Logger.debug("Performing 'log' on #{inspect(repo)}")
 
-    with {:ok, _} <- Git.checkout(repo, branch),
-         {:ok, output} = Git.log(repo, ["--format=#{Commit.format()}"]) do
-      commits = Commit.parse(output)
+    {:ok, _} = Git.checkout(repo, branch)
+    {:ok, output} = Git.log(repo, ["--format=#{Commit.format()}", "--max-count=10", branch])
+    commits = Commit.parse(output)
 
-      {:reply, commits, state}
-    end
+    {:reply, commits, state}
   end
 
   @impl true
@@ -144,5 +171,34 @@ defmodule Architect.Projects.Repository do
       |> Branch.parse_remote()
 
     {:reply, branch, state}
+  end
+
+  @impl true
+  def handle_call({:commit_count, branch}, _from, %__MODULE__{repo: repo} = state)
+      when is_binary(branch) do
+    Logger.debug(
+      "Performing 'remote show origin' on #{inspect(repo)} for branch #{inspect(branch)}"
+    )
+
+    {:ok, _} = Git.checkout(repo, branch)
+
+    count =
+      repo
+      |> Git.rev_list(["--count", branch])
+      |> Commit.parse_count()
+
+    {:reply, count, state}
+  end
+
+  @impl true
+  def handle_call(:commit_count, _from, %__MODULE__{repo: repo} = state) do
+    Logger.debug("Performing 'remote show origin' on #{inspect(repo)}")
+
+    count =
+      repo
+      |> Git.rev_list(["--count", "--all"])
+      |> Commit.parse_count()
+
+    {:reply, count, state}
   end
 end

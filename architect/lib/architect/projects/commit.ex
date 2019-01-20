@@ -83,4 +83,28 @@ defmodule Architect.Projects.Commit do
       message: Enum.at(l, 5)
     }
   end
+
+  @doc ~S"""
+
+  ## Examples
+
+      iex> Architect.Projects.Commit.parse_count("\n932\n\n")
+      932
+
+  """
+  def parse_count({:ok, stdout}), do: parse_count(stdout)
+
+  def parse_count({:error, error}), do: {:error, error}
+
+  def parse_count(stdout) when is_binary(stdout) do
+    stdout
+    |> String.split("\n")
+    |> parse_count()
+  end
+
+  def parse_count([line | _]) do
+    {count, _} = Integer.parse(line)
+
+    count
+  end
 end
