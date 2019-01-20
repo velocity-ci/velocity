@@ -36,4 +36,15 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
   object :branch do
     field(:name, non_null(:string))
   end
+
+  object :commit do
+    field(:sha, non_null(:string))
+    field(:author, non_null(:commit_author))
+  end
+
+  object :commit_author do
+    field(:date, non_null(:naive_datetime))
+    field(:email, non_null(:string))
+    field(:name, non_null(:string))
+  end
 end
