@@ -25,7 +25,7 @@ defmodule Architect.Projects.Repository do
   @doc ~S"""
   Check if cloned successfully
   """
-  def cloned_successfully(repository), do: GenServer.call(repository, :clone_status) == :cloned
+  def cloned_successfully?(repository), do: GenServer.call(repository, :clone_status) == :cloned
 
   @doc ~S"""
   Run `git fetch` on the repository

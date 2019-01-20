@@ -33,25 +33,38 @@ defmodule Architect.Projects.Project do
   end
 
   @doc """
-  Populate a KnownHost changeset by scanning the value specified at host, if changeset is valid
+  Start the project repository, if it fails we add an error to the changeset and terminate the process.
+
+  This means on a successful clone, the repository process is already ready to go
   """
   def clone(%Changeset{valid?: true, changes: %{address: address}} = changeset) do
     require Logger
 
     repository_name = {:via, Registry, {Architect.Projects.Registry, address}}
 
-    {:ok, repository} =
+    repository_result =
       DynamicSupervisor.start_child(
         Architect.Projects.Supervisor,
         {Repository, {address, repository_name}}
       )
 
-    if Repository.cloned_successfully(repository) do
-      changeset
-    else
-      add_error(changeset, :address, "Cloning repository failed")
+    case repository_result do
+      {:ok, repository} ->
+        clone(changeset, repository)
+
+      {:error, {:already_started, repository}} ->
+        clone(changeset, repository)
     end
   end
 
   def clone(changeset), do: changeset
+
+  def clone(%Changeset{} = changeset, repository) when is_pid(repository) do
+    if Repository.cloned_successfully?(repository) do
+      changeset
+    else
+      :ok = DynamicSupervisor.terminate_child(Architect.Projects.Supervisor, repository)
+      add_error(changeset, :address, "Cloning repository failed")
+    end
+  end
 end
