@@ -10,6 +10,7 @@ or
 
 ```
 scripts/get-v-ssh-keyscan.sh
+scripts/get-vcli.sh
 docker-compose up -d db
 mix ecto.drop
 mix ecto.create
