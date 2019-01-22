@@ -37,8 +37,9 @@ architect-*.tar
 
 .elixir_ls
 
-# Go binary to scan ssh keys
+# Go binaries
 v-ssh-keyscan
+vcli
 
 # Velocity Data
 *_data*
