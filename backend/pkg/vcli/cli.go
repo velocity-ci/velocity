@@ -1,6 +1,7 @@
 package vcli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -55,28 +56,35 @@ func List(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	// iterate through tasks in memory and list them.
-	for _, task := range tasks {
-		fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> %s", task.Name)))
-		if len(task.ValidationErrors) > 0 {
-			fmt.Printf(" has errors:\n")
-			for _, err := range task.ValidationErrors {
-				fmt.Print(colorFmt(ansiError, fmt.Sprintf("  %s\n", err)))
-			}
-			fmt.Println()
-			continue
-		}
-		if len(task.ValidationWarnings) > 0 {
-			fmt.Printf(" has warnings:\n")
-			for _, warn := range task.ValidationWarnings {
-				fmt.Print(colorFmt(ansiWarn, fmt.Sprintf("  %s\n", warn)))
-			}
-			fmt.Println()
-			continue
-		}
-		fmt.Printf("  %s\n\n", task.Description)
 
+	if !c.Bool("machine-readable") {
+		// iterate through tasks in memory and list them.
+		for _, task := range tasks {
+			fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> %s", task.Name)))
+			if len(task.ValidationErrors) > 0 {
+				fmt.Printf(" has errors:\n")
+				for _, err := range task.ValidationErrors {
+					fmt.Print(colorFmt(ansiError, fmt.Sprintf("  %s\n", err)))
+				}
+				fmt.Println()
+				continue
+			}
+			if len(task.ValidationWarnings) > 0 {
+				fmt.Printf(" has warnings:\n")
+				for _, warn := range task.ValidationWarnings {
+					fmt.Print(colorFmt(ansiWarn, fmt.Sprintf("  %s\n", warn)))
+				}
+				fmt.Println()
+				continue
+			}
+			fmt.Printf("  %s\n\n", task.Description)
+
+		}
+	} else {
+		jsonBytes, _ := json.MarshalIndent(tasks, "", "  ")
+		fmt.Printf("%s\n", jsonBytes)
 	}
+
 	return nil
 }
 

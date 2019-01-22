@@ -31,6 +31,12 @@ func main() {
 			Aliases: []string{"l"},
 			Usage:   "List tasks",
 			Action:  vcli.List,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "machine-readable",
+					Usage: "Output in machine readable format (JSON)",
+				},
+			},
 		},
 		{
 			Name:         "run",
@@ -48,6 +54,7 @@ func main() {
 	}
 
 	app.Flags = []cli.Flag{
+
 		cli.BoolFlag{
 			Name:  "ignore-warnings",
 			Usage: "ignore warnings during validation",
