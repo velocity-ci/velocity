@@ -14,17 +14,6 @@ defmodule Architect.KnownHosts.Scanned do
     :json_decode_failed - Could not decode the executable output to JSON
     :unexpected_decode_values - Could decode the executable output to JSON, but could not find required keys
 
-  Examples
-
-      ...> Architect.KnownHosts.Scanned.generate("github.com")
-      {:ok,
-        %Architect.KnownHosts.Scanned{
-         entry: "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHk...",
-         md5: "16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48",
-         sha256: "SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8"
-        }
-      }
-
   """
   require Logger
 
@@ -35,6 +24,12 @@ defmodule Architect.KnownHosts.Scanned do
 
   @doc """
   Scan a host and get either a :ok or :error tuple
+
+  Examples
+
+      ...> Architect.KnownHosts.Scanned.generate("github.com")
+      {:ok, Architect.KnownHosts.Scanned{}}
+
   """
   def generate(host) when is_binary(host) do
     %{timeout: timeout} =

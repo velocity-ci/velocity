@@ -1,8 +1,10 @@
-defmodule(Architect.Projects.Commit.Author, do: defstruct([:email, :name, :date]))
-
 defmodule Architect.Projects.Commit do
-  @enforce_keys [:sha, :author, :gpg_fingerprint, :message]
-  defstruct [:sha, :author, :gpg_fingerprint, :message]
+  @keys [:sha, :author, :gpg_fingerprint, :message]
+
+  @enforce_keys @keys
+  defstruct @keys
+
+  defmodule(Author, do: defstruct([:email, :name, :date]))
 
   @doc ~S"""
 

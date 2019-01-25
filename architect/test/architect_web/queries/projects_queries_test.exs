@@ -57,19 +57,17 @@ defmodule ArchitectWeb.Queries.ProjectsTest do
     end
 
     test "Failure - Unauthorized", %{} do
-      query = """
+      """
         {
           listProjects {
             id
           }
         }
       """
-
-      messages =
-        unauthorized_graphql_request(query)
-        |> expect_failure!()
-
-      assert [%{"message" => "Unauthorized"}] = messages
+      |> unauthorized_graphql_request()
+      |> expect_failure!()
+      |> Enum.find(fn %{"message" => message} -> message == "Unauthorized" end)
+      |> assert
     end
   end
 end

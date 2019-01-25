@@ -4,8 +4,4 @@ defmodule Architect.Projects.TaskTest do
   alias Architect.Projects.Task
 
   doctest Task
-
-
-
-
 end

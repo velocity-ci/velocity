@@ -28,7 +28,13 @@ defmodule Architect.Projects.Branch do
         "origin/HEAD" <> _ ->
           acc
 
+        "* " <> name ->
+          [%__MODULE__{name: name} | acc]
+
         "origin/" <> name ->
+          [%__MODULE__{name: name} | acc]
+
+        name ->
           [%__MODULE__{name: name} | acc]
       end
     end)

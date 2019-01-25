@@ -88,7 +88,7 @@ defmodule Architect.Projects do
 
   ## Examples
 
-      iex> list_branches_for_commit("925fbc450c8bdb7665ec3af3129ce715927433fe")
+      iex> list_branches_for_commit(project, "925fbc450c8bdb7665ec3af3129ce715927433fe")
       [%Branch{}, ...]
 
   """
@@ -166,8 +166,9 @@ defmodule Architect.Projects do
   @doc false
   defp call_repository(project, callback, attempt \\ 1)
 
-  defp call_repository(%Project{address: address} = project, callback, attempt)
-       when attempt < 3 do
+  defp call_repository(_, _, attempt) when attempt > 2, do: {:error, "Failed"}
+
+  defp call_repository(%Project{address: address} = project, callback, attempt) do
     case Registry.lookup(@registry, address) do
       [{repository, _}] ->
         try do
@@ -188,12 +189,8 @@ defmodule Architect.Projects do
           "Failed to call builder #{address} on #{inspect(@registry)}; address does not exist"
         )
 
-        {:error, "Not found"}
+        call_repository(project, callback, attempt + 1)
     end
-  end
-
-  defp call_repository(_, _, _) do
-    {:error, "Failed"}
   end
 end
 
@@ -215,6 +212,4 @@ defmodule Architect.Projects.Starter do
         )
     end
   end
-
-  def run([]), do: nil
 end

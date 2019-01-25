@@ -1,6 +1,4 @@
 defmodule Architect.Projects.Task do
-
-
   defstruct [:name, :description, :git, :docker, :parameters]
   @enforce_keys [:name, :description]
 
@@ -15,5 +13,4 @@ defmodule Architect.Projects.Task do
   def parse(%{"name" => name, "description" => description}) do
     %__MODULE__{name: name, description: description}
   end
-
 end

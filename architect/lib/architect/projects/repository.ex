@@ -84,6 +84,16 @@ defmodule Architect.Projects.Repository do
     case Git.clone([url, path]) do
       {:ok, repo} ->
         Logger.debug("Successfully cloned #{url} to #{path}")
+
+        branches =
+          repo
+          |> Git.branch()
+          |> Branch.parse()
+
+        for branch <- branches do
+          {:ok, _output} = Git.checkout(repo, [branch.name])
+        end
+
         {:noreply, %__MODULE__{state | repo: repo, status: :cloned}}
 
       {:error, %Git.Error{message: reason}} ->
@@ -118,7 +128,7 @@ defmodule Architect.Projects.Repository do
 
     branches =
       repo
-      |> Git.branch(["--remote"])
+      |> Git.branch()
       |> Branch.parse()
 
     {:reply, branches, state}
@@ -130,7 +140,7 @@ defmodule Architect.Projects.Repository do
 
     branches =
       repo
-      |> Git.branch(["--remote", "--contains=#{sha}"])
+      |> Git.branch(["--contains=#{sha}"])
       |> Branch.parse()
 
     {:reply, branches, state}
