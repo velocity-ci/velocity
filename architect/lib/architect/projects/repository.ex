@@ -210,9 +210,10 @@ defmodule Architect.Projects.Repository do
   def handle_call(:commit_count, _from, %__MODULE__{repo: repo} = state) do
     Logger.debug("Performing 'remote show origin' on #{inspect(repo)}")
 
-    repo
-    |> Git.rev_list(["--count", "--all"])
-    |> Commit.parse_count()
+    count =
+      repo
+      |> Git.rev_list(["--count", "--all"])
+      |> Commit.parse_count()
 
     {:reply, count, state}
   end
