@@ -32,9 +32,9 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
       resolve(&Projects.list_branches_for_commit/3)
     end
 
-    #    field :tasks, non_null(list_of(non_null(:task))) do
-    #      resolve(&Projects.list_tasks_for_commit/3)
-    #    end
+    field :tasks, non_null(list_of(non_null(:task))) do
+      resolve(&Projects.list_tasks_for_commit/3)
+    end
   end
 
   object :commit_author do
@@ -52,6 +52,10 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
 
     field :commits, non_null(list_of(non_null(:commit))) do
       resolve(&Projects.list_commits_for_project/3)
+    end
+
+    field :tasks, non_null(list_of(non_null(:task))) do
+      resolve(&Projects.list_tasks_for_branch/3)
     end
   end
 

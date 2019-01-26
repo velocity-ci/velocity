@@ -22,14 +22,7 @@ defmodule ArchitectWeb.Queries.ProjectsQueries do
         %{res | context: Map.put(res.context, :project, project)}
       end)
 
-      resolve(fn parent, args, res ->
-        task =
-          Task.async(fn ->
-            {:ok, Resolvers.Projects.list_commits_for_project(parent, args, res)}
-          end)
-
-        {:middleware, Elixir.Absinthe.Middleware.Async, task}
-      end)
+      resolve(&Resolvers.Projects.list_commits_for_project/3)
     end
   end
 end

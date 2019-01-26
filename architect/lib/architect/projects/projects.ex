@@ -153,8 +153,8 @@ defmodule Architect.Projects do
       [%Architect.Projects.Task{}, ...]
 
   """
-  def list_tasks(%Project{} = project, {:sha, sha}) when is_binary(sha),
-    do: call_repository(project, &Repository.list_tasks(&1, {:sha, sha}))
+  def list_tasks(%Project{} = project, selector),
+    do: call_repository(project, &Repository.list_tasks(&1, selector))
 
   ### Server
 

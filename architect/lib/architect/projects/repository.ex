@@ -196,7 +196,7 @@ defmodule Architect.Projects.Repository do
       "Performing 'remote show origin' on #{inspect(repo)} for branch #{inspect(branch)}"
     )
 
-    {:ok, _} = Git.checkout(repo, branch)
+    {:ok, _} = Git.checkout(repo, [branch, "--force"])
 
     count =
       repo
@@ -219,10 +219,14 @@ defmodule Architect.Projects.Repository do
   end
 
   @impl true
-  def handle_call({:list_tasks, {:sha, sha}}, _from, %__MODULE__{repo: repo, vcli: vcli} = state) do
-    Logger.debug("Performing VCLI cmd on #{inspect(repo)}")
+  def handle_call(
+        {:list_tasks, {:branch, branch}},
+        _from,
+        %__MODULE__{repo: repo, vcli: vcli} = state
+      ) do
+    Logger.debug("Performing VCLI cmd on #{inspect(repo)} for branch #{inspect(branch)}}")
 
-    {:ok, _output} = Git.checkout(repo, [sha])
+    {:ok, _output} = Git.checkout(repo, [branch, "--force"])
 
     tasks =
       vcli
