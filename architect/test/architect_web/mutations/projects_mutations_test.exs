@@ -20,7 +20,7 @@ defmodule ArchitectWeb.Mutations.ProjectMutationsTest do
     test "Success" do
       mutation = "
         mutation {
-          createProject(name: \"Velocity\", address: \"https://github.com/velocity-ci/velocity.git\") {
+          createProject(address: \"https://github.com/velocity-ci/velocity.git\") {
             result {
               id,
               name,
@@ -38,14 +38,14 @@ defmodule ArchitectWeb.Mutations.ProjectMutationsTest do
         graphql_request(mutation)
         |> expect_success!()
 
-      Projects.get_project_by_slug!("velocity")
+      Projects.get_project_by_slug!("velocity-ci-velocity-at-github-com")
       |> assert_mutation_success(actual, @fields)
     end
 
     test "Failure - Unauthorized" do
       mutation = "
         mutation {
-          createProject(name: \"Velocity\", address: \"https://github.com/velocity-ci/velocity.git\") {
+          createProject(address: \"https://github.com/velocity-ci/velocity.git\") {
             result {
               id
             }

@@ -11,7 +11,15 @@ config :elixir, ansi_enabled: true
 
 config :architect,
   ecto_repos: [Architect.Repo],
-  keyscan: [timeout: 7_000, log_errors: true]
+  keyscan: [
+    timeout: 7_000,
+    log_errors: true
+  ],
+  vcli: [
+    bin: "vcli",
+    timeout: 7_000,
+    log_errors: true
+  ]
 
 # Configures the endpoint
 config :architect, ArchitectWeb.Endpoint,

@@ -19,6 +19,10 @@ defmodule ArchitectWeb.Resolvers.Projects do
     {:ok, Projects.list_branches_for_commit(project, sha)}
   end
 
+  def list_tasks_for_commit(%Commit{sha: sha}, _args, %{context: %{project: project}}) do
+    {:ok, Projects.list_tasks_for_commit(project, sha)}
+  end
+
   def list_branches_for_project(project, _args, _resolution) do
     {:ok, Projects.list_branches(project)}
   end

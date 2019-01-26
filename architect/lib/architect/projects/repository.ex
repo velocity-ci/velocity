@@ -8,11 +8,12 @@ defmodule Architect.Projects.Repository do
   When this process is killed this directory should be automatically removed
   """
 
-  defstruct [:status, :url, :repo]
+  defstruct [:status, :url, :repo, :vcli]
 
   use GenServer
   require Logger
-  alias Architect.Projects.{Branch, Commit}
+  alias Architect.Projects.{Branch, Commit, Task}
+  alias Architect.VCLI
 
   # Client
 
@@ -68,11 +69,16 @@ defmodule Architect.Projects.Repository do
   """
   def default_branch(repository), do: GenServer.call(repository, :default_branch)
 
+  @doc ~S"""
+  Ge the tasks for a commit specified by its SHA value
+  """
+  def list_tasks(repository, selector), do: GenServer.call(repository, {:list_tasks, selector})
+
   # Server (callbacks)
 
   @impl true
   def init(url) when is_binary(url) do
-    {:ok, %__MODULE__{url: url, status: :cloning}, {:continue, :clone}}
+    {:ok, %__MODULE__{url: url, status: :cloning, vcli: VCLI.init()}, {:continue, :clone}}
   end
 
   @impl true
@@ -84,6 +90,16 @@ defmodule Architect.Projects.Repository do
     case Git.clone([url, path]) do
       {:ok, repo} ->
         Logger.debug("Successfully cloned #{url} to #{path}")
+
+        branches =
+          repo
+          |> Git.branch()
+          |> Branch.parse()
+
+        for branch <- branches do
+          {:ok, _output} = Git.checkout(repo, [branch.name])
+        end
+
         {:noreply, %__MODULE__{state | repo: repo, status: :cloned}}
 
       {:error, %Git.Error{message: reason}} ->
@@ -118,7 +134,7 @@ defmodule Architect.Projects.Repository do
 
     branches =
       repo
-      |> Git.branch(["--remote"])
+      |> Git.branch()
       |> Branch.parse()
 
     {:reply, branches, state}
@@ -130,7 +146,7 @@ defmodule Architect.Projects.Repository do
 
     branches =
       repo
-      |> Git.branch(["--remote", "--contains=#{sha}"])
+      |> Git.branch(["--contains=#{sha}"])
       |> Branch.parse()
 
     {:reply, branches, state}
@@ -200,5 +216,19 @@ defmodule Architect.Projects.Repository do
       |> Commit.parse_count()
 
     {:reply, count, state}
+  end
+
+  @impl true
+  def handle_call({:list_tasks, {:sha, sha}}, _from, %__MODULE__{repo: repo, vcli: vcli} = state) do
+    Logger.debug("Performing VCLI cmd on #{inspect(repo)}")
+
+    {:ok, _output} = Git.checkout(repo, [sha])
+
+    tasks =
+      vcli
+      |> VCLI.list()
+      |> Enum.map(&Task.parse/1)
+
+    {:reply, tasks, state}
   end
 end

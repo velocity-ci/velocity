@@ -88,7 +88,7 @@ defmodule Architect.Projects do
 
   ## Examples
 
-      iex> list_branches_for_commit("925fbc450c8bdb7665ec3af3129ce715927433fe")
+      iex> list_branches_for_commit(project, "925fbc450c8bdb7665ec3af3129ce715927433fe")
       [%Branch{}, ...]
 
   """
@@ -144,6 +144,18 @@ defmodule Architect.Projects do
   def commit_count(%Project{} = project, branch) when is_binary(branch),
     do: call_repository(project, &Repository.commit_count(&1, branch))
 
+  @doc ~S"""
+  List tasks
+
+  ## Examples
+
+      iex> list_tasks(project, {:sha, "925fbc450c8bdb7665ec3af3129ce715927433fe"})
+      [%Architect.Projects.Task{}, ...]
+
+  """
+  def list_tasks(%Project{} = project, {:sha, sha}) when is_binary(sha),
+    do: call_repository(project, &Repository.list_tasks(&1, {:sha, sha}))
+
   ### Server
 
   @impl true
@@ -166,8 +178,9 @@ defmodule Architect.Projects do
   @doc false
   defp call_repository(project, callback, attempt \\ 1)
 
-  defp call_repository(%Project{address: address} = project, callback, attempt)
-       when attempt < 3 do
+  defp call_repository(_, _, attempt) when attempt > 2, do: {:error, "Failed"}
+
+  defp call_repository(%Project{address: address} = project, callback, attempt) do
     case Registry.lookup(@registry, address) do
       [{repository, _}] ->
         try do
@@ -188,12 +201,8 @@ defmodule Architect.Projects do
           "Failed to call builder #{address} on #{inspect(@registry)}; address does not exist"
         )
 
-        {:error, "Not found"}
+        call_repository(project, callback, attempt + 1)
     end
-  end
-
-  defp call_repository(_, _, _) do
-    {:error, "Failed"}
   end
 end
 
@@ -208,13 +217,10 @@ defmodule Architect.Projects.Starter do
 
   def run(%{projects: projects, supervisor: supervisor, registry: registry}) do
     for project <- projects do
-      {:ok, _} =
-        DynamicSupervisor.start_child(
-          supervisor,
-          {Repository, {project.address, {:via, Registry, {registry, project.address}}}}
-        )
+      DynamicSupervisor.start_child(
+        supervisor,
+        {Repository, {project.address, {:via, Registry, {registry, project.address}}}}
+      )
     end
   end
-
-  def run([]), do: nil
 end

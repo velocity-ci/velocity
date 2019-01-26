@@ -24,38 +24,26 @@ defmodule Architect.Projects.Project do
   @doc false
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :address, :private_key])
+    |> cast(attrs, [:address, :private_key])
     |> validate_required([:address])
-    |> default_name()
-    |> unique_constraint(:name)
+    |> update_default_name()
+    |> unique_constraint(:address)
     |> NameSlug.maybe_generate_slug()
     |> NameSlug.unique_constraint()
     |> clone()
   end
 
-  defp default_name(project) do
-    {_, name} = fetch_field(project, :name)
-
-    if name == nil or name == "" do
-      {_, address} = fetch_field(project, :address)
-
-      if String.slice(address, 0, 3) == "git" do
-        put_change(project, :name, name_from_git_address(address))
-      else
-        put_change(project, :name, name_from_http_address(address))
-      end
-    else
-      project
-    end
+  defp update_default_name(%Changeset{changes: %{address: address}} = changeset) do
+    put_change(changeset, :name, default_name(address))
   end
 
-  def name_from_http_address(address) do
+  def default_name("http" <> _ = address) do
     [_proto, host, path] = String.split(address, "/", parts: 3, trim: true)
     path = String.trim_trailing(path, ".git")
     "#{path} @ #{host}"
   end
 
-  def name_from_git_address(address) do
+  def default_name("git" <> _ = address) do
     [_, name] = String.split(address, "@")
     [host, path] = String.split(name, ":")
     path = String.trim_trailing(path, ".git")
