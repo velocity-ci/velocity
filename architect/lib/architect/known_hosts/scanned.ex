@@ -43,7 +43,7 @@ defmodule Architect.KnownHosts.Scanned do
 
     try do
       Task.async(fn ->
-        System.cmd("#{System.cwd()}/#{@keyscan_bin}", [host], stderr_to_stdout: true)
+        System.cmd("#{File.cwd()}/#{@keyscan_bin}", [host], stderr_to_stdout: true)
       end)
       |> Task.await(timeout)
       |> handle_scan()
