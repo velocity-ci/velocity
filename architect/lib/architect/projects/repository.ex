@@ -210,12 +210,29 @@ defmodule Architect.Projects.Repository do
   def handle_call(:commit_count, _from, %__MODULE__{repo: repo} = state) do
     Logger.debug("Performing 'remote show origin' on #{inspect(repo)}")
 
-    count =
-      repo
-      |> Git.rev_list(["--count", "--all"])
-      |> Commit.parse_count()
+    repo
+    |> Git.rev_list(["--count", "--all"])
+    |> Commit.parse_count()
 
     {:reply, count, state}
+  end
+
+  @impl true
+  def handle_call(
+        {:list_tasks, {:sha, sha}},
+        _from,
+        %__MODULE__{repo: repo, vcli: vcli} = state
+      ) do
+    Logger.debug("Performing VCLI cmd on #{inspect(repo)} for SHA #{inspect(sha)}}")
+
+    {:ok, _output} = Git.checkout(repo, [sha, "--force", "-b", UUID.uuid4()])
+
+    tasks =
+      vcli
+      |> VCLI.list()
+      |> Enum.map(&Task.parse/1)
+
+    {:reply, tasks, state}
   end
 
   @impl true
