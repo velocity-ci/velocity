@@ -33,10 +33,28 @@ defmodule Architect.Projects.Project do
     |> clone()
   end
 
-  defp update_default_name(%Changeset{changes: %{address: address}} = changeset) do
+  @doc ~S"""
+  If address has changed, update the name of the project
+  """
+  def update_default_name(%Changeset{changes: %{address: address}} = changeset) do
     put_change(changeset, :name, default_name(address))
   end
 
+  @doc ~S"""
+  Generate a name for the project based on its repository address
+
+  ## Examples
+
+      iex> Architect.Projects.Project.default_name("http://github.com/foo/bar.git")
+      "foo/bar @ github.com"
+
+      iex> Architect.Projects.Project.default_name("https://github.com/foo/bar.git")
+      "foo/bar @ github.com"
+
+      iex> Architect.Projects.Project.default_name("git@github.com:foo/bar.git")
+      "foo/bar @ github.com"
+
+  """
   def default_name("http" <> _ = address) do
     [_proto, host, path] = String.split(address, "/", parts: 3, trim: true)
     path = String.trim_trailing(path, ".git")

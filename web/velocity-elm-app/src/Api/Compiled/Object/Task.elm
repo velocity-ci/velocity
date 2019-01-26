@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.Branch exposing (commitAmount, commits, name, tasks)
+module Api.Compiled.Object.Task exposing (description, name)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,21 +18,11 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode
 
 
-commitAmount : SelectionSet Int Api.Compiled.Object.Branch
-commitAmount =
-    Object.selectionForField "Int" "commitAmount" [] Decode.int
+description : SelectionSet (Maybe String) Api.Compiled.Object.Task
+description =
+    Object.selectionForField "(Maybe String)" "description" [] (Decode.string |> Decode.nullable)
 
 
-commits : SelectionSet decodesTo Api.Compiled.Object.Commit -> SelectionSet (List decodesTo) Api.Compiled.Object.Branch
-commits object_ =
-    Object.selectionForCompositeField "commits" [] object_ (identity >> Decode.list)
-
-
-name : SelectionSet String Api.Compiled.Object.Branch
+name : SelectionSet String Api.Compiled.Object.Task
 name =
     Object.selectionForField "String" "name" [] Decode.string
-
-
-tasks : SelectionSet decodesTo Api.Compiled.Object.Task -> SelectionSet (List decodesTo) Api.Compiled.Object.Branch
-tasks object_ =
-    Object.selectionForCompositeField "tasks" [] object_ (identity >> Decode.list)

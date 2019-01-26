@@ -4,6 +4,7 @@ defmodule ArchitectWeb.Schema do
   import Kronky.Payload
 
   alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
+  alias Architect.Projects.{Project, Branch, Commit, Task}
 
   # Custom
   import_types(Absinthe.Type.Custom)

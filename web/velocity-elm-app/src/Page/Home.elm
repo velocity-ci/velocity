@@ -833,8 +833,8 @@ updateAuthenticated cred msg model =
             CompleteProjectButtonClicked ->
                 ( model
                 , case model.projectFormStatus of
-                    ConfigureForm { gitUrl, projectName } ->
-                        Project.create cred baseUrl { name = gitUrl.fullName, address = gitUrl.href }
+                    ConfigureForm { gitUrl } ->
+                        Project.create cred baseUrl { address = gitUrl.href }
                             |> Graphql.Http.send ProjectCreated
 
                     _ ->

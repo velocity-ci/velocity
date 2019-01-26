@@ -158,7 +158,7 @@ defmodule Architect.Projects.Repository do
     Logger.debug("Performing 'log' on #{inspect(repo)}")
 
     {:ok, _} = Git.checkout(repo, branch)
-    {:ok, output} = Git.log(repo, ["--format=#{Commit.format()}", "--max-count=10", branch])
+    {:ok, output} = Git.log(repo, ["--format=#{Commit.format()}", branch])
     commits = Commit.parse(output)
 
     {:reply, commits, state}

@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.Commit exposing (author, gpgFingerprint, message, sha)
+module Api.Compiled.Object.Commit exposing (author, branches, gpgFingerprint, message, sha, tasks)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -23,6 +23,11 @@ author object_ =
     Object.selectionForCompositeField "author" [] object_ identity
 
 
+branches : SelectionSet decodesTo Api.Compiled.Object.Branch -> SelectionSet (List decodesTo) Api.Compiled.Object.Commit
+branches object_ =
+    Object.selectionForCompositeField "branches" [] object_ (identity >> Decode.list)
+
+
 gpgFingerprint : SelectionSet String Api.Compiled.Object.Commit
 gpgFingerprint =
     Object.selectionForField "String" "gpgFingerprint" [] Decode.string
@@ -36,3 +41,8 @@ message =
 sha : SelectionSet String Api.Compiled.Object.Commit
 sha =
     Object.selectionForField "String" "sha" [] Decode.string
+
+
+tasks : SelectionSet decodesTo Api.Compiled.Object.Task -> SelectionSet (List decodesTo) Api.Compiled.Object.Commit
+tasks object_ =
+    Object.selectionForCompositeField "tasks" [] object_ (identity >> Decode.list)

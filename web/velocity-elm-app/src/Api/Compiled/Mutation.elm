@@ -30,16 +30,14 @@ createKnownHost requiredArgs object_ =
 
 
 type alias CreateProjectRequiredArguments =
-    { address : String
-    , name : String
-    }
+    { address : String }
 
 
 {-| Create project
 -}
 createProject : CreateProjectRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.ProjectPayload -> SelectionSet decodesTo RootMutation
 createProject requiredArgs object_ =
-    Object.selectionForCompositeField "createProject" [ Argument.required "address" requiredArgs.address Encode.string, Argument.required "name" requiredArgs.name Encode.string ] object_ identity
+    Object.selectionForCompositeField "createProject" [ Argument.required "address" requiredArgs.address Encode.string ] object_ identity
 
 
 type alias SignInRequiredArguments =

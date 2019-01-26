@@ -1,5 +1,7 @@
 defmodule ArchitectWeb.Schema.ProjectsTypes do
   use Absinthe.Schema.Notation
+  use Absinthe.Relay.Schema, :classic
+
   alias ArchitectWeb.Resolvers.Projects
   alias ArchitectWeb.Middleware.SetProjectToContext
 
