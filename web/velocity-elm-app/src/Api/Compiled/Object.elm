@@ -2,11 +2,19 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object exposing (Branch(..), Commit(..), CommitAuthor(..), KnownHost(..), KnownHostPayload(..), Project(..), ProjectPayload(..), Session(..), SessionPayload(..), Task(..), ValidationMessage(..), ValidationOption(..))
+module Api.Compiled.Object exposing (Branch(..), BranchConnection(..), BranchEdge(..), Commit(..), CommitAuthor(..), CommitConnection(..), CommitEdge(..), KnownHost(..), KnownHostPayload(..), PageInfo(..), Project(..), ProjectConnection(..), ProjectEdge(..), ProjectPayload(..), Session(..), SessionPayload(..), Task(..), ValidationMessage(..), ValidationOption(..))
 
 
 type Branch
     = Branch
+
+
+type BranchConnection
+    = BranchConnection
+
+
+type BranchEdge
+    = BranchEdge
 
 
 type Commit
@@ -17,6 +25,14 @@ type CommitAuthor
     = CommitAuthor
 
 
+type CommitConnection
+    = CommitConnection
+
+
+type CommitEdge
+    = CommitEdge
+
+
 type KnownHost
     = KnownHost
 
@@ -25,8 +41,20 @@ type KnownHostPayload
     = KnownHostPayload
 
 
+type PageInfo
+    = PageInfo
+
+
 type Project
     = Project
+
+
+type ProjectConnection
+    = ProjectConnection
+
+
+type ProjectEdge
+    = ProjectEdge
 
 
 type ProjectPayload

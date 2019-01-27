@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.Task exposing (description, id, name)
+module Api.Compiled.Object.CommitConnection exposing (edges, pageInfo)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,18 +18,11 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode
 
 
-description : SelectionSet (Maybe String) Api.Compiled.Object.Task
-description =
-    Object.selectionForField "(Maybe String)" "description" [] (Decode.string |> Decode.nullable)
+edges : SelectionSet decodesTo Api.Compiled.Object.CommitEdge -> SelectionSet (Maybe (List (Maybe decodesTo))) Api.Compiled.Object.CommitConnection
+edges object_ =
+    Object.selectionForCompositeField "edges" [] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
 
 
-{-| The ID of an object
--}
-id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.Task
-id =
-    Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)
-
-
-name : SelectionSet String Api.Compiled.Object.Task
-name =
-    Object.selectionForField "String" "name" [] Decode.string
+pageInfo : SelectionSet decodesTo Api.Compiled.Object.PageInfo -> SelectionSet decodesTo Api.Compiled.Object.CommitConnection
+pageInfo object_ =
+    Object.selectionForCompositeField "pageInfo" [] object_ identity

@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Query exposing (ListCommitsRequiredArguments, listCommits, listKnownHosts, listProjects)
+module Api.Compiled.Query exposing (CommitsOptionalArguments, CommitsRequiredArguments, ProjectsOptionalArguments, commits, listKnownHosts, projects)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -18,17 +18,33 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 
 
-type alias ListCommitsRequiredArguments =
+type alias CommitsOptionalArguments =
+    { after : OptionalArgument String
+    , before : OptionalArgument String
+    , first : OptionalArgument Int
+    , last : OptionalArgument Int
+    }
+
+
+type alias CommitsRequiredArguments =
     { branch : String
     , projectId : String
     }
 
 
-{-| List commits for project
+{-| List commits
 -}
-listCommits : ListCommitsRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.Commit -> SelectionSet (List decodesTo) RootQuery
-listCommits requiredArgs object_ =
-    Object.selectionForCompositeField "listCommits" [ Argument.required "branch" requiredArgs.branch Encode.string, Argument.required "projectId" requiredArgs.projectId Encode.string ] object_ (identity >> Decode.list)
+commits : (CommitsOptionalArguments -> CommitsOptionalArguments) -> CommitsRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.CommitConnection -> SelectionSet (Maybe decodesTo) RootQuery
+commits fillInOptionals requiredArgs object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { after = Absent, before = Absent, first = Absent, last = Absent }
+
+        optionalArgs =
+            [ Argument.optional "after" filledInOptionals.after Encode.string, Argument.optional "before" filledInOptionals.before Encode.string, Argument.optional "first" filledInOptionals.first Encode.int, Argument.optional "last" filledInOptionals.last Encode.int ]
+                |> List.filterMap identity
+    in
+    Object.selectionForCompositeField "commits" (optionalArgs ++ [ Argument.required "branch" requiredArgs.branch Encode.string, Argument.required "projectId" requiredArgs.projectId Encode.string ]) object_ (identity >> Decode.nullable)
 
 
 {-| Get all known hosts
@@ -38,8 +54,24 @@ listKnownHosts object_ =
     Object.selectionForCompositeField "listKnownHosts" [] object_ (identity >> Decode.list)
 
 
+type alias ProjectsOptionalArguments =
+    { after : OptionalArgument String
+    , before : OptionalArgument String
+    , first : OptionalArgument Int
+    , last : OptionalArgument Int
+    }
+
+
 {-| List projects
 -}
-listProjects : SelectionSet decodesTo Api.Compiled.Object.Project -> SelectionSet (List decodesTo) RootQuery
-listProjects object_ =
-    Object.selectionForCompositeField "listProjects" [] object_ (identity >> Decode.list)
+projects : (ProjectsOptionalArguments -> ProjectsOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.ProjectConnection -> SelectionSet (Maybe decodesTo) RootQuery
+projects fillInOptionals object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { after = Absent, before = Absent, first = Absent, last = Absent }
+
+        optionalArgs =
+            [ Argument.optional "after" filledInOptionals.after Encode.string, Argument.optional "before" filledInOptionals.before Encode.string, Argument.optional "first" filledInOptionals.first Encode.int, Argument.optional "last" filledInOptionals.last Encode.int ]
+                |> List.filterMap identity
+    in
+    Object.selectionForCompositeField "projects" optionalArgs object_ (identity >> Decode.nullable)

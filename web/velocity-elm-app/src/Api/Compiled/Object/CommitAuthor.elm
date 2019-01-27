@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.CommitAuthor exposing (date, email, name)
+module Api.Compiled.Object.CommitAuthor exposing (date, email, id, name)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -26,6 +26,13 @@ date =
 email : SelectionSet String Api.Compiled.Object.CommitAuthor
 email =
     Object.selectionForField "String" "email" [] Decode.string
+
+
+{-| The ID of an object
+-}
+id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.CommitAuthor
+id =
+    Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)
 
 
 name : SelectionSet String Api.Compiled.Object.CommitAuthor

@@ -227,7 +227,7 @@ updateProject (Project a) projects =
 list : Cred -> BaseUrl -> Graphql.Http.Request (List Project)
 list cred baseUrl =
     selectionSet
-        |> Query.listProjects
+        |> Query.projects
         |> Api.queryRequest baseUrl
 
 

@@ -2,9 +2,8 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Interface exposing (placeholder)
+module Api.Compiled.Interface exposing (Node(..))
 
 
-placeholder : String
-placeholder =
-    ""
+type Node
+    = Node

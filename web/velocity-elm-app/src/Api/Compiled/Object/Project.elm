@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Object.Project exposing (address, branches, defaultBranch, id, insertedAt, name, slug, updatedAt)
+module Api.Compiled.Object.Project exposing (BranchesOptionalArguments, address, branches, defaultBranch, id, insertedAt, name, slug, updatedAt)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -23,9 +23,25 @@ address =
     Object.selectionForField "String" "address" [] Decode.string
 
 
-branches : SelectionSet decodesTo Api.Compiled.Object.Branch -> SelectionSet (List decodesTo) Api.Compiled.Object.Project
-branches object_ =
-    Object.selectionForCompositeField "branches" [] object_ (identity >> Decode.list)
+type alias BranchesOptionalArguments =
+    { after : OptionalArgument String
+    , before : OptionalArgument String
+    , first : OptionalArgument Int
+    , last : OptionalArgument Int
+    }
+
+
+branches : (BranchesOptionalArguments -> BranchesOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.BranchConnection -> SelectionSet (Maybe decodesTo) Api.Compiled.Object.Project
+branches fillInOptionals object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { after = Absent, before = Absent, first = Absent, last = Absent }
+
+        optionalArgs =
+            [ Argument.optional "after" filledInOptionals.after Encode.string, Argument.optional "before" filledInOptionals.before Encode.string, Argument.optional "first" filledInOptionals.first Encode.int, Argument.optional "last" filledInOptionals.last Encode.int ]
+                |> List.filterMap identity
+    in
+    Object.selectionForCompositeField "branches" optionalArgs object_ (identity >> Decode.nullable)
 
 
 defaultBranch : SelectionSet decodesTo Api.Compiled.Object.Branch -> SelectionSet decodesTo Api.Compiled.Object.Project
@@ -33,6 +49,8 @@ defaultBranch object_ =
     Object.selectionForCompositeField "defaultBranch" [] object_ identity
 
 
+{-| The ID of an object
+-}
 id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.Project
 id =
     Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)

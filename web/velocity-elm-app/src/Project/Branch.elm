@@ -4,6 +4,7 @@ import Element exposing (..)
 import Project.Branch.Name as Name exposing (Name)
 import Api.Compiled.Object
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
+import Api.Compiled.Object.BranchEdge as BranchEdge
 
 
 type Branch
@@ -27,6 +28,28 @@ text (Branch { name }) =
 
 -- SERIALIZATION --
 
+type alias Connection a =
+    { pageInfo : PageInfo
+    , edges : List (Edge a)
+    }
+
+type alias PageInfo =
+    { startCursor : String
+    , endCursor : String
+    , hasNextPage : Bool
+    , hasPreviousPage : Bool
+    }
+
+type alias Edge a =
+    { cursor : String
+    , node : a
+    }
+
+edgeSelectionSet : SelectionSet (Edge (Maybe Branch)) Api.Compiled.Object.BranchEdge
+edgeSelectionSet =
+    SelectionSet.succeed Edge
+        |> with BranchEdge.cursor
+        |> with (BranchEdge.node selectionSet)
 
 selectionSet : SelectionSet Branch Api.Compiled.Object.Branch
 selectionSet =

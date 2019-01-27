@@ -24,6 +24,7 @@ import Api.Compiled.Object
 import Api.Compiled.Scalar as Scalar
 import Api.Compiled.Object.KnownHostPayload as KnownHostPayload
 import Api.Compiled.Mutation as Mutation
+import Api.Compiled.Object.KnownHost as KnownHost
 
 
 type KnownHost
