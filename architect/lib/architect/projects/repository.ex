@@ -15,6 +15,8 @@ defmodule Architect.Projects.Repository do
   alias Architect.Projects.{Branch, Commit, Task}
   alias Architect.VCLI
 
+  @timeout 20_000
+
   # Client
 
   def start_link({url, name}) when is_binary(url) do
@@ -26,53 +28,58 @@ defmodule Architect.Projects.Repository do
   @doc ~S"""
   Check if cloned successfully
   """
-  def cloned_successfully?(repository), do: GenServer.call(repository, :clone_status) == :cloned
+  def cloned_successfully?(repository),
+    do: GenServer.call(repository, :clone_status, @timeout) == :cloned
 
   @doc ~S"""
   Get commit amount across all branches
   """
-  def commit_count(repository), do: GenServer.call(repository, :commit_count)
+  def commit_count(repository), do: GenServer.call(repository, :commit_count, @timeout)
 
   @doc ~S"""
   Get commit amount for branch
   """
-  def commit_count(repository, branch), do: GenServer.call(repository, {:commit_count, branch})
+  def commit_count(repository, branch),
+    do: GenServer.call(repository, {:commit_count, branch}, @timeout)
 
   @doc ~S"""
   Run `git fetch` on the repository
   """
-  def fetch(repository), do: GenServer.call(repository, :fetch)
+  def fetch(repository), do: GenServer.call(repository, :fetch, @timeout)
 
   @doc ~S"""
   Get a single commit by its SHA value
   """
-  def commit_by_sha(repository, sha), do: GenServer.call(repository, {:get_commit_by_sha, sha})
+  def commit_by_sha(repository, sha),
+    do: GenServer.call(repository, {:get_commit_by_sha, sha}, @timeout)
 
   @doc ~S"""
   Get a list of commits by branch
   """
-  def list_commits(repository, branch), do: GenServer.call(repository, {:list_commits, branch})
+  def list_commits(repository, branch),
+    do: GenServer.call(repository, {:list_commits, branch}, @timeout)
 
   @doc ~S"""
   Get a list of branches
   """
-  def list_branches(repository), do: GenServer.call(repository, :list_branches)
+  def list_branches(repository), do: GenServer.call(repository, :list_branches, @timeout)
 
   @doc ~S"""
   Get a list of branches for a commit SHA value
   """
   def list_branches_for_commit(repository, sha),
-    do: GenServer.call(repository, {:list_branches_for_commit, sha})
+    do: GenServer.call(repository, {:list_branches_for_commit, sha}, @timeout)
 
   @doc ~S"""
   Get the default branch
   """
-  def default_branch(repository), do: GenServer.call(repository, :default_branch)
+  def default_branch(repository), do: GenServer.call(repository, :default_branch, @timeout)
 
   @doc ~S"""
   Ge the tasks for a commit specified by its SHA value
   """
-  def list_tasks(repository, selector), do: GenServer.call(repository, {:list_tasks, selector})
+  def list_tasks(repository, selector),
+    do: GenServer.call(repository, {:list_tasks, selector}, @timeout)
 
   # Server (callbacks)
 
@@ -142,7 +149,7 @@ defmodule Architect.Projects.Repository do
 
   @impl true
   def handle_call({:list_branches_for_commit, sha}, _from, %__MODULE__{repo: repo} = state) do
-    Logger.debug("Performing 'branch' on #{inspect(repo)}")
+    Logger.debug("Performing 'branch --contains' on #{inspect(repo)}")
 
     branches =
       repo
@@ -155,10 +162,16 @@ defmodule Architect.Projects.Repository do
   @impl true
   def handle_call({:list_commits, branch}, _from, %__MODULE{repo: repo} = state)
       when is_binary(branch) do
-    Logger.debug("Performing 'log' on #{inspect(repo)}")
+    Logger.debug("Performing 'checkout #{branch}}' on #{inspect(repo)}")
 
     {:ok, _} = Git.checkout(repo, branch)
+
+    Logger.debug("Performing 'log --format=#{Commit.format()}}' on #{inspect(repo)}")
+
     {:ok, output} = Git.log(repo, ["--format=#{Commit.format()}", branch])
+
+    Logger.debug("Parsing commit on #{inspect(repo)}")
+
     commits = Commit.parse(output)
 
     {:reply, commits, state}
@@ -226,7 +239,7 @@ defmodule Architect.Projects.Repository do
       ) do
     Logger.debug("Performing VCLI cmd on #{inspect(repo)} for SHA #{inspect(sha)}}")
 
-    {:ok, _output} = Git.checkout(repo, [sha, "--force", "-b", UUID.uuid4()])
+    {:ok, _output} = Git.checkout(repo, [sha, "--force"])
 
     tasks =
       vcli

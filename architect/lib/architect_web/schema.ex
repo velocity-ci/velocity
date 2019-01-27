@@ -1,14 +1,20 @@
 defmodule ArchitectWeb.Schema do
   use Absinthe.Schema
+  use Absinthe.Relay.Schema, :modern
 
   import Kronky.Payload
 
   alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
   alias Architect.Projects.{Project, Branch, Commit, Task}
+  alias ArchitectWeb.{Resolvers, Middleware}
 
   # Custom
   import_types(Absinthe.Type.Custom)
   import_types(Kronky.ValidationMessageTypes)
+
+  connection(node_type: :project)
+  connection(node_type: :commit)
+  connection(node_type: :branch)
 
   import_types(Schema.UsersTypes)
   import_types(Schema.KnownHostsTypes)
@@ -25,6 +31,25 @@ defmodule ArchitectWeb.Schema do
   payload_object(:known_host_payload, :known_host)
   payload_object(:project_payload, :project)
 
+  node interface do
+    resolve_type(fn
+      %Project{}, _ ->
+        :project
+
+      %Branch{}, _ ->
+        :branch
+
+      %Commit{}, _ ->
+        :commit
+
+      %Task{}, _ ->
+        :task
+
+      _, _ ->
+        nil
+    end)
+  end
+
   mutation do
     import_fields(:auth_mutations)
     import_fields(:known_hosts_mutations)
@@ -33,7 +58,30 @@ defmodule ArchitectWeb.Schema do
 
   query do
     import_fields(:known_hosts_queries)
-    import_fields(:projects_queries)
+    #    import_fields(:projects_queries)
+
+    @desc "List projects"
+    connection field(:projects, node_type: :project) do
+      middleware(Middleware.Authorize)
+      resolve(&Resolvers.Projects.list_projects/2)
+    end
+
+    @desc "List commits"
+    connection field(:commits, node_type: :commit) do
+      middleware(Middleware.Authorize)
+
+      arg(:project_id, non_null(:string))
+      arg(:branch, non_null(:string))
+
+      # Add the project to the context
+      middleware(fn res, _ ->
+        [%{argument_data: %{project_id: project_id}} | _] = res.path
+        project = Projects.get_project!(project_id)
+        %{res | context: Map.put(res.context, :project, project)}
+      end)
+
+      resolve(&Resolvers.Projects.list_commits/2)
+    end
   end
 
   subscription do
