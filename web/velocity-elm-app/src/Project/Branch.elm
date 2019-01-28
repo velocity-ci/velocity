@@ -1,10 +1,14 @@
-module Project.Branch exposing (Branch, text, selectionSet)
+module Project.Branch exposing (Branch, connectionSelectionSet, selectionSet, text)
 
-import Element exposing (..)
-import Project.Branch.Name as Name exposing (Name)
 import Api.Compiled.Object
-import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
+import Api.Compiled.Object.BranchConnection as BranchConnection
 import Api.Compiled.Object.BranchEdge as BranchEdge
+import Connection exposing (Connection)
+import Edge exposing (Edge)
+import Element exposing (..)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
+import PageInfo exposing (PageInfo)
+import Project.Branch.Name as Name exposing (Name)
 
 
 type Branch
@@ -28,28 +32,23 @@ text (Branch { name }) =
 
 -- SERIALIZATION --
 
-type alias Connection a =
-    { pageInfo : PageInfo
-    , edges : List (Edge a)
-    }
 
-type alias PageInfo =
-    { startCursor : String
-    , endCursor : String
-    , hasNextPage : Bool
-    , hasPreviousPage : Bool
-    }
+connectionSelectionSet : SelectionSet (Connection Branch) Api.Compiled.Object.BranchConnection
+connectionSelectionSet =
+    SelectionSet.map2 Connection
+        (BranchConnection.pageInfo PageInfo.selectionSet)
+        (BranchConnection.edges edgeSelectionSet
+            |> SelectionSet.nonNullOrFail
+            |> SelectionSet.nonNullElementsOrFail
+        )
 
-type alias Edge a =
-    { cursor : String
-    , node : a
-    }
 
-edgeSelectionSet : SelectionSet (Edge (Maybe Branch)) Api.Compiled.Object.BranchEdge
+edgeSelectionSet : SelectionSet (Edge Branch) Api.Compiled.Object.BranchEdge
 edgeSelectionSet =
-    SelectionSet.succeed Edge
+    SelectionSet.succeed Edge.fromSelectionSet
         |> with BranchEdge.cursor
-        |> with (BranchEdge.node selectionSet)
+        |> with (SelectionSet.nonNullOrFail <| BranchEdge.node selectionSet)
+
 
 selectionSet : SelectionSet Branch Api.Compiled.Object.Branch
 selectionSet =

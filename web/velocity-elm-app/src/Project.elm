@@ -1,29 +1,36 @@
-module Project
-    exposing
-        ( Hydrated
-        , Project
-        , addProject
-        , create
-        , findProjectById
-        , findProjectBySlug
-        , id
-        , list
-        , name
-        , repository
-        , slug
-        , syncing
-        , branches
-        , thumbnail
-        , updateProject
-        , CreateResponse(..)
-        , selectionSet
-        )
+module Project exposing
+    ( CreateResponse(..)
+    , Hydrated
+    , Project
+    , addProject
+    , branches
+    , create
+    , findProjectById
+    , findProjectBySlug
+    , id
+    , list
+    , name
+    , repository
+    , selectionSet
+    , slug
+    , syncing
+    , thumbnail
+    , updateProject
+    )
 
 import Api exposing (BaseUrl, Cred)
+import Api.Compiled.Mutation as Mutation
+import Api.Compiled.Object
+import Api.Compiled.Object.Project as Project
+import Api.Compiled.Object.ProjectPayload as ProjectPayload
+import Api.Compiled.Query as Query
+import Api.Compiled.Scalar
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Graphql.Http
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
 import Icon
 import Iso8601
 import Palette
@@ -31,15 +38,7 @@ import Project.Branch as Branch exposing (Branch)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
 import Time exposing (Posix)
-import Graphql.Http
-import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
-import Api.Compiled.Object.Project as Project
-import Api.Compiled.Object
-import Api.Compiled.Scalar
-import Api.Compiled.Query as Query
-import Api.Compiled.Object.ProjectPayload as ProjectPayload
-import Api.Compiled.Mutation as Mutation
-
+import Graphql.OptionalArgument exposing (OptionalArgument(..))
 
 type alias Hydrated =
     { project : Project
@@ -57,8 +56,9 @@ type alias Internals =
     , name : String
     , address :
         String
-        --    , createdAt : Time.Posix
-        --    , updatedAt : Time.Posix
+
+    --    , createdAt : Time.Posix
+    --    , updatedAt : Time.Posix
     , synchronising : Bool
     , logo : Maybe String
     , branches : List Branch
@@ -75,6 +75,9 @@ selectionSet =
     SelectionSet.succeed Project
         |> with internalSelectionSet
 
+branchesParams : Project.BranchesOptionalArguments
+branchesParams =
+    { first =  }
 
 internalSelectionSet : SelectionSet Internals Api.Compiled.Object.Project
 internalSelectionSet =
@@ -85,10 +88,9 @@ internalSelectionSet =
         |> with Project.address
         --        |> with (mapToDateTime Project.insertedAt)
         --        |> with (mapToDateTime Project.updatedAt)
-        |>
-            hardcoded False
+        |> hardcoded False
         |> hardcoded Nothing
-        |> with (Project.branches Branch.selectionSet)
+        |> with (Project.branches Branch.connectionSelectionSet)
         |> with (Project.defaultBranch Branch.selectionSet)
 
 
@@ -99,12 +101,11 @@ mapToDateTime =
             Iso8601.toTime value
                 |> Result.mapError
                     (\_ ->
-                        (Debug.log "decode time error"
+                        Debug.log "decode time error"
                             ("Failed to parse "
                                 ++ value
                                 ++ " as Iso8601 DateTime."
                             )
-                        )
                     )
         )
 
@@ -215,6 +216,7 @@ updateProject (Project a) projects =
             (\(Project b) ->
                 if a.id == b.id then
                     Project a
+
                 else
                     Project b
             )
@@ -252,9 +254,9 @@ createResponseSelectionSet =
                 Nothing ->
                     ValidationFailure messages
     in
-        SelectionSet.succeed toResponse
-            |> SelectionSet.with messageSelectionSet
-            |> SelectionSet.with (ProjectPayload.result selectionSet)
+    SelectionSet.succeed toResponse
+        |> SelectionSet.with messageSelectionSet
+        |> SelectionSet.with (ProjectPayload.result selectionSet)
 
 
 create : Cred -> BaseUrl -> Mutation.CreateProjectRequiredArguments -> Graphql.Http.Request CreateResponse
