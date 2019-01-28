@@ -81,7 +81,7 @@ defmodule Architect.Projects do
 
   """
   def list_branches(%Project{} = project),
-    do: call_repository(project, &Repository.list_branches/1)
+    do: call_repository(project, {:list_branches, []})
 
   @doc ~S"""
   Get a list of branches for a specific commit SHA
@@ -93,7 +93,7 @@ defmodule Architect.Projects do
 
   """
   def list_branches_for_commit(%Project{} = project, sha) when is_binary(sha),
-    do: call_repository(project, &Repository.list_branches_for_commit(&1, sha))
+    do: call_repository(project, {:list_branches_for_commit, [sha]})
 
   @doc ~S"""
   Get a list of commits by branch
@@ -106,7 +106,7 @@ defmodule Architect.Projects do
 
   """
   def list_commits(%Project{} = project, branch) when is_binary(branch),
-    do: call_repository(project, &Repository.list_commits(&1, branch))
+    do: call_repository(project, {:list_commits, [branch]})
 
   @doc ~S"""
   Get the default branch
@@ -118,7 +118,7 @@ defmodule Architect.Projects do
 
   """
   def default_branch(%Project{} = project),
-    do: call_repository(project, &Repository.default_branch/1)
+    do: call_repository(project, {:default_branch, []})
 
   @doc ~S"""
   Get the amount of commits for the project
@@ -130,7 +130,7 @@ defmodule Architect.Projects do
 
   """
   def commit_count(%Project{} = project),
-    do: call_repository(project, &Repository.commit_count/1)
+    do: call_repository(project, {:commit_count, []})
 
   @doc ~S"""
   Get the amount of commits for the project, for a specific branch
@@ -142,7 +142,7 @@ defmodule Architect.Projects do
 
   """
   def commit_count(%Project{} = project, branch) when is_binary(branch),
-    do: call_repository(project, &Repository.commit_count(&1, branch))
+    do: call_repository(project, {:commit_count, [branch]})
 
   @doc ~S"""
   List tasks
@@ -154,12 +154,14 @@ defmodule Architect.Projects do
 
   """
   def list_tasks(%Project{} = project, selector),
-    do: call_repository(project, &Repository.list_tasks(&1, selector))
+    do: call_repository(project, {:list_tasks, [selector]})
 
   ### Server
 
   @impl true
   def init(:ok) do
+    :ets.new(:simple_cache, [:named_table, :public])
+
     children = [
       {Registry, keys: :unique, name: @registry},
       {DynamicSupervisor, name: @supervisor, strategy: :one_for_one, max_restarts: 3},
@@ -180,11 +182,11 @@ defmodule Architect.Projects do
 
   defp call_repository(_, _, attempt) when attempt > 2, do: {:error, "Failed"}
 
-  defp call_repository(%Project{address: address} = project, callback, attempt) do
+  defp call_repository(%Project{address: address} = project, {fun, args}, attempt) do
     case Registry.lookup(@registry, address) do
       [{repository, _}] ->
         try do
-          callback.(repository)
+          Architect.ETSCache.get(Repository, fun, [repository | args])
         catch
           kind, reason ->
             Logger.warn(
@@ -193,7 +195,7 @@ defmodule Architect.Projects do
 
             Process.sleep(1_000)
 
-            call_repository(project, callback, attempt + 1)
+            call_repository(project, {fun, args}, attempt + 1)
         end
 
       [] ->
@@ -201,7 +203,7 @@ defmodule Architect.Projects do
           "Failed to call builder #{address} on #{inspect(@registry)}; address does not exist"
         )
 
-        call_repository(project, callback, attempt + 1)
+        call_repository(project, {fun, args}, attempt + 1)
     end
   end
 end

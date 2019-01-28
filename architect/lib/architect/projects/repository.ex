@@ -8,7 +8,7 @@ defmodule Architect.Projects.Repository do
   When this process is killed this directory should be automatically removed
   """
 
-  defstruct [:status, :url, :repo, :vcli]
+  defstruct [:status, :url, :repo, :vcli, :commits_table, :branches_table, :commit_branches_table]
 
   use GenServer
   require Logger
@@ -90,6 +90,12 @@ defmodule Architect.Projects.Repository do
 
   @impl true
   def handle_continue(:clone, %__MODULE__{url: url} = state) when is_binary(url) do
+    Logger.debug("Creating ETS tables for #{url}")
+
+    #    branches_table = :ets.new(:branches, [:set, :private])
+    #    commits_table = :ets.new(:commits, [:set, :private])
+    #    commit_branches_table = :ets.new(:commit_branches, [:set, :private])
+
     Temp.track!()
 
     path = Temp.mkdir!(UUID.uuid4())
@@ -107,7 +113,15 @@ defmodule Architect.Projects.Repository do
           {:ok, _output} = Git.checkout(repo, [branch.name])
         end
 
-        {:noreply, %__MODULE__{state | repo: repo, status: :cloned}}
+        {:noreply,
+         %__MODULE__{
+           state
+           | repo: repo,
+             status: :cloned
+             #             commits_table: commits_table,
+             #             branches_table: branches_table,
+             #             commit_branches_table: commit_branches_table
+         }}
 
       {:error, %Git.Error{message: reason}} ->
         Logger.error("Failed cloning #{url} to #{path}: #{reason}")
@@ -136,7 +150,11 @@ defmodule Architect.Projects.Repository do
   end
 
   @impl true
-  def handle_call(:list_branches, _from, %__MODULE__{repo: repo} = state) do
+  def handle_call(
+        :list_branches,
+        _from,
+        %__MODULE__{repo: repo, branches_table: branches_table} = state
+      ) do
     Logger.debug("Performing 'branch' on #{inspect(repo)}")
 
     branches =
@@ -144,17 +162,25 @@ defmodule Architect.Projects.Repository do
       |> Git.branch()
       |> Branch.parse()
 
+    #    :ets.insert(branches_table, branches)
+
     {:reply, branches, state}
   end
 
   @impl true
-  def handle_call({:list_branches_for_commit, sha}, _from, %__MODULE__{repo: repo} = state) do
+  def handle_call(
+        {:list_branches_for_commit, sha},
+        _from,
+        %__MODULE__{repo: repo, commit_branches_table: commit_branches_table} = state
+      ) do
     Logger.debug("Performing 'branch --contains' on #{inspect(repo)}")
 
     branches =
       repo
       |> Git.branch(["--contains=#{sha}"])
       |> Branch.parse()
+
+    #    :ets.insert(commit_branches_table, {sha, branches})
 
     {:reply, branches, state}
   end
