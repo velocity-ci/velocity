@@ -28,7 +28,7 @@ type alias CommitsOptionalArguments =
 
 type alias CommitsRequiredArguments =
     { branch : String
-    , projectId : String
+    , projectSlug : String
     }
 
 
@@ -44,7 +44,7 @@ commits fillInOptionals requiredArgs object_ =
             [ Argument.optional "after" filledInOptionals.after Encode.string, Argument.optional "before" filledInOptionals.before Encode.string, Argument.optional "first" filledInOptionals.first Encode.int, Argument.optional "last" filledInOptionals.last Encode.int ]
                 |> List.filterMap identity
     in
-    Object.selectionForCompositeField "commits" (optionalArgs ++ [ Argument.required "branch" requiredArgs.branch Encode.string, Argument.required "projectId" requiredArgs.projectId Encode.string ]) object_ (identity >> Decode.nullable)
+    Object.selectionForCompositeField "commits" (optionalArgs ++ [ Argument.required "branch" requiredArgs.branch Encode.string, Argument.required "projectSlug" requiredArgs.projectSlug Encode.string ]) object_ (identity >> Decode.nullable)
 
 
 {-| Get all known hosts

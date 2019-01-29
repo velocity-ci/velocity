@@ -5,6 +5,7 @@ defmodule ArchitectWeb.Schema do
   import Kronky.Payload
 
   alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
+  alias Architect.Projects
   alias Architect.Projects.{Project, Branch, Commit, Task}
   alias ArchitectWeb.{Resolvers, Middleware}
   alias Ecto.Changeset
@@ -72,13 +73,13 @@ defmodule ArchitectWeb.Schema do
     connection field(:commits, node_type: :commit) do
       middleware(Middleware.Authorize)
 
-      arg(:project_id, non_null(:string))
+      arg(:project_slug, non_null(:string))
       arg(:branch, non_null(:string))
 
       # Add the project to the context
       middleware(fn res, _ ->
-        [%{argument_data: %{project_id: project_id}} | _] = res.path
-        project = Projects.get_project!(project_id)
+        [%{argument_data: %{project_slug: project_slug}} | _] = res.path
+        project = Projects.get_project_by_slug!(project_slug)
         %{res | context: Map.put(res.context, :project, project)}
       end)
 

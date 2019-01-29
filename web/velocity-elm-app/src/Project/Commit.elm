@@ -1,11 +1,14 @@
-module Project.Commit exposing (Commit, hash)
+module Project.Commit exposing (Commit, connectionSelectionSet, hash, selectionSet)
 
-import Iso8601
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (custom, optional, required)
-import Project.Branch.Name as BranchName
+import Api.Compiled.Object
+import Api.Compiled.Object.Commit as Commit
+import Api.Compiled.Object.CommitConnection as CommitConnection
+import Api.Compiled.Object.CommitEdge as CommitEdge
+import Connection exposing (Connection)
+import Edge exposing (Edge)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
+import PageInfo exposing (PageInfo)
 import Project.Commit.Hash as Hash exposing (Hash)
-import Time
 
 
 type Commit
@@ -13,12 +16,45 @@ type Commit
 
 
 type alias Internals =
-    { branches : List BranchName.Name
-    , hash : Hash
-    , author : String
-    , date : Time.Posix
+    { hash : Hash
+
+    --    , author : String
+    --    , date : Time.Posix
     , message : String
     }
+
+
+
+-- SERIALIZATION
+
+
+connectionSelectionSet : SelectionSet (Connection Commit) Api.Compiled.Object.CommitConnection
+connectionSelectionSet =
+    SelectionSet.map2 Connection
+        (CommitConnection.pageInfo PageInfo.selectionSet)
+        (CommitConnection.edges edgeSelectionSet
+            |> SelectionSet.nonNullOrFail
+            |> SelectionSet.nonNullElementsOrFail
+        )
+
+
+edgeSelectionSet : SelectionSet (Edge Commit) Api.Compiled.Object.CommitEdge
+edgeSelectionSet =
+    SelectionSet.succeed Edge.fromSelectionSet
+        |> with CommitEdge.cursor
+        |> with (SelectionSet.nonNullOrFail <| CommitEdge.node selectionSet)
+
+
+selectionSet : SelectionSet Commit Api.Compiled.Object.Commit
+selectionSet =
+    SelectionSet.map Commit internalSelectionSet
+
+
+internalSelectionSet : SelectionSet Internals Api.Compiled.Object.Commit
+internalSelectionSet =
+    SelectionSet.succeed Internals
+        |> SelectionSet.with Hash.selectionSet
+        |> SelectionSet.with Commit.message
 
 
 
