@@ -6,7 +6,6 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
   alias ArchitectWeb.Middleware.SetProjectToContext
 
   node object(:project) do
-    field(:id, non_null(:id))
     field(:name, non_null(:string))
     field(:slug, non_null(:string))
     field(:address, non_null(:string))

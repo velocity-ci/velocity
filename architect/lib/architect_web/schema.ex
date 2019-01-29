@@ -7,6 +7,7 @@ defmodule ArchitectWeb.Schema do
   alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
   alias Architect.Projects.{Project, Branch, Commit, Task}
   alias ArchitectWeb.{Resolvers, Middleware}
+  alias Ecto.Changeset
 
   # Custom
   import_types(Absinthe.Type.Custom)
@@ -30,6 +31,7 @@ defmodule ArchitectWeb.Schema do
   payload_object(:session_payload, :session)
   payload_object(:known_host_payload, :known_host)
   payload_object(:project_payload, :project)
+  require Logger
 
   node interface do
     resolve_type(fn

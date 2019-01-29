@@ -8,9 +8,11 @@ module Project exposing
     , findProjectById
     , findProjectBySlug
     , id
+    , connectionSelectionSet
     , list
     , name
     , repository
+    , projectListArgs
     , selectionSet
     , slug
     , syncing
@@ -23,6 +25,8 @@ import Api.Compiled.Mutation as Mutation
 import Api.Compiled.Object
 import Api.Compiled.Object.Project as Project
 import Api.Compiled.Object.ProjectPayload as ProjectPayload
+import Api.Compiled.Object.ProjectConnection as ProjectConnection
+import Api.Compiled.Object.ProjectEdge as ProjectEdge
 import Api.Compiled.Query as Query
 import Api.Compiled.Scalar
 import Element exposing (..)
@@ -39,6 +43,9 @@ import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
 import Time exposing (Posix)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
+import Connection exposing (Connection)
+import PageInfo exposing (PageInfo)
+import Edge exposing (Edge)
 
 type alias Hydrated =
     { project : Project
@@ -61,13 +68,28 @@ type alias Internals =
     --    , updatedAt : Time.Posix
     , synchronising : Bool
     , logo : Maybe String
-    , branches : List Branch
+    , branches : Connection Branch
     , defaultBranch : Branch
     }
 
 
 
 -- SERIALIZATION --
+connectionSelectionSet : SelectionSet (Connection Project) Api.Compiled.Object.ProjectConnection
+connectionSelectionSet =
+    SelectionSet.map2 Connection
+        (ProjectConnection.pageInfo PageInfo.selectionSet)
+        (ProjectConnection.edges edgeSelectionSet
+            |> SelectionSet.nonNullOrFail
+            |> SelectionSet.nonNullElementsOrFail
+        )
+
+
+edgeSelectionSet : SelectionSet (Edge Project) Api.Compiled.Object.ProjectEdge
+edgeSelectionSet =
+    SelectionSet.succeed Edge.fromSelectionSet
+        |> with ProjectEdge.cursor
+        |> with (SelectionSet.nonNullOrFail <| ProjectEdge.node selectionSet)
 
 
 selectionSet : SelectionSet Project Api.Compiled.Object.Project
@@ -75,9 +97,13 @@ selectionSet =
     SelectionSet.succeed Project
         |> with internalSelectionSet
 
-branchesParams : Project.BranchesOptionalArguments
-branchesParams =
-    { first =  }
+branchesParams : Project.BranchesOptionalArguments -> Project.BranchesOptionalArguments
+branchesParams args =
+    { first = Present 10
+    , last = Absent
+    , after = Absent
+    , before = Absent
+    }
 
 internalSelectionSet : SelectionSet Internals Api.Compiled.Object.Project
 internalSelectionSet =
@@ -90,7 +116,7 @@ internalSelectionSet =
         --        |> with (mapToDateTime Project.updatedAt)
         |> hardcoded False
         |> hardcoded Nothing
-        |> with (Project.branches Branch.connectionSelectionSet)
+        |> with (SelectionSet.nonNullOrFail <| Project.branches branchesParams Branch.connectionSelectionSet)
         |> with (Project.defaultBranch Branch.selectionSet)
 
 
@@ -141,7 +167,8 @@ syncing (Project project) =
 
 branches : Project -> List Branch
 branches (Project project) =
-    project.branches
+    project.branches.edges
+        |> List.map Edge.node
 
 
 
@@ -225,11 +252,15 @@ updateProject (Project a) projects =
 
 -- COLLECTION --
 
+projectListArgs : Query.ProjectsOptionalArguments -> Query.ProjectsOptionalArguments
+projectListArgs args =
+    { args | first = Present 10 }
 
-list : Cred -> BaseUrl -> Graphql.Http.Request (List Project)
+
+list : Cred -> BaseUrl -> Graphql.Http.Request (Maybe (Connection Project))
 list cred baseUrl =
-    selectionSet
-        |> Query.projects
+    connectionSelectionSet
+        |> Query.projects projectListArgs
         |> Api.queryRequest baseUrl
 
 

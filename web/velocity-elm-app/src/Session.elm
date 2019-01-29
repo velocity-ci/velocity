@@ -35,8 +35,9 @@ import Project.Id
 import Project.Slug
 import Task exposing (Task)
 import Viewer exposing (Viewer)
-
-
+import Connection exposing (Connection)
+import PageInfo exposing (PageInfo)
+import Edge
 -- TYPES
 
 
@@ -48,7 +49,7 @@ type Session msg
 type alias LoggedInInternals msg =
     { navKey : Nav.Key
     , viewer : Viewer
-    , projects : List Project
+    , projects : Connection Project
     , knownHosts : List KnownHost
     , log : Activity.Log
     , subscriptions : Subscriptions.State msg
@@ -96,7 +97,7 @@ projectWithId : Project.Id.Id -> Session msg -> Maybe Project
 projectWithId projectId session =
     case session of
         LoggedIn internals ->
-            Project.findProjectById internals.projects projectId
+            Project.findProjectById (List.map Edge.node internals.projects.edges) projectId
 
         Guest _ ->
             Nothing
@@ -106,7 +107,7 @@ projectWithSlug : Project.Slug.Slug -> Session msg -> Maybe Project
 projectWithSlug projectSlug session =
     case session of
         LoggedIn internals ->
-            Project.findProjectBySlug internals.projects projectSlug
+            Project.findProjectBySlug (List.map Edge.node internals.projects.edges) projectSlug
 
         Guest _ ->
             Nothing
@@ -116,7 +117,8 @@ projects : Session msg -> List Project
 projects session =
     case session of
         LoggedIn internals ->
-            internals.projects
+            internals.projects.edges
+                |> List.map Edge.node
 
         Guest _ ->
             []
@@ -126,7 +128,8 @@ addProject : Project -> Session msg -> Session msg
 addProject p session =
     case session of
         LoggedIn internals ->
-            LoggedIn { internals | projects = Project.addProject p internals.projects }
+            LoggedIn internals
+--            LoggedIn { internals | projects = Project.addProject p internals.projects }
 
         Guest _ ->
             session
@@ -269,7 +272,7 @@ changes toMsg context session =
 
 
 type alias StartupResponse =
-    { projects : List Project
+    { projects : Connection Project
     , knownHosts : List KnownHost
     }
 
@@ -290,13 +293,13 @@ fromViewer key context maybeViewer =
                     Context.baseUrl context
 
                 projectsSet =
-                    Query.listProjects Project.selectionSet
+                    Query.projects Project.projectListArgs Project.connectionSelectionSet
 
                 knownHostSet =
                     Query.listKnownHosts KnownHost.selectionSet
 
                 request =
-                    SelectionSet.map2 StartupResponse projectsSet knownHostSet
+                    SelectionSet.map2 StartupResponse (SelectionSet.nonNullOrFail projectsSet) knownHostSet
                         |> Api.authedQueryRequest baseUrl credVal
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError

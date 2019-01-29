@@ -5,6 +5,7 @@ module PageInfo exposing
     , hasPreviousPage
     , selectionSet
     , startCursor
+    , init
     )
 
 import Api.Compiled.Object
@@ -21,12 +22,20 @@ type PageInfo
 
 
 type alias Internals =
-    { startCursor : String
-    , endCursor : String
+    { startCursor : Maybe String
+    , endCursor : Maybe String
     , hasNextPage : Bool
     , hasPreviousPage : Bool
     }
 
+init : PageInfo
+init=
+    PageInfo
+        { startCursor = Nothing
+        , endCursor = Nothing
+        , hasNextPage = False
+        , hasPreviousPage = False
+        }
 
 selectionSet : SelectionSet PageInfo Api.Compiled.Object.PageInfo
 selectionSet =
@@ -37,8 +46,8 @@ selectionSet =
 internalsSelectionSet : SelectionSet Internals Api.Compiled.Object.PageInfo
 internalsSelectionSet =
     SelectionSet.succeed Internals
-        |> SelectionSet.with (SelectionSet.nonNullOrFail PageInfo.startCursor)
-        |> SelectionSet.with (SelectionSet.nonNullOrFail PageInfo.endCursor)
+        |> SelectionSet.with PageInfo.startCursor
+        |> SelectionSet.with PageInfo.endCursor
         |> SelectionSet.with PageInfo.hasNextPage
         |> SelectionSet.with PageInfo.hasPreviousPage
 
@@ -47,12 +56,12 @@ internalsSelectionSet =
 -- INFO
 
 
-startCursor : PageInfo -> String
+startCursor : PageInfo -> Maybe String
 startCursor (PageInfo internals) =
     internals.startCursor
 
 
-endCursor : PageInfo -> String
+endCursor : PageInfo -> Maybe String
 endCursor (PageInfo internals) =
     internals.endCursor
 
