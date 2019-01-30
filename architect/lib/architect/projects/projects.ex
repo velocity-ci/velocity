@@ -5,7 +5,8 @@ defmodule Architect.Projects do
 
   import Ecto.Query, warn: false
   alias Architect.Repo
-  alias Architect.Projects.{Project, Repository, Starter}
+  alias Architect.Projects.{Project, Starter}
+  alias Git.Repository
   use Supervisor
   require Logger
 
@@ -66,9 +67,14 @@ defmodule Architect.Projects do
 
   """
   def create_project(attrs \\ %{}) do
-    %Project{}
-    |> Project.changeset(attrs)
-    |> Repo.insert()
+    with project <- %Project{},
+         changeset <- Project.changeset(project, attrs),
+         {:ok, project} <- Repo.insert(changeset) do
+      call_repository(project, &Repository.fetch/1)
+    else
+      error ->
+        error
+    end
   end
 
   @doc ~S"""
@@ -166,9 +172,9 @@ defmodule Architect.Projects do
   @doc false
   defp call_repository(project, callback, attempt \\ 1)
 
-  defp call_repository(%Project{address: address} = project, callback, attempt)
+  defp call_repository(%Project{name: name, address: address} = project, callback, attempt)
        when attempt < 3 do
-    case Registry.lookup(@registry, address) do
+    case Registry.lookup(@registry, "#{address}-#{name}") do
       [{repository, _}] ->
         try do
           callback.(repository)
@@ -185,7 +191,7 @@ defmodule Architect.Projects do
 
       [] ->
         Logger.warn(
-          "Failed to call builder #{address} on #{inspect(@registry)}; address does not exist"
+          "Failed to call builder #{address} #{name} on #{inspect(@registry)}; does not exist"
         )
 
         {:error, "Not found"}
@@ -200,7 +206,7 @@ end
 defmodule Architect.Projects.Starter do
   use Task
   require Logger
-  alias Architect.Projects.Repository
+  alias Git.Repository
 
   def start_link(opts) do
     Task.start_link(__MODULE__, :run, [opts])
@@ -208,11 +214,21 @@ defmodule Architect.Projects.Starter do
 
   def run(%{projects: projects, supervisor: supervisor, registry: registry}) do
     for project <- projects do
-      {:ok, _} =
+      repository_name =
+        {:via, Registry, {Architect.Projects.Registry, "#{project.address}-#{project.name}"}}
+
+      IO.inspect(repository_name)
+      IO.inspect(project.address)
+      IO.inspect(project.name)
+
+      {:ok, pid} =
         DynamicSupervisor.start_child(
-          supervisor,
-          {Repository, {project.address, {:via, Registry, {registry, project.address}}}}
+          # supervisor,
+          Architect.Projects.Supervisor,
+          {Repository, {project.address, project.private_key, repository_name}}
         )
+
+      GenServer.call(pid, :fetch)
     end
   end
 

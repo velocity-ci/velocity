@@ -1,6 +1,6 @@
-defmodule(Architect.Projects.Commit.Author, do: defstruct([:email, :name, :date]))
+defmodule(Git.Commit.Author, do: defstruct([:email, :name, :date]))
 
-defmodule Architect.Projects.Commit do
+defmodule Git.Commit do
   @enforce_keys [:sha, :author, :gpg_fingerprint, :message]
   defstruct [:sha, :author, :gpg_fingerprint, :message]
 
@@ -25,7 +25,7 @@ defmodule Architect.Projects.Commit do
 
   ## Examples
 
-      iex> alias Architect.Projects.Commit
+      iex> alias Git.Commit
       ...> alias Commit.Author
       ...> parsed = Commit.parse("4c2439630bbea0bcad61adc78b434cc804117090\n2019-01-17T17:39:27+00:00\nvj@vjpatel.me\nVJ Patel\n%GF\nadd parsing of git shell for commits and branches\n5697be45fa5cb5474a49f489c822e2d290693037\n2019-01-16T23:21:41+00:00\nvj@vjpatel.me\nVJ Patel\n%GF\nWip: added a few basic git funcs")
       ...> {:ok, dt_first, _} = DateTime.from_iso8601("2019-01-17T17:39:27+00:00")
@@ -51,7 +51,7 @@ defmodule Architect.Projects.Commit do
 
   ## Examples
 
-      iex> alias Architect.Projects.Commit
+      iex> alias Git.Commit
       ...> alias Commit.Author
       ...> parsed = Commit.parse_show("a51ab658cbb564bdf1990952b8eefb101c1aa823\n2019-01-17T19:05:16+00:00\nnaedin@gmail.com\nEddy Lane\n%GF\n[architect] WIP\n")
       ...> {:ok, dt, _} = DateTime.from_iso8601("2019-01-17T19:05:16+00:00")
@@ -88,7 +88,7 @@ defmodule Architect.Projects.Commit do
 
   ## Examples
 
-      iex> Architect.Projects.Commit.parse_count("\n932\n\n")
+      iex> Git.Commit.parse_count("\n932\n\n")
       932
 
   """
@@ -106,5 +106,42 @@ defmodule Architect.Projects.Commit do
     {count, _} = Integer.parse(line)
 
     count
+  end
+
+  def list_for_ref(dir, ref) do
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["checkout", "--force", ref], dir: dir)
+
+    %Porcelain.Result{err: nil, out: out, status: 0} =
+      Porcelain.exec("git", ["log", "--format=#{format()}", "--max-count=10"], dir: dir)
+
+    parse(out)
+  end
+
+  def get_by_sha(dir, sha) do
+    %Porcelain.Result{err: nil, out: out, status: 0} =
+      Porcelain.exec("git", ["show", "-s", "--format=#{format()}", sha], dir: dir)
+
+    out
+    |> parse_show
+  end
+
+  def count_for_branch(dir, branch) do
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["checkout", "--force", branch], dir: dir)
+
+    %Porcelain.Result{err: nil, out: out, status: 0} =
+      Porcelain.exec("git", ["rev-list", "--count", branch], dir: dir)
+
+    out
+    |> parse_count()
+  end
+
+  def count(dir) do
+    %Porcelain.Result{err: nil, out: out, status: 0} =
+      Porcelain.exec("git", ["rev-list", "--count", "--all"], dir: dir)
+
+    out
+    |> parse_count()
   end
 end

@@ -1,4 +1,4 @@
-defmodule Architect.Projects.Branch do
+defmodule Git.Branch do
   @enforce_keys [:name]
   defstruct [:name]
 
@@ -7,7 +7,7 @@ defmodule Architect.Projects.Branch do
 
   ## Examples
 
-      iex> alias Architect.Projects.Branch
+      iex> alias Git.Branch
       ...> Branch.parse("  origin/HEAD -> origin/master\n  origin/git-changes\n  origin/master\n")
       [%Branch{name: "master"}, %Branch{name: "git-changes"}]
 
@@ -39,7 +39,7 @@ defmodule Architect.Projects.Branch do
 
   ## Examples
 
-      iex> alias Architect.Projects.Branch
+      iex> alias Git.Branch
       ...> Branch.parse_remote("* remote origin\n  Fetch URL: https://github.com/velocity-ci/velocity.git\n  Push  URL: https://github.com/velocity-ci/velocity.git\n  HEAD branch: master\n  Remote branches:\n    git-repository-changes tracked\n    master                 tracked\n    mobile-improvements    tracked\n    proof-of-concept       tracked\n  Local branch configured for 'git pull':\n    master merges with remote master\n  Local ref configured for 'git push':\n    master pushes to master (up to date)\n")
       %Branch{name: "master"}
 
@@ -58,5 +58,29 @@ defmodule Architect.Projects.Branch do
       |> String.trim()
 
     %__MODULE__{name: name}
+  end
+
+  def list(dir) do
+    %Porcelain.Result{err: nil, out: out, status: 0} =
+      Porcelain.exec("git", ["branch", "--remote"], dir: dir)
+
+    out
+    |> parse()
+  end
+
+  def list_for_commit_sha(dir, sha) do
+    %Porcelain.Result{err: nil, out: out, status: 0} =
+      Porcelain.exec("git", ["branch", "--remote", "--contains=#{sha}"], dir: dir)
+
+    out
+    |> parse()
+  end
+
+  def default(dir) do
+    %Porcelain.Result{err: nil, out: out, status: 0} =
+      Porcelain.exec("git", ["remote", "show", "origin"], dir: dir)
+
+    out
+    |> parse_remote()
   end
 end
