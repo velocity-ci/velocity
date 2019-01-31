@@ -6,7 +6,7 @@ defmodule Architect.Projects.Project do
   use Ecto.Schema
   import Ecto.Changeset
   alias Ecto.Changeset
-  alias Architect.Projects.Repository
+  alias Git.Repository
 
   alias __MODULE__.NameSlug
 
@@ -30,7 +30,7 @@ defmodule Architect.Projects.Project do
     |> unique_constraint(:address)
     |> NameSlug.maybe_generate_slug()
     |> NameSlug.unique_constraint()
-    |> clone()
+    |> verify()
   end
 
   @doc ~S"""
@@ -71,36 +71,46 @@ defmodule Architect.Projects.Project do
   @doc """
   Start the project repository, if it fails we add an error to the changeset and terminate the process.
 
-  This means on a successful clone, the repository process is already ready to go
+  This means on a successful verify, the repository process is already ready to go
   """
-  def clone(%Changeset{valid?: true, changes: %{address: address}} = changeset) do
+  def verify(
+        %Changeset{
+          valid?: true,
+          changes: %{address: address, name: name}
+        } = changeset
+      ) do
     require Logger
 
-    repository_name = {:via, Registry, {Architect.Projects.Registry, address}}
+    private_key = Changeset.get_change(changeset, :private_key)
+
+    repository_name = {:via, Registry, {Architect.Projects.Registry, "#{address}-#{name}"}}
+    IO.inspect(repository_name)
+    IO.inspect(address)
+    IO.inspect(name)
 
     repository_result =
       DynamicSupervisor.start_child(
         Architect.Projects.Supervisor,
-        {Repository, {address, repository_name}}
+        {Repository, {address, private_key, repository_name}}
       )
 
     case repository_result do
       {:ok, repository} ->
-        clone(changeset, repository)
+        verify(changeset, repository)
 
       {:error, {:already_started, repository}} ->
-        clone(changeset, repository)
+        verify(changeset, repository)
     end
   end
 
-  def clone(changeset), do: changeset
+  def verify(changeset), do: changeset
 
-  def clone(%Changeset{} = changeset, repository) when is_pid(repository) do
-    if Repository.cloned_successfully?(repository) do
+  def verify(%Changeset{} = changeset, repository) when is_pid(repository) do
+    if Repository.verified?(repository) do
       changeset
     else
       :ok = DynamicSupervisor.terminate_child(Architect.Projects.Supervisor, repository)
-      add_error(changeset, :address, "Cloning repository failed")
+      add_error(changeset, :address, "Verifying repository failed")
     end
   end
 end
