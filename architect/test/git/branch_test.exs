@@ -1,7 +1,7 @@
-defmodule Architect.Projects.BranchTest do
+defmodule Git.BranchTest do
   use ExUnit.Case, async: true
 
-  alias Architect.Projects.Branch
+  alias Git.Branch
 
   doctest Branch
 end

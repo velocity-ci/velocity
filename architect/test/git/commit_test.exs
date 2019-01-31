@@ -1,7 +1,7 @@
-defmodule Architect.Projects.CommitTest do
+defmodule Git.CommitTest do
   use ExUnit.Case, async: true
 
-  alias Architect.Projects.Commit
+  alias Git.Commit
   alias Commit.Author
 
   doctest Commit

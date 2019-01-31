@@ -81,7 +81,7 @@ defmodule Architect.Projects.Project do
       ) do
     require Logger
 
-    private_key = Changeset.get_change(changeset, :private_key)
+    private_key = Changeset.get_field(changeset, :private_key)
 
     repository_name = {:via, Registry, {Architect.Projects.Registry, "#{address}-#{name}"}}
     IO.inspect(repository_name)

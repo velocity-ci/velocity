@@ -38,7 +38,7 @@ defmodule ArchitectWeb.Queries.ProjectsTest do
     test "Success", %{projects: projects} do
       query = """
         {
-          listProjects {
+          projects {
             id,
             name,
             slug,
@@ -49,7 +49,7 @@ defmodule ArchitectWeb.Queries.ProjectsTest do
         }
       """
 
-      %{"listProjects" => actual} =
+      %{"projects" => actual} =
         graphql_request(query)
         |> expect_success!()
 
@@ -59,7 +59,7 @@ defmodule ArchitectWeb.Queries.ProjectsTest do
     test "Failure - Unauthorized", %{} do
       """
         {
-          listProjects {
+          projects {
             id
           }
         }

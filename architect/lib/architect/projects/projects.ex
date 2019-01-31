@@ -67,14 +67,9 @@ defmodule Architect.Projects do
 
   """
   def create_project(attrs \\ %{}) do
-    with project <- %Project{},
-         changeset <- Project.changeset(project, attrs),
-         {:ok, project} <- Repo.insert(changeset) do
-      call_repository(project, &Repository.fetch/1)
-    else
-      error ->
-        error
-    end
+    %Project{}
+    |> Project.changeset(attrs)
+    |> Repo.insert()
   end
 
   @doc ~S"""
@@ -228,18 +223,12 @@ defmodule Architect.Projects.Starter do
       repository_name =
         {:via, Registry, {Architect.Projects.Registry, "#{project.address}-#{project.name}"}}
 
-      IO.inspect(repository_name)
-      IO.inspect(project.address)
-      IO.inspect(project.name)
-
       {:ok, pid} =
         DynamicSupervisor.start_child(
           # supervisor,
           Architect.Projects.Supervisor,
           {Repository, {project.address, project.private_key, repository_name}}
         )
-
-      GenServer.call(pid, :fetch)
     end
   end
 end

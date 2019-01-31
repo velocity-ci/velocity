@@ -8,7 +8,7 @@ defmodule Git.Repository do
   When this process is killed this directory should be automatically removed
   """
 
-  defstruct [:dir, :address, :private_key, :verified]
+  defstruct [:dir, :address, :private_key, :verified, :fetched]
 
   use GenServer
   require Logger
@@ -96,6 +96,8 @@ defmodule Git.Repository do
          %Porcelain.Result{err: nil, out: _, status: 0} <-
            Porcelain.exec("git", ["remote", "add", "origin", address], dir: repo_dir),
          :ok <- Git.Repository.Remote.verify(address, private_key, repo_dir) do
+      send(self(), :fetch)
+
       {:noreply, %__MODULE__{state | dir: repo_dir, verified: true}}
     else
       %Porcelain.Result{err: err, out: out, status: _} ->
@@ -110,8 +112,9 @@ defmodule Git.Repository do
   end
 
   @impl true
-  def handle_call(_, _from, %__MODULE__{verified: false} = state) do
-    Logger.warn("Cannot perform action on unverified repository")
+  def handle_call(_, _from, %__MODULE__{verified: verified, fetched: fetched} = state)
+      when verified != true or fetched != true do
+    Logger.warn("Cannot perform action on unverified or fetched repository")
     {:reply, :error, state}
   end
 
@@ -177,5 +180,13 @@ defmodule Git.Repository do
     count = Commit.count(dir)
 
     {:reply, count, state}
+  end
+
+  def handle_info(
+        :fetch,
+        %__MODULE__{address: address, private_key: private_key, dir: dir} = state
+      ) do
+    Git.Repository.Remote.fetch(address, private_key, dir)
+    {:noreply, state}
   end
 end
