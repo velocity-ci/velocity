@@ -6,7 +6,8 @@ defmodule ArchitectWeb.Schema do
 
   alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
   alias Architect.Projects
-  alias Architect.Projects.{Project, Branch, Commit, Task}
+  alias Architect.Projects.{Project, Task}
+  alias Git.{Commit, Branch}
   alias ArchitectWeb.{Resolvers, Middleware}
   alias Ecto.Changeset
 

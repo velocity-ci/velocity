@@ -1,4 +1,4 @@
-defmodule Architect.Projects.Commit do
+defmodule Git.Commit do
   @keys [:sha, :author, :gpg_fingerprint, :message]
 
   @enforce_keys @keys

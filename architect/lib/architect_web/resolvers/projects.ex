@@ -1,6 +1,7 @@
 defmodule ArchitectWeb.Resolvers.Projects do
   alias Architect.Projects
-  alias Architect.Projects.{Branch, Project, Commit}
+  alias Architect.Projects.Project
+  alias Git.{Branch, Commit}
   alias Absinthe.Resolution
   alias Absinthe.Relay
 

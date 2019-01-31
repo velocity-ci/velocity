@@ -188,7 +188,7 @@ defmodule Architect.Projects do
 
   defp call_repository(_, _, attempt) when attempt > 2, do: {:error, "Failed"}
 
-  defp call_repository(%Project{address: address} = project, {fun, args}, attempt) do
+  defp call_repository(%Project{address: address, name: name} = project, {fun, args}, attempt) do
     case Registry.lookup(@registry, "#{address}-#{name}") do
       [{repository, _}] ->
         try do
