@@ -1,11 +1,12 @@
 module Edge exposing (Edge, fromSelectionSet, node)
 
-
 -- Info
+
 
 node : Edge a -> a
 node (Edge internals) =
     internals.node
+
 
 fromSelectionSet : String -> a -> Edge a
 fromSelectionSet cursor node_ =
@@ -20,5 +21,3 @@ type alias Internals a =
     { cursor : String
     , node : a
     }
-
-

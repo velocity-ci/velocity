@@ -3,9 +3,9 @@ module PageInfo exposing
     , endCursor
     , hasNextPage
     , hasPreviousPage
+    , init
     , selectionSet
     , startCursor
-    , init
     )
 
 import Api.Compiled.Object
@@ -28,14 +28,16 @@ type alias Internals =
     , hasPreviousPage : Bool
     }
 
+
 init : PageInfo
-init=
+init =
     PageInfo
         { startCursor = Nothing
         , endCursor = Nothing
         , hasNextPage = False
         , hasPreviousPage = False
         }
+
 
 selectionSet : SelectionSet PageInfo Api.Compiled.Object.PageInfo
 selectionSet =

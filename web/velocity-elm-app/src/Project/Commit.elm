@@ -1,4 +1,4 @@
-module Project.Commit exposing (Commit, connectionSelectionSet, hash, selectionSet)
+module Project.Commit exposing (Commit, connectionSelectionSet, hash, message, selectionSet, truncateHash)
 
 import Api.Compiled.Object
 import Api.Compiled.Object.Commit as Commit
@@ -64,3 +64,15 @@ internalSelectionSet =
 hash : Commit -> Hash
 hash (Commit commit) =
     commit.hash
+
+
+truncateHash : Commit -> String
+truncateHash (Commit commit) =
+    commit.hash
+        |> Hash.toString
+        |> String.slice 0 7
+
+
+message : Commit -> String
+message (Commit commit) =
+    commit.message

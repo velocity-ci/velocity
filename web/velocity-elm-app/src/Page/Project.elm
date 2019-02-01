@@ -6,6 +6,7 @@ import Asset
 import Browser.Events
 import Connection exposing (Connection)
 import Context exposing (Context)
+import Edge
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -26,6 +27,7 @@ import Project.Branch as Branch exposing (Branch)
 import Project.Branch.Name as BranchName
 import Project.Build as Build exposing (Build)
 import Project.Commit as Commit exposing (Commit)
+import Project.Commit.Hash as Hash
 import Project.Slug as Slug exposing (Slug)
 import Project.Task as Task exposing (Task)
 import Project.Task.Name as TaskName
@@ -233,8 +235,15 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedLoadCommits _ ->
-            ( model, Cmd.none )
+        CompletedLoadCommits (Ok commitConnection) ->
+            ( { model | commitConnection = Loaded commitConnection }
+            , Cmd.none
+            )
+
+        CompletedLoadCommits (Err _) ->
+            ( { model | commitConnection = Failed }
+            , Cmd.none
+            )
 
         GotTimeZone tz ->
             ( { model | timeZone = tz }
@@ -265,15 +274,12 @@ view model =
     let
         device =
             Context.device model.context
-
-        projects =
-            Session.projects model.session
     in
     { title = "Project page"
     , content =
         column [ width fill, height fill ]
             [ viewSubHeader device model
-            , viewBody model.timeZone device model
+            , viewBody model
             ]
     }
 
@@ -443,29 +449,35 @@ viewDesktopSubHeader project branches branchDropdown =
 -- Body
 
 
-viewBody : Time.Zone -> Device -> Model msg -> Element Msg
-viewBody tz device { slug, session, builds, tasks } =
-    case Session.projectWithSlug slug session of
+viewBody : Model msg -> Element Msg
+viewBody model =
+    let
+        deviceClass =
+            model.context
+                |> Context.device
+                |> .class
+    in
+    case Session.projectWithSlug model.slug model.session of
         Just project ->
-            case device.class of
+            case deviceClass of
                 Phone ->
-                    viewMobileBody tz project tasks builds
+                    viewMobileBody project model
 
                 Tablet ->
-                    viewDesktopBody tz project tasks builds
+                    viewDesktopBody project model
 
                 Desktop ->
-                    viewDesktopBody tz project tasks builds
+                    viewDesktopBody project model
 
                 BigDesktop ->
-                    viewBigDesktopBody tz project builds
+                    viewDesktopBody project model
 
         Nothing ->
             none
 
 
-viewMobileBody : Time.Zone -> Project -> Status (List Task) -> Status (PaginatedList Build) -> Element Msg
-viewMobileBody tz project tasks builds =
+viewMobileBody : Project -> Model msg -> Element Msg
+viewMobileBody project model =
     column
         [ width fill
         , height fill
@@ -475,13 +487,14 @@ viewMobileBody tz project tasks builds =
         , padding 20
         ]
         [ el [ height shrink, width fill ] (viewProjectDetails project)
-        , el [ height shrink, width fill ] (viewRecentTasksContainer tasks)
-        , viewProjectBuildsContainer tz builds
+
+        --        , el [ height shrink, width fill ] (viewRecentTasksContainer tasks)
+        , viewTabContainer model
         ]
 
 
-viewDesktopBody : Time.Zone -> Project -> Status (List Task) -> Status (PaginatedList Build) -> Element Msg
-viewDesktopBody tz project tasks builds =
+viewDesktopBody : Project -> Model msg -> Element Msg
+viewDesktopBody project model =
     column
         [ width fill
         , height fill
@@ -507,13 +520,13 @@ viewDesktopBody tz project tasks builds =
                 [ width (fillPortion 6)
                 , height fill
                 ]
-                [ viewRecentTasksContainer tasks ]
+                [ viewRecentTasksContainer model.tasks ]
             ]
         , row
             [ width fill
             , spacing 20
             ]
-            [ viewProjectBuildsContainer tz builds
+            [ viewTabContainer model
             ]
         ]
 
@@ -527,16 +540,48 @@ viewBigDesktopBody tz project builds =
 -- Project Branch Tabs
 
 
-viewProjectBranchTabs : Element msg
-viewProjectBranchTabs =
-    row [ spaceEvenly, moveUp 55, paddingEach { bottom = 2, left = 0, right = 0, top = 0 } ]
-        [ viewProjectBranchTab True "Builds"
-        , viewProjectBranchTab False "Commits"
+viewTabContainer : Model msg -> Element Msg
+viewTabContainer model =
+    column
+        [ width fill
+        , behindContent viewProjectTabs
+        , moveDown 50
+        ]
+        [ row
+            [ width fill
+            , paddingXY 10 30
+            , Font.size 14
+            , height (px 300)
+            , Background.color Palette.white
+            , Border.shadow
+                { offset = ( 1, 1 )
+                , size = 1
+                , blur = 1
+                , color = Palette.neutral6
+                }
+            , Border.roundEach
+                { topLeft = 0
+                , topRight = 5
+                , bottomLeft = 5
+                , bottomRight = 5
+                }
+            ]
+            [ --            viewProjectBuilds tz buildStatus
+              viewCommitConnection model.commitConnection
+            ]
         ]
 
 
-viewProjectBranchTab : Bool -> String -> Element msg
-viewProjectBranchTab isSelected label =
+viewProjectTabs : Element msg
+viewProjectTabs =
+    row [ spaceEvenly, moveUp 55, paddingEach { bottom = 2, left = 0, right = 0, top = 0 } ]
+        [ viewTab True "Builds"
+        , viewTab False "Commits"
+        ]
+
+
+viewTab : Bool -> String -> Element msg
+viewTab isSelected label =
     let
         shadow =
             if isSelected then
@@ -592,50 +637,11 @@ viewProjectBranchTab isSelected label =
         (text label)
 
 
-
--- Project Builds
-
-
-viewProjectBuildsContainer : Time.Zone -> Status (PaginatedList Build) -> Element Msg
-viewProjectBuildsContainer tz buildStatus =
-    column
-        [ width fill
-        , behindContent viewProjectBranchTabs
-        , moveDown 50
-        ]
-        [ row
-            [ width fill
-            , paddingXY 10 30
-            , Font.size 14
-            , height (px 300)
-            , Background.color Palette.white
-            , Border.shadow
-                { offset = ( 1, 1 )
-                , size = 1
-                , blur = 1
-                , color = Palette.neutral6
-                }
-            , Border.roundEach
-                { topLeft = 0
-                , topRight = 5
-                , bottomLeft = 5
-                , bottomRight = 5
-                }
-            ]
-            [ viewProjectBuilds tz buildStatus
-            ]
-        ]
-
-
-viewProjectBuilds : Time.Zone -> Status (PaginatedList Build) -> Element Msg
-viewProjectBuilds tz buildStatus =
-    case buildStatus of
-        Loaded builds ->
-            if PaginatedList.total builds == 0 then
-                viewProjectBuildsEmpty
-
-            else
-                viewProjectBuildsTable tz builds
+viewIfLoaded : (a -> Element msg) -> Element msg -> Status a -> Element msg
+viewIfLoaded viewFn errorView status =
+    case status of
+        Loaded a ->
+            viewFn a
 
         LoadingSlowly ->
             viewLoadingSpinner
@@ -644,11 +650,11 @@ viewProjectBuilds tz buildStatus =
             none
 
         Failed ->
-            viewProjectBuildsFailed
+            errorView
 
 
-viewProjectBuildsFailed : Element msg
-viewProjectBuildsFailed =
+viewLoadingError : String -> Element msg
+viewLoadingError entity =
     column [ width fill, spacingXY 0 20, Font.color Palette.danger1 ]
         [ row
             [ width shrink
@@ -658,7 +664,7 @@ viewProjectBuildsFailed =
             , spacingXY 10 0
             ]
             [ el [] (Icon.alertCircle <| Icon.size 32)
-            , paragraph [] [ text "There was a problem loading builds" ]
+            , paragraph [] [ text ("There was a problem loading " ++ entity) ]
             ]
         , paragraph
             []
@@ -673,6 +679,78 @@ viewProjectBuildsFailed =
             , text " with your configuration files"
             ]
         ]
+
+
+
+-- Project Commits
+
+
+viewCommitConnection : Status (Connection Commit) -> Element Msg
+viewCommitConnection commitConnectionStatus =
+    commitConnectionStatus
+        |> viewIfLoaded viewCommitConnectionLoaded (viewLoadingError "commits")
+
+
+viewCommitConnectionLoaded : Connection Commit -> Element Msg
+viewCommitConnectionLoaded commitConnection =
+    table
+        [ width fill
+        , height fill
+        ]
+        { data = commitConnection.edges
+        , columns =
+            [ { header = viewTableHeader (text "SHA")
+              , width = fillPortion 1
+              , view =
+                    \edge ->
+                        el
+                            [ width fill
+                            , height (px 60)
+
+                            --                                , Border.widthEach borders
+                            , Background.color Palette.neutral7
+                            , Border.color Palette.neutral6
+                            ]
+                            (Commit.truncateHash (Edge.node edge)
+                                |> text
+                            )
+              }
+            , { header = viewTableHeader (text "Message")
+              , width = fillPortion 3
+              , view =
+                    \edge ->
+                        el
+                            [ width fill
+                            , height (px 60)
+
+                            --                                , Border.widthEach borders
+                            , Background.color Palette.neutral7
+                            , Border.color Palette.neutral6
+                            ]
+                            (Commit.message (Edge.node edge)
+                                |> text
+                            )
+              }
+            ]
+        }
+
+
+
+-- Project Builds
+
+
+viewProjectBuilds : Time.Zone -> Status (PaginatedList Build) -> Element Msg
+viewProjectBuilds tz buildStatus =
+    buildStatus
+        |> viewIfLoaded
+            (\builds ->
+                if PaginatedList.total builds == 0 then
+                    viewProjectBuildsEmpty
+
+                else
+                    viewProjectBuildsTable tz builds
+            )
+            (viewLoadingError "builds")
 
 
 viewProjectBuildsEmpty : Element msg
@@ -717,18 +795,16 @@ viewProjectBuildsTable tz builds =
                         el
                             [ width fill
                             , height (px 60)
-
-                            --                                , Border.widthEach borders
                             , Background.color Palette.neutral7
                             , Border.color Palette.neutral6
                             ]
-                        <|
-                            el [ centerY, paddingXY 10 0 ] <|
+                            (el [ centerY, paddingXY 10 0 ]
                                 (build
                                     |> Build.createdAt
                                     |> Timestamp.format tz
                                     |> text
                                 )
+                            )
               }
 
             --            , { header = viewTableHeader (text "BaseTask")

@@ -1,43 +1,45 @@
-port module Session
-    exposing
-        ( InitError
-        , Session
-        , SubscriptionDataMsg
-        , addKnownHost
-        , addProject
-        , changes
-        , cred
-        , fromViewer
-        , knownHosts
-        , log
-        , navKey
-        , projectWithId
-        , projectWithSlug
-        , projects
-        , subscribe
-        , subscriptionDataUpdate
-        , viewer
-        , subscriptions
-        )
+port module Session exposing
+    ( InitError
+    , Session
+    , SubscriptionDataMsg
+    , addKnownHost
+    , addProject
+    , changes
+    , cred
+    , fromViewer
+    , knownHosts
+    , log
+    , navKey
+    , projectWithId
+    , projectWithSlug
+    , projects
+    , subscribe
+    , subscriptionDataUpdate
+    , subscriptions
+    , viewer
+    )
 
 import Activity
 import Api exposing (BaseUrl, Cred)
 import Api.Compiled.Query as Query
 import Api.Subscriptions as Subscriptions
 import Browser.Navigation as Nav
+import Connection exposing (Connection)
 import Context exposing (Context)
+import Edge
 import Graphql.Http
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import KnownHost exposing (KnownHost)
+import PageInfo exposing (PageInfo)
 import Project exposing (Project)
 import Project.Branch exposing (Branch)
 import Project.Id
 import Project.Slug
 import Task exposing (Task)
 import Viewer exposing (Viewer)
-import Connection exposing (Connection)
-import PageInfo exposing (PageInfo)
-import Edge
+
+
+
 -- TYPES
 
 
@@ -129,8 +131,8 @@ addProject p session =
     case session of
         LoggedIn internals ->
             LoggedIn internals
---            LoggedIn { internals | projects = Project.addProject p internals.projects }
 
+        --            LoggedIn { internals | projects = Project.addProject p internals.projects }
         Guest _ ->
             session
 
@@ -208,9 +210,9 @@ subscribe toMsg session =
                         |> subscribeToKnownHostAdded toMsg
                         |> subscribeToProjectAdded toMsg
             in
-                ( LoggedIn { internals | subscriptions = subs }
-                , cmd
-                )
+            ( LoggedIn { internals | subscriptions = subs }
+            , cmd
+            )
 
         Guest _ ->
             ( session, Cmd.none )
@@ -225,9 +227,9 @@ subscribeToKnownHostAdded toMsg ( subs, cmd ) =
         ( subscribed, subCmd ) =
             Subscriptions.subscribeToKnownHostAdded (KnownHostAdded >> toMsg) subs
     in
-        ( subscribed
-        , Cmd.batch [ cmd, subCmd ]
-        )
+    ( subscribed
+    , Cmd.batch [ cmd, subCmd ]
+    )
 
 
 subscribeToProjectAdded :
@@ -239,9 +241,9 @@ subscribeToProjectAdded toMsg ( subs, cmd ) =
         ( subscribed, subCmd ) =
             Subscriptions.subscribeToProjectAdded (ProjectAdded >> toMsg) subs
     in
-        ( subscribed
-        , Cmd.batch [ cmd, subCmd ]
-        )
+    ( subscribed
+    , Cmd.batch [ cmd, subCmd ]
+    )
 
 
 subscriptionDataUpdate : SubscriptionDataMsg -> Session msg -> Session msg
@@ -266,7 +268,7 @@ changes toMsg context session =
                 newSession =
                     fromViewer (navKey session) context maybeViewer
             in
-                toMsg newSession
+            toMsg newSession
         )
         Viewer.decoder
 
@@ -304,18 +306,18 @@ fromViewer key context maybeViewer =
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError
             in
-                Task.map
-                    (\res ->
-                        LoggedIn
-                            { navKey = key
-                            , viewer = viewerVal
-                            , projects = res.projects
-                            , knownHosts = res.knownHosts
-                            , log = Activity.init
-                            , subscriptions = Subscriptions.init
-                            }
-                    )
-                    request
+            Task.map
+                (\res ->
+                    LoggedIn
+                        { navKey = key
+                        , viewer = viewerVal
+                        , projects = res.projects
+                        , knownHosts = res.knownHosts
+                        , log = Activity.init
+                        , subscriptions = Subscriptions.init
+                        }
+                )
+                request
 
         Nothing ->
             Task.succeed (Guest key)

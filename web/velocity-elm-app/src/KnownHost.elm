@@ -1,30 +1,28 @@
-module KnownHost
-    exposing
-        ( KnownHost
-        , MutationResponse(..)
-        , addKnownHost
-        , findKnownHost
-        , isUnknownHost
-        , findForGitUrl
-        , isVerified
-        , md5
-        , sha256
-        , selectionSet
-        , createUnverified
-        , verify
-        )
+module KnownHost exposing
+    ( KnownHost
+    , MutationResponse(..)
+    , addKnownHost
+    , createUnverified
+    , findForGitUrl
+    , findKnownHost
+    , isUnknownHost
+    , isVerified
+    , md5
+    , selectionSet
+    , sha256
+    , verify
+    )
 
 import Api exposing (BaseUrl, Cred)
+import Api.Compiled.Mutation as Mutation
+import Api.Compiled.Object
+import Api.Compiled.Object.KnownHost as KnownHost
+import Api.Compiled.Object.KnownHostPayload as KnownHostPayload
+import Api.Compiled.Scalar as Scalar
 import GitUrl exposing (GitUrl)
-import Json.Decode as Decode exposing (Decoder)
 import Graphql.Http
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
-import Api.Compiled.Object.KnownHost as KnownHost
-import Api.Compiled.Object
-import Api.Compiled.Scalar as Scalar
-import Api.Compiled.Object.KnownHostPayload as KnownHostPayload
-import Api.Compiled.Mutation as Mutation
-import Api.Compiled.Object.KnownHost as KnownHost
+import Json.Decode as Decode exposing (Decoder)
 
 
 type KnownHost
@@ -135,6 +133,7 @@ updateKnownHost knownHosts (KnownHost b) =
         (\(KnownHost a) ->
             if a.id == b.id then
                 KnownHost b
+
             else
                 KnownHost a
         )
@@ -190,9 +189,9 @@ payloadSelectionSet =
                 Nothing ->
                     ValidationFailure messages
     in
-        SelectionSet.succeed toResponse
-            |> SelectionSet.with messageSelectionSet
-            |> SelectionSet.with (KnownHostPayload.result selectionSet)
+    SelectionSet.succeed toResponse
+        |> SelectionSet.with messageSelectionSet
+        |> SelectionSet.with (KnownHostPayload.result selectionSet)
 
 
 createUnverified : Cred -> BaseUrl -> Mutation.CreateKnownHostRequiredArguments -> Graphql.Http.Request MutationResponse

@@ -1,11 +1,11 @@
-module Project.Commit.Hash exposing (Hash, decoder, toString, urlParser, selectionSet)
+module Project.Commit.Hash exposing (Hash, decoder, selectionSet, toString, urlParser)
 
 import Api.Compiled.Object
 import Api.Compiled.Object.Commit as Commit
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+
 
 
 -- TYPES
@@ -13,6 +13,7 @@ import Url.Parser exposing (Parser)
 
 type Hash
     = Hash String
+
 
 
 -- INFO
@@ -25,6 +26,7 @@ toString (Hash str) =
 
 
 -- CREATE
+
 
 selectionSet : SelectionSet Hash Api.Compiled.Object.Commit
 selectionSet =
