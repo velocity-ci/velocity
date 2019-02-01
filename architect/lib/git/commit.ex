@@ -94,7 +94,7 @@ defmodule Git.Commit do
       Porcelain.exec("git", ["checkout", "--force", ref], dir: dir)
 
     %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["log", "--format=#{format()}", "--max-count=10"], dir: dir)
+      Porcelain.exec("git", ["log", "--format=#{format()}"], dir: dir)
 
     parse(out)
   end
