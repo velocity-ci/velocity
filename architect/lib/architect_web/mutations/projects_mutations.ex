@@ -6,7 +6,7 @@ defmodule ArchitectWeb.Mutations.ProjectsMutations do
   object :projects_mutations do
     @desc "Create project"
     field :create_project, non_null(:project_payload) do
-      middleware(ArchitectWeb.Middleware.Authorize)
+#      middleware(ArchitectWeb.Middleware.Authorize)
 
       arg(:address, non_null(:string))
 

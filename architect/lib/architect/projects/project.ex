@@ -26,8 +26,9 @@ defmodule Architect.Projects.Project do
     project
     |> cast(attrs, [:address, :private_key])
     |> validate_required([:address])
-    |> update_default_name()
     |> unique_constraint(:address)
+    |> update_default_name()
+    |> unique_constraint(:name)
     |> NameSlug.maybe_generate_slug()
     |> NameSlug.unique_constraint()
     |> verify()

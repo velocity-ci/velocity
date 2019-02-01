@@ -107,16 +107,24 @@ defmodule Git.Repository do
   end
 
   @impl true
-  def handle_call(:verified, _from, %__MODULE__{verified: v} = state) do
-    {:reply, v, state}
+  def handle_call(:verified, _from, %__MODULE__{verified: verified} = state) do
+    {:reply, verified, state}
   end
 
   @impl true
-  def handle_call(_, _from, %__MODULE__{verified: verified, fetched: fetched} = state)
-      when verified != true or fetched != true do
-    Logger.warn("Cannot perform action on unverified or fetched repository")
+  def handle_call(_, _from, %__MODULE__{verified: verified} = state) when not verified do
+    Logger.warn("Cannot perform action on unverified repository")
     {:reply, :error, state}
   end
+
+  @impl true
+  def handle_call(_, _from, %__MODULE__{fetched: fetched} = state) when not fetched do
+
+
+
+    {:reply, :error, state}
+  end
+
 
   @impl true
   def handle_call(
