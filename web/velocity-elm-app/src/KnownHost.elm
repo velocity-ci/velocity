@@ -197,10 +197,10 @@ payloadSelectionSet =
 createUnverified : Cred -> BaseUrl -> Mutation.CreateKnownHostRequiredArguments -> Graphql.Http.Request MutationResponse
 createUnverified cred baseUrl values =
     Mutation.createKnownHost values payloadSelectionSet
-        |> Api.mutationRequest baseUrl
+        |> Api.authedMutationRequest baseUrl cred
 
 
 verify : Cred -> BaseUrl -> KnownHost -> Graphql.Http.Request MutationResponse
 verify cred baseUrl (KnownHost { id }) =
     Mutation.verifyKnownHost { id = idToString id } payloadSelectionSet
-        |> Api.mutationRequest baseUrl
+        |> Api.authedMutationRequest baseUrl cred

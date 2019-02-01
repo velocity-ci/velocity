@@ -48,6 +48,7 @@ type alias Model msg =
     , timeZone : Time.Zone
     , slug : Slug
     , branchDropdown : BranchDropdown
+    , currentCommit : Status Commit
     , builds : Status (PaginatedList Build)
     , commitConnection : Status (Connection Commit)
     }
@@ -111,6 +112,7 @@ init session context projectSlug =
     ( { session = session
       , context = context
       , tasks = tasks
+      , currentCommit = Loading
       , timeZone = Time.utc
       , slug = projectSlug
       , branchDropdown = BranchDropdown Closed
@@ -551,7 +553,6 @@ viewTabContainer model =
             [ width fill
             , paddingXY 10 30
             , Font.size 14
-            , height (px 300)
             , Background.color Palette.white
             , Border.shadow
                 { offset = ( 1, 1 )
@@ -693,46 +694,53 @@ viewCommitConnection commitConnectionStatus =
 
 viewCommitConnectionLoaded : Connection Commit -> Element Msg
 viewCommitConnectionLoaded commitConnection =
-    table
-        [ width fill
-        , height fill
-        ]
-        { data = commitConnection.edges
-        , columns =
-            [ { header = viewTableHeader (text "SHA")
-              , width = fillPortion 1
-              , view =
-                    \edge ->
-                        el
-                            [ width fill
-                            , height (px 60)
-
-                            --                                , Border.widthEach borders
-                            , Background.color Palette.neutral7
-                            , Border.color Palette.neutral6
-                            ]
-                            (Commit.truncateHash (Edge.node edge)
-                                |> text
-                            )
-              }
-            , { header = viewTableHeader (text "Message")
-              , width = fillPortion 3
-              , view =
-                    \edge ->
-                        el
-                            [ width fill
-                            , height (px 60)
-
-                            --                                , Border.widthEach borders
-                            , Background.color Palette.neutral7
-                            , Border.color Palette.neutral6
-                            ]
-                            (Commit.message (Edge.node edge)
-                                |> text
-                            )
-              }
+    column [ width fill, height fill ]
+        [ table
+            [ width fill
             ]
-        }
+            { data = commitConnection.edges
+            , columns =
+                [ { header = viewTableHeader (text "SHA")
+                  , width = fillPortion 1
+                  , view =
+                        \edge ->
+                            el
+                                [ width fill
+                                , paddingXY 10 20
+                                , Border.color Palette.neutral6
+                                , Font.alignLeft
+                                ]
+                                (Commit.truncateHash (Edge.node edge)
+                                    |> text
+                                )
+                  }
+                , { header = viewTableHeader (text "Message")
+                  , width = fillPortion 3
+                  , view =
+                        \edge ->
+                            el
+                                [ width fill
+                                , paddingXY 10 20
+                                , Border.color Palette.neutral6
+                                , Font.alignLeft
+                                ]
+                                (Commit.message (Edge.node edge)
+                                    |> text
+                                )
+                  }
+                ]
+            }
+        , row [ spaceEvenly, width fill ]
+            [ viewPaginationNextButton
+            , viewPaginationNextButton
+            ]
+        ]
+
+
+viewPaginationNextButton : Element Msg
+viewPaginationNextButton =
+    el [ width (px 200) ] <|
+        Button.simpleButton NoOp { content = text "Next", scheme = Button.Primary }
 
 
 
