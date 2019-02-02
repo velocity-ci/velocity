@@ -209,9 +209,27 @@ update msg model =
 
                         other ->
                             other
+
+                commitConnection =
+                    case model.commitConnection of
+                        Loading ->
+                            LoadingSlowly
+
+                        other ->
+                            other
+
+                tasks =
+                    case model.tasks of
+                        Loading ->
+                            LoadingSlowly
+
+                        other ->
+                            other
             in
             ( { model
                 | builds = builds
+                , tasks = tasks
+                , commitConnection = commitConnection
               }
             , Cmd.none
             )
@@ -231,8 +249,15 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedLoadTasks _ ->
-            ( model, Cmd.none )
+        CompletedLoadTasks (Ok tasks) ->
+            ( { model | tasks = Loaded tasks }
+            , Cmd.none
+            )
+
+        CompletedLoadTasks (Err _) ->
+            ( { model | tasks = Failed }
+            , Cmd.none
+            )
 
 
 

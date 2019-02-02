@@ -219,9 +219,8 @@ defmodule Architect.Projects.Repository do
       Porcelain.exec("git", ["checkout", branch], dir: dir)
 
     tasks =
-      VCLI.list(vcli)
+      VCLI.list(dir, vcli)
       |> Task.parse()
-      |> IO.inspect(label: "TASKS")
 
     {:reply, tasks, state}
   end

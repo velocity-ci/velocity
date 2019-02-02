@@ -66,13 +66,13 @@ defmodule ArchitectWeb.Schema do
 
     @desc "List projects"
     connection field(:projects, node_type: :project) do
-#      middleware(Middleware.Authorize)
+      #      middleware(Middleware.Authorize)
       resolve(&Resolvers.Projects.list_projects/2)
     end
 
     @desc "List commits"
     connection field(:commits, node_type: :commit) do
-#      middleware(Middleware.Authorize)
+      #      middleware(Middleware.Authorize)
 
       arg(:project_slug, non_null(:string))
       arg(:branch, non_null(:string))
@@ -86,7 +86,6 @@ defmodule ArchitectWeb.Schema do
 
       resolve(&Resolvers.Projects.list_commits/2)
     end
-
 
     @desc "Get branch"
     field(:branch, non_null(:branch)) do
@@ -105,13 +104,11 @@ defmodule ArchitectWeb.Schema do
       resolve(&Resolvers.Projects.get_branch/2)
     end
 
-
     @desc "Get project"
     field(:project, non_null(:project)) do
       arg(:slug, non_null(:string))
       resolve(&Resolvers.Projects.get_project/2)
     end
-
   end
 
   subscription do

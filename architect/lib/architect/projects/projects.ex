@@ -120,7 +120,6 @@ defmodule Architect.Projects do
   def default_branch(%Project{} = project),
     do: call_repository(project, {:default_branch, []})
 
-
   @doc ~S"""
   Get specific branch
 
@@ -203,13 +202,16 @@ defmodule Architect.Projects do
         catch
           kind, reason ->
             Logger.warn(
-              "Failed to call repository #{address} #{name}: #{inspect(fun)} #{inspect(args)} (#{inspect(kind)}-#{inspect(reason)}), #{inspect(attempt)}..."
+              "Failed to call repository #{address} #{name}: #{inspect(fun)} #{inspect(args)} (#{
+                inspect(kind)
+              }-#{inspect(reason)}), #{inspect(attempt)}..."
             )
 
             Process.sleep(1_000)
 
             call_repository(project, {fun, args}, attempt + 1)
         end
+
       [] ->
         Logger.warn(
           "Failed to call builder #{address} #{name} on #{inspect(@registry)}; does not exist"

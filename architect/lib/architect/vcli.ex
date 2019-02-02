@@ -7,13 +7,13 @@ defmodule Architect.VCLI do
 
   def init(), do: Application.get_env(:architect, :vcli) |> Enum.into(%{})
 
-  def list(opts), do: cmd(opts, ["list", "--machine-readable"])
+  def list(dir, opts), do: cmd(dir, opts, ["list", "--machine-readable"])
 
-  defp cmd(%{bin: bin, timeout: timeout, log_errors: log_errors}, cmd) when is_list(cmd) do
+  defp cmd(dir, %{bin: bin, timeout: timeout, log_errors: log_errors}, cmd) when is_list(cmd) do
     try do
       {out, _} =
         Task.async(fn ->
-          System.cmd(bin, cmd, stderr_to_stdout: true)
+          System.cmd(bin, cmd, stderr_to_stdout: true, cd: dir)
         end)
         |> Task.await(timeout)
 
