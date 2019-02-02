@@ -110,7 +110,7 @@ defmodule Architect.Projects.Project do
     if Repository.verified?(repository) do
       changeset
     else
-      :ok = DynamicSupervisor.terminate_child(Architect.Projects.Supervisor, repository)
+      DynamicSupervisor.terminate_child(Architect.Projects.Supervisor, repository)
       add_error(changeset, :address, "Verifying repository failed")
     end
   end

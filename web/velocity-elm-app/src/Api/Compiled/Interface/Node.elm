@@ -8,6 +8,7 @@ import Api.Compiled.InputObject
 import Api.Compiled.Interface
 import Api.Compiled.Object
 import Api.Compiled.Scalar
+import Api.Compiled.ScalarCodecs
 import Api.Compiled.Union
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -57,6 +58,6 @@ maybeFragments =
 
 {-| The id of the object.
 -}
-id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Interface.Node
+id : SelectionSet Api.Compiled.ScalarCodecs.Id Api.Compiled.Interface.Node
 id =
-    Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)
+    Object.selectionForField "ScalarCodecs.Id" "id" [] (Api.Compiled.ScalarCodecs.codecs |> Api.Compiled.Scalar.unwrapCodecs |> .codecId |> .decoder)

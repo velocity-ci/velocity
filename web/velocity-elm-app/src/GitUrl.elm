@@ -3,8 +3,8 @@ module GitUrl exposing (GitUrl, decoder, sourceIcon)
 import Element exposing (Element)
 import Icon
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Pipeline exposing (custom, hardcoded, optional, required)
-import Json.Encode as Encode
+import Json.Decode.Pipeline exposing (required)
+
 
 
 -- MODEL --

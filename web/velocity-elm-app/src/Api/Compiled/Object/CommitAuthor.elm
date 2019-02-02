@@ -8,6 +8,7 @@ import Api.Compiled.InputObject
 import Api.Compiled.Interface
 import Api.Compiled.Object
 import Api.Compiled.Scalar
+import Api.Compiled.ScalarCodecs
 import Api.Compiled.Union
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -18,9 +19,9 @@ import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode
 
 
-date : SelectionSet Api.Compiled.Scalar.NaiveDateTime Api.Compiled.Object.CommitAuthor
+date : SelectionSet Api.Compiled.ScalarCodecs.NaiveDateTime Api.Compiled.Object.CommitAuthor
 date =
-    Object.selectionForField "Scalar.NaiveDateTime" "date" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.NaiveDateTime)
+    Object.selectionForField "ScalarCodecs.NaiveDateTime" "date" [] (Api.Compiled.ScalarCodecs.codecs |> Api.Compiled.Scalar.unwrapCodecs |> .codecNaiveDateTime |> .decoder)
 
 
 email : SelectionSet String Api.Compiled.Object.CommitAuthor
@@ -30,9 +31,9 @@ email =
 
 {-| The ID of an object
 -}
-id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.CommitAuthor
+id : SelectionSet Api.Compiled.ScalarCodecs.Id Api.Compiled.Object.CommitAuthor
 id =
-    Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)
+    Object.selectionForField "ScalarCodecs.Id" "id" [] (Api.Compiled.ScalarCodecs.codecs |> Api.Compiled.Scalar.unwrapCodecs |> .codecId |> .decoder)
 
 
 name : SelectionSet String Api.Compiled.Object.CommitAuthor

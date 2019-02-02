@@ -2,12 +2,13 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Query exposing (CommitsOptionalArguments, CommitsRequiredArguments, ProjectsOptionalArguments, commits, listKnownHosts, projects)
+module Api.Compiled.Query exposing (BranchRequiredArguments, CommitsOptionalArguments, CommitsRequiredArguments, ProjectRequiredArguments, ProjectsOptionalArguments, branch, commits, listKnownHosts, project, projects)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
 import Api.Compiled.Object
 import Api.Compiled.Scalar
+import Api.Compiled.ScalarCodecs
 import Api.Compiled.Union
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -16,6 +17,19 @@ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
+
+
+type alias BranchRequiredArguments =
+    { branch : String
+    , projectSlug : String
+    }
+
+
+{-| Get branch
+-}
+branch : BranchRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.Branch -> SelectionSet decodesTo RootQuery
+branch requiredArgs object_ =
+    Object.selectionForCompositeField "branch" [ Argument.required "branch" requiredArgs.branch Encode.string, Argument.required "projectSlug" requiredArgs.projectSlug Encode.string ] object_ identity
 
 
 type alias CommitsOptionalArguments =
@@ -52,6 +66,17 @@ commits fillInOptionals requiredArgs object_ =
 listKnownHosts : SelectionSet decodesTo Api.Compiled.Object.KnownHost -> SelectionSet (List decodesTo) RootQuery
 listKnownHosts object_ =
     Object.selectionForCompositeField "listKnownHosts" [] object_ (identity >> Decode.list)
+
+
+type alias ProjectRequiredArguments =
+    { slug : String }
+
+
+{-| Get project
+-}
+project : ProjectRequiredArguments -> SelectionSet decodesTo Api.Compiled.Object.Project -> SelectionSet decodesTo RootQuery
+project requiredArgs object_ =
+    Object.selectionForCompositeField "project" [ Argument.required "slug" requiredArgs.slug Encode.string ] object_ identity
 
 
 type alias ProjectsOptionalArguments =

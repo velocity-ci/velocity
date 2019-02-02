@@ -1,6 +1,7 @@
 module Page.Project exposing (Model, Msg, init, subscriptions, toContext, toSession, update, view)
 
 import Api exposing (BaseUrl, Cred)
+import Api.Compiled.Object as Object
 import Api.Compiled.Query as Query
 import Asset
 import Browser.Events
@@ -20,6 +21,7 @@ import Http
 import Icon
 import Json.Decode as Decode
 import Loading
+import PageInfo
 import PaginatedList exposing (PaginatedList)
 import Palette
 import Project exposing (Project)
@@ -27,7 +29,6 @@ import Project.Branch as Branch exposing (Branch)
 import Project.Branch.Name as BranchName
 import Project.Build as Build exposing (Build)
 import Project.Commit as Commit exposing (Commit)
-import Project.Commit.Hash as Hash
 import Project.Slug as Slug exposing (Slug)
 import Project.Task as Task exposing (Task)
 import Project.Task.Name as TaskName
@@ -44,13 +45,13 @@ import Timestamp
 type alias Model msg =
     { session : Session msg
     , context : Context msg
-    , tasks : Status (List Task)
     , timeZone : Time.Zone
     , slug : Slug
     , branchDropdown : BranchDropdown
     , currentCommit : Status Commit
     , builds : Status (PaginatedList Build)
     , commitConnection : Status (Connection Commit)
+    , branch : Status Branch
     }
 
 
@@ -83,12 +84,25 @@ init session context projectSlug =
         baseUrl =
             Context.baseUrl context
 
+        ( branch, branchRequest ) =
+            case ( maybeProject, maybeCred ) of
+                ( Just project, Just cred ) ->
+                    ( Loading
+                    , Branch.selectionSet
+                        |> Query.branch { projectSlug = Slug.toString projectSlug, branch = "master" }
+                        |> Api.authedQueryRequest baseUrl cred
+                        |> Graphql.Http.send CompletedLoadBranch
+                    )
+
+                _ ->
+                    ( Failed, Cmd.none )
+
         ( commitConnectionStatus, commitRequest ) =
             case ( maybeProject, maybeCred ) of
                 ( Just project, Just cred ) ->
                     ( Loading
                     , Commit.connectionSelectionSet
-                        |> Query.commits (\c -> { c | first = OptionalArgument.Present 10 }) { branch = "master", projectSlug = Slug.toString projectSlug }
+                        |> Query.commits (\c -> { c | first = OptionalArgument.Present 50 }) { branch = "master", projectSlug = Slug.toString projectSlug }
                         |> SelectionSet.nonNullOrFail
                         |> Api.authedQueryRequest baseUrl cred
                         |> Graphql.Http.toTask
@@ -97,33 +111,22 @@ init session context projectSlug =
 
                 _ ->
                     ( Failed, Cmd.none )
-
-        ( tasks, tasksRequest ) =
-            case ( maybeProject, maybeCred ) of
-                ( Just project, Just cred ) ->
-                    ( Loading
-                    , BaseTask.attempt CompletedLoadTasks <|
-                        Task.byBranch cred baseUrl projectSlug BranchName.default
-                    )
-
-                _ ->
-                    ( Failed, Cmd.none )
     in
     ( { session = session
       , context = context
-      , tasks = tasks
       , currentCommit = Loading
       , timeZone = Time.utc
       , slug = projectSlug
       , branchDropdown = BranchDropdown Closed
       , builds = Loading
+      , branch = branch
       , commitConnection = commitConnectionStatus
       }
     , Cmd.batch
         [ commitRequest
-        , tasksRequest
         , BaseTask.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
         , BaseTask.perform GotTimeZone Time.here
+        , branchRequest
         ]
     )
 
@@ -156,8 +159,8 @@ type Msg
     | BranchDropdownToggleClicked
     | BranchDropdownListenClicks
     | BranchDropdownClose
+    | CompletedLoadBranch (Result (Graphql.Http.Error Branch) Branch)
     | CompletedLoadBuilds (Result Http.Error (PaginatedList Build))
-    | CompletedLoadTasks (Result Http.Error (List Task))
     | PassedSlowLoadThreshold
     | GotTimeZone Time.Zone
     | CompletedLoadCommits (Result (Graphql.Http.Error (Connection Commit)) (Connection Commit))
@@ -202,16 +205,6 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedLoadTasks (Ok tasks) ->
-            ( { model | tasks = Loaded tasks }
-            , Cmd.none
-            )
-
-        CompletedLoadTasks (Err err) ->
-            ( { model | tasks = Failed }
-            , Cmd.none
-            )
-
         PassedSlowLoadThreshold ->
             let
                 builds =
@@ -221,18 +214,9 @@ update msg model =
 
                         other ->
                             other
-
-                tasks =
-                    case model.tasks of
-                        Loading ->
-                            LoadingSlowly
-
-                        other ->
-                            other
             in
             ( { model
                 | builds = builds
-                , tasks = tasks
               }
             , Cmd.none
             )
@@ -251,6 +235,9 @@ update msg model =
             ( { model | timeZone = tz }
             , Cmd.none
             )
+
+        CompletedLoadBranch _ ->
+            ( model, Cmd.none )
 
 
 
@@ -522,7 +509,7 @@ viewDesktopBody project model =
                 [ width (fillPortion 6)
                 , height fill
                 ]
-                [ viewRecentTasksContainer model.tasks ]
+                [ viewRecentTasksContainer Failed ]
             ]
         , row
             [ width fill
@@ -551,7 +538,7 @@ viewTabContainer model =
         ]
         [ row
             [ width fill
-            , paddingXY 10 30
+            , paddingXY 10 10
             , Font.size 14
             , Background.color Palette.white
             , Border.shadow
@@ -576,8 +563,7 @@ viewTabContainer model =
 viewProjectTabs : Element msg
 viewProjectTabs =
     row [ spaceEvenly, moveUp 55, paddingEach { bottom = 2, left = 0, right = 0, top = 0 } ]
-        [ viewTab True "Builds"
-        , viewTab False "Commits"
+        [ viewTab True "Commits"
         ]
 
 
@@ -718,29 +704,43 @@ viewCommitConnectionLoaded commitConnection =
                   , width = fillPortion 3
                   , view =
                         \edge ->
-                            el
+                            paragraph
                                 [ width fill
                                 , paddingXY 10 20
                                 , Border.color Palette.neutral6
                                 , Font.alignLeft
                                 ]
-                                (Commit.message (Edge.node edge)
+                                [ Commit.message (Edge.node edge)
                                     |> text
-                                )
+                                ]
                   }
                 ]
             }
         , row [ spaceEvenly, width fill ]
-            [ viewPaginationNextButton
-            , viewPaginationNextButton
+            [ viewPaginationBackButton commitConnection
+            , viewPaginationNextButton commitConnection
             ]
         ]
 
 
-viewPaginationNextButton : Element Msg
-viewPaginationNextButton =
+viewPaginationBackButton : Connection a -> Element Msg
+viewPaginationBackButton { pageInfo } =
     el [ width (px 200) ] <|
-        Button.simpleButton NoOp { content = text "Next", scheme = Button.Primary }
+        if PageInfo.hasPreviousPage pageInfo then
+            Button.simpleButton NoOp { content = text "Newer", scheme = Button.Primary }
+
+        else
+            none
+
+
+viewPaginationNextButton : Connection a -> Element Msg
+viewPaginationNextButton { pageInfo } =
+    el [ width (px 200) ] <|
+        if PageInfo.hasNextPage pageInfo then
+            Button.simpleButton NoOp { content = text "Older", scheme = Button.Primary }
+
+        else
+            none
 
 
 

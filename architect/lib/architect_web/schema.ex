@@ -86,6 +86,32 @@ defmodule ArchitectWeb.Schema do
 
       resolve(&Resolvers.Projects.list_commits/2)
     end
+
+
+    @desc "Get branch"
+    field(:branch, non_null(:branch)) do
+      #      middleware(Middleware.Authorize)
+
+      arg(:project_slug, non_null(:string))
+      arg(:branch, non_null(:string))
+
+      # Add the project to the context
+      middleware(fn res, _ ->
+        [%{argument_data: %{project_slug: project_slug}} | _] = res.path
+        project = Projects.get_project_by_slug!(project_slug)
+        %{res | context: Map.put(res.context, :project, project)}
+      end)
+
+      resolve(&Resolvers.Projects.get_branch/2)
+    end
+
+
+    @desc "Get project"
+    field(:project, non_null(:project)) do
+      arg(:slug, non_null(:string))
+      resolve(&Resolvers.Projects.get_project/2)
+    end
+
   end
 
   subscription do

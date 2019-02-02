@@ -10,10 +10,22 @@ defmodule ArchitectWeb.Resolvers.Projects do
     |> Relay.Connection.from_list(pagination_args)
   end
 
+
+  def get_project(%{slug: slug}, _) do
+    {:ok, Projects.get_project_by_slug!(slug) }
+  end
+
+
   def list_commits(pagination_args, %{context: %{project: project}}) do
     project
     |> Projects.list_commits(pagination_args.branch)
     |> Relay.Connection.from_list(pagination_args)
+  end
+
+
+  def get_branch(%{branch: branch}, %{context: %{project: project}}) do
+    {:ok, Projects.get_branch(project, branch)}
+
   end
 
   def list_commits(%Branch{name: branch}, pagination_args, %{context: %{project: project}}) do

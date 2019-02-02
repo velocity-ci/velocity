@@ -8,6 +8,7 @@ import Api.Compiled.InputObject
 import Api.Compiled.Interface
 import Api.Compiled.Object
 import Api.Compiled.Scalar
+import Api.Compiled.ScalarCodecs
 import Api.Compiled.Union
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -51,14 +52,14 @@ defaultBranch object_ =
 
 {-| The ID of an object
 -}
-id : SelectionSet Api.Compiled.Scalar.Id Api.Compiled.Object.Project
+id : SelectionSet Api.Compiled.ScalarCodecs.Id Api.Compiled.Object.Project
 id =
-    Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.Id)
+    Object.selectionForField "ScalarCodecs.Id" "id" [] (Api.Compiled.ScalarCodecs.codecs |> Api.Compiled.Scalar.unwrapCodecs |> .codecId |> .decoder)
 
 
-insertedAt : SelectionSet Api.Compiled.Scalar.NaiveDateTime Api.Compiled.Object.Project
+insertedAt : SelectionSet Api.Compiled.ScalarCodecs.NaiveDateTime Api.Compiled.Object.Project
 insertedAt =
-    Object.selectionForField "Scalar.NaiveDateTime" "insertedAt" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.NaiveDateTime)
+    Object.selectionForField "ScalarCodecs.NaiveDateTime" "insertedAt" [] (Api.Compiled.ScalarCodecs.codecs |> Api.Compiled.Scalar.unwrapCodecs |> .codecNaiveDateTime |> .decoder)
 
 
 name : SelectionSet String Api.Compiled.Object.Project
@@ -71,6 +72,6 @@ slug =
     Object.selectionForField "String" "slug" [] Decode.string
 
 
-updatedAt : SelectionSet Api.Compiled.Scalar.NaiveDateTime Api.Compiled.Object.Project
+updatedAt : SelectionSet Api.Compiled.ScalarCodecs.NaiveDateTime Api.Compiled.Object.Project
 updatedAt =
-    Object.selectionForField "Scalar.NaiveDateTime" "updatedAt" [] (Object.scalarDecoder |> Decode.map Api.Compiled.Scalar.NaiveDateTime)
+    Object.selectionForField "ScalarCodecs.NaiveDateTime" "updatedAt" [] (Api.Compiled.ScalarCodecs.codecs |> Api.Compiled.Scalar.unwrapCodecs |> .codecNaiveDateTime |> .decoder)

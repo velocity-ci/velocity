@@ -121,6 +121,19 @@ defmodule Architect.Projects do
   def default_branch(%Project{} = project),
     do: call_repository(project, {:default_branch, []})
 
+
+  @doc ~S"""
+  Get specific branch
+
+  ## Examples
+
+      iex> get_branch(project, "master")
+      %Branch{}
+
+  """
+  def get_branch(%Project{} = project, branch) when is_binary(branch),
+    do: call_repository(project, {:get_branch, branch})
+
   @doc ~S"""
   Get the amount of commits for the project
 

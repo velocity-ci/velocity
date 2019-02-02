@@ -58,6 +58,11 @@ defmodule Git.Repository do
   def list_branches(repository), do: GenServer.call(repository, :list_branches)
 
   @doc ~S"""
+  Get a single branch
+  """
+  def get_branch(repository, branch), do: GenServer.call(repository, {:get_branch, branch})
+
+  @doc ~S"""
   Get a list of branches for a commit SHA value
   """
   def list_branches_for_commit(repository, sha),
@@ -112,16 +117,14 @@ defmodule Git.Repository do
   end
 
   @impl true
-  def handle_call(_, _from, %__MODULE__{verified: verified} = state) when not verified do
+  def handle_call(_, _from, %__MODULE__{verified: verified} = state) when verified != true do
     Logger.warn("Cannot perform action on unverified repository")
     {:reply, :error, state}
   end
 
   @impl true
-  def handle_call(_, _from, %__MODULE__{fetched: fetched} = state) when not fetched do
-
-
-
+  def handle_call(_, _from, %__MODULE__{fetched: fetched} = state) when fetched != true do
+    Logger.warn("Cannot perform action on unfetched repository")
     {:reply, :error, state}
   end
 
@@ -147,6 +150,15 @@ defmodule Git.Repository do
 
     {:reply, branches, state}
   end
+
+  def handle_call({:get_branch, branch}, _from, %__MODULE__{dir: dir} = state) do
+    branch =
+      Git.Branch.list(dir)
+        |> Enum.find(fn b -> b == branch end)
+
+    {:reply, branch, state}
+  end
+
 
   @impl true
   def handle_call({:list_branches_for_commit, sha}, _from, %__MODULE__{dir: dir} = state) do
