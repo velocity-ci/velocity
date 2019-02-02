@@ -6,6 +6,7 @@ defmodule Architect.Projects do
   import Ecto.Query, warn: false
   alias Architect.Repo
   alias Architect.Projects.{Repository, Project, Starter}
+  alias Architect.Accounts.User
   use Supervisor
   require Logger
 
@@ -58,16 +59,16 @@ defmodule Architect.Projects do
 
   ## Examples
 
-      iex> create_project(%{field: value})
+      iex> create_project(%User{}, "https://github.com/velocity-ci/velocity.git")
       {:ok, %Project{}}
 
-      iex> create_project(%{field: bad_value})
+      iex> create_project(%User{}, "banter)
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_project(attrs \\ %{}) do
+  def create_project(%User{id: user_id}, address) when is_binary(address) do
     %Project{}
-    |> Project.changeset(attrs)
+    |> Project.changeset(%{address: address, created_by_id: user_id})
     |> Repo.insert()
   end
 

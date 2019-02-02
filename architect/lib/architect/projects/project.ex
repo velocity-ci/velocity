@@ -7,10 +7,12 @@ defmodule Architect.Projects.Project do
   import Ecto.Changeset
   alias Ecto.Changeset
   alias Architect.Projects.Repository
+  alias Architect.Accounts.User
 
   alias __MODULE__.NameSlug
 
   @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
   schema "projects" do
     field(:name, :string)
     field(:address, :string)
@@ -18,6 +20,7 @@ defmodule Architect.Projects.Project do
 
     field(:slug, NameSlug.Type)
 
+    belongs_to(:created_by, User)
     timestamps()
   end
 
@@ -25,6 +28,7 @@ defmodule Architect.Projects.Project do
   def changeset(project, attrs) do
     project
     |> cast(attrs, [:address, :private_key])
+    |> put_assoc(:created_by, attrs, required: true)
     |> validate_required([:address])
     |> unique_constraint(:address)
     |> update_default_name()
@@ -40,6 +44,8 @@ defmodule Architect.Projects.Project do
   def update_default_name(%Changeset{changes: %{address: address}} = changeset) do
     put_change(changeset, :name, default_name(address))
   end
+
+  def update_default_name(changeset), do: changeset
 
   @doc ~S"""
   Generate a name for the project based on its repository address
