@@ -2,6 +2,7 @@ module Page.Project exposing (Model, Msg, init, subscriptions, toContext, toSess
 
 import Api exposing (BaseUrl, Cred)
 import Api.Compiled.Object as Object
+import Api.Compiled.Object.Branch as CompiledBranch
 import Api.Compiled.Query as Query
 import Asset
 import Browser.Events
@@ -26,7 +27,6 @@ import PaginatedList exposing (PaginatedList)
 import Palette
 import Project exposing (Project)
 import Project.Branch as Branch exposing (Branch)
-import Project.Branch.Name as BranchName
 import Project.Build as Build exposing (Build)
 import Project.Commit as Commit exposing (Commit)
 import Project.Slug as Slug exposing (Slug)
@@ -51,7 +51,7 @@ type alias Model msg =
     , currentCommit : Status Commit
     , builds : Status (PaginatedList Build)
     , commitConnection : Status (Connection Commit)
-    , branch : Status Branch
+    , tasks : Status (List Task)
     }
 
 
@@ -84,14 +84,17 @@ init session context projectSlug =
         baseUrl =
             Context.baseUrl context
 
-        ( branch, branchRequest ) =
+        ( tasks, taskRequest ) =
             case ( maybeProject, maybeCred ) of
                 ( Just project, Just cred ) ->
                     ( Loading
-                    , Branch.selectionSet
-                        |> Query.branch { projectSlug = Slug.toString projectSlug, branch = "master" }
+                    , CompiledBranch.tasks Task.selectionSet
+                        |> Query.branch
+                            { projectSlug = Slug.toString projectSlug
+                            , branch = "master"
+                            }
                         |> Api.authedQueryRequest baseUrl cred
-                        |> Graphql.Http.send CompletedLoadBranch
+                        |> Graphql.Http.send CompletedLoadTasks
                     )
 
                 _ ->
@@ -102,7 +105,10 @@ init session context projectSlug =
                 ( Just project, Just cred ) ->
                     ( Loading
                     , Commit.connectionSelectionSet
-                        |> Query.commits (\c -> { c | first = OptionalArgument.Present 50 }) { branch = "master", projectSlug = Slug.toString projectSlug }
+                        |> Query.commits (\c -> { c | first = OptionalArgument.Present 50 })
+                            { branch = "master"
+                            , projectSlug = Slug.toString projectSlug
+                            }
                         |> SelectionSet.nonNullOrFail
                         |> Api.authedQueryRequest baseUrl cred
                         |> Graphql.Http.toTask
@@ -119,14 +125,14 @@ init session context projectSlug =
       , slug = projectSlug
       , branchDropdown = BranchDropdown Closed
       , builds = Loading
-      , branch = branch
+      , tasks = tasks
       , commitConnection = commitConnectionStatus
       }
     , Cmd.batch
         [ commitRequest
         , BaseTask.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
         , BaseTask.perform GotTimeZone Time.here
-        , branchRequest
+        , taskRequest
         ]
     )
 
@@ -159,11 +165,10 @@ type Msg
     | BranchDropdownToggleClicked
     | BranchDropdownListenClicks
     | BranchDropdownClose
-    | CompletedLoadBranch (Result (Graphql.Http.Error Branch) Branch)
-    | CompletedLoadBuilds (Result Http.Error (PaginatedList Build))
     | PassedSlowLoadThreshold
     | GotTimeZone Time.Zone
     | CompletedLoadCommits (Result (Graphql.Http.Error (Connection Commit)) (Connection Commit))
+    | CompletedLoadTasks (Result (Graphql.Http.Error (List Task)) (List Task))
 
 
 update : Msg -> Model msg -> ( Model msg, Cmd Msg )
@@ -192,16 +197,6 @@ update msg model =
 
         BranchDropdownClose ->
             ( { model | branchDropdown = BranchDropdown Closed }
-            , Cmd.none
-            )
-
-        CompletedLoadBuilds (Ok builds) ->
-            ( { model | builds = Loaded builds }
-            , Cmd.none
-            )
-
-        CompletedLoadBuilds (Err error) ->
-            ( { model | builds = Failed }
             , Cmd.none
             )
 
@@ -236,7 +231,7 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedLoadBranch _ ->
+        CompletedLoadTasks _ ->
             ( model, Cmd.none )
 
 
@@ -476,8 +471,6 @@ viewMobileBody project model =
         , padding 20
         ]
         [ el [ height shrink, width fill ] (viewProjectDetails project)
-
-        --        , el [ height shrink, width fill ] (viewRecentTasksContainer tasks)
         , viewTabContainer model
         ]
 
@@ -509,7 +502,7 @@ viewDesktopBody project model =
                 [ width (fillPortion 6)
                 , height fill
                 ]
-                [ viewRecentTasksContainer Failed ]
+                [ viewRecentTasksContainer model.tasks ]
             ]
         , row
             [ width fill
@@ -654,7 +647,7 @@ viewLoadingError entity =
             , paragraph [] [ text ("There was a problem loading " ++ entity) ]
             ]
         , paragraph
-            []
+            [ Font.size 16 ]
             [ text "If you think this is a bug we'd really appreciate it if you could "
             , newTabLink
                 [ Font.color Palette.primary4
@@ -1065,60 +1058,15 @@ viewRecentTasksContainer tasksStatus =
             , paddingXY 10 10
             , spacing 10
             ]
-            (viewRecentTasks tasksStatus)
+            [ viewRecentTasks tasksStatus
+            ]
         ]
 
 
-viewRecentTasks : Status (List Task) -> List (Element Msg)
+viewRecentTasks : Status (List Task) -> Element Msg
 viewRecentTasks tasksStatus =
-    case tasksStatus of
-        Loaded tasks ->
-            List.map viewRecentTaskItem (List.take 1 tasks)
-
-        Loading ->
-            [ none ]
-
-        LoadingSlowly ->
-            [ viewLoadingSpinner ]
-
-        Failed ->
-            [ viewRecentTasksFailed ]
-
-
-viewRecentTasksFailed : Element msg
-viewRecentTasksFailed =
-    column [ width fill, spacingXY 0 20, padding 20, height fill, Font.color Palette.danger1 ]
-        [ row
-            [ width shrink
-            , centerX
-            , Font.size 18
-            , Font.color Palette.danger4
-            , spacingXY 10 0
-            ]
-            [ el [] (Icon.alertCircle <| Icon.size 32)
-            , text "There was a problem loading tasks"
-            ]
-        , textColumn [ width fill, spacingXY 0 20, Font.size 14 ]
-            [ paragraph
-                [ width fill
-                ]
-                [ text "Velocity failed loading tasks from the commit at "
-                , el [ Font.heavy ] (text "HEAD")
-                , text " of the branch."
-                ]
-            , paragraph []
-                [ text "If you think this is a bug we'd really appreciate it if you could "
-                , newTabLink
-                    [ Font.color Palette.primary4
-                    , mouseOver
-                        [ Font.color Palette.primary2
-                        ]
-                    ]
-                    { url = "https://github.com/velocity-ci/velocity", label = text "create an issue on our github" }
-                , text " with your configuration files and any other information that you think would be helpful"
-                ]
-            ]
-        ]
+    tasksStatus
+        |> viewIfLoaded (List.map viewRecentTaskItem >> column []) (viewLoadingError "tasks")
 
 
 viewRecentTaskItem : Task -> Element msg
@@ -1153,17 +1101,16 @@ viewRecentTaskItem task =
 
 
 -- Task Container
-
-
-viewTasksContainer : Model msg -> Element Msg
-viewTasksContainer model =
-    column
-        [ width fill
-        , height shrink
-        , padding 10
-        ]
-        [ viewTasksList
-        ]
+--
+--viewTasksContainer : Model msg -> Element Msg
+--viewTasksContainer model =
+--    column
+--        [ width fill
+--        , height shrink
+--        , padding 10
+--        ]
+--        [ viewTasksList
+--        ]
 
 
 viewBranchSelectButton : Length -> BranchDropdown -> Element Msg

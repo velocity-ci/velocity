@@ -1,6 +1,9 @@
-module Project.Task exposing (Task, byBranch, name)
+module Project.Task exposing (Task, byBranch, name, selectionSet)
 
 import Api exposing (BaseUrl, Cred)
+import Api.Compiled.Object
+import Api.Compiled.Object.Task as Task
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, optional, required)
@@ -19,13 +22,14 @@ type Task
 
 
 type alias Internals =
-    { id : Id
-    , slug : Slug
-    , name : Name
-    , description : String
-    , steps : List Step
-    , parameters : List Parameter
-    , commit : Commit
+    { --    id : Id
+      --    , slug : Slug
+      name : Name
+    , description : Maybe String
+
+    --    , steps : List Step
+    --    , parameters : List Parameter
+    --    , commit : Commit
     }
 
 
@@ -67,75 +71,86 @@ name (Task t) =
 -- Decoders
 
 
-stringParameterDecoder : Decoder StringParameter
-stringParameterDecoder =
-    Decode.succeed StringParameter
-        |> required "name" Decode.string
-        |> optional "default" (Decode.nullable Decode.string) Nothing
-        |> optional "secret" Decode.bool False
+selectionSet : SelectionSet Task Api.Compiled.Object.Task
+selectionSet =
+    SelectionSet.map Task internalSelectionSet
 
 
-choiceParameterDecoder : Decoder ChoiceParameter
-choiceParameterDecoder =
-    Decode.succeed ChoiceParameter
-        |> required "name" Decode.string
-        |> optional "default" (Decode.nullable Decode.string) Nothing
-        |> optional "secret" Decode.bool False
-        |> required "otherOptions" (Decode.list Decode.string)
-
-
-derivedParameterDecoder : Decoder DerivedParameter
-derivedParameterDecoder =
-    Decode.succeed DerivedParameter
-        |> required "use" Decode.string
-
-
-parameterDecoder : Decoder Parameter
-parameterDecoder =
-    Decode.string
-        |> Decode.field "type"
-        |> Decode.andThen
-            (\paramType ->
-                case paramType of
-                    "basic" ->
-                        basicParameterDecoder
-
-                    "derived" ->
-                        Decode.map DerivedParam derivedParameterDecoder
-
-                    unknown ->
-                        Decode.fail <| "Unknown parameter type: " ++ unknown
-            )
-
-
-basicParameterDecoder : Decoder Parameter
-basicParameterDecoder =
-    Decode.string
-        |> Decode.list
-        |> Decode.nullable
-        |> Decode.field "otherOptions"
-        |> Decode.andThen
-            (\otherOptions ->
-                let
-                    string =
-                        Decode.map StringParam stringParameterDecoder
-
-                    choice =
-                        Decode.map ChoiceParam choiceParameterDecoder
-                in
-                    case otherOptions of
-                        Nothing ->
-                            string
-
-                        Just options ->
-                            if List.isEmpty options then
-                                string
-                            else
-                                choice
-            )
+internalSelectionSet : SelectionSet Internals Api.Compiled.Object.Task
+internalSelectionSet =
+    SelectionSet.succeed Internals
+        |> with Name.selectionSet
+        |> with Task.description
 
 
 
+--
+--stringParameterDecoder : Decoder StringParameter
+--stringParameterDecoder =
+--    Decode.succeed StringParameter
+--        |> required "name" Decode.string
+--        |> optional "default" (Decode.nullable Decode.string) Nothing
+--        |> optional "secret" Decode.bool False
+--
+--
+--choiceParameterDecoder : Decoder ChoiceParameter
+--choiceParameterDecoder =
+--    Decode.succeed ChoiceParameter
+--        |> required "name" Decode.string
+--        |> optional "default" (Decode.nullable Decode.string) Nothing
+--        |> optional "secret" Decode.bool False
+--        |> required "otherOptions" (Decode.list Decode.string)
+--
+--
+--derivedParameterDecoder : Decoder DerivedParameter
+--derivedParameterDecoder =
+--    Decode.succeed DerivedParameter
+--        |> required "use" Decode.string
+--
+--
+--parameterDecoder : Decoder Parameter
+--parameterDecoder =
+--    Decode.string
+--        |> Decode.field "type"
+--        |> Decode.andThen
+--            (\paramType ->
+--                case paramType of
+--                    "basic" ->
+--                        basicParameterDecoder
+--
+--                    "derived" ->
+--                        Decode.map DerivedParam derivedParameterDecoder
+--
+--                    unknown ->
+--                        Decode.fail <| "Unknown parameter type: " ++ unknown
+--            )
+--
+--
+--basicParameterDecoder : Decoder Parameter
+--basicParameterDecoder =
+--    Decode.string
+--        |> Decode.list
+--        |> Decode.nullable
+--        |> Decode.field "otherOptions"
+--        |> Decode.andThen
+--            (\otherOptions ->
+--                let
+--                    string =
+--                        Decode.map StringParam stringParameterDecoder
+--
+--                    choice =
+--                        Decode.map ChoiceParam choiceParameterDecoder
+--                in
+--                    case otherOptions of
+--                        Nothing ->
+--                            string
+--
+--                        Just options ->
+--                            if List.isEmpty options then
+--                                string
+--                            else
+--                                choice
+--            )
 -- COLLECTION
 
 

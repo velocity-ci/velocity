@@ -6,7 +6,7 @@ defmodule Architect.Projects.Project do
   use Ecto.Schema
   import Ecto.Changeset
   alias Ecto.Changeset
-  alias Git.Repository
+  alias Architect.Projects.Repository
 
   alias __MODULE__.NameSlug
 

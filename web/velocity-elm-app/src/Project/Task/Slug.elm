@@ -1,7 +1,11 @@
 module Project.Task.Slug exposing (Slug, decoder, urlParser)
 
+import Api.Compiled.Object
+import Api.Compiled.Object.Task as Task
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+
 
 
 -- TYPES

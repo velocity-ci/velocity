@@ -18,6 +18,10 @@ defmodule Architect.Projects.Task do
     %Architect.Projects.Task{name: "build-dev", description: "This builds dev"}
 
   """
+  def parse(output) when is_list(output) do
+    Enum.map(output, &parse/1)
+  end
+
   def parse(%{"name" => name, "description" => description} = output) do
     %__MODULE__{name: name, description: description}
     |> parse_git(output)

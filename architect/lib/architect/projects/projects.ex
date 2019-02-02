@@ -5,8 +5,7 @@ defmodule Architect.Projects do
 
   import Ecto.Query, warn: false
   alias Architect.Repo
-  alias Architect.Projects.{Project, Starter}
-  alias Git.Repository
+  alias Architect.Projects.{Repository, Project, Starter}
   use Supervisor
   require Logger
 
@@ -132,7 +131,7 @@ defmodule Architect.Projects do
 
   """
   def get_branch(%Project{} = project, branch) when is_binary(branch),
-    do: call_repository(project, {:get_branch, branch})
+    do: call_repository(project, {:get_branch, [branch]})
 
   @doc ~S"""
   Get the amount of commits for the project
@@ -204,14 +203,13 @@ defmodule Architect.Projects do
         catch
           kind, reason ->
             Logger.warn(
-              "Failed to call repository #{address} (#{inspect(kind)} #{inspect(reason)}), retrying..."
+              "Failed to call repository #{address} #{name}: #{inspect(fun)} #{inspect(args)} (#{inspect(kind)}-#{inspect(reason)}), #{inspect(attempt)}..."
             )
 
             Process.sleep(1_000)
 
             call_repository(project, {fun, args}, attempt + 1)
         end
-
       [] ->
         Logger.warn(
           "Failed to call builder #{address} #{name} on #{inspect(@registry)}; does not exist"
@@ -225,7 +223,7 @@ end
 defmodule Architect.Projects.Starter do
   use Task
   require Logger
-  alias Git.Repository
+  alias Architect.Projects.Repository
 
   def start_link(opts) do
     Task.start_link(__MODULE__, :run, [opts])

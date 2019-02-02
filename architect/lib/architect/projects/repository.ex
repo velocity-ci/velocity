@@ -1,4 +1,4 @@
-defmodule Git.Repository do
+defmodule Architect.Projects.Repository do
   @moduledoc """
   A process for interacting with a git repository
 
@@ -8,10 +8,12 @@ defmodule Git.Repository do
   When this process is killed this directory should be automatically removed
   """
 
-  defstruct [:dir, :address, :private_key, :verified, :fetched]
+  defstruct [:dir, :address, :private_key, :verified, :fetched, :vcli]
 
   use GenServer
   require Logger
+  alias Architect.VCLI
+  alias Architect.Projects.Task
   alias Git.{Branch, Commit}
 
   # Client
@@ -74,9 +76,15 @@ defmodule Git.Repository do
   def default_branch(repository), do: GenServer.call(repository, :default_branch)
 
   @doc ~S"""
-  Ge the tasks for a commit specified by its SHA value
+  Ge the tasks for a commit or branch
   """
-  # def list_tasks(repository, selector), do: GenServer.call(repository, {:list_tasks, selector})
+  def list_tasks(repository, selector) do
+    IO.inspect(repository, label: "REPO")
+
+    IO.inspect(selector, label: "SELECTOR")
+
+    GenServer.call(repository, {:list_tasks, selector})
+  end
 
   # Server
 
@@ -86,7 +94,8 @@ defmodule Git.Repository do
      %__MODULE__{
        address: address,
        private_key: private_key,
-       verified: false
+       verified: false,
+       vcli: VCLI.init()
      }, {:continue, :verify}}
   end
 
@@ -118,16 +127,15 @@ defmodule Git.Repository do
 
   @impl true
   def handle_call(_, _from, %__MODULE__{verified: verified} = state) when verified != true do
-    Logger.warn("Cannot perform action on unverified repository")
+    Logger.warn("Cannot perform action on un-verified repository")
     {:reply, :error, state}
   end
 
   @impl true
   def handle_call(_, _from, %__MODULE__{fetched: fetched} = state) when fetched != true do
-    Logger.warn("Cannot perform action on unfetched repository")
+    Logger.warn("Cannot perform action on un-fetched repository")
     {:reply, :error, state}
   end
-
 
   @impl true
   def handle_call(
@@ -154,11 +162,10 @@ defmodule Git.Repository do
   def handle_call({:get_branch, branch}, _from, %__MODULE__{dir: dir} = state) do
     branch =
       Git.Branch.list(dir)
-        |> Enum.find(fn b -> b == branch end)
+      |> Enum.find(fn %Git.Branch{name: b} -> b == branch end)
 
     {:reply, branch, state}
   end
-
 
   @impl true
   def handle_call({:list_branches_for_commit, sha}, _from, %__MODULE__{dir: dir} = state) do
@@ -202,11 +209,28 @@ defmodule Git.Repository do
     {:reply, count, state}
   end
 
+  @impl true
+  def handle_call(
+        {:list_tasks, {:branch, branch}},
+        _from,
+        %__MODULE{dir: dir, vcli: vcli} = state
+      ) do
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["checkout", branch], dir: dir)
+
+    tasks =
+      VCLI.list(vcli)
+      |> Task.parse()
+      |> IO.inspect(label: "TASKS")
+
+    {:reply, tasks, state}
+  end
+
   def handle_info(
         :fetch,
         %__MODULE__{address: address, private_key: private_key, dir: dir} = state
       ) do
     Git.Repository.Remote.fetch(address, private_key, dir)
-    {:noreply, state}
+    {:noreply, %{state | fetched: true}}
   end
 end

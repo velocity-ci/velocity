@@ -1,7 +1,11 @@
-module Project.Task.Name exposing (Name, decoder, toString, urlParser)
+module Project.Task.Name exposing (Name, decoder, selectionSet, toString, urlParser)
 
+import Api.Compiled.Object
+import Api.Compiled.Object.Task as Task
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
 import Url.Parser exposing (Parser)
+
 
 
 -- TYPES
@@ -22,6 +26,11 @@ toString (Name str) =
 
 
 -- CREATE
+
+
+selectionSet : SelectionSet Name Api.Compiled.Object.Task
+selectionSet =
+    SelectionSet.map Name Task.name
 
 
 urlParser : Parser (Name -> a) a
