@@ -6,6 +6,8 @@ defmodule Architect.Projects do
   import Ecto.Query, warn: false
   alias Architect.Repo
   alias Architect.Projects.{Repository, Project, Starter}
+  alias Architect.Events
+
   alias Architect.Accounts.User
   use Supervisor
   require Logger
