@@ -5,7 +5,7 @@ defmodule Architect.Projects do
 
   import Ecto.Query, warn: false
   alias Architect.Repo
-  alias Architect.Projects.{Repository, Project, Starter, Event}
+  alias Architect.Projects.{Repository, Project, Starter}
   alias Architect.Accounts.User
   use Supervisor
   require Logger
@@ -72,9 +72,7 @@ defmodule Architect.Projects do
 
       case Repo.insert(changeset) do
         {:ok, p} ->
-          %Event{}
-          |> Event.changeset(%{type: :created, project_id: p.id, user_id: u.id})
-          |> Repo.insert!()
+          Events.create_event!(u, p, %{type: :project_created})
 
           p
 

@@ -6,8 +6,9 @@ defmodule Architect.KnownHosts do
   import Ecto.Query, warn: false
   alias Architect.Repo
 
-  alias Architect.KnownHosts.{KnownHost, Event}
+  alias Architect.KnownHosts.KnownHost
   alias Architect.Accounts.User
+  alias Architect.Events
 
   @doc """
   Returns the list of known_hosts.
@@ -40,9 +41,7 @@ defmodule Architect.KnownHosts do
 
       case Repo.insert(changeset) do
         {:ok, k} ->
-          %Event{}
-          |> Event.changeset(%{type: :created, known_host_id: k.id, user_id: u.id})
-          |> Repo.insert!()
+          Events.create_event!(u, k, %{type: :known_host_created})
 
           k
 
@@ -53,13 +52,23 @@ defmodule Architect.KnownHosts do
   end
 
   @doc """
-  Updates a known_host.
+  Verify a known_host.
 
   """
-  def update_known_host(%KnownHost{} = known_host, attrs) do
-    known_host
-    |> KnownHost.changeset(attrs)
-    |> Repo.update()
+  def verify_known_host(%User{} = u, %KnownHost{} = known_host) do
+    Repo.transaction(fn ->
+      changeset = KnownHost.changeset(known_host, %{verified: true})
+
+      case Repo.update(changeset) do
+        {:ok, k} ->
+          Events.create_event!(u, k, %{type: :known_host_verified})
+
+          k
+
+        {:error, e} ->
+          Repo.rollback(e)
+      end
+    end)
   end
 
   @doc """

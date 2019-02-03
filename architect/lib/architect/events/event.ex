@@ -1,20 +1,20 @@
-defmodule Architect.KnownHosts.Event do
+defmodule Architect.Events.Event do
   import EctoEnum
   use Ecto.Schema
   import Ecto.Changeset
 
-  defenum(TypeEnum, :known_host_event_type, [:created, :updated, :deleted])
+  defenum(TypeEnum, :event_type, [:project_created, :known_host_created, :known_host_verified])
 
-  alias Architect.KnownHosts.KnownHost
+  alias Architect.Projects.Project
   alias Architect.Accounts.User
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
-
-  schema "known_host_events" do
+  schema "events" do
     field(:type, TypeEnum)
     field(:metadata, :map)
 
+    belongs_to(:project, Project)
     belongs_to(:known_host, KnownHost)
     belongs_to(:user, User)
 
@@ -24,9 +24,8 @@ defmodule Architect.KnownHosts.Event do
   @doc false
   def changeset(%__MODULE__{} = event, attrs) do
     event
-    |> cast(attrs, [:type, :metadata, :known_host_id, :user_id])
+    |> cast(attrs, [:type, :metadata, :project_id, :known_host_id, :user_id])
     |> validate_required([:type])
-    |> assoc_constraint(:known_host)
     |> assoc_constraint(:user)
   end
 end
