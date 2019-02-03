@@ -1091,7 +1091,48 @@ viewRecentTasksContainer tasksStatus =
 viewRecentTasks : Status (List Task) -> Element Msg
 viewRecentTasks tasksStatus =
     tasksStatus
-        |> viewIfLoaded (List.map viewRecentTaskItem >> column []) (viewLoadingError "tasks")
+        |> viewIfLoaded viewTaskTable (viewLoadingError "tasks")
+
+
+viewTaskTable : List Task -> Element Msg
+viewTaskTable tasks =
+    table
+        [ width fill
+        , Font.size 14
+        ]
+        { data = tasks
+        , columns =
+            [ { header = none
+              , width = fillPortion 1
+              , view =
+                    \task ->
+                        el
+                            [ width fill
+                            , paddingXY 5 10
+                            , Border.color Palette.neutral6
+                            , Font.alignLeft
+                            ]
+                            (text (TaskName.toString <| Task.name task))
+              }
+            , { header = none
+              , width = fillPortion 1
+              , view =
+                    \task ->
+                        el
+                            [ width fill
+                            , paddingXY 5 10
+                            , Border.color Palette.neutral6
+                            , Font.alignLeft
+                            ]
+                            (text (Task.description task))
+              }
+            ]
+        }
+
+
+viewTaskIcons : List Task -> Element Msg
+viewTaskIcons =
+    List.map viewRecentTaskItem >> column []
 
 
 viewRecentTaskItem : Task -> Element msg
@@ -1126,16 +1167,6 @@ viewRecentTaskItem task =
 
 
 -- Task Container
---
---viewTasksContainer : Model msg -> Element Msg
---viewTasksContainer model =
---    column
---        [ width fill
---        , height shrink
---        , padding 10
---        ]
---        [ viewTasksList
---        ]
 
 
 viewBranchSelectButton : Length -> BranchDropdown -> Element Msg
@@ -1248,22 +1279,6 @@ viewBranchSelectDropdownItem rounded branch =
         [ el [ width (px 16), centerY ] none
         , el [ width fill, centerY, Font.alignLeft, clipX ] (Branch.text branch)
         ]
-
-
-viewTasksList : Element msg
-viewTasksList =
-    column [ width fill, spacingXY 0 10, paddingXY 0 10 ]
-        []
-
-
-viewTask : Element msg
-viewTask =
-    row
-        [ width fill
-        , padding 15
-        , Background.color Palette.neutral7
-        ]
-        [ text "run-unit-tests" ]
 
 
 

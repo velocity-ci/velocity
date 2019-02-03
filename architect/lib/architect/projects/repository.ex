@@ -79,10 +79,6 @@ defmodule Architect.Projects.Repository do
   Ge the tasks for a commit or branch
   """
   def list_tasks(repository, selector) do
-    IO.inspect(repository, label: "REPO")
-
-    IO.inspect(selector, label: "SELECTOR")
-
     GenServer.call(repository, {:list_tasks, selector})
   end
 
@@ -225,6 +221,7 @@ defmodule Architect.Projects.Repository do
     {:reply, tasks, state}
   end
 
+  @impl true
   def handle_info(
         :fetch,
         %__MODULE__{address: address, private_key: private_key, dir: dir} = state

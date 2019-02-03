@@ -73,7 +73,8 @@ defmodule Architect.MixProject do
       {:ecto_autoslug_field, "~> 1.0"},
       {:mix_test_watch, "~> 0.9", only: :dev, runtime: false},
       {:porcelain, "~> 2.0"},
-      {:temp, "~> 0.4"}
+      {:temp, "~> 0.4"},
+      {:ecto_enum, "~> 1.2"}
     ]
   end
 

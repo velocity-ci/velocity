@@ -1,4 +1,4 @@
-module Project.Task exposing (Task, byBranch, name, selectionSet)
+module Project.Task exposing (Task, byBranch, description, name, selectionSet)
 
 import Api exposing (BaseUrl, Cred)
 import Api.Compiled.Object
@@ -65,6 +65,11 @@ type alias DerivedParameter =
 name : Task -> Name
 name (Task t) =
     t.name
+
+
+description : Task -> String
+description (Task t) =
+    Maybe.withDefault "" t.description
 
 
 

@@ -217,5 +217,7 @@
     <orderEntry type="library" name="temporary_env" level="project" />
     <orderEntry type="library" name="git_cli" level="project" />
     <orderEntry type="library" name="temp" level="project" />
+    <orderEntry type="library" name="absinthe_relay" level="project" />
+    <orderEntry type="library" name="ecto_enum" level="project" />
   </component>
 </module>

@@ -27,8 +27,8 @@ defmodule Architect.Projects.Project do
   @doc false
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:address, :private_key])
-    |> put_assoc(:created_by, attrs, required: true)
+    |> cast(attrs, [:address, :private_key, :created_by_id])
+    |> assoc_constraint(:created_by)
     |> validate_required([:address])
     |> unique_constraint(:address)
     |> update_default_name()
@@ -91,9 +91,6 @@ defmodule Architect.Projects.Project do
     private_key = Changeset.get_field(changeset, :private_key)
 
     repository_name = {:via, Registry, {Architect.Projects.Registry, "#{address}-#{name}"}}
-    IO.inspect(repository_name)
-    IO.inspect(address)
-    IO.inspect(name)
 
     repository_result =
       DynamicSupervisor.start_child(

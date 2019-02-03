@@ -12,7 +12,7 @@ defmodule Architect.Repo.Migrations.CreateProjects do
       timestamps()
     end
 
-    create(unique_index(:projects, [:name]))
+    create(unique_index(:projects, [:address]))
     create(unique_index(:projects, [:slug]))
   end
 end

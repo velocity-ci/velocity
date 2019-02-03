@@ -5,7 +5,7 @@ defmodule Architect.Projects do
 
   import Ecto.Query, warn: false
   alias Architect.Repo
-  alias Architect.Projects.{Repository, Project, Starter}
+  alias Architect.Projects.{Repository, Project, Starter, Event}
   alias Architect.Accounts.User
   use Supervisor
   require Logger
@@ -66,10 +66,25 @@ defmodule Architect.Projects do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_project(%User{id: user_id}, address) when is_binary(address) do
-    %Project{}
-    |> Project.changeset(%{address: address, created_by_id: user_id})
-    |> Repo.insert()
+  def create_project(%User{} = u, address) when is_binary(address) do
+    Repo.transaction(fn ->
+      p =
+        %Project{}
+        |> Project.changeset(%{address: address, created_by_id: u.id})
+        |> Repo.insert()
+
+      case p do
+        {:ok, p} ->
+          %Event{}
+          |> Event.changeset(%{type: :created, project_id: p.id, user_id: u.id})
+          |> Repo.insert!()
+
+          p
+
+        {:error, e} ->
+          Repo.rollback(e)
+      end
+    end)
   end
 
   @doc ~S"""
