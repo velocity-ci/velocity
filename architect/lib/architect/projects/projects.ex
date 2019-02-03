@@ -68,12 +68,9 @@ defmodule Architect.Projects do
   """
   def create_project(%User{} = u, address) when is_binary(address) do
     Repo.transaction(fn ->
-      p =
-        %Project{}
-        |> Project.changeset(%{address: address, created_by_id: u.id})
-        |> Repo.insert()
+      changeset = Project.changeset(%Project{}, %{address: address, created_by_id: u.id})
 
-      case p do
+      case Repo.insert(changeset) do
         {:ok, p} ->
           %Event{}
           |> Event.changeset(%{type: :created, project_id: p.id, user_id: u.id})

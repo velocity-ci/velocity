@@ -6,7 +6,8 @@ defmodule Architect.KnownHosts do
   import Ecto.Query, warn: false
   alias Architect.Repo
 
-  alias Architect.KnownHosts.KnownHost
+  alias Architect.KnownHosts.{KnownHost, Event}
+  alias Architect.Accounts.User
 
   @doc """
   Returns the list of known_hosts.
@@ -33,10 +34,22 @@ defmodule Architect.KnownHosts do
   Creates a known_host.
 
   """
-  def create_known_host(attrs \\ %{}) do
-    %KnownHost{}
-    |> KnownHost.changeset(attrs)
-    |> Repo.insert()
+  def create_known_host(%User{} = u, host) when is_binary(host) do
+    Repo.transaction(fn ->
+      changeset = KnownHost.changeset(%KnownHost{}, %{host: host, created_by_id: u.id})
+
+      case Repo.insert(changeset) do
+        {:ok, k} ->
+          %Event{}
+          |> Event.changeset(%{type: :created, known_host_id: k.id, user_id: u.id})
+          |> Repo.insert!()
+
+          k
+
+        {:error, e} ->
+          Repo.rollback(e)
+      end
+    end)
   end
 
   @doc """

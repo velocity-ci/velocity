@@ -4,8 +4,10 @@ defmodule Architect.KnownHosts.KnownHost do
   alias Ecto.Changeset
   alias Architect.KnownHosts.Scanned
   require Logger
+  alias Architect.Accounts.User
 
   @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
   schema "known_hosts" do
     field(:entry, :string)
     field(:host, :string)
@@ -13,13 +15,16 @@ defmodule Architect.KnownHosts.KnownHost do
     field(:fingerprint_sha256, :string)
     field(:verified, :boolean, default: false)
 
+    belongs_to(:created_by, User)
+
     timestamps()
   end
 
   @doc false
   def changeset(%__MODULE__{} = known_host, attrs) do
     known_host
-    |> cast(attrs, [:host, :verified])
+    |> cast(attrs, [:host, :verified, :created_by_id])
+    |> assoc_constraint(:created_by)
     |> validate_required([:host])
     |> unique_constraint(:host)
     |> populate()

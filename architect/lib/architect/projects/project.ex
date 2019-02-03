@@ -25,7 +25,7 @@ defmodule Architect.Projects.Project do
   end
 
   @doc false
-  def changeset(project, attrs) do
+  def changeset(%__MODULE__{} = project, attrs) do
     project
     |> cast(attrs, [:address, :private_key, :created_by_id])
     |> assoc_constraint(:created_by)
