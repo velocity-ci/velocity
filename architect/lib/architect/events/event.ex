@@ -7,6 +7,7 @@ defmodule Architect.Events.Event do
 
   alias Architect.Projects.Project
   alias Architect.Accounts.User
+  alias Architect.KnownHosts.KnownHost
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id

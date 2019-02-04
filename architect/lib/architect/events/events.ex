@@ -8,6 +8,24 @@ defmodule Architect.Events do
   @project_events [:project_created]
   @known_host_events [:known_host_created, :known_host_verified]
 
+  @doc """
+  Returns the list of events.
+
+  ## Examples
+
+      iex> list_projects()
+      [%Project{}, ...]
+
+  """
+  def list_events() do
+    Repo.all(Event)
+  end
+
+  @doc """
+
+  See create_event/1
+
+  """
   def create_event!(user, entity, attrs) do
     case create_event(user, entity, attrs) do
       {:ok, event} ->
@@ -18,6 +36,15 @@ defmodule Architect.Events do
     end
   end
 
+  @doc """
+  Create an event for a user
+
+  ## Examples
+
+      iex> create_event(user, project, %{type: :project_created})
+      {:ok, %Event{}}
+
+  """
   def create_event(%User{} = u, entity, attrs) do
     attrs
     |> Map.put(:user_id, u.id)

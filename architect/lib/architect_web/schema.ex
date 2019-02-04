@@ -7,6 +7,8 @@ defmodule ArchitectWeb.Schema do
   alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
   alias Architect.Projects
   alias Architect.Projects.{Project, Task}
+  alias Architect.Events
+  alias Architect.Events.Event
   alias Git.{Commit, Branch}
   alias ArchitectWeb.{Resolvers, Middleware}
   alias Ecto.Changeset
@@ -18,10 +20,13 @@ defmodule ArchitectWeb.Schema do
   connection(node_type: :project)
   connection(node_type: :commit)
   connection(node_type: :branch)
+  connection(node_type: :event)
 
   import_types(Schema.UsersTypes)
   import_types(Schema.KnownHostsTypes)
   import_types(Schema.ProjectsTypes)
+  import_types(Schema.EventsTypes)
+
   import_types(Mutations.KnownHostsMutations)
   import_types(Mutations.ProjectsMutations)
   import_types(Mutations.AuthMutations)
@@ -49,6 +54,9 @@ defmodule ArchitectWeb.Schema do
       %Task{}, _ ->
         :task
 
+      %Event{}, _ ->
+        :event
+
       _, _ ->
         nil
     end)
@@ -68,6 +76,12 @@ defmodule ArchitectWeb.Schema do
     connection field(:projects, node_type: :project) do
       #      middleware(Middleware.Authorize)
       resolve(&Resolvers.Projects.list_projects/2)
+    end
+
+    @desc "List events"
+    connection field(:events, node_type: :event) do
+      #      middleware(Middleware.Authorize)
+      resolve(&Resolvers.Events.list_events/2)
     end
 
     @desc "List commits"
