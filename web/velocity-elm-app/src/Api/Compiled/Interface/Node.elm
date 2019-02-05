@@ -25,6 +25,7 @@ type alias Fragments decodesTo =
     , onCommit : SelectionSet decodesTo Api.Compiled.Object.Commit
     , onCommitAuthor : SelectionSet decodesTo Api.Compiled.Object.CommitAuthor
     , onTask : SelectionSet decodesTo Api.Compiled.Object.Task
+    , onEvent : SelectionSet decodesTo Api.Compiled.Object.Event
     }
 
 
@@ -40,6 +41,7 @@ fragments selections =
         , Object.buildFragment "Commit" selections.onCommit
         , Object.buildFragment "CommitAuthor" selections.onCommitAuthor
         , Object.buildFragment "Task" selections.onTask
+        , Object.buildFragment "Event" selections.onEvent
         ]
 
 
@@ -53,6 +55,7 @@ maybeFragments =
     , onCommit = Graphql.SelectionSet.empty |> Graphql.SelectionSet.map (\_ -> Nothing)
     , onCommitAuthor = Graphql.SelectionSet.empty |> Graphql.SelectionSet.map (\_ -> Nothing)
     , onTask = Graphql.SelectionSet.empty |> Graphql.SelectionSet.map (\_ -> Nothing)
+    , onEvent = Graphql.SelectionSet.empty |> Graphql.SelectionSet.map (\_ -> Nothing)
     }
 
 

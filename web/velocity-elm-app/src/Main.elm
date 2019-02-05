@@ -30,6 +30,7 @@ import Url exposing (Url)
 import Viewer exposing (Viewer)
 
 
+
 ---- MODEL ----
 
 
@@ -56,11 +57,11 @@ init maybeViewer contextResult url navKey =
                 sessionTask =
                     Session.fromViewer navKey context maybeViewer
             in
-                ( InitialHTTPRequests context navKey
-                , sessionTask
-                    |> Task.map (\s -> changeRouteTo (Route.fromUrl url) (Redirect s context))
-                    |> Task.attempt StartApplication
-                )
+            ( InitialHTTPRequests context navKey
+            , sessionTask
+                |> Task.map (\s -> changeRouteTo (Route.fromUrl url) (Redirect s context))
+                |> Task.attempt StartApplication
+            )
 
         Err error ->
             ( InitError (Decode.errorToString error)
@@ -87,33 +88,36 @@ viewCurrentPage layout currentPage =
                 , layout = layout
                 , updateLayout = UpdateLayout
                 , context = toContext currentPage
-                , log = activityLog session
+
+                --                , log = activityLog session
                 }
     in
-        case currentPage of
-            Redirect _ _ ->
-                viewPage Page.Other (always Ignored) BlankPage.view
+    case currentPage of
+        Redirect _ _ ->
+            viewPage Page.Other (always Ignored) BlankPage.view
 
-            NotFound _ _ ->
-                viewPage Page.Other (always Ignored) NotFoundPage.view
+        NotFound _ _ ->
+            viewPage Page.Other (always Ignored) NotFoundPage.view
 
-            Home page ->
-                viewPage Page.Home GotHomeMsg (HomePage.view page)
+        Home page ->
+            viewPage Page.Home GotHomeMsg (HomePage.view page)
 
-            Login page ->
-                viewPage Page.Login GotLoginMsg (LoginPage.view page)
+        Login page ->
+            viewPage Page.Login GotLoginMsg (LoginPage.view page)
 
-            Project page ->
-                viewPage Page.Project GotProjectMsg (ProjectPage.view page)
+        Project page ->
+            viewPage Page.Project GotProjectMsg (ProjectPage.view page)
 
-            Build page ->
-                viewPage Page.Build GotBuildMsg (BuildPage.view page)
+        Build page ->
+            viewPage Page.Build GotBuildMsg (BuildPage.view page)
 
 
-activityLog : Session Msg -> Activity.ViewConfiguration
-activityLog session =
-    Maybe.map2 Activity.ViewConfiguration (Session.log session) (Just <| Session.projects session)
-        |> Maybe.withDefault { activities = Activity.init, projects = [] }
+
+--activityLog : Session Msg -> Activity.ViewConfiguration
+--activityLog session =
+--    Maybe.map2 Activity.ViewConfiguration (Session.log session) (Just <| Session.projects session)
+--        |> Maybe.withDefault { activities = Activity.init, projects = [] }
+--
 
 
 view : Model -> Document Msg
@@ -223,63 +227,63 @@ changeRouteTo maybeRoute currentPage =
         context =
             toContext currentPage
     in
-        case maybeRoute of
-            Nothing ->
-                ( NotFound session context, Cmd.none )
+    case maybeRoute of
+        Nothing ->
+            ( NotFound session context, Cmd.none )
 
-            Just (Route.Root) ->
-                ( currentPage
-                , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-                )
+        Just Route.Root ->
+            ( currentPage
+            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+            )
 
-            Just (Route.Logout) ->
-                ( Redirect session context
-                , Api.logout
-                )
+        Just Route.Logout ->
+            ( Redirect session context
+            , Api.logout
+            )
 
-            Just (Route.Home activePanel) ->
-                case Session.viewer session of
-                    Nothing ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) Route.Login
-                        )
+        Just (Route.Home activePanel) ->
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
 
-                    Just _ ->
-                        HomePage.init session context activePanel
-                            |> updateWith Home GotHomeMsg currentPage
+                Just _ ->
+                    HomePage.init session context activePanel
+                        |> updateWith Home GotHomeMsg currentPage
 
-            Just (Route.Login) ->
-                case Session.viewer session of
-                    Just _ ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-                        )
+        Just Route.Login ->
+            case Session.viewer session of
+                Just _ ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+                    )
 
-                    Nothing ->
-                        LoginPage.init session context
-                            |> updateWith Login GotLoginMsg currentPage
+                Nothing ->
+                    LoginPage.init session context
+                        |> updateWith Login GotLoginMsg currentPage
 
-            Just (Route.Build id) ->
-                case Session.viewer session of
-                    Nothing ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) Route.Login
-                        )
+        Just (Route.Build id) ->
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
 
-                    Just _ ->
-                        BuildPage.init session context id
-                            |> updateWith Build GotBuildMsg currentPage
+                Just _ ->
+                    BuildPage.init session context id
+                        |> updateWith Build GotBuildMsg currentPage
 
-            Just (Route.Project slug) ->
-                case Session.viewer session of
-                    Nothing ->
-                        ( Redirect session context
-                        , Route.replaceUrl (Session.navKey session) Route.Login
-                        )
+        Just (Route.Project slug) ->
+            case Session.viewer session of
+                Nothing ->
+                    ( Redirect session context
+                    , Route.replaceUrl (Session.navKey session) Route.Login
+                    )
 
-                    Just _ ->
-                        ProjectPage.init session context slug
-                            |> updateWith Project GotProjectMsg currentPage
+                Just _ ->
+                    ProjectPage.init session context slug
+                        |> updateWith Project GotProjectMsg currentPage
 
 
 updatePage : Msg -> Body -> ( Body, Cmd Msg )
@@ -418,12 +422,12 @@ update msg model =
                         ( subscribedSession, subscribeCmd ) =
                             Session.subscribe SessionSubscription (toSession app)
                     in
-                        ( ApplicationStarted Page.initLayout (updateSession subscribedSession app)
-                        , Cmd.batch
-                            [ pageCmd
-                            , subscribeCmd
-                            ]
-                        )
+                    ( ApplicationStarted Page.initLayout (updateSession subscribedSession app)
+                    , Cmd.batch
+                        [ pageCmd
+                        , subscribeCmd
+                        ]
+                    )
 
                 StartApplication (Err err) ->
                     ( InitError "HTTP error"

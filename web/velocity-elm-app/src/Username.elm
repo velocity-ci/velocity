@@ -1,9 +1,13 @@
-module Username exposing (Username, decoder, encode, toHtml, toString, urlParser, fromString)
+module Username exposing (Username, decoder, encode, fromString, selectionSet, toHtml, toString, urlParser)
 
+import Api.Compiled.Object
+import Api.Compiled.Object.User as User
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
 import Url.Parser
+
 
 
 -- TYPES
@@ -20,6 +24,11 @@ fromString =
 
 
 -- CREATE
+
+
+selectionSet : SelectionSet Username Api.Compiled.Object.User
+selectionSet =
+    SelectionSet.map Username User.username
 
 
 decoder : Decoder Username

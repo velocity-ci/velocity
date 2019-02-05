@@ -1,10 +1,12 @@
 module KnownHost exposing
-    ( KnownHost
+    ( Id
+    , KnownHost
     , MutationResponse(..)
     , addKnownHost
     , createUnverified
     , findForGitUrl
     , findKnownHost
+    , idSelectionSet
     , isUnknownHost
     , isVerified
     , md5

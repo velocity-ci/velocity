@@ -19,7 +19,6 @@ port module Session exposing
     , viewer
     )
 
-import Activity
 import Api exposing (BaseUrl, Cred)
 import Api.Compiled.Query as Query
 import Api.Subscriptions as Subscriptions
@@ -27,7 +26,9 @@ import Browser.Navigation as Nav
 import Connection exposing (Connection)
 import Context exposing (Context)
 import Edge
+import Event exposing (Log)
 import Graphql.Http
+import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import KnownHost exposing (KnownHost)
 import PageInfo exposing (PageInfo)
@@ -53,7 +54,7 @@ type alias LoggedInInternals msg =
     , viewer : Viewer
     , projects : Connection Project
     , knownHosts : List KnownHost
-    , log : Activity.Log
+    , log : Event.Log
     , subscriptions : Subscriptions.State msg
     }
 
@@ -171,7 +172,7 @@ navKey session =
             key
 
 
-log : Session msg -> Maybe Activity.Log
+log : Session msg -> Maybe Event.Log
 log session =
     case session of
         LoggedIn internals ->
@@ -276,6 +277,16 @@ changes toMsg context session =
 type alias StartupResponse =
     { projects : Connection Project
     , knownHosts : List KnownHost
+    , events : Event.Log
+    }
+
+
+eventsArgs : Query.EventsOptionalArguments
+eventsArgs =
+    { after = Absent
+    , before = Absent
+    , first = Present 100
+    , last = Absent
     }
 
 
@@ -300,8 +311,11 @@ fromViewer key context maybeViewer =
                 knownHostSet =
                     Query.listKnownHosts KnownHost.selectionSet
 
+                logSet =
+                    Query.events (always eventsArgs) Event.selectionSet
+
                 request =
-                    SelectionSet.map2 StartupResponse (SelectionSet.nonNullOrFail projectsSet) knownHostSet
+                    SelectionSet.map3 StartupResponse (SelectionSet.nonNullOrFail projectsSet) knownHostSet (SelectionSet.nonNullOrFail logSet)
                         |> Api.authedQueryRequest baseUrl credVal
                         |> Graphql.Http.toTask
                         |> Task.mapError HttpError
@@ -313,7 +327,7 @@ fromViewer key context maybeViewer =
                         , viewer = viewerVal
                         , projects = res.projects
                         , knownHosts = res.knownHosts
-                        , log = Activity.init
+                        , log = res.log
                         , subscriptions = Subscriptions.init
                         }
                 )

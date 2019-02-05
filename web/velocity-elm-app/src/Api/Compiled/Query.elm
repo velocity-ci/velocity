@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Compiled.Query exposing (BranchRequiredArguments, CommitsOptionalArguments, CommitsRequiredArguments, ProjectRequiredArguments, ProjectsOptionalArguments, branch, commits, listKnownHosts, project, projects)
+module Api.Compiled.Query exposing (BranchRequiredArguments, CommitsOptionalArguments, CommitsRequiredArguments, EventsOptionalArguments, ProjectRequiredArguments, ProjectsOptionalArguments, branch, commits, events, listKnownHosts, project, projects)
 
 import Api.Compiled.InputObject
 import Api.Compiled.Interface
@@ -59,6 +59,29 @@ commits fillInOptionals requiredArgs object_ =
                 |> List.filterMap identity
     in
     Object.selectionForCompositeField "commits" (optionalArgs ++ [ Argument.required "branch" requiredArgs.branch Encode.string, Argument.required "projectSlug" requiredArgs.projectSlug Encode.string ]) object_ (identity >> Decode.nullable)
+
+
+type alias EventsOptionalArguments =
+    { after : OptionalArgument String
+    , before : OptionalArgument String
+    , first : OptionalArgument Int
+    , last : OptionalArgument Int
+    }
+
+
+{-| List events
+-}
+events : (EventsOptionalArguments -> EventsOptionalArguments) -> SelectionSet decodesTo Api.Compiled.Object.EventConnection -> SelectionSet (Maybe decodesTo) RootQuery
+events fillInOptionals object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { after = Absent, before = Absent, first = Absent, last = Absent }
+
+        optionalArgs =
+            [ Argument.optional "after" filledInOptionals.after Encode.string, Argument.optional "before" filledInOptionals.before Encode.string, Argument.optional "first" filledInOptionals.first Encode.int, Argument.optional "last" filledInOptionals.last Encode.int ]
+                |> List.filterMap identity
+    in
+    Object.selectionForCompositeField "events" optionalArgs object_ (identity >> Decode.nullable)
 
 
 {-| Get all known hosts
