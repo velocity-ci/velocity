@@ -523,7 +523,7 @@ viewConfigureProjectPanel { gitUrl, projectName } =
                         , Font.color Palette.neutral3
                         , inFront
                             (el [ width shrink, alignRight, centerY, moveLeft 5 ]
-                                (GitUrl.sourceIcon gitUrl { defaultIconOpts | size = 16 })
+                                (GitUrl.sourceIcon gitUrl.source { defaultIconOpts | size = 16 })
                             )
                         ]
                         [ text gitUrl.source ]
@@ -571,7 +571,7 @@ viewGitSourceLogo gitUrl opts =
             , centerY
             , Font.color Palette.primary2
             ]
-            (GitUrl.sourceIcon gitUrl opts)
+            (GitUrl.sourceIcon gitUrl.source opts)
         , el
             [ centerX
             , centerY

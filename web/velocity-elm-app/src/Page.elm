@@ -1,6 +1,5 @@
 module Page exposing (DropdownStatus(..), Layout, Page(..), initLayout, layoutSubscriptions, view, viewErrors)
 
-import Activity
 import Api exposing (Cred)
 import Asset
 import Browser exposing (Document)
@@ -12,6 +11,7 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
+import Event
 import Html exposing (Html)
 import Icon
 import Json.Decode as Decode
@@ -19,6 +19,7 @@ import Layout.Header as Header
 import Page.Home.ActivePanel as ActivePanel
 import Palette
 import Route exposing (Route)
+import Session exposing (Session)
 import Username exposing (Username)
 import Viewer exposing (Viewer)
 
@@ -98,14 +99,13 @@ in the header. (This comes up during slow page transitions.)
 
 -}
 type alias Config msg =
-    { viewer : Maybe Viewer
+    { session : Session msg
+    , context : Context msg
     , page : Page
     , title : String
     , content : Element msg
     , layout : Layout
     , updateLayout : Layout -> msg
-    , context : Context msg
-    , log : Activity.ViewConfiguration
     }
 
 
@@ -179,8 +179,8 @@ viewMediumScreenNotificationsPanel config =
 
 
 viewLargeScreenNotificationsPanel : Config msg -> Element msg
-viewLargeScreenNotificationsPanel config =
-    viewPanelIfOpenAndSize config.context
+viewLargeScreenNotificationsPanel { context, session } =
+    viewPanelIfOpenAndSize context
         True
         [ Device Desktop Landscape
         , Device Desktop Portrait
@@ -195,27 +195,36 @@ viewLargeScreenNotificationsPanel config =
                 )
             , height fill
             ]
-            [ viewNotificationActivities config
+            [ Event.view
+                { projects = Session.projects session
+                , knownHosts = Session.knownHosts session
+                , maybeLog = Session.log session
+                }
             ]
         )
 
 
 viewCollapsableNotificationsPanel : Config msg -> Element msg
-viewCollapsableNotificationsPanel config =
+viewCollapsableNotificationsPanel { session, layout } =
     let
         (Layout userMenu open) =
-            config.layout
+            layout
     in
     if open then
-        viewNotificationActivities config
+        Event.view
+            { projects = Session.projects session
+            , knownHosts = Session.knownHosts session
+            , maybeLog = Session.log session
+            }
 
     else
         none
 
 
-viewNotificationActivities : Config msg -> Element msg
-viewNotificationActivities config =
-    Activity.view config.log
+
+--viewNotificationActivities : Config msg -> Element msg
+--viewNotificationActivities config =
+--    Event.view config.log
 
 
 viewPanelIfOpenAndSize : Context msg -> Bool -> List Device -> Element msg -> Element msg
@@ -306,7 +315,7 @@ viewMobileHeader config =
 
 
 viewDesktopHeader : Config msg -> Element msg
-viewDesktopHeader { viewer, updateLayout, layout, page } =
+viewDesktopHeader { session, updateLayout, layout, page } =
     row
         [ width fill
         , height (px 60)
@@ -326,7 +335,7 @@ viewDesktopHeader { viewer, updateLayout, layout, page } =
                 , height fill
                 ]
               <|
-                viewDesktopHeaderMenu page viewer updateLayout layout
+                viewDesktopHeaderMenu page session updateLayout layout
             ]
         ]
 
@@ -340,7 +349,7 @@ viewMobileHeaderMenu config =
         linkTo =
             navbarLink config.page
     in
-    case config.viewer of
+    case Session.viewer config.session of
         Just viewer ->
             [ Header.notificationsToggle
                 { amount = 1
@@ -354,13 +363,13 @@ viewMobileHeaderMenu config =
             ]
 
 
-viewDesktopHeaderMenu : Page -> Maybe Viewer -> (Layout -> msg) -> Layout -> List (Element msg)
-viewDesktopHeaderMenu page maybeViewer layoutMsg (Layout status notificationsPanel) =
+viewDesktopHeaderMenu : Page -> Session msg -> (Layout -> msg) -> Layout -> List (Element msg)
+viewDesktopHeaderMenu page session layoutMsg (Layout status notificationsPanel) =
     let
         linkTo =
             navbarLink page
     in
-    case maybeViewer of
+    case Session.viewer session of
         Just viewer ->
             [ el
                 [ width (px 30)
@@ -464,7 +473,7 @@ viewDesktopFooter config =
 
 
 viewMobileFooter : Config msg -> Element msg
-viewMobileFooter { context, page, viewer, updateLayout, layout } =
+viewMobileFooter { context, page, session, updateLayout, layout } =
     let
         (Layout status notificationsPanel) =
             layout

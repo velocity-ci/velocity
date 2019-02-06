@@ -1,6 +1,5 @@
 module Main exposing (Model(..), Msg(..), changeRouteTo, init, main, toSession, update, updateWith, view)
 
-import Activity
 import Api
 import Browser exposing (Document)
 import Browser.Events
@@ -81,15 +80,13 @@ viewCurrentPage layout currentPage =
 
         viewPage page toMsg { title, content } =
             Page.view
-                { viewer = Session.viewer session
+                { session = session
                 , page = page
                 , title = title
                 , content = Element.map toMsg content
                 , layout = layout
                 , updateLayout = UpdateLayout
                 , context = toContext currentPage
-
-                --                , log = activityLog session
                 }
     in
     case currentPage of

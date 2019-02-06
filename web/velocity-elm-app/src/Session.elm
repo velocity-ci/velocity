@@ -31,9 +31,7 @@ import Graphql.Http
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import KnownHost exposing (KnownHost)
-import PageInfo exposing (PageInfo)
 import Project exposing (Project)
-import Project.Branch exposing (Branch)
 import Project.Id
 import Project.Slug
 import Task exposing (Task)
@@ -277,7 +275,7 @@ changes toMsg context session =
 type alias StartupResponse =
     { projects : Connection Project
     , knownHosts : List KnownHost
-    , events : Event.Log
+    , log : Event.Log
     }
 
 

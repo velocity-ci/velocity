@@ -4,15 +4,16 @@ module Project exposing
     , Project
     , addProject
     , branches
+    , connectionSelectionSet
     , create
+    , find
     , findProjectById
     , findProjectBySlug
     , id
-    , connectionSelectionSet
     , list
     , name
-    , repository
     , projectListArgs
+    , repository
     , selectionSet
     , slug
     , syncing
@@ -24,28 +25,29 @@ import Api exposing (BaseUrl, Cred)
 import Api.Compiled.Mutation as Mutation
 import Api.Compiled.Object
 import Api.Compiled.Object.Project as Project
-import Api.Compiled.Object.ProjectPayload as ProjectPayload
 import Api.Compiled.Object.ProjectConnection as ProjectConnection
 import Api.Compiled.Object.ProjectEdge as ProjectEdge
+import Api.Compiled.Object.ProjectPayload as ProjectPayload
 import Api.Compiled.Query as Query
 import Api.Compiled.Scalar
+import Connection exposing (Connection)
+import Edge exposing (Edge)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Graphql.Http
+import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded, with)
 import Icon
 import Iso8601
+import PageInfo exposing (PageInfo)
 import Palette
 import Project.Branch as Branch exposing (Branch)
 import Project.Id as Id exposing (Id)
 import Project.Slug as Slug exposing (Slug)
 import Time exposing (Posix)
-import Graphql.OptionalArgument exposing (OptionalArgument(..))
-import Connection exposing (Connection)
-import PageInfo exposing (PageInfo)
-import Edge exposing (Edge)
+
 
 type alias Hydrated =
     { project : Project
@@ -75,6 +77,8 @@ type alias Internals =
 
 
 -- SERIALIZATION --
+
+
 connectionSelectionSet : SelectionSet (Connection Project) Api.Compiled.Object.ProjectConnection
 connectionSelectionSet =
     SelectionSet.map2 Connection
@@ -97,6 +101,7 @@ selectionSet =
     SelectionSet.succeed Project
         |> with internalSelectionSet
 
+
 branchesParams : Project.BranchesOptionalArguments -> Project.BranchesOptionalArguments
 branchesParams args =
     { first = Present 10
@@ -104,6 +109,7 @@ branchesParams args =
     , after = Absent
     , before = Absent
     }
+
 
 internalSelectionSet : SelectionSet Internals Api.Compiled.Object.Project
 internalSelectionSet =
@@ -251,6 +257,14 @@ updateProject (Project a) projects =
 
 
 -- COLLECTION --
+
+
+find : List Project -> Id -> Maybe Project
+find projects id_ =
+    projects
+        |> List.filter (\(Project a) -> a.id == id_)
+        |> List.head
+
 
 projectListArgs : Query.ProjectsOptionalArguments -> Query.ProjectsOptionalArguments
 projectListArgs args =

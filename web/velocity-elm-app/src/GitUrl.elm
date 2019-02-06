@@ -39,8 +39,8 @@ decoder =
         |> required "href" Decode.string
 
 
-sourceIcon : GitUrl -> (Icon.Options -> Element msg)
-sourceIcon { source } =
+sourceIcon : String -> (Icon.Options -> Element msg)
+sourceIcon source =
     case source of
         "github.com" ->
             Icon.github

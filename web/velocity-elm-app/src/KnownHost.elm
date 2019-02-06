@@ -4,8 +4,10 @@ module KnownHost exposing
     , MutationResponse(..)
     , addKnownHost
     , createUnverified
+    , find
     , findForGitUrl
     , findKnownHost
+    , host
     , idSelectionSet
     , isUnknownHost
     , isVerified
@@ -64,6 +66,11 @@ selectionSet =
 -- INFO
 
 
+host : KnownHost -> String
+host (KnownHost knownHost) =
+    knownHost.host
+
+
 md5 : KnownHost -> String
 md5 (KnownHost knownHost) =
     knownHost.md5
@@ -72,11 +79,6 @@ md5 (KnownHost knownHost) =
 sha256 : KnownHost -> String
 sha256 (KnownHost knownHost) =
     knownHost.sha256
-
-
-host : KnownHost -> String
-host (KnownHost knownHost) =
-    knownHost.host
 
 
 isVerified : KnownHost -> Bool
@@ -115,7 +117,12 @@ hostsFromKnownHosts knownHosts =
 
 findKnownHost : List KnownHost -> KnownHost -> Maybe KnownHost
 findKnownHost knownHosts (KnownHost knownHost) =
-    List.filter (\(KnownHost a) -> a.id == knownHost.id) knownHosts
+    find knownHosts knownHost.id
+
+
+find : List KnownHost -> Id -> Maybe KnownHost
+find knownhosts id =
+    List.filter (\(KnownHost a) -> a.id == id) knownhosts
         |> List.head
 
 
