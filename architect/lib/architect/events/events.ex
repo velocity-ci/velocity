@@ -4,9 +4,20 @@ defmodule Architect.Events do
   alias Architect.Projects.Project
   alias Architect.KnownHosts.KnownHost
   alias Architect.Accounts.User
+  import Ecto.Query
 
   @project_events [:project_created]
   @known_host_events [:known_host_created, :known_host_verified]
+
+  def list_events_query() do
+    from(event in Event,
+      left_join: user in assoc(event, :user),
+      left_join: known_host in assoc(event, :known_host),
+      left_join: project in assoc(event, :project),
+      preload: [user: user, known_host: known_host, project: project],
+      order_by: [desc: event.inserted_at]
+    )
+  end
 
   @doc """
   Returns the list of events.
@@ -18,7 +29,7 @@ defmodule Architect.Events do
 
   """
   def list_events() do
-    Repo.all(Event)
+    Repo.all(list_events_query())
   end
 
   @doc """
