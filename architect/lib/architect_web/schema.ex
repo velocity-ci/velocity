@@ -34,6 +34,7 @@ defmodule ArchitectWeb.Schema do
   import_types(Queries.ProjectsQueries)
   import_types(Subscriptions.KnownHostSubscriptions)
   import_types(Subscriptions.ProjectsSubscriptions)
+  import_types(Subscriptions.EventsSubscriptions)
 
   payload_object(:session_payload, :session)
   payload_object(:known_host_payload, :known_host)
@@ -128,6 +129,7 @@ defmodule ArchitectWeb.Schema do
   subscription do
     import_fields(:known_hosts_subscriptions)
     import_fields(:projects_subscriptions)
+    import_fields(:events_subscriptions)
   end
 
   def middleware(middleware, _field, %Absinthe.Type.Object{identifier: :mutation}) do

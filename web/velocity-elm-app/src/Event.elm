@@ -1,4 +1,4 @@
-module Event exposing (Log, selectionSet, view)
+module Event exposing (Event, Log, addEvent, eventSelectionSet, selectionSet, view)
 
 import Api.Compiled.Object
 import Api.Compiled.Object.Event as Event
@@ -29,7 +29,7 @@ type Log
 
 type alias Internals =
     { seen : Set Id
-    , events : Connection Event
+    , events : List Event
     }
 
 
@@ -66,7 +66,7 @@ internalSelectionSet =
 toInternals : PageInfo -> List (Edge Event) -> Internals
 toInternals pageInfo edges =
     { seen = Set.empty
-    , events = Connection pageInfo edges
+    , events = List.map Edge.node edges
     }
 
 
@@ -115,6 +115,11 @@ toEvent type_ username maybeKnownHostId maybeProjectId =
         |> Event username
 
 
+addEvent : Event -> Log -> Log
+addEvent event (Log internals) =
+    Log { internals | events = event :: internals.events }
+
+
 
 -- VIEW
 
@@ -140,8 +145,8 @@ viewLogContainer : Log -> ViewConfiguration -> Element msg
 viewLogContainer (Log internals) { projects, knownHosts } =
     let
         events =
-            internals.events.edges
-                |> List.map (Edge.node >> viewItem)
+            internals.events
+                |> List.map viewItem
 
         viewItem =
             viewLogItem projects knownHosts
@@ -205,7 +210,7 @@ viewKnownHostAdded knownHosts username id =
                         , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text <| KnownHost.host knownHost)
                         , el [ alignLeft, Font.color Palette.neutral5 ] (text " created by ")
                         , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text <| Username.toString username)
-                        , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text " 5 mins ago")
+                        , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text " 8 hours ago ")
                         ]
                     )
                 ]
@@ -235,7 +240,7 @@ viewKnownHostVerified knownHosts username id =
                         , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text <| KnownHost.host knownHost)
                         , el [ alignLeft, Font.color Palette.neutral5 ] (text " verified by ")
                         , el [ Font.heavy, alignLeft, Font.color Palette.neutral6 ] (text <| Username.toString username)
-                        , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text " 5 mins ago")
+                        , el [ Font.extraLight, Font.size 13, Font.color Palette.neutral5, alignLeft ] (text " 8 hours ago")
                         ]
                     )
                 ]

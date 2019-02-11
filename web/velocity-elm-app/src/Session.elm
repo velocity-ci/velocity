@@ -26,7 +26,7 @@ import Browser.Navigation as Nav
 import Connection exposing (Connection)
 import Context exposing (Context)
 import Edge
-import Event exposing (Log)
+import Event exposing (Event, Log)
 import Graphql.Http
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
@@ -50,7 +50,7 @@ type Session msg
 type alias LoggedInInternals msg =
     { navKey : Nav.Key
     , viewer : Viewer
-    , projects : Connection Project
+    , projects : List Project
     , knownHosts : List KnownHost
     , log : Event.Log
     , subscriptions : Subscriptions.State msg
@@ -64,6 +64,7 @@ type InitError
 type SubscriptionDataMsg
     = KnownHostAdded KnownHost
     | ProjectAdded Project
+    | EventAdded Event
 
 
 type SubscriptionStatusMsg
@@ -98,7 +99,7 @@ projectWithId : Project.Id.Id -> Session msg -> Maybe Project
 projectWithId projectId session =
     case session of
         LoggedIn internals ->
-            Project.findProjectById (List.map Edge.node internals.projects.edges) projectId
+            Project.findProjectById internals.projects projectId
 
         Guest _ ->
             Nothing
@@ -108,7 +109,7 @@ projectWithSlug : Project.Slug.Slug -> Session msg -> Maybe Project
 projectWithSlug projectSlug session =
     case session of
         LoggedIn internals ->
-            Project.findProjectBySlug (List.map Edge.node internals.projects.edges) projectSlug
+            Project.findProjectBySlug internals.projects projectSlug
 
         Guest _ ->
             Nothing
@@ -118,8 +119,7 @@ projects : Session msg -> List Project
 projects session =
     case session of
         LoggedIn internals ->
-            internals.projects.edges
-                |> List.map Edge.node
+            internals.projects
 
         Guest _ ->
             []
@@ -129,9 +129,18 @@ addProject : Project -> Session msg -> Session msg
 addProject p session =
     case session of
         LoggedIn internals ->
-            LoggedIn internals
+            LoggedIn { internals | projects = Project.addProject p internals.projects }
 
-        --            LoggedIn { internals | projects = Project.addProject p internals.projects }
+        Guest _ ->
+            session
+
+
+addEvent : Event -> Session msg -> Session msg
+addEvent event session =
+    case session of
+        LoggedIn internals ->
+            LoggedIn { internals | log = Event.addEvent event internals.log }
+
         Guest _ ->
             session
 
@@ -208,6 +217,7 @@ subscribe toMsg session =
                     ( internals.subscriptions, Cmd.none )
                         |> subscribeToKnownHostAdded toMsg
                         |> subscribeToProjectAdded toMsg
+                        |> subscribeToEventAdded toMsg
             in
             ( LoggedIn { internals | subscriptions = subs }
             , cmd
@@ -215,6 +225,20 @@ subscribe toMsg session =
 
         Guest _ ->
             ( session, Cmd.none )
+
+
+subscribeToEventAdded :
+    (SubscriptionDataMsg -> msg)
+    -> ( Subscriptions.State msg, Cmd msg )
+    -> ( Subscriptions.State msg, Cmd msg )
+subscribeToEventAdded toMsg ( subs, cmd ) =
+    let
+        ( subscribed, subCmd ) =
+            Subscriptions.subscribeToEventAdded (EventAdded >> toMsg) subs
+    in
+    ( subscribed
+    , Cmd.batch [ cmd, subCmd ]
+    )
 
 
 subscribeToKnownHostAdded :
@@ -254,6 +278,9 @@ subscriptionDataUpdate subMsg session =
         ProjectAdded project ->
             addProject project session
 
+        EventAdded event ->
+            addEvent event session
+
 
 
 -- CHANGES
@@ -283,7 +310,7 @@ eventsArgs : Query.EventsOptionalArguments
 eventsArgs =
     { after = Absent
     , before = Absent
-    , first = Present 100
+    , first = Present 200
     , last = Absent
     }
 
@@ -323,7 +350,7 @@ fromViewer key context maybeViewer =
                     LoggedIn
                         { navKey = key
                         , viewer = viewerVal
-                        , projects = res.projects
+                        , projects = List.map Edge.node res.projects.edges
                         , knownHosts = res.knownHosts
                         , log = res.log
                         , subscriptions = Subscriptions.init

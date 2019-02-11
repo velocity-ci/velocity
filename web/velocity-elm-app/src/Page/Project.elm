@@ -711,6 +711,7 @@ viewCommitConnectionLoaded commitConnection =
                             el
                                 [ width fill
                                 , paddingXY 10 20
+                                , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
                                 , Border.color Palette.neutral6
                                 , Font.alignLeft
                                 ]
@@ -725,6 +726,7 @@ viewCommitConnectionLoaded commitConnection =
                             paragraph
                                 [ width fill
                                 , paddingXY 10 20
+                                , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
                                 , Border.color Palette.neutral6
                                 , Font.alignLeft
                                 ]
@@ -822,6 +824,7 @@ viewProjectBuildsTable tz builds =
                             [ width fill
                             , height (px 60)
                             , Background.color Palette.neutral7
+                            , Border.widthXY 0 3
                             , Border.color Palette.neutral6
                             ]
                             (el [ centerY, paddingXY 10 0 ]

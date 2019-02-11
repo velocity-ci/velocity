@@ -39,9 +39,6 @@ defmodule ArchitectWeb.Resolvers.Projects do
   end
 
   def list_tasks_for_branch(%Branch{name: branch}, _args, %{context: %{project: project}}) do
-    IO.inspect("LIST TASKS FOR BRANCH #{branch}")
-    IO.inspect("LIST TASKS FOR PROJET #{inspect(project)}")
-
     {:ok, Projects.list_tasks(project, {:branch, branch})}
   end
 

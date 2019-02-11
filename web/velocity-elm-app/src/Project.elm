@@ -104,7 +104,7 @@ selectionSet =
 
 branchesParams : Project.BranchesOptionalArguments -> Project.BranchesOptionalArguments
 branchesParams args =
-    { first = Present 10
+    { first = Present 100
     , last = Absent
     , after = Absent
     , before = Absent
@@ -268,7 +268,7 @@ find projects id_ =
 
 projectListArgs : Query.ProjectsOptionalArguments -> Query.ProjectsOptionalArguments
 projectListArgs args =
-    { args | first = Present 10 }
+    { args | first = Present 100 }
 
 
 list : Cred -> BaseUrl -> Graphql.Http.Request (Maybe (Connection Project))

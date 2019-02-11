@@ -1,15 +1,16 @@
-port module Api.Subscriptions
-    exposing
-        ( State
-        , StatusMsg
-        , init
-        , subscribeToKnownHostAdded
-        , subscribeToProjectAdded
-        , subscriptions
-        )
+port module Api.Subscriptions exposing
+    ( State
+    , StatusMsg
+    , init
+    , subscribeToEventAdded
+    , subscribeToKnownHostAdded
+    , subscribeToProjectAdded
+    , subscriptions
+    )
 
 import Api.Compiled.Subscription
 import Dict exposing (Dict)
+import Event exposing (Event)
 import Graphql.Document as Document
 import Graphql.Operation exposing (RootSubscription)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
@@ -17,6 +18,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import KnownHost exposing (KnownHost)
 import Project exposing (Project)
+
 
 
 -- INWARDS PORTs
@@ -53,6 +55,7 @@ type Subscription msg
 type SubscriptionType msg
     = KnownHostSubscription (SubConfig KnownHost msg)
     | ProjectSubscription (SubConfig Project msg)
+    | EventSubscription (SubConfig Event msg)
 
 
 type alias SubConfig type_ msg =
@@ -98,22 +101,24 @@ newSubscriptionStatus ( id, status ) (State subs) =
 
 newSubscriptionData : (State msg -> msg) -> { id : Int, value : Value } -> State msg -> msg
 newSubscriptionData toMsg { id, value } (State subs) =
+    let
+        handleSubscriptionData { selectionSet, handler } =
+            case Decode.decodeValue (Document.decoder selectionSet) value of
+                Ok data ->
+                    handler data
+
+                Err _ ->
+                    toMsg (State subs)
+    in
     case Dict.get id subs of
-        Just (Subscription _ (KnownHostSubscription { selectionSet, handler })) ->
-            case Decode.decodeValue (Document.decoder selectionSet) value of
-                Ok data ->
-                    handler data
+        Just (Subscription _ (KnownHostSubscription sub)) ->
+            handleSubscriptionData sub
 
-                Err _ ->
-                    toMsg (State subs)
+        Just (Subscription _ (ProjectSubscription sub)) ->
+            handleSubscriptionData sub
 
-        Just (Subscription _ (ProjectSubscription { selectionSet, handler })) ->
-            case Decode.decodeValue (Document.decoder selectionSet) value of
-                Ok data ->
-                    handler data
-
-                Err _ ->
-                    toMsg (State subs)
+        Just (Subscription _ (EventSubscription sub)) ->
+            handleSubscriptionData sub
 
         Nothing ->
             toMsg (State subs)
@@ -126,6 +131,31 @@ updateStatus status (Subscription _ type_) =
 
 
 -- Subscribe to
+
+
+subscribeToEventAdded : (Event -> msg) -> State msg -> ( State msg, Cmd msg )
+subscribeToEventAdded toMsg state =
+    Api.Compiled.Subscription.eventAdded Event.eventSelectionSet
+        |> eventSubscription toMsg state
+
+
+eventSubscription :
+    (Event -> msg)
+    -> State msg
+    -> SelectionSet Event RootSubscription
+    -> ( State msg, Cmd msg )
+eventSubscription toMsg (State internals) selectionSet =
+    let
+        sub =
+            Subscription NotConnected <|
+                EventSubscription { selectionSet = selectionSet, handler = toMsg }
+
+        nextId =
+            Dict.size internals
+    in
+    ( State (Dict.insert nextId sub internals)
+    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+    )
 
 
 subscribeToProjectAdded : (Project -> msg) -> State msg -> ( State msg, Cmd msg )
@@ -148,9 +178,9 @@ projectSubscription toMsg (State internals) selectionSet =
         nextId =
             Dict.size internals
     in
-        ( State (Dict.insert nextId sub internals)
-        , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
-        )
+    ( State (Dict.insert nextId sub internals)
+    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+    )
 
 
 subscribeToKnownHostAdded : (KnownHost -> msg2) -> State msg2 -> ( State msg2, Cmd msg2 )
@@ -173,6 +203,6 @@ knownHostSubscription toMsg (State internals) selectionSet =
         nextId =
             Dict.size internals
     in
-        ( State (Dict.insert nextId sub internals)
-        , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
-        )
+    ( State (Dict.insert nextId sub internals)
+    , subscribeTo ( nextId, Document.serializeSubscription selectionSet )
+    )

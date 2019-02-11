@@ -17,12 +17,6 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
       resolve(&Projects.get_default_branch_for_project/3)
     end
 
-    #
-    #    field :branches, non_null(list_of(non_null(:branch))) do
-    #      middleware(SetProjectToContext)
-    #      resolve(&Projects.list_branches_for_project/3)
-    #    end
-
     connection field(:branches, node_type: :branch) do
       middleware(SetProjectToContext)
       resolve(&Projects.list_branches_for_project/2)

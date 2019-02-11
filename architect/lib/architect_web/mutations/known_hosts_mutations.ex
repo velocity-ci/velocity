@@ -1,7 +1,9 @@
 defmodule ArchitectWeb.Mutations.KnownHostsMutations do
   use Absinthe.Schema.Notation
+  alias Absinthe.Subscription
   alias Architect.KnownHosts
   require Logger
+  alias Architect.Repo
 
   object :known_hosts_mutations do
     @desc "Create unverified known host"
@@ -10,8 +12,13 @@ defmodule ArchitectWeb.Mutations.KnownHostsMutations do
 
       arg(:host, non_null(:string))
 
-      resolve(fn params, %{context: _context} ->
-        with {:ok, known_host} <- Architect.KnownHosts.create_known_host(params) do
+      resolve(fn %{host: host}, %{context: %{current_user: user}} ->
+        with {:ok, {known_host, event}} <- KnownHosts.create_known_host(user, host) do
+          Task.async(fn ->
+            event = Repo.preload(event, [:user, :project, :known_host])
+            Subscription.publish(ArchitectWeb.Endpoint, event, event_added: "all")
+          end)
+
           {:ok, known_host}
         else
           {:error, %Ecto.Changeset{} = changeset} ->
@@ -30,10 +37,15 @@ defmodule ArchitectWeb.Mutations.KnownHostsMutations do
 
       arg(:id, non_null(:string))
 
-      resolve(fn %{id: id}, %{context: context} ->
+      resolve(fn %{id: id}, %{context: %{current_user: user}} ->
         known_host = KnownHosts.get_known_host!(id)
 
-        with {:ok, known_host} <- KnownHosts.update_known_host(known_host, %{verified: true}) do
+        with {:ok, {known_host, event}} <- KnownHosts.verify_known_host(user, known_host) do
+          Task.async(fn ->
+            event = Repo.preload(event, [:user, :project, :known_host])
+            Subscription.publish(ArchitectWeb.Endpoint, event, event_added: "all")
+          end)
+
           {:ok, known_host}
         else
           {:error, %Ecto.Changeset{} = changeset} ->

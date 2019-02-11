@@ -40,10 +40,10 @@ defmodule Architect.KnownHosts do
       changeset = KnownHost.changeset(%KnownHost{}, %{host: host, created_by_id: u.id})
 
       case Repo.insert(changeset) do
-        {:ok, k} ->
-          Events.create_event!(u, k, %{type: :known_host_created})
+        {:ok, known_host} ->
+          event = Events.create_event!(u, known_host, %{type: :known_host_created})
 
-          k
+          {known_host, event}
 
         {:error, e} ->
           Repo.rollback(e)
@@ -61,9 +61,9 @@ defmodule Architect.KnownHosts do
 
       case Repo.update(changeset) do
         {:ok, k} ->
-          Events.create_event!(u, k, %{type: :known_host_verified})
+          event = Events.create_event!(u, k, %{type: :known_host_verified})
 
-          k
+          {k, event}
 
         {:error, e} ->
           Repo.rollback(e)

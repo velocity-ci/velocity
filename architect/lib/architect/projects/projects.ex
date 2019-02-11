@@ -62,7 +62,7 @@ defmodule Architect.Projects do
   ## Examples
 
       iex> create_project(%User{}, "https://github.com/velocity-ci/velocity.git")
-      {:ok, %Project{}}
+      {:ok, %Project{}, %Event{}}
 
       iex> create_project(%User{}, "banter)
       {:error, %Ecto.Changeset{}}
@@ -74,9 +74,9 @@ defmodule Architect.Projects do
 
       case Repo.insert(changeset) do
         {:ok, p} ->
-          Events.create_event!(u, p, %{type: :project_created})
+          event = Events.create_event!(u, p, %{type: :project_created})
 
-          p
+          {p, event}
 
         {:error, e} ->
           Repo.rollback(e)
