@@ -113,26 +113,55 @@ view : Config msg -> { title : String, body : List (Html msg) }
 view config =
     { title = config.title ++ " - Conduit"
     , body =
-        [ Element.layout
-            [ Font.family
-                [ Font.typeface "Roboto"
-                , Font.sansSerif
-                ]
-            , inFront (viewHeader config)
-            , inFront (viewFooter config)
-            ]
-            (Element.row
-                [ width fill
-                , height fill
-                , inFront <| viewSmallScreenNotificationsPanel config
-                , inFront <| viewMediumScreenNotificationsPanel config
-                ]
-                [ viewBody config.content
-                , viewLargeScreenNotificationsPanel config
-                ]
-            )
-        ]
+        if config.page == Login then
+            viewLoginPageBody config
+
+        else
+            viewAuthedPageBody config
     }
+
+
+viewLoginPageBody : Config msg -> List (Html msg)
+viewLoginPageBody config =
+    [ Element.layout
+        [ Font.family
+            [ Font.typeface "Roboto"
+            , Font.sansSerif
+            ]
+        , Background.color Palette.neutral6
+        ]
+        (Element.row
+            [ width fill
+            , height fill
+            ]
+            [ viewBody config.content
+            ]
+        )
+    ]
+
+
+viewAuthedPageBody : Config msg -> List (Html msg)
+viewAuthedPageBody config =
+    [ Element.layout
+        [ Font.family
+            [ Font.typeface "Roboto"
+            , Font.sansSerif
+            ]
+        , inFront (viewHeader config)
+        , inFront (viewFooter config)
+        , Background.color Palette.white
+        ]
+        (Element.row
+            [ width fill
+            , height fill
+            , inFront <| viewSmallScreenNotificationsPanel config
+            , inFront <| viewMediumScreenNotificationsPanel config
+            ]
+            [ viewBody config.content
+            , viewLargeScreenNotificationsPanel config
+            ]
+        )
+    ]
 
 
 
@@ -258,11 +287,16 @@ viewBody content =
 
 viewHeader : Config msg -> Element msg
 viewHeader config =
-    if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
-        viewMobileHeader config
+    case config.page of
+        Login ->
+            none
 
-    else
-        viewDesktopHeader config
+        _ ->
+            if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
+                viewMobileHeader config
+
+            else
+                viewDesktopHeader config
 
 
 viewBrand : Element msg

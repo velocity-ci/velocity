@@ -1,4 +1,4 @@
-module Form.Input exposing (Config, labelAbove, labelBelow, labelHidden, labelLeft, labelRight, multilineText, search, text)
+module Form.Input exposing (Config, currentPassword, labelAbove, labelBelow, labelHidden, labelLeft, labelRight, multilineText, search, text, username)
 
 import Element exposing (..)
 import Element.Background as Background
@@ -8,6 +8,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Icon
 import Palette
+
 
 
 -- Proxy
@@ -89,6 +90,103 @@ type alias Config msg =
     }
 
 
+username : Config msg -> Element msg
+username config =
+    let
+        valid =
+            List.isEmpty config.problems
+
+        dirty =
+            config.dirty
+    in
+    el
+        [ height (px 40)
+        , width fill
+
+        --              , Border.width 1
+        --              , Border.rounded 4
+        , Font.size 16
+        , inFront (maybeIconLeft config.leftIcon)
+        , inFront (maybeIconRight config.rightIcon)
+
+        --              , mouseOver
+        --                    [ Border.shadow
+        --                        { offset = ( 0, 0 )
+        --                        , size = 1
+        --                        , blur = 0
+        --                        , color = Palette.neutral5
+        --                    s    }
+        --                    ]
+        ]
+        (Input.username
+            (List.concat
+                [ [ Input.focusedOnLoad
+                  , Border.width 1
+                  , Background.color Palette.transparent
+                  , paddingXY 30 0
+                  , height fill
+                  , width fill
+                  , focused (statusDecorations valid dirty)
+                  ]
+                ]
+            )
+            { onChange = config.onChange
+            , placeholder = maybePlaceholder config.placeholder
+            , text = config.value
+            , label = config.label
+            }
+        )
+
+
+currentPassword : Config msg -> Element msg
+currentPassword config =
+    let
+        valid =
+            List.isEmpty config.problems
+
+        dirty =
+            config.dirty
+    in
+    el
+        (List.concat
+            [ [ height (px 40)
+              , width fill
+
+              --              , Border.width 1
+              --              , Border.rounded 4
+              , Font.size 16
+              , inFront (maybeIconLeft config.leftIcon)
+              , inFront (maybeIconRight config.rightIcon)
+
+              --              , mouseOver
+              --                    [ Border.shadow
+              --                        { offset = ( 0, 0 )
+              --                        , size = 1
+              --                        , blur = 0
+              --                        , color = Palette.neutral5
+              --                        }
+              --                    ]
+              ]
+            ]
+        )
+        (Input.currentPassword
+            [ Input.focusedOnLoad
+            , Border.width 1
+            , Background.color Palette.transparent
+            , paddingXY 30 0
+            , height fill
+            , width fill
+            , focused (statusDecorations valid dirty)
+            ]
+            { onChange = config.onChange
+            , placeholder = maybePlaceholder config.placeholder
+            , text = config.value
+            , label = config.label
+            , show = False
+            }
+        )
+
+
 text : Config msg -> Element msg
 text config =
     let
@@ -98,42 +196,44 @@ text config =
         dirty =
             config.dirty
     in
-        el
-            (List.concat
-                [ statusAttrs valid dirty
-                , [ height (px 40)
-                  , width fill
-                    --              , Border.width 1
-                    --              , Border.rounded 4
-                  , Font.size 16
-                  , inFront (maybeIconLeft config.leftIcon)
-                  , inFront (maybeIconRight config.rightIcon)
-                    --              , mouseOver
-                    --                    [ Border.shadow
-                    --                        { offset = ( 0, 0 )
-                    --                        , size = 1
-                    --                        , blur = 0
-                    --                        , color = Palette.neutral5
-                    --                        }
-                    --                    ]
-                  ]
-                ]
-            )
-            (Input.text
-                [ Input.focusedOnLoad
-                , Border.width 1
-                , Background.color Palette.transparent
-                , paddingXY 30 0
-                , height fill
-                , width fill
-                , focused (statusDecorations valid dirty)
-                ]
-                { onChange = config.onChange
-                , placeholder = maybePlaceholder config.placeholder
-                , text = config.value
-                , label = config.label
-                }
-            )
+    el
+        (List.concat
+            [ statusAttrs valid dirty
+            , [ height (px 40)
+              , width fill
+
+              --              , Border.width 1
+              --              , Border.rounded 4
+              , Font.size 16
+              , inFront (maybeIconLeft config.leftIcon)
+              , inFront (maybeIconRight config.rightIcon)
+
+              --              , mouseOver
+              --                    [ Border.shadow
+              --                        { offset = ( 0, 0 )
+              --                        , size = 1
+              --                        , blur = 0
+              --                        , color = Palette.neutral5
+              --                        }
+              --                    ]
+              ]
+            ]
+        )
+        (Input.text
+            [ Input.focusedOnLoad
+            , Border.width 1
+            , Background.color Palette.transparent
+            , paddingXY 30 0
+            , height fill
+            , width fill
+            , focused (statusDecorations valid dirty)
+            ]
+            { onChange = config.onChange
+            , placeholder = maybePlaceholder config.placeholder
+            , text = config.value
+            , label = config.label
+            }
+        )
 
 
 search : Config msg -> Element msg
@@ -145,42 +245,44 @@ search config =
         dirty =
             config.dirty
     in
-        el
-            (List.concat
-                [ statusAttrs valid dirty
-                , [ height shrink
-                  , width fill
-                    --              , Border.width 1
-                    --              , Border.rounded 4
-                  , Font.size 16
-                  , inFront (maybeIconLeft config.leftIcon)
-                  , inFront (maybeIconRight config.rightIcon)
-                    --              , mouseOver
-                    --                    [ Border.shadow
-                    --                        { offset = ( 0, 0 )
-                    --                        , size = 1
-                    --                        , blur = 0
-                    --                        , color = Palette.neutral5
-                    --                        }
-                    --                    ]
-                  ]
-                ]
-            )
-            (Input.search
-                [ Input.focusedOnLoad
-                , Border.width 1
-                , Background.color Palette.transparent
-                , paddingXY 30 10
-                , height fill
-                , width fill
-                , focused (statusDecorations valid dirty)
-                ]
-                { onChange = config.onChange
-                , placeholder = maybePlaceholder config.placeholder
-                , text = config.value
-                , label = config.label
-                }
-            )
+    el
+        (List.concat
+            [ statusAttrs valid dirty
+            , [ height shrink
+              , width fill
+
+              --              , Border.width 1
+              --              , Border.rounded 4
+              , Font.size 16
+              , inFront (maybeIconLeft config.leftIcon)
+              , inFront (maybeIconRight config.rightIcon)
+
+              --              , mouseOver
+              --                    [ Border.shadow
+              --                        { offset = ( 0, 0 )
+              --                        , size = 1
+              --                        , blur = 0
+              --                        , color = Palette.neutral5
+              --                        }
+              --                    ]
+              ]
+            ]
+        )
+        (Input.search
+            [ Input.focusedOnLoad
+            , Border.width 1
+            , Background.color Palette.transparent
+            , paddingXY 30 10
+            , height fill
+            , width fill
+            , focused (statusDecorations valid dirty)
+            ]
+            { onChange = config.onChange
+            , placeholder = maybePlaceholder config.placeholder
+            , text = config.value
+            , label = config.label
+            }
+        )
 
 
 multilineText : Config msg -> Element msg
@@ -192,43 +294,46 @@ multilineText config =
         dirty =
             config.dirty
     in
-        el
-            (List.concat
-                [ statusAttrs valid dirty
-                , [ height fill
-                  , width fill
-                    --              , Border.width 1
-                    --              , Border.rounded 4
-                  , Font.size 16
-                  , inFront (maybeIconLeft config.leftIcon)
-                  , inFront (maybeIconRight config.rightIcon)
-                    --              , mouseOver
-                    --                    [ Border.shadow
-                    --                        { offset = ( 0, 0 )
-                    --                        , size = 1
-                    --                        , blur = 0
-                    --                        , color = Palette.neutral5
-                    --                        }
-                    --                    ]
-                  ]
-                ]
-            )
-            (Input.multiline
-                [ Input.focusedOnLoad
-                , Border.width 1
-                , Background.color Palette.transparent
-                  --            , paddingXY 30 0
-                , height fill
-                , width fill
-                , focused (statusDecorations valid dirty)
-                ]
-                { onChange = config.onChange
-                , placeholder = maybePlaceholder config.placeholder
-                , text = config.value
-                , label = config.label
-                , spellcheck = False
-                }
-            )
+    el
+        (List.concat
+            [ statusAttrs valid dirty
+            , [ height fill
+              , width fill
+
+              --              , Border.width 1
+              --              , Border.rounded 4
+              , Font.size 16
+              , inFront (maybeIconLeft config.leftIcon)
+              , inFront (maybeIconRight config.rightIcon)
+
+              --              , mouseOver
+              --                    [ Border.shadow
+              --                        { offset = ( 0, 0 )
+              --                        , size = 1
+              --                        , blur = 0
+              --                        , color = Palette.neutral5
+              --                        }
+              --                    ]
+              ]
+            ]
+        )
+        (Input.multiline
+            [ Input.focusedOnLoad
+            , Border.width 1
+            , Background.color Palette.transparent
+
+            --            , paddingXY 30 0
+            , height fill
+            , width fill
+            , focused (statusDecorations valid dirty)
+            ]
+            { onChange = config.onChange
+            , placeholder = maybePlaceholder config.placeholder
+            , text = config.value
+            , label = config.label
+            , spellcheck = False
+            }
+        )
 
 
 maybePlaceholder : Maybe String -> Maybe (Input.Placeholder msg)
@@ -269,7 +374,7 @@ iconOpts =
         opts =
             Icon.defaultOptions
     in
-        { opts | size = 16 }
+    { opts | size = 16 }
 
 
 rightIcon : (Icon.Options -> Element msg) -> Element msg
@@ -320,7 +425,8 @@ statusAttrs valid dirty =
             ]
 
         ( False, True ) ->
-            [ Font.color Palette.danger4
+            [ Border.width 10
+            , Font.color Palette.danger4
             , Border.color Palette.danger6
             , focused (statusDecorations valid dirty)
             ]

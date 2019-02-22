@@ -1,40 +1,41 @@
-module Icon
-    exposing
-        ( Options
-        , SizeUnit(..)
-        , alertCircle
-        , arrowDown
-        , arrowLeft
-        , arrowRight
-        , bell
-        , check
-        , checkCircle
-        , cloudLightning
-        , cloudRain
-        , code
-        , defaultOptions
-        , edit
-        , edit2
-        , externalLink
-        , fullSizeOptions
-        , gitPullRequest
-        , github
-        , gitlab
-        , info
-        , link
-        , link2
-        , logOut
-        , plus
-        , plusCircle
-        , search
-        , settings
-        , size
-        , sun
-        , uploadCloud
-        , x
-        , xCircle
-        , xSquare
-        )
+module Icon exposing
+    ( Options
+    , SizeUnit(..)
+    , alertCircle
+    , arrowDown
+    , arrowLeft
+    , arrowRight
+    , bell
+    , check
+    , checkCircle
+    , cloudLightning
+    , cloudRain
+    , code
+    , defaultOptions
+    , edit
+    , edit2
+    , externalLink
+    , fullSizeOptions
+    , gitPullRequest
+    , github
+    , gitlab
+    , info
+    , link
+    , link2
+    , lock
+    , logOut
+    , plus
+    , plusCircle
+    , search
+    , settings
+    , size
+    , sun
+    , uploadCloud
+    , user
+    , x
+    , xCircle
+    , xSquare
+    )
 
 import Element exposing (Element)
 import FeatherIcons
@@ -233,6 +234,16 @@ cloudRain =
 cloudLightning : Options -> Element msg
 cloudLightning =
     featherIcon FeatherIcons.cloudLightning
+
+
+user : Options -> Element msg
+user =
+    featherIcon FeatherIcons.user
+
+
+lock : Options -> Element msg
+lock =
+    featherIcon FeatherIcons.lock
 
 
 

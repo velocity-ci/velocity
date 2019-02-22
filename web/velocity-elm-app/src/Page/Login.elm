@@ -4,25 +4,22 @@ module Page.Login exposing (Model, Msg, init, subscriptions, toContext, toSessio
 -}
 
 import Api exposing (Cred)
-import Browser.Navigation as Nav
 import Context exposing (Context)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Http
-import Json.Decode as Decode exposing (Decoder, decodeString, field, string)
-import Json.Decode.Pipeline exposing (optional)
-import Json.Encode as Encode
+import Form.Input
+import Graphql.Http
+import Icon
+import Loading
 import Page.Home.ActivePanel as HomeActivePanel
+import Palette
 import Route exposing (Route)
 import Session exposing (Session)
 import Task exposing (Task)
-import Viewer exposing (Viewer)
-import Graphql.Http
-import Maybe.Extra
-import Graphql.Http.GraphqlError exposing (GraphqlError)
+
 
 
 -- MODEL
@@ -33,33 +30,10 @@ type alias Model msg =
     , context : Context msg
     , problems : List Problem
     , form : Form
+    , submitting : Bool
     }
 
 
-{-| Recording validation problems on a per-field basis facilitates displaying
-them inline next to the field where the error occurred.
-
-I implemented it this way out of habit, then realized the spec called for
-displaying all the errors at the top. I thought about simplifying it, but then
-figured it'd be useful to show how I would normally model this data - assuming
-the intended UX was to render errors per field.
-
-(The other part of this is having a view function like this:
-
-viewFieldErrors : ValidatedField -> List Problem -> Html msg
-
-...and it filters the list of problems to render only InvalidEntry ones for the
-given ValidatedField. That way you can call this:
-
-viewFieldErrors Email problems
-
-...next to the `email` field, and call `viewFieldErrors Password problems`
-next to the `password` field, and so on.
-
-The `LoginError` should be displayed elsewhere, since it doesn't correspond to
-a particular field.
-
--}
 type Problem
     = InvalidEntry ValidatedField String
     | ServerError String
@@ -80,6 +54,7 @@ init session context =
             { username = ""
             , password = ""
             }
+      , submitting = False
       }
     , Cmd.none
     )
@@ -93,11 +68,34 @@ view : Model msg -> { title : String, content : Element (Msg msg) }
 view model =
     { title = "Login"
     , content =
-        Element.column [ width fill, height fill ]
-            [ Element.row [] (List.map viewProblem model.problems)
-            , viewForm model.form
+        Element.column
+            [ width fill
+            , height fill
+            , spacingXY 0 20
+            ]
+            [ viewProblems model.problems
+            , viewFormContainer model.form model.problems model.submitting
             ]
     }
+
+
+viewProblems : List Problem -> Element msg
+viewProblems problems =
+    if List.isEmpty problems then
+        none
+
+    else
+        Element.row
+            [ paddingXY 5 10
+            , width (fill |> maximum 450)
+            , Font.size 15
+            , centerX
+            , Border.width 1
+            , Border.color Palette.neutral4
+            , Background.color Palette.danger7
+            , Border.rounded 5
+            ]
+            (List.map viewProblem problems)
 
 
 viewProblem : Problem -> Element msg
@@ -111,11 +109,79 @@ viewProblem problem =
                 ServerError str ->
                     str
     in
-        text errorMessage
+    el
+        [ width fill
+        , Font.center
+        , Font.color Palette.neutral2
+        ]
+    <|
+        row [ width shrink, centerX, spacingXY 5 0 ]
+            [ el [ Font.color Palette.danger3 ] (Icon.x Icon.defaultOptions)
+            , el [] <| text errorMessage
+            ]
 
 
-viewForm : Form -> Element (Msg msg)
-viewForm form =
+viewFormContainer : Form -> List Problem -> Bool -> Element (Msg msg)
+viewFormContainer form problems submitting =
+    Element.column
+        [ width (fill |> maximum 450)
+        , centerX
+        , spacingXY 0 20
+        , padding 20
+        , Font.size 15
+        , Font.color Palette.neutral3
+        , Background.color Palette.white
+        , Border.width 1
+        , Border.color Palette.primary5
+        , Border.rounded 10
+        ]
+        [ viewBrand
+        , viewLoginDescription
+        , viewForm form problems submitting
+        ]
+
+
+viewBrand : Element msg
+viewBrand =
+    el
+        [ Font.color Palette.primary3
+        , Font.heavy
+        , Font.size 28
+        , Font.center
+        , width fill
+        , Font.letterSpacing -1
+        , Font.family
+            [ Font.typeface "titillium web"
+            , Font.sansSerif
+            ]
+        ]
+        (text "Velocity")
+
+
+viewLoginDescription : Element msg
+viewLoginDescription =
+    none
+
+
+problemsForField : ValidatedField -> List Problem -> List String
+problemsForField target =
+    List.filterMap
+        (\problem ->
+            case problem of
+                InvalidEntry field message ->
+                    if field == target then
+                        Just message
+
+                    else
+                        Nothing
+
+                _ ->
+                    Nothing
+        )
+
+
+viewForm : Form -> List Problem -> Bool -> Element (Msg msg)
+viewForm form problems submitting =
     Element.column
         [ width (fill |> maximum 400)
         , height fill
@@ -123,23 +189,29 @@ viewForm form =
         , spacingXY 0 20
         , paddingXY 0 20
         , Font.size 15
-        , Font.color (rgba255 92 184 92 1)
         ]
         [ row [ width fill ]
-            [ Input.username []
-                { onChange = EnteredUsername
-                , placeholder = Nothing
-                , text = form.username
-                , label = Input.labelAbove [ alignLeft ] (text "Username")
+            [ Form.Input.username
+                { leftIcon = Just Icon.user
+                , rightIcon = Nothing
+                , label = Input.labelHidden "Username"
+                , placeholder = Just "Username"
+                , dirty = not (String.isEmpty form.username)
+                , value = form.username
+                , problems = problemsForField Username problems
+                , onChange = EnteredUsername
                 }
             ]
         , row [ width fill ]
-            [ Input.currentPassword []
-                { onChange = EnteredPassword
-                , placeholder = Nothing
-                , text = form.password
-                , label = Input.labelAbove [ alignLeft ] (text "Password")
-                , show = True
+            [ Form.Input.currentPassword
+                { leftIcon = Just Icon.lock
+                , rightIcon = Nothing
+                , label = Input.labelHidden "Password"
+                , placeholder = Just "Password"
+                , dirty = not (String.isEmpty form.password)
+                , value = form.password
+                , problems = problemsForField Password problems
+                , onChange = EnteredPassword
                 }
             ]
         , row
@@ -149,17 +221,40 @@ viewForm form =
             [ Input.button
                 [ width fill
                 , Border.width 1
-                , Border.color (rgba255 92 184 92 1)
+                , Border.color Palette.neutral5
                 , Border.rounded 10
-                , height (px 45)
+                , Background.color
+                    (if submitting then
+                        Palette.neutral6
+
+                     else
+                        Palette.primary2
+                    )
+                , Font.color
+                    (if submitting then
+                        Palette.neutral1
+
+                     else
+                        Palette.neutral6
+                    )
+                , height (px 40)
                 , mouseOver
-                    [ Background.color (rgba255 92 184 92 0.6)
-                    , Border.color (rgba255 92 184 92 1)
-                    , Font.color (rgb 255 255 255)
-                    ]
+                    (if submitting then
+                        []
+
+                     else
+                        [ Background.color Palette.primary3
+                        ]
+                    )
                 ]
                 { onPress = Just SubmittedForm
-                , label = text "Sign in"
+                , label =
+                    if submitting then
+                        el [ centerY, centerX ] <|
+                            Loading.icon { width = 25, height = 25 }
+
+                    else
+                        text "Sign in"
                 }
             ]
         ]
@@ -182,25 +277,33 @@ update : Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
 update msg model =
     case msg of
         SubmittedForm ->
-            case validate model.form of
-                Ok validForm ->
-                    ( { model | problems = [] }
-                    , login model.context validForm CompletedLogin
-                    )
+            if model.submitting then
+                ( model, Cmd.none )
 
-                Err problems ->
-                    ( { model | problems = problems }
-                    , Cmd.none
-                    )
+            else
+                case validate model.form of
+                    Ok validForm ->
+                        ( { model | submitting = True }
+                        , login model.context validForm CompletedLogin
+                        )
+
+                    Err problems ->
+                        ( { model | problems = problems }
+                        , Cmd.none
+                        )
 
         EnteredUsername username ->
-            updateForm (\form -> { form | username = username }) model
+            ( updateForm (\form -> { form | username = username }) model
+            , Cmd.none
+            )
 
         EnteredPassword password ->
-            updateForm (\form -> { form | password = password }) model
+            ( updateForm (\form -> { form | password = password }) model
+            , Cmd.none
+            )
 
         CompletedLogin (Ok response) ->
-            ( model
+            ( { model | submitting = False }
             , Api.responseResult response
                 |> Maybe.map Api.storeCredWith
                 |> Maybe.withDefault Cmd.none
@@ -211,18 +314,18 @@ update msg model =
                 serverErrors =
                     List.map (.message >> ServerError) errors
             in
-                ( { model | problems = List.append model.problems serverErrors }
-                , Cmd.none
-                )
+            ( { model | problems = serverErrors, submitting = False }
+                |> updateForm (\form -> { form | password = "" })
+            , Cmd.none
+            )
 
-        CompletedLogin (Err e) ->
-            let
-                _ =
-                    Debug.log "Unhandled e" e
-            in
-                ( model
-                , Cmd.none
-                )
+        CompletedLogin (Err (Graphql.Http.HttpError e)) ->
+            ( { model
+                | problems = [ ServerError "An HTTP error occurred" ]
+                , submitting = False
+              }
+            , Cmd.none
+            )
 
         --            let
         --                serverErrors =
@@ -247,9 +350,9 @@ update msg model =
 {-| Helper function for `update`. Updates the form and returns Cmd.none.
 Useful for recording form fields!
 -}
-updateForm : (Form -> Form) -> Model msg -> ( Model msg, Cmd (Msg msg) )
+updateForm : (Form -> Form) -> Model msg -> Model msg
 updateForm transform model =
-    ( { model | form = transform model.form }, Cmd.none )
+    { model | form = transform model.form }
 
 
 
@@ -275,13 +378,13 @@ type TrimmedForm
 {-| When adding a variant here, add it to `fieldsToValidate` too!
 -}
 type ValidatedField
-    = Email
+    = Username
     | Password
 
 
 fieldsToValidate : List ValidatedField
 fieldsToValidate =
-    [ Email
+    [ Username
     , Password
     ]
 
@@ -290,33 +393,7 @@ fieldsToValidate =
 -}
 validate : Form -> Result (List Problem) TrimmedForm
 validate form =
-    let
-        trimmedForm =
-            trimFields form
-    in
-        case List.concatMap (validateField trimmedForm) fieldsToValidate of
-            [] ->
-                Ok trimmedForm
-
-            problems ->
-                Err problems
-
-
-validateField : TrimmedForm -> ValidatedField -> List Problem
-validateField (Trimmed form) field =
-    List.map (InvalidEntry field) <|
-        case field of
-            Email ->
-                if String.isEmpty form.username then
-                    [ "username can't be blank." ]
-                else
-                    []
-
-            Password ->
-                if String.isEmpty form.password then
-                    [ "password can't be blank." ]
-                else
-                    []
+    Ok <| trimFields form
 
 
 {-| Don't trim while the user is typing! That would be super annoying.
