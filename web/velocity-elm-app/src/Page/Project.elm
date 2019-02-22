@@ -75,48 +75,11 @@ type Status a
 init : Session msg -> Context msg -> Slug -> ( Model msg, Cmd Msg )
 init session context projectSlug =
     let
-        maybeProject =
-            Session.projectWithSlug projectSlug session
-
-        maybeCred =
+        cred =
             Session.cred session
 
         baseUrl =
             Context.baseUrl context
-
-        ( tasks, taskRequest ) =
-            case ( maybeProject, maybeCred ) of
-                ( Just project, Just cred ) ->
-                    ( Loading
-                    , CompiledBranch.tasks Task.selectionSet
-                        |> Query.branch
-                            { projectSlug = Slug.toString projectSlug
-                            , branch = "master"
-                            }
-                        |> Api.authedQueryRequest baseUrl cred
-                        |> Graphql.Http.send CompletedLoadTasks
-                    )
-
-                _ ->
-                    ( Failed, Cmd.none )
-
-        ( commitConnectionStatus, commitRequest ) =
-            case ( maybeProject, maybeCred ) of
-                ( Just project, Just cred ) ->
-                    ( Loading
-                    , Commit.connectionSelectionSet
-                        |> Query.commits (\c -> { c | first = OptionalArgument.Present 50 })
-                            { branch = "master"
-                            , projectSlug = Slug.toString projectSlug
-                            }
-                        |> SelectionSet.nonNullOrFail
-                        |> Api.authedQueryRequest baseUrl cred
-                        |> Graphql.Http.toTask
-                        |> BaseTask.attempt CompletedLoadCommits
-                    )
-
-                _ ->
-                    ( Failed, Cmd.none )
     in
     ( { session = session
       , context = context
@@ -125,16 +88,47 @@ init session context projectSlug =
       , slug = projectSlug
       , branchDropdown = BranchDropdown Closed
       , builds = Loading
-      , tasks = tasks
-      , commitConnection = commitConnectionStatus
+      , tasks = Loading
+      , commitConnection = Loading
       }
     , Cmd.batch
-        [ commitRequest
+        [ getConnection projectSlug context session <|
+            { after = OptionalArgument.Absent
+            , before = OptionalArgument.Absent
+            , first = OptionalArgument.Present 50
+            , last = OptionalArgument.Absent
+            }
+        , CompiledBranch.tasks Task.selectionSet
+            |> Query.branch
+                { projectSlug = Slug.toString projectSlug
+                , branch = "master"
+                }
+            |> Api.authedQueryRequest baseUrl cred
+            |> Graphql.Http.send CompletedLoadTasks
         , BaseTask.perform (\_ -> PassedSlowLoadThreshold) Loading.slowThreshold
         , BaseTask.perform GotTimeZone Time.here
-        , taskRequest
         ]
     )
+
+
+getConnection : Slug -> Context msg -> Session msg -> Query.CommitsOptionalArguments -> Cmd Msg
+getConnection slug context session args =
+    let
+        cred =
+            Session.cred session
+
+        baseUrl =
+            Context.baseUrl context
+    in
+    Commit.connectionSelectionSet
+        |> Query.commits (always args)
+            { branch = "master"
+            , projectSlug = Slug.toString slug
+            }
+        |> SelectionSet.nonNullOrFail
+        |> Api.authedQueryRequest baseUrl cred
+        |> Graphql.Http.toTask
+        |> BaseTask.attempt CompletedLoadCommits
 
 
 
@@ -169,6 +163,7 @@ type Msg
     | GotTimeZone Time.Zone
     | CompletedLoadCommits (Result (Graphql.Http.Error (Connection Commit)) (Connection Commit))
     | CompletedLoadTasks (Result (Graphql.Http.Error (List Task)) (List Task))
+    | NextCommitPage
 
 
 update : Msg -> Model msg -> ( Model msg, Cmd Msg )
@@ -257,6 +252,28 @@ update msg model =
         CompletedLoadTasks (Err _) ->
             ( { model | tasks = Failed }
             , Cmd.none
+            )
+
+        NextCommitPage ->
+            let
+                after =
+                    case model.commitConnection of
+                        Loaded connection ->
+                            connection.pageInfo
+                                |> PageInfo.endCursor
+                                |> Maybe.map OptionalArgument.Present
+                                |> Maybe.withDefault OptionalArgument.Absent
+
+                        _ ->
+                            OptionalArgument.Absent
+            in
+            ( { model | commitConnection = Loading }
+            , getConnection model.slug model.context model.session <|
+                { after = after
+                , before = OptionalArgument.Absent
+                , first = OptionalArgument.Present 50
+                , last = OptionalArgument.Absent
+                }
             )
 
 
@@ -757,7 +774,7 @@ viewPaginationNextButton : Connection a -> Element Msg
 viewPaginationNextButton { pageInfo } =
     el [ width (px 200) ] <|
         if PageInfo.hasNextPage pageInfo then
-            Button.simpleButton NoOp { content = text "Older", scheme = Button.Primary }
+            Button.simpleButton NextCommitPage { content = text "Older", scheme = Button.Primary }
 
         else
             none

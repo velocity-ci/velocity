@@ -1,5 +1,6 @@
 port module Session exposing
-    ( InitError
+    ( AuthenticatedInternals
+    , InitError
     , Session
     , SubscriptionDataMsg
     , addKnownHost
@@ -43,8 +44,11 @@ import Viewer exposing (Viewer)
 
 
 type Session msg
-    = LoggedIn (LoggedInInternals msg)
-    | Guest Nav.Key
+    = LoggedIn (AuthenticatedInternals msg)
+
+
+type AuthenticatedInternals msg
+    = AuthenticatedInternals (LoggedInInternals msg)
 
 
 type alias LoggedInInternals msg =
@@ -59,6 +63,7 @@ type alias LoggedInInternals msg =
 
 type InitError
     = HttpError (Graphql.Http.Error StartupResponse)
+    | Unauthenticated
 
 
 type SubscriptionDataMsg
@@ -78,115 +83,74 @@ type SubscriptionStatusMsg
 knownHosts : Session msg -> List KnownHost
 knownHosts session =
     case session of
-        LoggedIn internals ->
+        LoggedIn (AuthenticatedInternals internals) ->
             internals.knownHosts
-
-        Guest _ ->
-            []
 
 
 addKnownHost : KnownHost -> Session msg -> Session msg
 addKnownHost knownHost session =
     case session of
-        LoggedIn internals ->
-            LoggedIn { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost }
-
-        Guest _ ->
-            session
+        LoggedIn (AuthenticatedInternals internals) ->
+            LoggedIn (AuthenticatedInternals { internals | knownHosts = KnownHost.addKnownHost internals.knownHosts knownHost })
 
 
 projectWithId : Project.Id.Id -> Session msg -> Maybe Project
 projectWithId projectId session =
     case session of
-        LoggedIn internals ->
+        LoggedIn (AuthenticatedInternals internals) ->
             Project.findProjectById internals.projects projectId
-
-        Guest _ ->
-            Nothing
 
 
 projectWithSlug : Project.Slug.Slug -> Session msg -> Maybe Project
 projectWithSlug projectSlug session =
     case session of
-        LoggedIn internals ->
+        LoggedIn (AuthenticatedInternals internals) ->
             Project.findProjectBySlug internals.projects projectSlug
-
-        Guest _ ->
-            Nothing
 
 
 projects : Session msg -> List Project
 projects session =
     case session of
-        LoggedIn internals ->
+        LoggedIn (AuthenticatedInternals internals) ->
             internals.projects
-
-        Guest _ ->
-            []
 
 
 addProject : Project -> Session msg -> Session msg
 addProject p session =
     case session of
-        LoggedIn internals ->
-            LoggedIn { internals | projects = Project.addProject p internals.projects }
-
-        Guest _ ->
-            session
+        LoggedIn (AuthenticatedInternals internals) ->
+            LoggedIn (AuthenticatedInternals { internals | projects = Project.addProject p internals.projects })
 
 
 addEvent : Event -> Session msg -> Session msg
 addEvent event session =
     case session of
-        LoggedIn internals ->
-            LoggedIn { internals | log = Event.addEvent event internals.log }
-
-        Guest _ ->
-            session
+        LoggedIn (AuthenticatedInternals internals) ->
+            LoggedIn (AuthenticatedInternals { internals | log = Event.addEvent event internals.log })
 
 
 
 -- INFO
 
 
-viewer : Session msg -> Maybe Viewer
-viewer session =
-    case session of
-        LoggedIn internals ->
-            Just internals.viewer
-
-        Guest _ ->
-            Nothing
+viewer : Session msg -> Viewer
+viewer (LoggedIn (AuthenticatedInternals internals)) =
+    internals.viewer
 
 
-cred : Session msg -> Maybe Cred
-cred session =
-    case session of
-        LoggedIn internals ->
-            Just (Viewer.cred internals.viewer)
-
-        Guest _ ->
-            Nothing
+cred : Session msg -> Cred
+cred (LoggedIn (AuthenticatedInternals internals)) =
+    Viewer.cred internals.viewer
 
 
 navKey : Session msg -> Nav.Key
-navKey session =
-    case session of
-        LoggedIn internals ->
-            internals.navKey
-
-        Guest key ->
-            key
+navKey (LoggedIn (AuthenticatedInternals internals)) =
+    internals.navKey
 
 
-log : Session msg -> Maybe Event.Log
-log session =
-    case session of
-        LoggedIn internals ->
-            Just internals.log
-
-        Guest _ ->
-            Nothing
+log : Session msg -> Event.Log
+log (LoggedIn (AuthenticatedInternals internals)) =
+    internals.log
 
 
 
@@ -196,22 +160,19 @@ log session =
 subscriptions : (Session msg -> msg) -> Session msg -> Sub msg
 subscriptions toMsg session =
     case session of
-        LoggedIn internals ->
+        LoggedIn (AuthenticatedInternals internals) ->
             Subscriptions.subscriptions
                 (\state ->
-                    LoggedIn { internals | subscriptions = state }
+                    LoggedIn (AuthenticatedInternals { internals | subscriptions = state })
                         |> toMsg
                 )
                 internals.subscriptions
-
-        Guest _ ->
-            Sub.none
 
 
 subscribe : (SubscriptionDataMsg -> msg) -> Session msg -> ( Session msg, Cmd msg )
 subscribe toMsg session =
     case session of
-        LoggedIn internals ->
+        LoggedIn (AuthenticatedInternals internals) ->
             let
                 ( subs, cmd ) =
                     ( internals.subscriptions, Cmd.none )
@@ -219,12 +180,9 @@ subscribe toMsg session =
                         |> subscribeToProjectAdded toMsg
                         |> subscribeToEventAdded toMsg
             in
-            ( LoggedIn { internals | subscriptions = subs }
+            ( LoggedIn (AuthenticatedInternals { internals | subscriptions = subs })
             , cmd
             )
-
-        Guest _ ->
-            ( session, Cmd.none )
 
 
 subscribeToEventAdded :
@@ -348,15 +306,17 @@ fromViewer key context maybeViewer =
             Task.map
                 (\res ->
                     LoggedIn
-                        { navKey = key
-                        , viewer = viewerVal
-                        , projects = List.map Edge.node res.projects.edges
-                        , knownHosts = res.knownHosts
-                        , log = res.log
-                        , subscriptions = Subscriptions.init
-                        }
+                        (AuthenticatedInternals
+                            { navKey = key
+                            , viewer = viewerVal
+                            , projects = List.map Edge.node res.projects.edges
+                            , knownHosts = res.knownHosts
+                            , log = res.log
+                            , subscriptions = Subscriptions.init
+                            }
+                        )
                 )
                 request
 
         Nothing ->
-            Task.succeed (Guest key)
+            Task.fail Unauthenticated

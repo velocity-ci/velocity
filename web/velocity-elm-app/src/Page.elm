@@ -227,7 +227,7 @@ viewLargeScreenNotificationsPanel { context, session } =
             [ Event.view
                 { projects = Session.projects session
                 , knownHosts = Session.knownHosts session
-                , maybeLog = Session.log session
+                , log = Session.log session
                 }
             ]
         )
@@ -243,7 +243,7 @@ viewCollapsableNotificationsPanel { session, layout } =
         Event.view
             { projects = Session.projects session
             , knownHosts = Session.knownHosts session
-            , maybeLog = Session.log session
+            , log = Session.log session
             }
 
     else
@@ -383,18 +383,12 @@ viewMobileHeaderMenu config =
         linkTo =
             navbarLink config.page
     in
-    case Session.viewer config.session of
-        Just viewer ->
-            [ Header.notificationsToggle
-                { amount = 1
-                , toggled = notificationsOpen
-                , toggleMsg = Layout userMenu >> config.updateLayout
-                }
-            ]
-
-        Nothing ->
-            [ linkTo Route.Login (text "Sign in")
-            ]
+    [ Header.notificationsToggle
+        { amount = 1
+        , toggled = notificationsOpen
+        , toggleMsg = Layout userMenu >> config.updateLayout
+        }
+    ]
 
 
 viewDesktopHeaderMenu : Page -> Session msg -> (Layout -> msg) -> Layout -> List (Element msg)
@@ -403,55 +397,49 @@ viewDesktopHeaderMenu page session layoutMsg (Layout status notificationsPanel) 
         linkTo =
             navbarLink page
     in
-    case Session.viewer session of
-        Just viewer ->
-            [ el
-                [ width (px 30)
-                , height (px 30)
-                , alignTop
-                , Border.rounded 180
-                , Background.image (Asset.src Asset.defaultAvatar)
-                , Font.size 16
-                , pointer
-                , below
-                    (if status == ListenClicks then
-                        Header.userMenuToggle
+    [ el
+        [ width (px 30)
+        , height (px 30)
+        , alignTop
+        , Border.rounded 180
+        , Background.image (Asset.src Asset.defaultAvatar)
+        , Font.size 16
+        , pointer
+        , below
+            (if status == ListenClicks then
+                Header.userMenuToggle
 
-                     else
-                        none
-                    )
-                , onClick
-                    (if status == Closed then
-                        layoutMsg (Layout Open notificationsPanel)
-
-                     else
-                        layoutMsg (Layout status notificationsPanel)
-                    )
-                , Border.shadow
-                    { offset = ( 0, 0 )
-                    , size =
-                        if status == ListenClicks then
-                            5
-
-                        else
-                            0
-                    , blur = 10
-                    , color = Palette.neutral4
-                    }
-                ]
+             else
                 none
-            , el
-                [ Font.color Palette.neutral7
-                , centerY
-                , Font.heavy
-                , Font.size 16
-                ]
-                (text "Eddy Lane")
-            ]
+            )
+        , onClick
+            (if status == Closed then
+                layoutMsg (Layout Open notificationsPanel)
 
-        Nothing ->
-            [ linkTo Route.Login (text "Sign in")
-            ]
+             else
+                layoutMsg (Layout status notificationsPanel)
+            )
+        , Border.shadow
+            { offset = ( 0, 0 )
+            , size =
+                if status == ListenClicks then
+                    5
+
+                else
+                    0
+            , blur = 10
+            , color = Palette.neutral4
+            }
+        ]
+        none
+    , el
+        [ Font.color Palette.neutral7
+        , centerY
+        , Font.heavy
+        , Font.size 16
+        ]
+        (text "Eddy Lane")
+    ]
 
 
 navbarLink : Page -> Route -> Element msg -> Element msg

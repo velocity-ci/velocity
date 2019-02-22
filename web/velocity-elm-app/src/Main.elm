@@ -239,48 +239,21 @@ changeRouteTo maybeRoute currentPage =
             )
 
         Just (Route.Home activePanel) ->
-            case Session.viewer session of
-                Nothing ->
-                    ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) Route.Login
-                    )
-
-                Just _ ->
-                    HomePage.init session context activePanel
-                        |> updateWith Home GotHomeMsg currentPage
+            HomePage.init session context activePanel
+                |> updateWith Home GotHomeMsg currentPage
 
         Just Route.Login ->
-            case Session.viewer session of
-                Just _ ->
-                    ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-                    )
-
-                Nothing ->
-                    LoginPage.init session context
-                        |> updateWith Login GotLoginMsg currentPage
+            ( Redirect session context
+            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+            )
 
         Just (Route.Build id) ->
-            case Session.viewer session of
-                Nothing ->
-                    ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) Route.Login
-                    )
-
-                Just _ ->
-                    BuildPage.init session context id
-                        |> updateWith Build GotBuildMsg currentPage
+            BuildPage.init session context id
+                |> updateWith Build GotBuildMsg currentPage
 
         Just (Route.Project slug) ->
-            case Session.viewer session of
-                Nothing ->
-                    ( Redirect session context
-                    , Route.replaceUrl (Session.navKey session) Route.Login
-                    )
-
-                Just _ ->
-                    ProjectPage.init session context slug
-                        |> updateWith Project GotProjectMsg currentPage
+            ProjectPage.init session context slug
+                |> updateWith Project GotProjectMsg currentPage
 
 
 updatePage : Msg -> Body -> ( Body, Cmd Msg )
@@ -338,12 +311,7 @@ updatePage msg page =
 
         ( UpdatedSession (Ok session), Redirect _ _ ) ->
             ( Redirect session (toContext page)
-            , case Session.viewer session of
-                Just _ ->
-                    Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-
-                Nothing ->
-                    Route.replaceUrl (Session.navKey session) Route.Login
+            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
             )
 
         ( UpdatedSession (Err _), _ ) ->

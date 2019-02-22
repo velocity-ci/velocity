@@ -775,13 +775,7 @@ type Msg msg
 
 update : Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
 update msg model =
-    case Session.cred model.session of
-        Just cred ->
-            updateAuthenticated cred msg model
-
-        Nothing ->
-            -- Handle unauthenticated
-            ( model, Cmd.none )
+    updateAuthenticated (Session.cred model.session) msg model
 
 
 updateAuthenticated : Cred -> Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
