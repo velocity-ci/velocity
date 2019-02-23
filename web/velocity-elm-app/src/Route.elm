@@ -14,6 +14,7 @@ import Url.Parser.Query as Query
 import Username exposing (Username)
 
 
+
 -- ROUTING
 
 
@@ -107,4 +108,4 @@ routeToString page =
         ( urlPieces, queryPieces ) =
             routePieces page
     in
-        "/" ++ String.join "/" urlPieces ++ Url.Builder.toQuery queryPieces
+    "/" ++ String.join "/" urlPieces ++ Url.Builder.toQuery queryPieces

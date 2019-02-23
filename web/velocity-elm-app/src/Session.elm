@@ -1,6 +1,6 @@
 port module Session exposing
     ( AuthenticatedInternals
-    , InitError
+    , InitError(..)
     , Session
     , SubscriptionDataMsg
     , addKnownHost

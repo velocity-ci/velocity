@@ -164,6 +164,7 @@ type Msg
     | CompletedLoadCommits (Result (Graphql.Http.Error (Connection Commit)) (Connection Commit))
     | CompletedLoadTasks (Result (Graphql.Http.Error (List Task)) (List Task))
     | NextCommitPage
+    | PreviousCommitPage
 
 
 update : Msg -> Model msg -> ( Model msg, Cmd Msg )
@@ -271,6 +272,28 @@ update msg model =
             , getConnection model.slug model.context model.session <|
                 { after = after
                 , before = OptionalArgument.Absent
+                , first = OptionalArgument.Present 50
+                , last = OptionalArgument.Absent
+                }
+            )
+
+        PreviousCommitPage ->
+            let
+                before =
+                    case model.commitConnection of
+                        Loaded connection ->
+                            connection.pageInfo
+                                |> PageInfo.startCursor
+                                |> Maybe.map OptionalArgument.Present
+                                |> Maybe.withDefault OptionalArgument.Absent
+
+                        _ ->
+                            OptionalArgument.Absent
+            in
+            ( { model | commitConnection = Loading }
+            , getConnection model.slug model.context model.session <|
+                { after = OptionalArgument.Absent
+                , before = before
                 , first = OptionalArgument.Present 50
                 , last = OptionalArgument.Absent
                 }
@@ -1179,9 +1202,15 @@ viewRecentTaskItem task =
         , Border.rounded 10
         , clipX
         ]
-        [ el [ height fill, Font.color Palette.danger4, width shrink, centerX ] (Icon.xCircle <| Icon.size 38)
-        , paragraph [ width fill ] [ el [ Font.color Palette.neutral1, width fill, centerX, Font.alignLeft ] (text taskName) ]
-        , el [ height fill, Font.color Palette.neutral3, width shrink, centerX ] (el [ alignBottom ] (text "3 months ago"))
+        [ el
+            [ height fill, Font.color Palette.danger4, width shrink, centerX ]
+            (Icon.xCircle <| Icon.size 38)
+        , paragraph
+            [ width fill ]
+            [ el [ Font.color Palette.neutral1, width fill, centerX, Font.alignLeft ] (text taskName) ]
+        , el
+            [ height fill, Font.color Palette.neutral3, width shrink, centerX ]
+            (el [ alignBottom ] (text "3 months ago"))
         ]
 
 

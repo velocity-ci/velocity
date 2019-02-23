@@ -1,9 +1,10 @@
-module Page.Login exposing (Model, Msg, init, subscriptions, toContext, toSession, update, view)
+module Page.Login exposing (Model, Msg, init, subscriptions, toContext, update, view)
 
 {-| The login page.
 -}
 
 import Api exposing (Cred)
+import Browser.Navigation as Nav
 import Context exposing (Context)
 import Element exposing (..)
 import Element.Background as Background
@@ -17,7 +18,6 @@ import Loading
 import Page.Home.ActivePanel as HomeActivePanel
 import Palette
 import Route exposing (Route)
-import Session exposing (Session)
 import Task exposing (Task)
 
 
@@ -26,7 +26,7 @@ import Task exposing (Task)
 
 
 type alias Model msg =
-    { session : Session msg
+    { navKey : Nav.Key
     , context : Context msg
     , problems : List Problem
     , form : Form
@@ -45,9 +45,9 @@ type alias Form =
     }
 
 
-init : Session msg -> Context msg -> ( Model msg, Cmd (Msg msg) )
-init session context =
-    ( { session = session
+init : Nav.Key -> Context msg -> ( Model msg, Cmd (Msg msg) )
+init navKey context =
+    ( { navKey = navKey
       , context = context
       , problems = []
       , form =
@@ -269,8 +269,11 @@ type Msg baseMsg
     | EnteredUsername String
     | EnteredPassword String
     | CompletedLogin (Result (Graphql.Http.Error (Api.Response Cred)) (Api.Response Cred))
-    | UpdateSession (Task Session.InitError (Session baseMsg))
-    | UpdatedSession (Result Session.InitError (Session baseMsg))
+
+
+
+--    | UpdateSession (Task Session.InitError (Session baseMsg))
+--    | UpdatedSession (Result Session.InitError (Session baseMsg))
 
 
 update : Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
@@ -327,24 +330,26 @@ update msg model =
             , Cmd.none
             )
 
-        --            let
-        --                serverErrors =
-        --                    Api.decodeErrors error
-        --                        |> List.map ServerError
-        --            in
-        --            ( { model | problems = List.append model.problems serverErrors }
-        --            , Cmd.none
-        --            )
-        UpdateSession task ->
-            ( model, Task.attempt UpdatedSession task )
 
-        UpdatedSession (Ok session) ->
-            ( { model | session = session }
-            , Route.replaceUrl (Session.navKey session) (Route.Home HomeActivePanel.None)
-            )
 
-        UpdatedSession (Err _) ->
-            ( model, Cmd.none )
+--            let
+--                serverErrors =
+--                    Api.decodeErrors error
+--                        |> List.map ServerError
+--            in
+--            ( { model | problems = List.append model.problems serverErrors }
+--            , Cmd.none
+--            )
+--        UpdateSession task ->
+--            ( model, Task.attempt UpdatedSession task )
+--
+--        UpdatedSession (Ok session) ->
+--            ( { model | session = session }
+--            , Route.replaceUrl (Session.navKey session) (Route.Home HomeActivePanel.None)
+--            )
+--
+--        UpdatedSession (Err _) ->
+--            ( model, Cmd.none )
 
 
 {-| Helper function for `update`. Updates the form and returns Cmd.none.
@@ -361,10 +366,11 @@ updateForm transform model =
 
 subscriptions : Model msg -> Sub (Msg msg)
 subscriptions model =
-    Session.changes UpdateSession model.context model.session
+    Sub.none
 
 
 
+--    Session.changes UpdateSession model.context model.session
 -- FORM
 
 
@@ -424,11 +430,6 @@ login context (Trimmed form) msg =
 
 
 -- EXPORT
-
-
-toSession : Model msg -> Session msg
-toSession model =
-    model.session
 
 
 toContext : Model msg -> Context msg

@@ -36,6 +36,7 @@ import Viewer exposing (Viewer)
 type Model
     = InitError String
     | InitialHTTPRequests (Context Msg) Nav.Key
+    | Unauthenticated (LoginPage.Model Msg)
     | ApplicationStarted Layout Body
 
 
@@ -43,7 +44,6 @@ type Body
     = Redirect (Session Msg) (Context Msg)
     | NotFound (Session Msg) (Context Msg)
     | Home (HomePage.Model Msg)
-    | Login (LoginPage.Model Msg)
     | Project (ProjectPage.Model Msg)
     | Build (BuildPage.Model Msg)
 
@@ -52,19 +52,16 @@ init : Maybe Viewer -> Result Decode.Error (Context Msg) -> Url -> Nav.Key -> ( 
 init maybeViewer contextResult url navKey =
     case contextResult of
         Ok context ->
-            let
-                sessionTask =
-                    Session.fromViewer navKey context maybeViewer
-            in
             ( InitialHTTPRequests context navKey
-            , sessionTask
+            , maybeViewer
+                |> Session.fromViewer navKey context
                 |> Task.map (\s -> changeRouteTo (Route.fromUrl url) (Redirect s context))
                 |> Task.attempt StartApplication
             )
 
         Err error ->
             ( InitError (Decode.errorToString error)
-            , Cmd.none
+            , Route.replaceUrl navKey Route.Login
             )
 
 
@@ -99,9 +96,9 @@ viewCurrentPage layout currentPage =
         Home page ->
             viewPage Page.Home GotHomeMsg (HomePage.view page)
 
-        Login page ->
-            viewPage Page.Login GotLoginMsg (LoginPage.view page)
-
+        --
+        --        Login page ->
+        --            viewPage Page.Login GotLoginMsg (LoginPage.view page)
         Project page ->
             viewPage Page.Project GotProjectMsg (ProjectPage.view page)
 
@@ -122,6 +119,19 @@ view model =
     case model of
         ApplicationStarted header currentPage ->
             viewCurrentPage header currentPage
+
+        Unauthenticated loginModel ->
+            let
+                { title, content } =
+                    LoginPage.view loginModel
+            in
+            { title = "Login"
+            , body =
+                [ layout
+                    [ width fill, height fill ]
+                    (Element.map GotLoginMsg content)
+                ]
+            }
 
         InitialHTTPRequests _ _ ->
             { title = "Loading"
@@ -183,9 +193,6 @@ toSession page =
         Home home ->
             HomePage.toSession home
 
-        Login login ->
-            LoginPage.toSession login
-
         Project project ->
             ProjectPage.toSession project
 
@@ -204,9 +211,6 @@ toContext page =
 
         Home home ->
             HomePage.toContext home
-
-        Login login ->
-            LoginPage.toContext login
 
         Project project ->
             ProjectPage.toContext project
@@ -294,10 +298,6 @@ updatePage msg page =
             HomePage.update subMsg home
                 |> updateWith Home GotHomeMsg page
 
-        ( GotLoginMsg subMsg, Login login ) ->
-            LoginPage.update subMsg login
-                |> updateWith Login GotLoginMsg page
-
         ( GotProjectMsg subMsg, Project project ) ->
             ProjectPage.update subMsg project
                 |> updateWith Project GotProjectMsg page
@@ -334,9 +334,6 @@ updateContext context page =
         Home home ->
             Home { home | context = context }
 
-        Login login ->
-            Login { login | context = context }
-
         Project project ->
             Project { project | context = context }
 
@@ -355,9 +352,6 @@ updateSession session page =
 
         Home home ->
             Home { home | session = session }
-
-        Login login ->
-            Login { login | session = session }
 
         Project project ->
             Project { project | session = session }
@@ -380,7 +374,7 @@ update msg model =
                     updatePage msg page
                         |> Tuple.mapFirst (ApplicationStarted header)
 
-        InitialHTTPRequests _ _ ->
+        InitialHTTPRequests context navKey ->
             case msg of
                 StartApplication (Ok ( app, pageCmd )) ->
                     let
@@ -395,12 +389,24 @@ update msg model =
                     )
 
                 StartApplication (Err err) ->
-                    ( InitError "HTTP error"
-                    , Cmd.none
-                    )
+                    case err of
+                        Session.Unauthenticated ->
+                            LoginPage.init navKey context
+                                |> Tuple.mapFirst Unauthenticated
+                                |> Tuple.mapSecond (Cmd.map GotLoginMsg)
+
+                        _ ->
+                            ( InitError "Unexpected error happened!"
+                            , Cmd.none
+                            )
 
                 _ ->
                     ( model, Cmd.none )
+
+        Unauthenticated loginModel ->
+            ( model
+            , Cmd.none
+            )
 
         InitError _ ->
             ( model, Cmd.none )
@@ -433,10 +439,7 @@ sessionSubscriptions model =
         ApplicationStarted _ page ->
             Session.subscriptions (Task.succeed >> UpdateSession) (toSession page)
 
-        InitialHTTPRequests context _ ->
-            Sub.none
-
-        InitError _ ->
+        _ ->
             Sub.none
 
 
@@ -446,10 +449,7 @@ layoutSubscriptions model =
         ApplicationStarted layout _ ->
             Page.layoutSubscriptions layout UpdateLayout
 
-        InitialHTTPRequests _ _ ->
-            Sub.none
-
-        InitError _ ->
+        _ ->
             Sub.none
 
 
@@ -467,14 +467,14 @@ pageSubscriptions model =
                 Home home ->
                     Sub.map GotHomeMsg (HomePage.subscriptions home)
 
-                Login login ->
-                    Sub.map GotLoginMsg (LoginPage.subscriptions login)
-
                 Project project ->
                     Sub.map GotProjectMsg (ProjectPage.subscriptions project)
 
                 Build build ->
                     Sub.map GotBuildMsg (BuildPage.subscriptions build)
+
+        Unauthenticated _ ->
+            Sub.none
 
         InitialHTTPRequests _ _ ->
             Sub.none
