@@ -1,34 +1,62 @@
 package builder
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
-func (b *Builder) runBuild(build *BuildPayload) {
-	velocity.GetLogger().Info("running build", zap.String("buildID", build.Build.ID))
+// Builder -> Architect (Build events)
+var (
+	eventBuildPrefix   = fmt.Sprintf("%sbuild-", EventPrefix)
+	EventBuildNewEvent = fmt.Sprintf("%snew-event", eventBuildPrefix)
+)
 
-	emitter := NewEmitter(b.ws, build.Build)
+type Build struct {
+	*baseJob
+	Build   *build.Build    `json:"build"`
+	Steps   []*build.Step   `json:"steps"`
+	Streams []*build.Stream `json:"streams"`
+}
 
-	backupResolver := NewParameterResolver(build.Build.Parameters)
+func NewBuild() *Build {
+	return &Build{
+		baseJob: &baseJob{
+			Name: "build",
+		},
+	}
+}
 
-	vT := build.Build.Task.VTask
+func (j *Build) Parse(payloadBytes []byte) error {
+	return json.Unmarshal(payloadBytes, j)
+}
+
+func (j *Build) Do(ws *phoenix.Client) error {
+	velocity.GetLogger().Info("running build", zap.String("buildID", j.Build.ID))
+
+	emitter := NewEmitter(ws, j.Build)
+
+	backupResolver := NewParameterResolver(j.Build.Parameters)
+
+	vT := j.Build.Task.VTask
 
 	for i, step := range vT.Steps {
-		bStep := build.Steps[i]
+		bStep := j.Steps[i]
 		velocity.GetLogger().Debug("running step", zap.String("stepID", bStep.ID))
-		emitter.SetStepAndStreams(bStep, build.Streams)
+		emitter.SetStepAndStreams(bStep, j.Streams)
 
 		if step.GetType() == "setup" {
 			step.(*velocity.Setup).Init(
 				&backupResolver,
-				&build.Build.Task.Commit.Project.Config,
-				build.Build.Task.Commit.Hash,
+				&j.Build.Task.Commit.Project.Config,
+				j.Build.Task.Commit.Hash,
 			)
 		}
 		step.SetProjectRoot(vT.ProjectRoot)
@@ -41,14 +69,14 @@ func (b *Builder) runBuild(build *BuildPayload) {
 	if strings.Contains(wd, velocity.WorkspaceDir) {
 		os.RemoveAll(wd)
 	}
-	velocity.GetLogger().Info("completed build", zap.String("buildID", build.Build.ID))
+	velocity.GetLogger().Info("completed build", zap.String("buildID", j.Build.ID))
 	os.Chdir("/opt/velocityci")
+	return nil
 }
 
-type BuildPayload struct {
-	Build   *build.Build    `json:"build"`
-	Steps   []*build.Step   `json:"steps"`
-	Streams []*build.Stream `json:"streams"`
+func (j *Build) Stop(ws *phoenix.Client) error {
+
+	return nil
 }
 
 type BuildLogLine struct {

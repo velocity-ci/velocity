@@ -22,14 +22,29 @@ defmodule ArchitectWeb.BuilderChannel do
   Builder will say when it is 'ready' to request any waiting jobs.
   """
   def handle_in("#{@event_prefix}builder-ready", nil, socket) do
-    {:noreply, socket}
+    # push(socket, "")
+    # {:noreply, socket}
+    {:reply, :ok, socket}
   end
 
   @doc """
-  Starts a synchronisation job for a builder.
+  Starts a build job for a builder.
   """
-  def handle_info(:job_synchronise, socket) do
-    push(socket, "#{@event_prefix}do-synchronise", %{})
+  def handle_info(:job_build, socket) do
+    push(socket, "#{@event_prefix}job-do-build", %{
+      build: %{
+        id: "",
+        task: %{},
+        parameters: %{},
+        status: "",
+        createdAt: "",
+        updatedAt: "",
+        startedAt: "",
+        completedAt: ""
+      },
+      steps: [],
+      streams: []
+    })
 
     {:noreply, socket}
   end

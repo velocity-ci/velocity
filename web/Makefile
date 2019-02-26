@@ -2,12 +2,12 @@ GIT_VERSION = $(shell git describe --always)
 
 
 install:
-	docker run --rm -v ${CURDIR}/velocity:/app -w /app node:8 yarn install
-	docker run --rm -v ${CURDIR}/velocity:/app -w /app node:8 node_modules/.bin/elm-package install -y
+	docker run --rm -v ${CURDIR}/velocity-elm-app:/app -w /app node:8 yarn install
+	docker run --rm -v ${CURDIR}/velocity-elm-app:/app -w /app node:8 node_modules/.bin/elm-package install -y
 
 serve:
 	docker run --rm -it -v \
-	${CURDIR}/velocity:/app \
+	${CURDIR}/velocity-elm-app:/app \
 	 -p 4200:4200 \
 	 -w /app \
 	 node:8 /bin/sh \
@@ -17,7 +17,7 @@ build:
 	@echo "Building frontend release"
 
 	@docker run --rm \
-	--volume ${CURDIR}/velocity:/app \
+	--volume ${CURDIR}/velocity-elm-app:/app \
 	--workdir /app \
 	node:8 \
 	sh -c "NODE_ENV=prod ARCHITECT_ADDRESS=__ARCHITECT_ADDRESS__ node_modules/.bin/webpack"
@@ -27,7 +27,7 @@ build:
 
 rebuild-deps:
 	docker run --rm -it -v \
-	${CURDIR}/velocity:/app \
+	${CURDIR}/velocity-elm-app:/app \
 	 -p 4200:4200 \
 	 -w /app \
 	 node:8 /bin/sh \
@@ -41,8 +41,8 @@ publish:
 	@docker push civelocity/web:${GIT_VERSION}
 
 test:
-	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --compiler ./node_modules/.bin/elm-make'
+	docker run --rm -it -v ${CURDIR}/velocity-elm-app:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --compiler ./node_modules/.bin/elm-make'
 
 test_watch:
-	docker run --rm -it -v ${CURDIR}/velocity:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --watch --compiler ./node_modules/.bin/elm-make'
+	docker run --rm -it -v ${CURDIR}/velocity-elm-app:/app -w /app node:8 /bin/sh -c 'npm rebuild elm --silent; ./node_modules/.bin/elm-test --watch --compiler ./node_modules/.bin/elm-make'
 

@@ -239,7 +239,11 @@ func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
 						s.sentUnacked.Store(k, m)
 						s.messageQueue = append(s.messageQueue, m.message)
 
-						velocity.GetLogger().Debug("requeued", zap.Uint64("ref", k.(uint64)))
+						velocity.GetLogger().Debug("requeued",
+							zap.Uint64("ref", k.(uint64)),
+							zap.String("topic", m.message.Topic),
+							zap.String("event", m.message.Event),
+						)
 					}
 				}
 				return true
@@ -250,6 +254,13 @@ func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
 				if val.response != nil {
 					val.response <- m.Payload.(*PhoenixReplyPayload)
 					close(val.response)
+				}
+				if val.message.Event != PhxHeartbeatEvent {
+					velocity.GetLogger().Debug("acked",
+						zap.Uint64("ref", *m.Ref),
+						zap.String("topic", val.message.Topic),
+						zap.String("event", val.message.Event),
+					)
 				}
 				s.sentUnacked.Delete(*m.Ref)
 			}
