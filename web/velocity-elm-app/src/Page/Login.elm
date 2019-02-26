@@ -1,4 +1,4 @@
-module Page.Login exposing (Model, Msg, init, subscriptions, toContext, update, view)
+module Page.Login exposing (Model, Msg, init, toContext, toNavKey, update, view)
 
 {-| The login page.
 -}
@@ -361,16 +361,6 @@ updateForm transform model =
 
 
 
--- SUBSCRIPTIONS
-
-
-subscriptions : Model msg -> Sub (Msg msg)
-subscriptions model =
-    Sub.none
-
-
-
---    Session.changes UpdateSession model.context model.session
 -- FORM
 
 
@@ -435,3 +425,8 @@ login context (Trimmed form) msg =
 toContext : Model msg -> Context msg
 toContext model =
     model.context
+
+
+toNavKey : Model msg -> Nav.Key
+toNavKey model =
+    model.navKey

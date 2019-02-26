@@ -671,7 +671,10 @@ viewProjectPanel project =
                     [ paragraph [ width fill ]
                         [ Route.link [ width fill, clip ] (text <| Project.name project) (Route.Project <| Project.slug project)
                         ]
-                    , viewIf (Project.syncing project) <| column [ width shrink, Font.color Palette.primary1 ] [ Loading.icon { width = 20, height = 20 } ]
+                    , viewIf (Project.syncing project) <|
+                        column
+                            [ width shrink, Font.color Palette.primary1 ]
+                            [ Loading.icon { width = 20, height = 20 } ]
                     ]
                 , column
                     [ paddingEach { bottom = 0, left = 0, right = 0, top = 10 }
@@ -1008,11 +1011,8 @@ scrollToTop =
 
 
 subscriptions : Model msg -> Sub (Msg msg)
-subscriptions model =
-    Sub.batch
-        [ Session.changes UpdateSession model.context model.session
-        , parsedRepositorySub
-        ]
+subscriptions _ =
+    parsedRepositorySub
 
 
 parsedRepositorySub : Sub (Msg msg)

@@ -9,8 +9,6 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Graphql.Document
-import Graphql.Http
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Loading
 import Page exposing (Layout)
@@ -36,11 +34,16 @@ import Viewer exposing (Viewer)
 type Model
     = InitError String
     | InitialHTTPRequests (Context Msg) Nav.Key
-    | Unauthenticated (LoginPage.Model Msg)
-    | ApplicationStarted Layout Body
+    | Unauthenticated Unauthenticated
+    | ApplicationStarted Layout Authenticated
 
 
-type Body
+type Unauthenticated
+    = LoggingIn (LoginPage.Model Msg)
+    | RedirectingToLogin Nav.Key (Context Msg)
+
+
+type Authenticated
     = Redirect (Session Msg) (Context Msg)
     | NotFound (Session Msg) (Context Msg)
     | Home (HomePage.Model Msg)
@@ -61,7 +64,7 @@ init maybeViewer contextResult url navKey =
 
         Err error ->
             ( InitError (Decode.errorToString error)
-            , Route.replaceUrl navKey Route.Login
+            , Cmd.none
             )
 
 
@@ -69,7 +72,7 @@ init maybeViewer contextResult url navKey =
 -- VIEW
 
 
-viewCurrentPage : Layout -> Body -> Document Msg
+viewCurrentPage : Layout -> Authenticated -> Document Msg
 viewCurrentPage layout currentPage =
     let
         session =
@@ -96,22 +99,11 @@ viewCurrentPage layout currentPage =
         Home page ->
             viewPage Page.Home GotHomeMsg (HomePage.view page)
 
-        --
-        --        Login page ->
-        --            viewPage Page.Login GotLoginMsg (LoginPage.view page)
         Project page ->
             viewPage Page.Project GotProjectMsg (ProjectPage.view page)
 
         Build page ->
             viewPage Page.Build GotBuildMsg (BuildPage.view page)
-
-
-
---activityLog : Session Msg -> Activity.ViewConfiguration
---activityLog session =
---    Maybe.map2 Activity.ViewConfiguration (Session.log session) (Just <| Session.projects session)
---        |> Maybe.withDefault { activities = Activity.init, projects = [] }
---
 
 
 view : Model -> Document Msg
@@ -120,27 +112,14 @@ view model =
         ApplicationStarted header currentPage ->
             viewCurrentPage header currentPage
 
-        Unauthenticated loginModel ->
+        Unauthenticated (LoggingIn loginModel) ->
             let
                 { title, content } =
                     LoginPage.view loginModel
             in
             { title = "Login"
             , body =
-                [ layout
-                    [ width fill, height fill ]
-                    (Element.map GotLoginMsg content)
-                ]
-            }
-
-        InitialHTTPRequests _ _ ->
-            { title = "Loading"
-            , body =
-                [ layout
-                    [ width fill, height fill ]
-                    (el [ centerX, moveDown 100, width shrink, height shrink ] <|
-                        Loading.icon { width = 50, height = 50 }
-                    )
+                [ layout [ width fill, height fill ] (Element.map GotLoginMsg content)
                 ]
             }
 
@@ -159,6 +138,17 @@ view model =
                 ]
             }
 
+        _ ->
+            { title = "Loading"
+            , body =
+                [ layout
+                    [ width fill, height fill ]
+                    (el [ centerX, moveDown 100, width shrink, height shrink ] <|
+                        Loading.icon { width = 50, height = 50 }
+                    )
+                ]
+            }
+
 
 
 ---- UPDATE ----
@@ -166,7 +156,7 @@ view model =
 
 type Msg
     = Ignored
-    | StartApplication (Result Session.InitError ( Body, Cmd Msg ))
+    | StartApplication (Result Session.InitError ( Authenticated, Cmd Msg ))
     | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
@@ -181,7 +171,7 @@ type Msg
     | SessionSubscription Session.SubscriptionDataMsg
 
 
-toSession : Body -> Session Msg
+toSession : Authenticated -> Session Msg
 toSession page =
     case page of
         Redirect session _ ->
@@ -200,7 +190,7 @@ toSession page =
             BuildPage.toSession build
 
 
-toContext : Body -> Context Msg
+toContext : Authenticated -> Context Msg
 toContext page =
     case page of
         Redirect _ context ->
@@ -219,7 +209,7 @@ toContext page =
             BuildPage.toContext build
 
 
-changeRouteTo : Maybe Route -> Body -> ( Body, Cmd Msg )
+changeRouteTo : Maybe Route -> Authenticated -> ( Authenticated, Cmd Msg )
 changeRouteTo maybeRoute currentPage =
     let
         session =
@@ -260,7 +250,7 @@ changeRouteTo maybeRoute currentPage =
                 |> updateWith Project GotProjectMsg currentPage
 
 
-updatePage : Msg -> Body -> ( Body, Cmd Msg )
+updatePage : Msg -> Authenticated -> ( Authenticated, Cmd Msg )
 updatePage msg page =
     case ( msg, page ) of
         ( Ignored, _ ) ->
@@ -306,23 +296,22 @@ updatePage msg page =
             BuildPage.update subMsg build
                 |> updateWith Build GotBuildMsg page
 
-        ( UpdateSession task, _ ) ->
-            ( page, Task.attempt UpdatedSession task )
-
-        ( UpdatedSession (Ok session), Redirect _ _ ) ->
-            ( Redirect session (toContext page)
-            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
-            )
-
-        ( UpdatedSession (Err _), _ ) ->
-            ( page, Cmd.none )
-
+        --
+        --        ( UpdateSession task, _ ) ->
+        --            ( page, Task.attempt UpdatedSession task )
+        --        ( UpdatedSession (Ok session), Redirect _ _ ) ->
+        --            ( Redirect session (toContext page)
+        --            , Route.replaceUrl (Session.navKey session) (Route.Home ActivePanel.None)
+        --            )
+        --
+        --        ( UpdatedSession (Err _), _ ) ->
+        --            ( page, Cmd.none )
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( page, Cmd.none )
 
 
-updateContext : Context Msg -> Body -> Body
+updateContext : Context Msg -> Authenticated -> Authenticated
 updateContext context page =
     case page of
         Redirect session _ ->
@@ -341,7 +330,7 @@ updateContext context page =
             Build { build | context = context }
 
 
-updateSession : Session Msg -> Body -> Body
+updateSession : Session Msg -> Authenticated -> Authenticated
 updateSession session page =
     case page of
         Redirect _ context ->
@@ -370,6 +359,9 @@ update msg model =
                     , Cmd.none
                     )
 
+                UpdateSession task ->
+                    ( model, Task.attempt UpdatedSession task )
+
                 _ ->
                     updatePage msg page
                         |> Tuple.mapFirst (ApplicationStarted header)
@@ -391,9 +383,9 @@ update msg model =
                 StartApplication (Err err) ->
                     case err of
                         Session.Unauthenticated ->
-                            LoginPage.init navKey context
-                                |> Tuple.mapFirst Unauthenticated
-                                |> Tuple.mapSecond (Cmd.map GotLoginMsg)
+                            ( Unauthenticated (RedirectingToLogin navKey context)
+                            , Route.replaceUrl navKey Route.Login
+                            )
 
                         _ ->
                             ( InitError "Unexpected error happened!"
@@ -403,16 +395,65 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        Unauthenticated loginModel ->
-            ( model
-            , Cmd.none
-            )
+        Unauthenticated (RedirectingToLogin navKey context) ->
+            case msg of
+                ChangedUrl url ->
+                    if Route.fromUrl url == Just Route.Login then
+                        let
+                            ( loginModel, loginCmd ) =
+                                LoginPage.init navKey context
+                        in
+                        ( Unauthenticated (LoggingIn loginModel)
+                        , Cmd.map GotLoginMsg loginCmd
+                        )
+
+                    else
+                        ( model
+                        , Route.replaceUrl navKey Route.Login
+                        )
+
+                _ ->
+                    ( model
+                    , Cmd.none
+                    )
+
+        Unauthenticated (LoggingIn loginModel) ->
+            case msg of
+                UpdatedSession (Ok session) ->
+                    let
+                        ( subscribedSession, subscribeCmd ) =
+                            Session.subscribe SessionSubscription session
+                    in
+                    ( ApplicationStarted Page.initLayout (Redirect subscribedSession (LoginPage.toContext loginModel))
+                    , Cmd.batch
+                        [ Route.replaceUrl (Session.navKey subscribedSession) (Route.Home ActivePanel.None)
+                        , subscribeCmd
+                        ]
+                    )
+
+                UpdatedSession (Err _) ->
+                    ( model
+                    , Route.replaceUrl (LoginPage.toNavKey loginModel) Route.Login
+                    )
+
+                UpdateSession task ->
+                    ( model, Task.attempt UpdatedSession task )
+
+                GotLoginMsg subMsg ->
+                    LoginPage.update subMsg loginModel
+                        |> Tuple.mapFirst (LoggingIn >> Unauthenticated)
+                        |> Tuple.mapSecond (Cmd.map GotLoginMsg)
+
+                _ ->
+                    ( model
+                    , Cmd.none
+                    )
 
         InitError _ ->
             ( model, Cmd.none )
 
 
-updateWith : (subPage -> Body) -> (subPageMsg -> Msg) -> Body -> ( subPage, Cmd subPageMsg ) -> ( Body, Cmd Msg )
+updateWith : (subPage -> Authenticated) -> (subPageMsg -> Msg) -> Authenticated -> ( subPage, Cmd subPageMsg ) -> ( Authenticated, Cmd Msg )
 updateWith toPage toMsg currentPage ( pageModel, pageCmd ) =
     ( toPage pageModel
     , Cmd.map toMsg pageCmd
@@ -437,10 +478,23 @@ sessionSubscriptions : Model -> Sub Msg
 sessionSubscriptions model =
     case model of
         ApplicationStarted _ page ->
-            Session.subscriptions (Task.succeed >> UpdateSession) (toSession page)
+            Sub.batch
+                [ Session.subscriptions (Task.succeed >> UpdateSession) (toSession page)
+                , Session.changes UpdateSession (toContext page) (toSession page |> Session.navKey)
+                ]
+
+        Unauthenticated (LoggingIn loginPage) ->
+            Session.changes UpdateSession (LoginPage.toContext loginPage) (LoginPage.toNavKey loginPage)
+
+        Unauthenticated (RedirectingToLogin navKey context) ->
+            Session.changes UpdateSession context navKey
 
         _ ->
             Sub.none
+
+
+
+--
 
 
 layoutSubscriptions : Model -> Sub Msg
@@ -462,7 +516,7 @@ pageSubscriptions model =
                     Sub.none
 
                 Redirect session context ->
-                    Session.changes UpdateSession context session
+                    Session.changes UpdateSession context (Session.navKey session)
 
                 Home home ->
                     Sub.map GotHomeMsg (HomePage.subscriptions home)

@@ -244,13 +244,16 @@ subscriptionDataUpdate subMsg session =
 -- CHANGES
 
 
-changes : (Task InitError (Session msg) -> msg2) -> Context msg -> Session msg -> Sub msg2
-changes toMsg context session =
+changes : (Task InitError (Session msg) -> msg2) -> Context msg -> Nav.Key -> Sub msg2
+changes toMsg context navKey_ =
     Api.viewerChanges
         (\maybeViewer ->
             let
+                _ =
+                    Debug.log "MAYBE VIEWER" maybeViewer
+
                 newSession =
-                    fromViewer (navKey session) context maybeViewer
+                    fromViewer navKey_ context maybeViewer
             in
             toMsg newSession
         )
