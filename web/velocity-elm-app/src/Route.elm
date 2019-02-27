@@ -1,6 +1,8 @@
 module Route exposing (Route(..), fromUrl, link, replaceUrl)
 
+import Api.Compiled.Object.CommitConnection
 import Browser.Navigation as Nav
+import Edge exposing (Cursor)
 import Element exposing (..)
 import Element.Font as Font
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
@@ -10,7 +12,7 @@ import Project.Slug
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
-import Url.Parser.Query as Query
+import Url.Parser.Query as QueryParser
 import Username exposing (Username)
 
 
@@ -23,7 +25,7 @@ type Route
     | Root
     | Login
     | Logout
-    | Project Project.Slug.Slug
+    | Project { slug : Project.Slug.Slug, maybeAfter : Maybe Edge.Cursor, maybeBefore : Maybe Edge.Cursor }
     | Build BuildId.Id
 
 
@@ -33,7 +35,19 @@ parser =
         [ Parser.map Home (Parser.top <?> ActivePanel.queryParser)
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
-        , Parser.map Project (s "project" </> Project.Slug.urlParser)
+        , Parser.map
+            (\slug maybeAfter maybeBefore ->
+                Project <|
+                    { slug = slug
+                    , maybeAfter = maybeAfter
+                    , maybeBefore = maybeBefore
+                    }
+            )
+            (s "project"
+                </> Project.Slug.urlParser
+                <?> Edge.afterQueryParser (QueryParser.string "after")
+                <?> Edge.afterQueryParser (QueryParser.string "before")
+            )
         , Parser.map Build (s "build" </> BuildId.urlParser)
         ]
 
@@ -95,8 +109,13 @@ routePieces page =
         Logout ->
             ( [ "logout" ], [] )
 
-        Project slug ->
-            ( Project.Slug.routePieces slug, [] )
+        Project { slug, maybeBefore, maybeAfter } ->
+            ( Project.Slug.routePieces slug
+            , [ Maybe.map (Edge.cursorString >> Url.Builder.string "before") maybeBefore
+              , Maybe.map (Edge.cursorString >> Url.Builder.string "after") maybeAfter
+              ]
+                |> List.filterMap identity
+            )
 
         Build id ->
             ( [ "build", BuildId.toString id ], [] )

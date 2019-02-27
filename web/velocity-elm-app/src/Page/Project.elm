@@ -8,7 +8,7 @@ import Asset
 import Browser.Events
 import Connection exposing (Connection)
 import Context exposing (Context)
-import Edge
+import Edge exposing (Cursor)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -32,6 +32,7 @@ import Project.Commit as Commit exposing (Commit)
 import Project.Slug as Slug exposing (Slug)
 import Project.Task as Task exposing (Task)
 import Project.Task.Name as TaskName
+import Route
 import Session exposing (Session)
 import Task as BaseTask
 import Time
@@ -72,14 +73,19 @@ type Status a
     | Failed
 
 
-init : Session msg -> Context msg -> Slug -> ( Model msg, Cmd Msg )
-init session context projectSlug =
+init : Session msg -> Context msg -> Slug -> Maybe Cursor -> ( Model msg, Cmd Msg )
+init session context projectSlug maybeAfter =
     let
         cred =
             Session.cred session
 
         baseUrl =
             Context.baseUrl context
+
+        after =
+            maybeAfter
+                |> Maybe.map (Edge.cursorString >> OptionalArgument.Present)
+                |> Maybe.withDefault OptionalArgument.Absent
     in
     ( { session = session
       , context = context
@@ -93,7 +99,7 @@ init session context projectSlug =
       }
     , Cmd.batch
         [ getConnection projectSlug context session <|
-            { after = OptionalArgument.Absent
+            { after = after
             , before = OptionalArgument.Absent
             , first = OptionalArgument.Present 50
             , last = OptionalArgument.Absent
@@ -262,7 +268,7 @@ update msg model =
                         Loaded connection ->
                             connection.pageInfo
                                 |> PageInfo.endCursor
-                                |> Maybe.map OptionalArgument.Present
+                                |> Maybe.map (Edge.cursorString >> OptionalArgument.Present)
                                 |> Maybe.withDefault OptionalArgument.Absent
 
                         _ ->
@@ -284,7 +290,7 @@ update msg model =
                         Loaded connection ->
                             connection.pageInfo
                                 |> PageInfo.startCursor
-                                |> Maybe.map OptionalArgument.Present
+                                |> Maybe.map (Edge.cursorString >> OptionalArgument.Present)
                                 |> Maybe.withDefault OptionalArgument.Absent
 
                         _ ->
@@ -613,7 +619,7 @@ viewTabContainer model =
                 }
             ]
             [ --            viewProjectBuilds tz buildStatus
-              viewCommitConnection model.commitConnection
+              viewCommitConnection model.slug model.commitConnection
             ]
         ]
 
@@ -730,14 +736,18 @@ viewLoadingError entity =
 -- Project Commits
 
 
-viewCommitConnection : Status (Connection Commit) -> Element Msg
-viewCommitConnection commitConnectionStatus =
+viewCommitConnection : Slug -> Status (Connection Commit) -> Element Msg
+viewCommitConnection slug commitConnectionStatus =
     commitConnectionStatus
-        |> viewIfLoaded viewCommitConnectionLoaded (viewLoadingError "commits")
+        |> viewIfLoaded (viewCommitConnectionLoaded slug) (viewLoadingError "commits")
 
 
-viewCommitConnectionLoaded : Connection Commit -> Element Msg
-viewCommitConnectionLoaded commitConnection =
+viewCommitConnectionLoaded : Slug -> Connection Commit -> Element Msg
+viewCommitConnectionLoaded slug commitConnection =
+    let
+        nextRoute =
+            Route.Project
+    in
     column [ width fill, height fill ]
         [ table
             [ width fill
@@ -777,30 +787,61 @@ viewCommitConnectionLoaded commitConnection =
                 ]
             }
         , row [ spaceEvenly, width fill ]
-            [ viewPaginationBackButton commitConnection
-            , viewPaginationNextButton commitConnection
+            [ viewPaginationBackButton (\cursor -> Route.Project { slug = slug, maybeAfter = Nothing, maybeBefore = Just cursor }) commitConnection
+            , viewPaginationNextButton (\cursor -> Route.Project { slug = slug, maybeAfter = Just cursor, maybeBefore = Nothing }) commitConnection
             ]
         ]
 
 
-viewPaginationBackButton : Connection a -> Element Msg
-viewPaginationBackButton { pageInfo } =
+viewPaginationBackButton : (Cursor -> Route.Route) -> Connection a -> Element Msg
+viewPaginationBackButton toRoute { pageInfo } =
     el [ width (px 200) ] <|
-        if PageInfo.hasPreviousPage pageInfo then
-            Button.simpleButton NoOp { content = text "Newer", scheme = Button.Primary }
+        case ( PageInfo.hasPreviousPage pageInfo, PageInfo.startCursor pageInfo ) of
+            ( True, Just startCursor ) ->
+                Button.simpleLink
+                    (toRoute startCursor)
+                    { content = text "Newer"
+                    , scheme = Button.Primary
+                    }
 
-        else
-            none
+            _ ->
+                none
 
 
-viewPaginationNextButton : Connection a -> Element Msg
-viewPaginationNextButton { pageInfo } =
+
+--viewPaginationBackButton : Connection a -> Element Msg
+--viewPaginationBackButton { pageInfo } =
+--    el [ width (px 200) ] <|
+--        if PageInfo.hasPreviousPage pageInfo then
+--            Button.simpleButton NoOp { content = text "Newer", scheme = Button.Primary }
+--
+--        else
+--            none
+--
+--
+--viewPaginationNextButton : Connection a -> Element Msg
+--viewPaginationNextButton { pageInfo } =
+--    el [ width (px 200) ] <|
+--        if PageInfo.hasNextPage pageInfo then
+--            Button.simpleButton NextCommitPage { content = text "Older", scheme = Button.Primary }
+--
+--        else
+--            none
+
+
+viewPaginationNextButton : (Cursor -> Route.Route) -> Connection a -> Element Msg
+viewPaginationNextButton toRoute { pageInfo } =
     el [ width (px 200) ] <|
-        if PageInfo.hasNextPage pageInfo then
-            Button.simpleButton NextCommitPage { content = text "Older", scheme = Button.Primary }
+        case ( PageInfo.hasNextPage pageInfo, PageInfo.endCursor pageInfo ) of
+            ( True, Just endCursor ) ->
+                Button.simpleLink
+                    (toRoute endCursor)
+                    { content = text "Older"
+                    , scheme = Button.Primary
+                    }
 
-        else
-            none
+            _ ->
+                none
 
 
 

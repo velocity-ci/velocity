@@ -245,8 +245,8 @@ changeRouteTo maybeRoute currentPage =
             BuildPage.init session context id
                 |> updateWith Build GotBuildMsg currentPage
 
-        Just (Route.Project slug) ->
-            ProjectPage.init session context slug
+        Just (Route.Project { slug, maybeAfter }) ->
+            ProjectPage.init session context slug maybeAfter
                 |> updateWith Project GotProjectMsg currentPage
 
 
