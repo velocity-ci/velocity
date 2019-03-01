@@ -2,10 +2,8 @@ package velocity
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -14,86 +12,18 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+
+	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/dockercompose/v3"
 )
 
 type DockerRun struct {
 	BaseStep       `yaml:",inline"`
-	Image          string            `json:"image" yaml:"image"`
-	Command        []string          `json:"command" yaml:"command"`
-	Environment    map[string]string `json:"environment" yaml:"environment"`
-	WorkingDir     string            `json:"workingDir" yaml:"workingDir"`
-	MountPoint     string            `json:"mountPoint" yaml:"mountPoint"`
-	IgnoreExitCode bool              `json:"ignoreExitCode" yaml:"ignoreExit"`
-}
-
-func parseRunCommand(command interface{}) []string {
-	c := []string{}
-	switch x := command.(type) {
-	case []interface{}:
-		for _, p := range x {
-			c = append(c, p.(string))
-		}
-		break
-	case interface{}:
-		re := regexp.MustCompile(`(".+")|('.+')|(\S+)`)
-		matches := re.FindAllString(x.(string), -1)
-		for _, m := range matches {
-			c = append(c, strings.TrimFunc(m, func(r rune) bool {
-				return string(r) == `"` || string(r) == `'`
-			}))
-		}
-		break
-	}
-
-	return c
-}
-
-func (s *DockerRun) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-	switch x := y["image"].(type) {
-	case interface{}:
-		s.Image = x.(string)
-		break
-	}
-
-	s.Command = parseRunCommand(y["command"])
-
-	s.Environment = map[string]string{}
-	switch x := y["environment"].(type) {
-	case []interface{}:
-		for _, e := range x {
-			parts := strings.Split(e.(string), "=")
-			key := parts[0]
-			val := parts[1]
-			s.Environment[key] = val
-		}
-		break
-	case map[interface{}]interface{}:
-		for k, v := range x {
-			if num, ok := v.(int); ok {
-				v = strconv.Itoa(num)
-			}
-			s.Environment[k.(string)] = v.(string)
-		}
-		break
-	}
-
-	switch x := y["workingDir"].(type) {
-	case interface{}:
-		s.WorkingDir = x.(string)
-		break
-	}
-	switch x := y["mountPoint"].(type) {
-	case interface{}:
-		s.MountPoint = x.(string)
-		break
-	}
-	switch x := y["ignoreExit"].(type) {
-	case interface{}:
-		s.IgnoreExitCode = x.(bool)
-		break
-	}
-
-	return s.BaseStep.UnmarshalYamlInterface(y)
+	Image          string                             `json:"image" yaml:"image"`
+	Command        v3.DockerComposeServiceCommand     `json:"command" yaml:"command"`
+	Environment    v3.DockerComposeServiceEnvironment `json:"environment" yaml:"environment"`
+	WorkingDir     string                             `json:"workingDir" yaml:"workingDir"`
+	MountPoint     string                             `json:"mountPoint" yaml:"mountPoint"`
+	IgnoreExitCode bool                               `json:"ignoreExitCode" yaml:"ignoreExit"`
 }
 
 func NewDockerRun() *DockerRun {
@@ -133,7 +63,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 
 	config := &container.Config{
 		Image: dR.Image,
-		Cmd:   dR.Command,
+		Cmd:   []string(dR.Command),
 		Volumes: map[string]struct{}{
 			dR.MountPoint: {},
 		},
@@ -258,11 +188,6 @@ func (dR *DockerRun) SetParams(params map[string]Parameter) error {
 		dR.Environment = env
 	}
 	return nil
-}
-
-func (dR *DockerRun) String() string {
-	j, _ := json.Marshal(dR)
-	return string(j)
 }
 
 func isAllInParams(matches [][]string, params map[string]Parameter) bool {

@@ -1,129 +1,39 @@
-package velocity
+package velocity_test
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/ghodss/yaml"
+	"github.com/stretchr/testify/assert"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
-func Test_getServiceOrder(t *testing.T) {
-	type args struct {
-		services     map[string]dockerComposeService
-		serviceOrder []string
-	}
+func TestDockerComposeUnmarshal(t *testing.T) {
+	taskConfigYaml := `
+---
+description: Runs integration tests
+steps:
+  - type: compose 
+    description: Docker compose
+    composeFile: test.docker-compose.yml
+`
+	taskConfig := velocity.NewTask()
+	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
+	assert.Nil(t, err)
 
-	services := map[string]dockerComposeService{
-		"proxy": {
-			Links: []string{
-				"backend",
-				"frontend",
+	expectedTaskConfig := velocity.NewTask()
+	expectedTaskConfig.Description = "Runs integration tests"
+	expectedTaskConfig.Steps = []velocity.Step{
+		&velocity.DockerCompose{
+			BaseStep: velocity.BaseStep{
+				Type:          "compose",
+				Description:   "Docker compose",
+				OutputStreams: []string{},
+				Status:        "waiting",
 			},
-		},
-		"database": {
-			Links: []string{
-				"redis",
-			},
-		},
-		"redis": {
-			Links: []string{
-				"frontend",
-			},
-		},
-		"frontend": {
-			Links: []string{},
-		},
-		"backend": {
-			Links: []string{"database"},
+			ComposeFile: "test.docker-compose.yml",
 		},
 	}
 
-	services2 := map[string]dockerComposeService{
-		"database": {
-			Links: []string{
-				"redis",
-			},
-		},
-		"proxy": {
-			Links: []string{
-				"backend",
-				"frontend",
-			},
-		},
-		"redis": {
-			Links: []string{
-				"frontend",
-			},
-		},
-		"frontend": {
-			Links: []string{},
-		},
-		"backend": {
-			Links: []string{"database"},
-		},
-	}
-
-	services3 := map[string]dockerComposeService{
-		"redis": {
-			Links: []string{
-				"frontend",
-			},
-		},
-		"database": {
-			Links: []string{
-				"redis",
-			},
-		},
-		"frontend": {
-			Links: []string{},
-		},
-		"backend": {
-			Links: []string{"database"},
-		},
-		"proxy": {
-			Links: []string{
-				"backend",
-				"frontend",
-			},
-		},
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want []string
-	}{
-		{
-			name: "1",
-			args: args{
-				services:     services,
-				serviceOrder: []string{},
-			},
-
-			want: []string{"frontend", "redis", "database", "backend", "proxy"},
-		},
-		{
-			name: "2",
-			args: args{
-				services:     services2,
-				serviceOrder: []string{},
-			},
-
-			want: []string{"frontend", "redis", "database", "backend", "proxy"},
-		},
-		{
-			name: "3",
-			args: args{
-				services:     services3,
-				serviceOrder: []string{},
-			},
-
-			want: []string{"frontend", "redis", "database", "backend", "proxy"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := getServiceOrder(tt.args.services, tt.args.serviceOrder); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getServiceOrder() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	assert.EqualValues(t, expectedTaskConfig, taskConfig)
 }

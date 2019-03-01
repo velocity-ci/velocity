@@ -69,9 +69,17 @@ func List(c *cli.Context) error {
 				fmt.Println()
 				continue
 			}
-			if len(task.ValidationWarnings) > 0 {
+			if len(task.ValidationErrors) > 0 {
 				fmt.Printf(" has warnings:\n")
-				for _, warn := range task.ValidationWarnings {
+				for _, warn := range task.ValidationErrors {
+					fmt.Print(colorFmt(ansiWarn, fmt.Sprintf("  %s\n", warn)))
+				}
+				fmt.Println()
+				continue
+			}
+			if len(task.ParseErrors) > 0 {
+				fmt.Printf(" has warnings:\n")
+				for _, warn := range task.ParseErrors {
 					fmt.Print(colorFmt(ansiWarn, fmt.Sprintf("  %s\n", warn)))
 				}
 				fmt.Println()
@@ -146,10 +154,10 @@ func Run(c *cli.Context) error {
 	return nil
 }
 
-func getRequestedTaskByName(taskName string, tasks []velocity.Task) (*velocity.Task, error) {
+func getRequestedTaskByName(taskName string, tasks []*velocity.Task) (*velocity.Task, error) {
 	for _, t := range tasks {
 		if t.Name == taskName {
-			return &t, nil
+			return t, nil
 		}
 	}
 

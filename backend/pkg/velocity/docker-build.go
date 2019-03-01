@@ -7,10 +7,10 @@ import (
 )
 
 type DockerBuild struct {
-	BaseStep   `yaml:",inline"`
-	Dockerfile string   `json:"dockerfile" yaml:"dockerfile"`
-	Context    string   `json:"context" yaml:"context"`
-	Tags       []string `json:"tags" yaml:"tags"`
+	BaseStep
+	Dockerfile string   `json:"dockerfile"`
+	Context    string   `json:"context"`
+	Tags       []string `json:"tags"`
 }
 
 func NewDockerBuild() *DockerBuild {
@@ -20,31 +20,6 @@ func NewDockerBuild() *DockerBuild {
 		Tags:       []string{},
 		BaseStep:   newBaseStep("build", []string{"build"}),
 	}
-}
-
-func (s *DockerBuild) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-	switch x := y["dockerfile"].(type) {
-	case interface{}:
-		s.Dockerfile = x.(string)
-		break
-	}
-
-	switch x := y["context"].(type) {
-	case interface{}:
-		s.Context = x.(string)
-		break
-	}
-
-	s.Tags = []string{}
-	switch x := y["tags"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			s.Tags = append(s.Tags, p.(string))
-		}
-		break
-	}
-
-	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func (dB DockerBuild) GetDetails() string {

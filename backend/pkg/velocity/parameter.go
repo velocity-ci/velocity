@@ -38,6 +38,12 @@ type BasicParameter struct {
 	Value        string   `json:"value"`
 }
 
+func NewBasicParameter() *BasicParameter {
+	return &BasicParameter{
+		Type: "basic",
+	}
+}
+
 func (p BasicParameter) GetInfo() string {
 	return p.Name
 }
@@ -62,36 +68,6 @@ func (p BasicParameter) GetParameters(writer io.Writer, t *Task, backupResolver 
 	}, nil
 }
 
-func (p *BasicParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-	p.Type = "basic"
-	switch x := y["name"].(type) {
-	case interface{}:
-		p.Name = x.(string)
-		break
-	}
-	switch x := y["default"].(type) {
-	case interface{}:
-		p.Default = x.(string)
-		break
-	}
-	switch x := y["secret"].(type) {
-	case interface{}:
-		p.Secret = x.(bool)
-		break
-	}
-
-	p.OtherOptions = []string{}
-	switch x := y["otherOptions"].(type) {
-	case []interface{}:
-		for _, o := range x {
-			p.OtherOptions = append(p.OtherOptions, o.(string))
-		}
-		break
-	}
-
-	return nil
-}
-
 type DerivedParameter struct {
 	Type      string            `json:"type"`
 	Use       string            `json:"use" yaml:"use"`
@@ -99,6 +75,12 @@ type DerivedParameter struct {
 	Arguments map[string]string `json:"arguments" yaml:"arguments"`
 	Exports   map[string]string `json:"exports" yaml:"exports"`
 	// Timeout   uint64
+}
+
+func NewDerivedParameter() *DerivedParameter {
+	return &DerivedParameter{
+		Type: "derived",
+	}
 }
 
 func (p DerivedParameter) GetInfo() string {
@@ -203,40 +185,6 @@ func getExportedParameterName(pMapping map[string]string, exportedParam string) 
 	return exportedParam
 }
 
-func (p *DerivedParameter) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-
-	p.Type = "derived"
-
-	switch x := y["use"].(type) {
-	case interface{}:
-		p.Use = x.(string)
-		break
-	}
-	switch x := y["secret"].(type) {
-	case interface{}:
-		p.Secret = x.(bool)
-		break
-	}
-	p.Arguments = map[string]string{}
-	switch x := y["arguments"].(type) {
-	case map[interface{}]interface{}:
-		for k, v := range x {
-			p.Arguments[k.(string)] = v.(string)
-		}
-		break
-	}
-	p.Exports = map[string]string{}
-	switch x := y["exports"].(type) {
-	case map[interface{}]interface{}:
-		for k, v := range x {
-			p.Exports[k.(string)] = v.(string)
-		}
-		break
-	}
-
-	return nil
-}
-
 type derivedOutput struct {
 	Secret  bool              `json:"secret"`
 	Exports map[string]string `json:"exports"`
@@ -245,32 +193,20 @@ type derivedOutput struct {
 	State   string            `json:"state"`
 }
 
-func unmarshalConfigParameters(y interface{}) []ParameterConfig {
-	configParams := []ParameterConfig{}
-	switch x := y.(type) {
-	case []interface{}:
-		for _, p := range x {
-			configParams = append(configParams, unmarshalConfigParameter(p))
-		}
-		break
-	}
-	return configParams
-}
-
-func unmarshalConfigParameter(y interface{}) ParameterConfig {
-	var parameterConfig ParameterConfig
-	switch x := y.(type) {
-	case map[interface{}]interface{}:
-		if _, ok := x["use"]; ok { // derivedParam
-			var p DerivedParameter
-			p.UnmarshalYamlInterface(x)
-			parameterConfig = p
-		} else if _, ok := x["name"]; ok { // basicParam
-			var p BasicParameter
-			p.UnmarshalYamlInterface(x)
-			parameterConfig = p
-		}
+func unmarshalConfigParameter(b []byte) (p ParameterConfig, err error) {
+	var m map[string]interface{}
+	err = json.Unmarshal(b, &m)
+	if err != nil {
+		return p, err
 	}
 
-	return parameterConfig
+	if _, ok := m["use"]; ok { // derived
+		p = NewDerivedParameter()
+	} else if _, ok := m["name"]; ok { // basic
+		p = NewBasicParameter()
+	}
+
+	err = json.Unmarshal(b, p)
+
+	return p, err
 }

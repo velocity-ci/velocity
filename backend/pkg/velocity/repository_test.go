@@ -3,9 +3,9 @@ package velocity_test
 import (
 	"testing"
 
+	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
-	"gopkg.in/yaml.v2"
 )
 
 func TestRepositoryConfigUnmarshal(t *testing.T) {
@@ -56,15 +56,15 @@ stages:
 	assert.Nil(t, err)
 	logo := string("image.png")
 	expectedRepositoryConfig := velocity.RepositoryConfig{
-		Project: velocity.ProjectConfig{
+		Project: &velocity.ProjectConfig{
 			Logo:      &logo,
 			TasksPath: "./tasks",
 		},
-		Git: velocity.GitConfig{
-			Depth: 10,
+		Git: &velocity.GitConfig{
+			Submodule: false,
 		},
 		Parameters: []velocity.ParameterConfig{
-			velocity.DerivedParameter{
+			&velocity.DerivedParameter{
 				Type: "derived",
 				Use:  "param-s3-bin-uri",
 				Arguments: map[string]string{
@@ -76,8 +76,8 @@ stages:
 				Secret: true,
 			},
 		},
-		Plugins: []velocity.PluginConfig{
-			velocity.PluginConfig{
+		Plugins: []*velocity.PluginConfig{
+			&velocity.PluginConfig{
 				Use: "param-slack-bin-uri",
 				Arguments: map[string]string{
 					"CHANNEL":     "ci",
@@ -86,16 +86,16 @@ stages:
 				Events: []string{"BUILD_START", "BUILD_FAIL", "BUILD_SUCCESS"},
 			},
 		},
-		Stages: []velocity.StageConfig{
-			velocity.StageConfig{
+		Stages: []*velocity.StageConfig{
+			&velocity.StageConfig{
 				Name:  "test",
 				Tasks: []string{"test_web", "test_api"},
 			},
-			velocity.StageConfig{
+			&velocity.StageConfig{
 				Name:  "release",
 				Tasks: []string{"release_web", "release_api"},
 			},
-			velocity.StageConfig{
+			&velocity.StageConfig{
 				Name:  "deploy",
 				Tasks: []string{"deploy_web", "deploy_api"},
 			},
@@ -145,20 +145,20 @@ stages:
   - deploy_api	
 `
 
-	var repositoryConfig velocity.RepositoryConfig
-	err := yaml.Unmarshal([]byte(repositoryConfigYaml), &repositoryConfig)
+	var repositoryConfig = velocity.NewRepositoryConfig()
+	err := yaml.Unmarshal([]byte(repositoryConfigYaml), repositoryConfig)
 
 	assert.Nil(t, err)
-	expectedRepositoryConfig := velocity.RepositoryConfig{
-		Project: velocity.ProjectConfig{
+	expectedRepositoryConfig := &velocity.RepositoryConfig{
+		Project: &velocity.ProjectConfig{
 			Logo:      nil,
 			TasksPath: "./tasks",
 		},
-		Git: velocity.GitConfig{
-			Depth: 10,
+		Git: &velocity.GitConfig{
+			Submodule: false,
 		},
 		Parameters: []velocity.ParameterConfig{
-			velocity.DerivedParameter{
+			&velocity.DerivedParameter{
 				Type: "derived",
 				Use:  "param-s3-bin-uri",
 				Arguments: map[string]string{
@@ -170,8 +170,8 @@ stages:
 				Secret: true,
 			},
 		},
-		Plugins: []velocity.PluginConfig{
-			velocity.PluginConfig{
+		Plugins: []*velocity.PluginConfig{
+			&velocity.PluginConfig{
 				Use: "param-slack-bin-uri",
 				Arguments: map[string]string{
 					"CHANNEL":     "ci",
@@ -180,16 +180,16 @@ stages:
 				Events: []string{"BUILD_START", "BUILD_FAIL", "BUILD_SUCCESS"},
 			},
 		},
-		Stages: []velocity.StageConfig{
-			velocity.StageConfig{
+		Stages: []*velocity.StageConfig{
+			&velocity.StageConfig{
 				Name:  "test",
 				Tasks: []string{"test_web", "test_api"},
 			},
-			velocity.StageConfig{
+			&velocity.StageConfig{
 				Name:  "release",
 				Tasks: []string{"release_web", "release_api"},
 			},
-			velocity.StageConfig{
+			&velocity.StageConfig{
 				Name:  "deploy",
 				Tasks: []string{"deploy_web", "deploy_api"},
 			},

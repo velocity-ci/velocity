@@ -2,7 +2,6 @@ package velocity
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,18 +14,6 @@ import (
 type DockerPush struct {
 	BaseStep `yaml:",inline"`
 	Tags     []string `json:"tags" yaml:"tags"`
-}
-
-func (s *DockerPush) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-	s.Tags = []string{}
-	switch x := y["tags"].(type) {
-	case []interface{}:
-		for _, p := range x {
-			s.Tags = append(s.Tags, p.(string))
-		}
-		break
-	}
-	return s.BaseStep.UnmarshalYamlInterface(y)
 }
 
 func NewDockerPush() *DockerPush {
@@ -88,9 +75,4 @@ func (dP *DockerPush) SetParams(params map[string]Parameter) error {
 		dP.Tags = tags
 	}
 	return nil
-}
-
-func (dP *DockerPush) String() string {
-	j, _ := json.Marshal(dP)
-	return string(j)
 }

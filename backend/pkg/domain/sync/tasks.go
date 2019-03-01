@@ -77,7 +77,7 @@ func syncTasks(
 						)
 						continue
 					}
-					taskManager.Create(c, &task, velocity.NewSetup())
+					taskManager.Create(c, task, velocity.NewSetup())
 					velocity.GetLogger().Info("created task",
 						zap.String("project", p.Slug),
 						zap.String("sha", c.Hash),

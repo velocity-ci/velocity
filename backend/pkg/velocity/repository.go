@@ -1,162 +1,104 @@
 package velocity
 
-import (
-	"go.uber.org/zap"
-)
+import "encoding/json"
 
 type RepositoryConfig struct {
-	Project ProjectConfig `json:"project" yaml:"project"`
-	Git     GitConfig     `json:"git" yaml:"git"`
+	Project *ProjectConfig `json:"project"`
+	Git     *GitConfig     `json:"git"`
 
-	Parameters []ParameterConfig `json:"paramaters" yaml:"parameters"`
-	Plugins    []PluginConfig    `json:"plugins" yaml:"plugins"`
-	Stages     []StageConfig     `json:"stages" yaml:"stages"`
+	Parameters []ParameterConfig `json:"paramaters"`
+	Plugins    []*PluginConfig   `json:"plugins"`
+	Stages     []*StageConfig    `json:"stages"`
 }
 
 type ProjectConfig struct {
-	Logo      *string `json:"logo" yaml:"logo"`
-	TasksPath string  `json:"tasksPath" yaml:"tasksPath"`
+	Logo      *string `json:"logo"`
+	TasksPath string  `json:"tasksPath"`
 }
 
 type GitConfig struct {
-	Depth int `json:"depth" yaml:"depth"`
+	// Depth     int  `json:"depth"`
+	Submodule bool `json:"submodule"`
 }
 
 type PluginConfig struct {
-	Use       string            `json:"use" yaml:"use"`
-	Arguments map[string]string `json:"arguments" yaml:"arguments"`
-	Events    []string          `json:"events" yaml:"events"`
+	Use       string            `json:"use"`
+	Arguments map[string]string `json:"arguments"`
+	Events    []string          `json:"events"`
 }
 
 type StageConfig struct {
-	Name  string   `json:"name" yaml:"name"`
-	Tasks []string `json:"tasks" yaml:"tasks"`
+	Name  string   `json:"name"`
+	Tasks []string `json:"tasks"`
 }
 
-func (t *RepositoryConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var repoConfigMap map[string]interface{}
-	err := unmarshal(&repoConfigMap)
+func NewRepositoryConfig() *RepositoryConfig {
+	return &RepositoryConfig{
+		Project:    &ProjectConfig{},
+		Git:        &GitConfig{},
+		Parameters: []ParameterConfig{},
+		Plugins:    []*PluginConfig{},
+		Stages:     []*StageConfig{},
+	}
+}
+
+func (r *RepositoryConfig) UnmarshalJSON(b []byte) error {
+	// We don't return any errors from this function so we can show more helpful parse errors
+	var objMap map[string]*json.RawMessage
+	// We'll store the error (if any) so we can return it if necessary
+	err := json.Unmarshal(b, &objMap)
 	if err != nil {
-		GetLogger().Error("unable to marshal repository configuration", zap.Error(err))
 		return err
 	}
 
-	t.Project = unmarshalProjectYaml(repoConfigMap["project"])
-	t.Git = unmarshalGitYaml(repoConfigMap["git"])
-	t.Parameters = unmarshalConfigParameters(repoConfigMap["parameters"])
-	t.Plugins = unmarshalPluginConfigs(repoConfigMap["plugins"])
-	t.Stages = unmarshalStageConfigs(repoConfigMap["stages"])
+	// Deserialize Project
+	if _, ok := objMap["project"]; ok {
+		err = json.Unmarshal(*objMap["project"], &r.Project)
+		if err != nil {
+			return err
+		}
+	}
 
+	// Deserialize Git
+	if _, ok := objMap["git"]; ok {
+		err = json.Unmarshal(*objMap["git"], &r.Git)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Deserialize Parameters
+	if val, _ := objMap["parameters"]; val != nil {
+		var rawParameters []*json.RawMessage
+		err = json.Unmarshal(*val, &rawParameters)
+		if err != nil {
+			return err
+		}
+		if err == nil {
+			for _, rawMessage := range rawParameters {
+				param, err := unmarshalConfigParameter(*rawMessage)
+				if err != nil {
+					return err
+				}
+				r.Parameters = append(r.Parameters, param)
+			}
+		}
+	}
+
+	// Deserialize Git
+	if _, ok := objMap["plugins"]; ok {
+		err = json.Unmarshal(*objMap["plugins"], &r.Plugins)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Deserialize Git
+	if _, ok := objMap["stages"]; ok {
+		err = json.Unmarshal(*objMap["stages"], &r.Stages)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
-}
-
-func unmarshalProjectYaml(y interface{}) ProjectConfig {
-	p := ProjectConfig{
-		Logo:      nil,
-		TasksPath: "./tasks",
-	}
-
-	switch x := y.(type) {
-	case map[interface{}]interface{}:
-		if v, ok := x["logo"].(string); ok {
-			p.Logo = &v
-		}
-		if v, ok := x["tasksPath"].(string); ok {
-			p.TasksPath = v
-		}
-	}
-
-	return p
-}
-
-func unmarshalGitYaml(y interface{}) GitConfig {
-	g := GitConfig{
-		Depth: 50,
-	}
-	switch x := y.(type) {
-	case map[interface{}]interface{}:
-		if v, ok := x["depth"].(int); ok {
-			g.Depth = v
-		}
-	}
-
-	return g
-}
-
-func unmarshalPluginConfigs(y interface{}) []PluginConfig {
-	pluginConfigs := []PluginConfig{}
-	switch x := y.(type) {
-	case []interface{}:
-		for _, p := range x {
-			pluginConfigs = append(pluginConfigs, unmarshalPluginConfig(p))
-		}
-	}
-
-	return pluginConfigs
-}
-
-func unmarshalPluginConfig(y interface{}) PluginConfig {
-	pluginConfig := PluginConfig{
-		Use:       "",
-		Arguments: map[string]string{},
-		Events:    []string{},
-	}
-	switch x := y.(type) {
-	case map[interface{}]interface{}:
-		if v, ok := x["use"].(string); ok {
-			pluginConfig.Use = v
-		}
-		if v, ok := x["arguments"].(map[interface{}]interface{}); ok {
-			for k, v := range v {
-				sK, okk := k.(string)
-				sV, okv := v.(string)
-				if okk && okv {
-					pluginConfig.Arguments[sK] = sV
-				}
-			}
-		}
-		if v, ok := x["events"].([]interface{}); ok {
-			for _, v := range v {
-				if v, ok := v.(string); ok {
-					pluginConfig.Events = append(pluginConfig.Events, v)
-				}
-			}
-		}
-	}
-
-	return pluginConfig
-}
-
-func unmarshalStageConfigs(y interface{}) []StageConfig {
-	stageConfigs := []StageConfig{}
-
-	switch x := y.(type) {
-	case []interface{}:
-		for _, s := range x {
-			stageConfigs = append(stageConfigs, unmarshalStageConfig(s))
-		}
-	}
-
-	return stageConfigs
-}
-
-func unmarshalStageConfig(y interface{}) StageConfig {
-	stageConfig := StageConfig{
-		Name:  "",
-		Tasks: []string{},
-	}
-	switch x := y.(type) {
-	case map[interface{}]interface{}:
-		if v, ok := x["name"].(string); ok {
-			stageConfig.Name = v
-		}
-		if v, ok := x["tasks"].([]interface{}); ok {
-			for _, v := range v {
-				if v, ok := v.(string); ok {
-					stageConfig.Tasks = append(stageConfig.Tasks, v)
-				}
-			}
-		}
-	}
-	return stageConfig
 }

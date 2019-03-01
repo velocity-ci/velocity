@@ -29,12 +29,12 @@ func (s *StormStep) toStep(db *storm.DB) *Step {
 		velocity.GetLogger().Error("error", zap.Error(err))
 	}
 
-	vStep, err := velocity.DetermineStepFromInterface(gStep)
-	if err != nil {
-		velocity.GetLogger().Error("error", zap.Error(err))
-	} else {
-		json.Unmarshal(s.VStep, vStep)
-	}
+	// vStep, err := velocity.DetermineStepFromInterface(gStep)
+	// if err != nil {
+	// 	velocity.GetLogger().Error("error", zap.Error(err))
+	// } else {
+	// 	json.Unmarshal(s.VStep, vStep)
+	// }
 	b, err := GetBuildByID(db, s.BuildID)
 	if err != nil {
 		velocity.GetLogger().Error("error", zap.Error(err))
@@ -47,7 +47,7 @@ func (s *StormStep) toStep(db *storm.DB) *Step {
 		UpdatedAt:   s.UpdatedAt,
 		StartedAt:   s.StartedAt,
 		CompletedAt: s.CompletedAt,
-		VStep:       &vStep,
+		// VStep:       &vStep,
 	}
 }
 

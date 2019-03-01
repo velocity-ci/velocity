@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	dockercompose "github.com/velocity-ci/velocity/backend/pkg/velocity/dockercompose/v3"
+
 	"github.com/docker/docker/api/types/network"
 	"go.uber.org/zap"
 	"golang.org/x/net/http/httpproxy"
@@ -32,7 +34,7 @@ func newServiceRunner(
 	params map[string]Parameter,
 	name string,
 	image string,
-	build *dockerComposeServiceBuild,
+	build *dockercompose.DockerComposeServiceBuild,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 	networkConfig *network.NetworkingConfig,
@@ -62,7 +64,7 @@ type serviceRunner struct {
 
 	name            string
 	image           string
-	build           *dockerComposeServiceBuild
+	build           *dockercompose.DockerComposeServiceBuild
 	containerConfig *container.Config
 	hostConfig      *container.HostConfig
 	networkConfig   *network.NetworkingConfig

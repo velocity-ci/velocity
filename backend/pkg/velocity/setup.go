@@ -20,10 +20,7 @@ type Setup struct {
 
 func NewSetup() *Setup {
 	return &Setup{
-		BaseStep: BaseStep{
-			Type:          "setup",
-			OutputStreams: []string{"setup"},
-		},
+		BaseStep: newBaseStep("setup", []string{"setup"}),
 	}
 }
 
@@ -35,10 +32,6 @@ func (s *Setup) Init(
 	s.backupResolver = backupResolver
 	s.repository = repository
 	s.commitHash = commitHash
-}
-
-func (s *Setup) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-	return nil
 }
 
 func (s Setup) GetDetails() string {
@@ -115,10 +108,10 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 
 	t.ResolvedParameters = parameters
 
-	// Update params on steps
-	for _, s := range t.Steps {
-		s.SetParams(parameters)
-	}
+	// // Update params on steps
+	// for _, s := range t.Steps {
+	// 	s.SetParams(parameters)
+	// }
 
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}

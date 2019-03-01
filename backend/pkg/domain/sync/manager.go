@@ -73,9 +73,9 @@ func sync(p *project.Project, m *Manager) {
 	m.projectManager.Update(p)
 
 	// clone further
-	if p.RepositoryConfig.Git.Depth > 1 {
+	// if p.RepositoryConfig.Git.Depth > 1 {
 
-	}
+	// }
 
 	// sync tasks
 	err = syncTasks(p, repo, m.taskManager, m.branchManager, m.commitManager)

@@ -86,7 +86,7 @@ func (bS *buildScheduler) StartBuild(bu *Builder, b *build.Build) {
 	// Set knownhosts
 	knownHosts, _ := bS.knownhostManager.GetAll(domain.NewPagingQuery())
 	resp := bu.WS.Socket.Send(&phoenix.PhoenixMessage{
-		Event: builder.EventSetKnownHosts,
+		// Event: builder.EventSetKnownHosts,
 		Topic: fmt.Sprintf("builder:%s", bu.ID),
 		Payload: &builder.KnownHostPayload{
 			KnownHosts: knownHosts,
@@ -109,13 +109,13 @@ func (bS *buildScheduler) StartBuild(bu *Builder, b *build.Build) {
 	}
 
 	resp = bu.WS.Socket.Send(&phoenix.PhoenixMessage{
-		Event: builder.EventStartBuild,
+		// Event: builder.EventStartBuild,
 		Topic: fmt.Sprintf("builder:%s", bu.ID),
-		Payload: &builder.BuildPayload{
-			Build:   b,
-			Steps:   steps,
-			Streams: streams,
-		},
+		// Payload: &builder.BuildPayload{
+		// 	Build:   b,
+		// 	Steps:   steps,
+		// 	Streams: streams,
+		// },
 	}, true)
 	if resp.Status != phoenix.ResponseOK {
 		velocity.GetLogger().Error("could not start build on builder", zap.String("builder", bu.ID))

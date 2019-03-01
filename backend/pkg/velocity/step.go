@@ -1,6 +1,7 @@
 package velocity
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -15,7 +16,6 @@ type Step interface {
 	Validate(map[string]Parameter) error
 	SetParams(map[string]Parameter) error
 	GetOutputStreams() []string
-	UnmarshalYamlInterface(map[interface{}]interface{}) error
 	SetProjectRoot(string)
 }
 
@@ -51,16 +51,22 @@ type BaseStep struct {
 	Description   string   `json:"description" yaml:"description"`
 	OutputStreams []string `json:"outputStreams" yaml:"-"`
 
-	Params      map[string]Parameter `json:"params" yaml:"-"`
+	Status      string    `json:"status"`
+	StartedAt   time.Time `json:"startedAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	CompletedAt time.Time `json:"completedAt"`
+
+	// Params      map[string]Parameter `json:"params" yaml:"-"`
 	runID       string
-	ProjectRoot string
+	ProjectRoot string `json:"-"`
 }
 
 func newBaseStep(t string, streams []string) BaseStep {
 	return BaseStep{
 		Type:          t,
 		OutputStreams: streams,
-		Params:        map[string]Parameter{},
+		Status:        StateWaiting,
+		// Params:        map[string]Parameter{},
 	}
 }
 
@@ -76,9 +82,9 @@ func (bS *BaseStep) GetOutputStreams() []string {
 	return bS.OutputStreams
 }
 
-func (bS *BaseStep) SetParams(params map[string]Parameter) {
-	bS.Params = params
-}
+// func (bS *BaseStep) SetParams(params map[string]Parameter) {
+// 	bS.Params = params
+// }
 
 func (bS *BaseStep) GetRunID() string {
 	if bS.runID == "" {
@@ -92,37 +98,39 @@ func (bS *BaseStep) SetProjectRoot(path string) {
 	bS.ProjectRoot = path
 }
 
-func (s *BaseStep) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-	switch x := y["description"].(type) {
-	case interface{}:
-		s.Description = x.(string)
-		break
-	}
-	return nil
-}
-
 type StreamLine struct {
 	LineNumber uint64    `json:"lineNumber"`
 	Timestamp  time.Time `json:"timestamp"`
 	Output     string    `json:"output"`
 }
 
-func DetermineStepFromInterface(i map[string]interface{}) (Step, error) {
-	switch i["type"] {
+func getStepFromBytes(rawMessage []byte) (Step, error) {
+	var m map[string]interface{}
+	err := json.Unmarshal(rawMessage, &m)
+	if err != nil {
+		return nil, err
+	}
+	var s Step
+	switch m["type"] {
 	case "setup":
-		return NewSetup(), nil
+		s = NewSetup()
 	case "run":
-		return NewDockerRun(), nil
+		s = NewDockerRun()
 	case "build":
-		return NewDockerBuild(), nil
+		s = NewDockerBuild()
 	case "compose":
-		return NewDockerCompose(), nil
+		s = NewDockerCompose()
 	case "push":
-		return NewDockerPush(), nil
+		s = NewDockerPush()
 		// case "plugin":
-		// 	var s Plugin
-		// 	s.UnmarshalYamlInterface(y)
+		// 	s = NewPlugin()
 		// 	break
 	}
-	return nil, fmt.Errorf("could not determine step %+v", i)
+
+	if s == nil {
+		return nil, fmt.Errorf("could not determine step %+v", m)
+	}
+
+	err = json.Unmarshal(rawMessage, s)
+	return s, err
 }

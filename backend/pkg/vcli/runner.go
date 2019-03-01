@@ -29,7 +29,7 @@ func (r *runner) Run(taskName string) {
 	// find Task requested
 	for _, tsk := range tasks {
 		if tsk.Name == taskName {
-			t = &tsk
+			t = tsk
 			break
 		}
 	}

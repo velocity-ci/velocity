@@ -52,17 +52,17 @@ func (s *Step) UnmarshalJSON(b []byte) error {
 			return err
 		}
 
-		step, err := velocity.DetermineStepFromInterface(m)
-		if err != nil {
-			velocity.GetLogger().Error("error", zap.Error(err))
-		} else {
-			err := json.Unmarshal(*rawStep, step)
-			if err != nil {
-				velocity.GetLogger().Error("error", zap.Error(err))
-			} else {
-				s.VStep = &step
-			}
-		}
+		// step, err := velocity.DetermineStepFromInterface(m)
+		// if err != nil {
+		// 	velocity.GetLogger().Error("error", zap.Error(err))
+		// } else {
+		// 	err := json.Unmarshal(*rawStep, step)
+		// 	if err != nil {
+		// 		velocity.GetLogger().Error("error", zap.Error(err))
+		// 	} else {
+		// 		s.VStep = &step
+		// 	}
+		// }
 	}
 
 	// s.Streams = []*Stream{}

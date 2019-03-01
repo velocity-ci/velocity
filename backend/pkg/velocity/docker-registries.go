@@ -24,25 +24,6 @@ type DockerRegistry struct {
 	AuthorizationToken string            `json:"authToken"`
 }
 
-func (d *DockerRegistry) UnmarshalYamlInterface(y map[interface{}]interface{}) error {
-
-	switch x := y["use"].(type) {
-	case interface{}:
-		d.Use = x.(string)
-		break
-	}
-
-	d.Arguments = map[string]string{}
-	switch x := y["arguments"].(type) {
-	case map[interface{}]interface{}:
-		for k, v := range x {
-			d.Arguments[k.(string)] = v.(string)
-		}
-		break
-	}
-	return nil
-}
-
 func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task, parameters map[string]Parameter) (r DockerRegistry, _ error) {
 
 	type registryAuthConfig struct {

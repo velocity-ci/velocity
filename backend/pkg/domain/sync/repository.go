@@ -5,11 +5,11 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
 
 	"github.com/velocity-ci/velocity/backend/pkg/domain/project"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func syncRepository(p *project.Project, repo *velocity.RawRepository) (*project.Project, error) {
