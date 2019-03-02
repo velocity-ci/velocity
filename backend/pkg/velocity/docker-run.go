@@ -17,13 +17,13 @@ import (
 )
 
 type DockerRun struct {
-	BaseStep       `yaml:",inline"`
-	Image          string                             `json:"image" yaml:"image"`
-	Command        v3.DockerComposeServiceCommand     `json:"command" yaml:"command"`
-	Environment    v3.DockerComposeServiceEnvironment `json:"environment" yaml:"environment"`
-	WorkingDir     string                             `json:"workingDir" yaml:"workingDir"`
-	MountPoint     string                             `json:"mountPoint" yaml:"mountPoint"`
-	IgnoreExitCode bool                               `json:"ignoreExitCode" yaml:"ignoreExit"`
+	BaseStep
+	Image          string                             `json:"image"`
+	Command        v3.DockerComposeServiceCommand     `json:"command"`
+	Environment    v3.DockerComposeServiceEnvironment `json:"environment"`
+	WorkingDir     string                             `json:"workingDir"`
+	MountPoint     string                             `json:"mountPoint"`
+	IgnoreExitCode bool                               `json:"ignoreExitCode"`
 }
 
 func NewDockerRun() *DockerRun {
