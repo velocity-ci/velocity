@@ -13,7 +13,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 
-	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/dockercompose/v3"
+	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/step/docker/compose/v3"
 )
 
 type DockerRun struct {

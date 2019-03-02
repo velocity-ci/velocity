@@ -14,13 +14,13 @@ import (
 )
 
 type TaskDocker struct {
-	Registries []DockerRegistry `json:"registries" yaml:"registries"`
+	Registries []DockerRegistry `json:"registries"`
 }
 
 type DockerRegistry struct {
 	Address            string            `json:"address"`
-	Use                string            `json:"use" yaml:"use"`
-	Arguments          map[string]string `json:"arguments" yaml:"arguments"`
+	Use                string            `json:"use"`
+	Arguments          map[string]string `json:"arguments"`
 	AuthorizationToken string            `json:"authToken"`
 }
 

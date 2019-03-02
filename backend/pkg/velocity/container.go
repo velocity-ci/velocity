@@ -1,7 +1,6 @@
 package velocity
 
 import (
-	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -13,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	dockercompose "github.com/velocity-ci/velocity/backend/pkg/velocity/dockercompose/v3"
+	vio "github.com/velocity-ci/velocity/backend/pkg/velocity/io"
+	dockercompose "github.com/velocity-ci/velocity/backend/pkg/velocity/step/docker/compose/v3"
 
 	"github.com/docker/docker/api/types/network"
 	"go.uber.org/zap"
@@ -326,86 +326,10 @@ func buildContainer(
 	}
 
 	defer buildResp.Body.Close()
-	handleOutput(buildResp.Body, parameters, writer)
+	vio.HandleOutput(buildResp.Body, parameters, writer)
 
 	GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 	return nil
-}
-
-func handleOutput(body io.ReadCloser, parameters map[string]Parameter, writer io.Writer) {
-	scanner := bufio.NewScanner(body)
-	for scanner.Scan() {
-		allBytes := scanner.Bytes()
-
-		o := ""
-		if strings.Contains(string(allBytes), "status") {
-			o = handlePullPushOutput(allBytes)
-		} else if strings.Contains(string(allBytes), "stream") {
-			o = handleBuildOutput(allBytes)
-		} else if strings.Contains(string(allBytes), "progressDetail") {
-			o = "*"
-		} else {
-			o = handleLogOutput(allBytes)
-		}
-
-		if o != "*" {
-			for _, p := range parameters {
-				if p.IsSecret {
-					o = strings.Replace(o, p.Value, "***", -1)
-				}
-			}
-			writer.Write([]byte(o))
-		}
-	}
-}
-
-func handleLogOutput(b []byte) string {
-	if len(b) <= 8 {
-		return ""
-	}
-	return string(b[8:])
-}
-
-var imageIDProgress = map[string]string{}
-
-func handlePullPushOutput(b []byte) string {
-	type pullOutput struct {
-		Status   string `json:"status"`
-		Progress string `json:"progress"`
-		ID       string `json:"id"`
-	}
-	var o pullOutput
-	json.Unmarshal(b, &o)
-
-	s := ""
-	if len(o.ID) > 0 {
-		s += fmt.Sprintf("%s: ", o.ID)
-	}
-	if len(o.Progress) > 0 {
-		s += o.Progress
-	} else {
-		s += o.Status
-	}
-	// add padding to 80
-	for len(s) < 100 {
-		s += " "
-	}
-	if strings.Contains(o.Status, "Downloaded newer image") ||
-		strings.Contains(o.Status, "Pulling from") ||
-		strings.Contains(o.Status, "Pull complete") {
-		return s
-	}
-
-	return fmt.Sprintf("%s\r", s)
-}
-
-func handleBuildOutput(b []byte) string {
-	type buildOutput struct {
-		Stream string `json:"stream"`
-	}
-	var o buildOutput
-	json.Unmarshal(b, &o)
-	return strings.TrimSpace(o.Stream)
 }
 
 func resolvePullImage(image string) string {

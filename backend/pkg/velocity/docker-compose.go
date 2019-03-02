@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types/network"
 	"github.com/ghodss/yaml"
-	dockercompose "github.com/velocity-ci/velocity/backend/pkg/velocity/dockercompose/v3"
+	dockercompose "github.com/velocity-ci/velocity/backend/pkg/velocity/step/docker/compose/v3"
 	"go.uber.org/zap"
 
 	"github.com/docker/docker/api/types"
