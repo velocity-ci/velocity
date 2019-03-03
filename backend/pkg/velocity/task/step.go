@@ -1,4 +1,4 @@
-package step
+package task
 
 import (
 	"encoding/json"
@@ -6,16 +6,16 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type Step interface {
-	Execute(emitter velocity.Emitter, t *velocity.Task) error
+	Execute(emitter out.Emitter, t *Task) error
 	GetType() string
 	GetDescription() string
 	GetDetails() string
-	Validate(map[string]velocity.Parameter) error
-	SetParams(map[string]velocity.Parameter) error
+	Validate(map[string]Parameter) error
+	SetParams(map[string]Parameter) error
 	GetOutputStreams() []string
 	SetProjectRoot(string)
 }

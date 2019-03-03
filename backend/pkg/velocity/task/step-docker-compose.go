@@ -1,4 +1,4 @@
-package velocity
+package task
 
 import (
 	"context"
@@ -10,7 +10,9 @@ import (
 
 	"github.com/docker/docker/api/types/network"
 	"github.com/ghodss/yaml"
-	dockercompose "github.com/velocity-ci/velocity/backend/pkg/velocity/step/docker/compose/v3"
+	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 
 	"github.com/docker/docker/api/types"
@@ -21,7 +23,7 @@ import (
 type DockerCompose struct {
 	BaseStep
 	ComposeFile string `json:"composeFile"`
-	Contents    dockercompose.DockerComposeYaml
+	Contents    v3.DockerComposeYaml
 }
 
 func NewDockerCompose() *DockerCompose {
@@ -63,14 +65,14 @@ func (dC *DockerCompose) parseDockerComposeFile() error {
 	return nil
 }
 
-func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
+func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
 
 	err := dC.parseDockerComposeFile()
 	if err != nil {
 		return err
 	}
 
-	serviceOrder := dockercompose.GetServiceOrder(dC.Contents.Services, []string{})
+	serviceOrder := v3.GetServiceOrder(dC.Contents.Services, []string{})
 
 	services := []*serviceRunner{}
 	var wg sync.WaitGroup
@@ -81,10 +83,10 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		GetLogger().Error("could not create docker network", zap.String("err", err.Error()))
+		logging.GetLogger().Error("could not create docker network", zap.String("err", err.Error()))
 	}
 
-	writers := map[string]StreamWriter{}
+	writers := map[string]out.StreamWriter{}
 	// Create writers
 	for _, serviceName := range serviceOrder {
 		writers[serviceName] = emitter.GetStreamWriter(serviceName)
@@ -141,7 +143,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
+		logging.GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
 	}
 	success := true
 	for _, serviceRunner := range services {
@@ -155,13 +157,13 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	if !success {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateFailed)
-			fmt.Fprintf(writers[serviceName], colorFmt(ansiError, "-> %s error"), serviceName)
+			fmt.Fprintf(writers[serviceName], out.ColorFmt(out.ANSIError, "-> %s error"), serviceName)
 
 		}
 	} else {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateSuccess)
-			fmt.Fprintf(writers[serviceName], colorFmt(ansiSuccess, "-> %s success"), serviceName)
+			fmt.Fprintf(writers[serviceName], out.ColorFmt(out.ANSISuccess, "-> %s success"), serviceName)
 
 		}
 	}
@@ -169,7 +171,7 @@ func (dC *DockerCompose) Execute(emitter Emitter, t *Task) error {
 	return nil
 }
 
-func (dC *DockerCompose) generateContainerAndHostConfig(s dockercompose.DockerComposeService, serviceName, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
+func (dC *DockerCompose) generateContainerAndHostConfig(s v3.DockerComposeService, serviceName, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
 	env := []string{}
 	for k, v := range s.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))

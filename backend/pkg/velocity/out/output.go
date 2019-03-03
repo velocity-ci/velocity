@@ -1,4 +1,4 @@
-package io
+package out
 
 import (
 	"bufio"
@@ -6,13 +6,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 )
 
-// change to secret strings, removing dependency on velocity package
-
-func HandleOutput(body io.ReadCloser, parameters map[string]velocity.Parameter, writer io.Writer) {
+func HandleOutput(body io.ReadCloser, censored []string, writer io.Writer) {
 	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
@@ -29,10 +25,8 @@ func HandleOutput(body io.ReadCloser, parameters map[string]velocity.Parameter, 
 		}
 
 		if o != "*" {
-			for _, p := range parameters {
-				if p.IsSecret {
-					o = strings.Replace(o, p.Value, "***", -1)
-				}
+			for _, c := range censored {
+				strings.Replace(o, c, "***", -1)
 			}
 			writer.Write([]byte(o))
 		}

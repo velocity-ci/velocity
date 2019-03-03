@@ -1,4 +1,4 @@
-package step_test
+package task_test
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package step
+package task
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/io"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type DockerPush struct {
@@ -29,11 +29,11 @@ func (dP DockerPush) GetDetails() string {
 	return fmt.Sprintf("tags: %s", dP.Tags)
 }
 
-func (dP *DockerPush) Execute(emitter velocity.Emitter, tsk *velocity.Task) error {
+func (dP *DockerPush) Execute(emitter out.Emitter, tsk *Task) error {
 	writer := emitter.GetStreamWriter("push")
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, io.ColorFmt(io.ANSIInfo, "-> %s"), dP.Description)
+	fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> %s"), dP.Description)
 
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
@@ -42,23 +42,23 @@ func (dP *DockerPush) Execute(emitter velocity.Emitter, tsk *velocity.Task) erro
 		imageIDProgress = map[string]string{}
 		// Determine correct authToken
 		authToken := getAuthToken(t, tsk.Docker.Registries)
-		reader, err := cli.ImagePush(ctx, t, types.ImagePushOptions{
+		reader, err := cli.ImagePush(ctx, t, types.ImagePushOptoutns{
 			All:          true,
 			RegistryAuth: authToken,
 		})
 		if err != nil {
-			velocity.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
+			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, io.ColorFmt(io.ANSIError, "-> push failed: %s"), err)
+			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> push failed: %s"), err)
 			return err
 		}
 		handleOutput(reader, tsk.ResolvedParameters, writer)
-		fmt.Fprintf(writer, io.ColorFmt(io.ANSIInfo, "-> pushed: %s"), t)
+		fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> pushed: %s"), t)
 
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, io.ColorFmt(io.ANSISuccess, "-> success"))
+	fmt.Fprintf(writer, out.ColorFmt(out.ANSISuccess, "-> success"))
 	return nil
 
 }

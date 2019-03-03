@@ -6,7 +6,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
-	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/dockercompose/v3"
+	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 )
 
 func TestDockerComposeYamlUnmarshal(t *testing.T) {

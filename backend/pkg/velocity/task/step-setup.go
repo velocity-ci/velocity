@@ -1,4 +1,4 @@
-package velocity
+package task
 
 import (
 	"fmt"
@@ -8,13 +8,15 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
+	"github.com/velocity-ci/velocity/backend/pkg/git"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 )
 
 type Setup struct {
 	BaseStep
 	backupResolver BackupResolver
-	repository     *GitRepository
+	repository     *git.Repository
 	commitHash     string
 }
 
@@ -26,7 +28,7 @@ func NewSetup() *Setup {
 
 func (s *Setup) Init(
 	backupResolver BackupResolver,
-	repository *GitRepository,
+	repository *git.Repository,
 	commitHash string,
 ) {
 	s.backupResolver = backupResolver
@@ -44,7 +46,7 @@ func makeVelocityDirs(projectRoot string) error {
 	return nil
 }
 
-func (s *Setup) Execute(emitter Emitter, t *Task) error {
+func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 	t.RunID = fmt.Sprintf("vci-%s", uuid.NewV4().String())
 	GetLogger().Debug("set run id", zap.String("runID", t.RunID))
 

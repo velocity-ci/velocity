@@ -2,8 +2,6 @@ package velocity
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -12,8 +10,7 @@ import (
 	"sync"
 	"time"
 
-	vio "github.com/velocity-ci/velocity/backend/pkg/velocity/io"
-	dockercompose "github.com/velocity-ci/velocity/backend/pkg/velocity/step/docker/compose/v3"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/task"
 
 	"github.com/docker/docker/api/types/network"
 	"go.uber.org/zap"
@@ -31,7 +28,7 @@ func newServiceRunner(
 	ctx context.Context,
 	writer io.Writer,
 	wg *sync.WaitGroup,
-	params map[string]Parameter,
+	params map[string]task.Parameter,
 	name string,
 	image string,
 	build *dockercompose.DockerComposeServiceBuild,
@@ -75,7 +72,7 @@ type serviceRunner struct {
 	removing    bool
 
 	wg     *sync.WaitGroup
-	params map[string]Parameter
+	params map[string]task.Parameter
 }
 
 func getContainerName(serviceName string) string {
@@ -90,47 +87,6 @@ func getImageName(serviceName string) string {
 		"vci-%s",
 		serviceName,
 	)
-}
-
-func getAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthConfig {
-	authConfigs := map[string]types.AuthConfig{}
-	for _, r := range dockerRegistries {
-		jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
-		if err != nil {
-			GetLogger().Error(
-				"could not decode registry auth config",
-				zap.String("err", err.Error()),
-				zap.String("registry", r.Address),
-			)
-
-		}
-		var authConfig types.AuthConfig
-		err = json.Unmarshal(jsonAuthConfig, &authConfig)
-		authConfigs[r.Address] = authConfig
-	}
-
-	return authConfigs
-}
-
-func getAuthToken(image string, dockerRegistries []DockerRegistry) string {
-	tagParts := strings.Split(image, "/")
-	registry := tagParts[0]
-	if strings.Contains(registry, ".") {
-		// private
-		for _, r := range dockerRegistries {
-			if r.Address == registry {
-				return r.AuthorizationToken
-			}
-		}
-	} else {
-		for _, r := range dockerRegistries {
-			if strings.Contains(r.Address, "https://registry.hub.docker.com") || strings.Contains(r.Address, "https://index.docker.io") {
-				return r.AuthorizationToken
-			}
-		}
-	}
-
-	return ""
 }
 
 func (sR *serviceRunner) PullOrBuild(dockerRegistries []DockerRegistry) {
@@ -326,7 +282,7 @@ func buildContainer(
 	}
 
 	defer buildResp.Body.Close()
-	vio.HandleOutput(buildResp.Body, parameters, writer)
+	out.HandleOutput(buildResp.Body, parameters, writer)
 
 	GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 	return nil

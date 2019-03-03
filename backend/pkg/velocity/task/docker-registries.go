@@ -1,4 +1,4 @@
-package velocity
+package task
 
 import (
 	"context"
@@ -11,6 +11,10 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/velocity-ci/velocity/backend/pkg/exec"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
+	"go.uber.org/zap"
 )
 
 type TaskDocker struct {
@@ -48,7 +52,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task, paramete
 		extraEnv = append(extraEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	s := runCmd(BlankWriter{}, []string{bin}, append(os.Environ(), extraEnv...))
+	s := exec.Run([]string{bin}, "", append(os.Environ(), extraEnv...), out.BlankWriter{})
 	if s.Error != nil {
 		return r, err
 	}
@@ -90,4 +94,45 @@ type dockerLoginOutput struct {
 	Error              string `json:"error"`
 	AuthorizationToken string `json:"authToken"`
 	Address            string `json:"address"`
+}
+
+func GetAuthToken(image string, dockerRegistries []DockerRegistry) string {
+	tagParts := strings.Split(image, "/")
+	registry := tagParts[0]
+	if strings.Contains(registry, ".") {
+		// private
+		for _, r := range dockerRegistries {
+			if r.Address == registry {
+				return r.AuthorizationToken
+			}
+		}
+	} else {
+		for _, r := range dockerRegistries {
+			if strings.Contains(r.Address, "https://registry.hub.docker.com") || strings.Contains(r.Address, "https://index.docker.io") {
+				return r.AuthorizationToken
+			}
+		}
+	}
+
+	return ""
+}
+
+func GetAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthConfig {
+	authConfigs := map[string]types.AuthConfig{}
+	for _, r := range dockerRegistries {
+		jsonAuthConfig, err := base64.URLEncoding.DecodeString(r.AuthorizationToken)
+		if err != nil {
+			logging.GetLogger().Error(
+				"could not decode registry auth config",
+				zap.String("err", err.Error()),
+				zap.String("registry", r.Address),
+			)
+
+		}
+		var authConfig types.AuthConfig
+		err = json.Unmarshal(jsonAuthConfig, &authConfig)
+		authConfigs[r.Address] = authConfig
+	}
+
+	return authConfigs
 }

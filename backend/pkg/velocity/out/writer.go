@@ -1,4 +1,4 @@
-package velocity
+package out
 
 import (
 	"fmt"
@@ -38,12 +38,12 @@ func (w BlankWriter) SetStatus(s string) {}
 func (w BlankWriter) Close() {}
 
 const (
-	ansiSuccess = "\x1b[1m\x1b[49m\x1b[32m"
-	ansiWarn    = "\x1b[1m\x1b[49m\x1b[33m"
-	ansiError   = "\x1b[1m\x1b[49m\x1b[31m"
-	ansiInfo    = "\x1b[1m\x1b[49m\x1b[34m"
+	ANSISuccess = "\x1b[1m\x1b[49m\x1b[32m"
+	ANSIWarn    = "\x1b[1m\x1b[49m\x1b[33m"
+	ANSIError   = "\x1b[1m\x1b[49m\x1b[31m"
+	ANSIInfo    = "\x1b[1m\x1b[49m\x1b[34m"
 )
 
-func colorFmt(ansiColor, format string) string {
+func ColorFmt(ansiColor, format string) string {
 	return fmt.Sprintf("%s%s\x1b[0m", ansiColor, format)
 }

@@ -1,9 +1,11 @@
-package velocity
+package task
 
 import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type DockerBuild struct {
@@ -26,13 +28,13 @@ func (dB DockerBuild) GetDetails() string {
 	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }
 
-func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
+func (dB *DockerBuild) Execute(emitter out.Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("build")
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, colorFmt(ansiInfo, "-> %s"), dB.Description)
+	fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> %s"), dB.Description)
 
-	authConfigs := getAuthConfigsMap(t.Docker.Registries)
+	authConfigs := GetAuthConfigsMap(t.Docker.Registries)
 
 	buildContext := filepath.Join(dB.ProjectRoot, dB.Context)
 
@@ -47,13 +49,13 @@ func (dB *DockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	if err != nil {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, colorFmt(ansiError, "-> failed: %s"), err)
+		fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> failed: %s"), err)
 
 		return err
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, colorFmt(ansiSuccess, "-> success"))
+	fmt.Fprintf(writer, out.ColorFmt(out.ANSISuccess, "-> success"))
 
 	return nil
 }

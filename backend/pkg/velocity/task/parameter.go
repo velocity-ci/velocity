@@ -1,4 +1,4 @@
-package velocity
+package task
 
 import (
 	"encoding/json"
@@ -12,6 +12,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/gosimple/slug"
+	"github.com/velocity-ci/velocity/backend/pkg/exec"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type Parameter struct {
@@ -97,7 +100,7 @@ func getBinary(projectRoot, u string, writer io.Writer) (binaryLocation string, 
 	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", projectRoot, slug.Make(parsedURL.Path))
 
 	if _, err := os.Stat(binaryLocation); os.IsNotExist(err) {
-		GetLogger().Debug("downloading binary", zap.String("from", u), zap.String("to", binaryLocation))
+		logging.GetLogger().Debug("downloading binary", zap.String("from", u), zap.String("to", binaryLocation))
 		writer.Write([]byte(fmt.Sprintf("Downloading binary: %s", parsedURL.String())))
 		outFile, err := os.Create(binaryLocation)
 		if err != nil {
@@ -121,7 +124,7 @@ func getBinary(projectRoot, u string, writer io.Writer) (binaryLocation string, 
 			size,
 		)))
 
-		GetLogger().Debug("downloaded binary", zap.String("from", u), zap.String("to", binaryLocation), zap.Int64("bytes", size))
+		logging.GetLogger().Debug("downloaded binary", zap.String("from", u), zap.String("to", binaryLocation), zap.Int64("bytes", size))
 		outFile.Chmod(os.ModePerm)
 	}
 
@@ -143,7 +146,7 @@ func (p DerivedParameter) GetParameters(writer io.Writer, t *Task, backupResolve
 	}
 
 	// Run binary
-	s := runCmd(BlankWriter{}, cmd, os.Environ())
+	s := exec.Run(cmd, "", os.Environ(), out.BlankWriter{})
 	if s.Error != nil {
 		return r, s.Error
 	}

@@ -1,4 +1,4 @@
-package velocity
+package task
 
 import (
 	"context"
@@ -12,8 +12,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-
-	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/step/docker/compose/v3"
+	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type DockerRun struct {
@@ -42,11 +43,11 @@ func (dR DockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
+func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("run")
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, colorFmt(ansiInfo, "-> %s"), dR.Description)
+	fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> %s"), dR.Description)
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"
@@ -85,7 +86,7 @@ func (dR *DockerRun) Execute(emitter Emitter, t *Task) error {
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
-		GetLogger().Error("could not create docker network", zap.Error(err))
+		logging.GetLogger().Error("could not create docker network", zap.Error(err))
 	}
 
 	sR := newServiceRunner(
