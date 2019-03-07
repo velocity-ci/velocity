@@ -671,7 +671,13 @@ viewProjectPanel project =
                     [ paragraph [ width fill ]
                         [ Route.link [ width fill, clip ]
                             (text <| Project.name project)
-                            (Route.Project { slug = Project.slug project, maybeAfter = Nothing, maybeBefore = Nothing })
+                            (Route.Project
+                                { slug = Project.slug project
+                                , maybeAfter = Nothing
+                                , maybeBefore = Nothing
+                                , maybeBranch = Nothing
+                                }
+                            )
                         ]
                     , viewIf (Project.syncing project) <|
                         column

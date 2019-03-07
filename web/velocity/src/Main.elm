@@ -119,7 +119,15 @@ view model =
             in
             { title = "Login"
             , body =
-                [ layout [ width fill, height fill ] (Element.map GotLoginMsg content)
+                [ layout
+                    [ width fill
+                    , height fill
+                    , Font.family
+                        [ Font.typeface "Open Sans"
+                        , Font.sansSerif
+                        ]
+                    ]
+                    (Element.map GotLoginMsg content)
                 ]
             }
 

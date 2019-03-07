@@ -27,6 +27,7 @@ import PaginatedList exposing (PaginatedList)
 import Palette
 import Project exposing (Project)
 import Project.Branch as Branch exposing (Branch)
+import Project.Branch.Name as BranchName
 import Project.Build as Build exposing (Build)
 import Project.Commit as Commit exposing (Commit)
 import Project.Slug as Slug exposing (Slug)
@@ -373,8 +374,8 @@ viewSubHeader device { session, slug, branchDropdown } =
             none
 
 
-viewMobileSubHeader : Project -> List Branch -> BranchDropdown -> Element Msg
-viewMobileSubHeader project branches branchDropdown =
+viewMobileSubHeader : Project -> Connection Commit -> List Branch -> BranchDropdown -> Element Msg
+viewMobileSubHeader project commitConnection branches branchDropdown =
     row
         [ width fill
         , height shrink
@@ -416,8 +417,8 @@ viewMobileSubHeader project branches branchDropdown =
         ]
 
 
-viewDesktopSubHeader : Project -> List Branch -> BranchDropdown -> Element Msg
-viewDesktopSubHeader project branches branchDropdown =
+viewDesktopSubHeader : Project -> Connection Commit -> List Branch -> BranchDropdown -> Element Msg
+viewDesktopSubHeader project commitConnection branches branchDropdown =
     row
         [ Font.bold
         , Font.size 18
@@ -483,7 +484,7 @@ viewDesktopSubHeader project branches branchDropdown =
                                         ]
                                         (Icon.x Icon.defaultOptions)
                                     ]
-                                , viewBranchSelectDropdown branches
+                                , viewBranchSelectDropdown branches commitConnection
                                 ]
                             ]
 
@@ -563,14 +564,14 @@ viewDesktopBody project model =
             , alignRight
             ]
             [ column
-                [ width (fillPortion 4)
+                [ width (fillPortion 1)
                 , height fill
                 , spacingXY 0 20
                 ]
                 [ viewProjectDetails project
                 ]
             , column
-                [ width (fillPortion 6)
+                [ width (fillPortion 1)
                 , height fill
                 ]
                 [ viewRecentTasksContainer model.tasks ]
@@ -619,7 +620,8 @@ viewTabContainer model =
                 }
             ]
             [ --            viewProjectBuilds tz buildStatus
-              viewCommitConnection model.slug model.commitConnection
+              --viewCommitConnection model.slug model.commitConnection
+              viewTimeline
             ]
         ]
 
@@ -787,8 +789,8 @@ viewCommitConnectionLoaded slug commitConnection =
                 ]
             }
         , row [ spaceEvenly, width fill ]
-            [ viewPaginationBackButton (\cursor -> Route.Project { slug = slug, maybeAfter = Nothing, maybeBefore = Just cursor }) commitConnection
-            , viewPaginationNextButton (\cursor -> Route.Project { slug = slug, maybeAfter = Just cursor, maybeBefore = Nothing }) commitConnection
+            [ viewPaginationBackButton (\cursor -> Route.Project { slug = slug, maybeAfter = Nothing, maybeBefore = Just cursor, maybeBranch = Nothing }) commitConnection
+            , viewPaginationNextButton (\cursor -> Route.Project { slug = slug, maybeAfter = Just cursor, maybeBefore = Nothing, maybeBranch = Nothing }) commitConnection
             ]
         ]
 
@@ -1024,7 +1026,7 @@ viewProjectDetails project =
                 , spaceEvenly
                 ]
                 [ el [ Font.color Palette.neutral2 ] (text "Repository")
-                , row
+                , paragraph
                     [ spacingXY 5 0
                     , Font.color Palette.primary3
                     , pointer
@@ -1140,36 +1142,7 @@ viewProjectHealth project =
 
 viewRecentTasksContainer : Status (List Task) -> Element Msg
 viewRecentTasksContainer tasksStatus =
-    column
-        [ width fill
-        , height fill
-        , Background.color Palette.white
-        , Border.shadow
-            { offset = ( 1, 1 )
-            , size = 1
-            , blur = 1
-            , color = Palette.neutral6
-            }
-        , Border.rounded 5
-        ]
-        [ el
-            [ Font.size 20
-            , width fill
-            , Font.alignLeft
-            , paddingXY 10 20
-            ]
-            (text "Tasks")
-        , row
-            [ width fill
-            , height fill
-            , Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
-            , Border.color Palette.neutral6
-            , paddingXY 10 10
-            , spacing 10
-            ]
-            [ viewRecentTasks tasksStatus
-            ]
-        ]
+    viewRecentTasks tasksStatus
 
 
 viewRecentTasks : Status (List Task) -> Element Msg
@@ -1180,38 +1153,188 @@ viewRecentTasks tasksStatus =
 
 viewTaskTable : List Task -> Element Msg
 viewTaskTable tasks =
-    table
+    let
+        selected =
+            tasks
+                |> List.head
+                |> Maybe.map viewTaskInformation
+                |> Maybe.withDefault none
+    in
+    textColumn
         [ width fill
-        , Font.size 14
+        , height fill
+        , clipX
+        , Background.color Palette.white
+        , Border.shadow
+            { offset = ( 1, 1 )
+            , size = 1
+            , blur = 1
+            , color = Palette.neutral6
+            }
+        , Border.rounded 5
         ]
-        { data = tasks
-        , columns =
-            [ { header = none
-              , width = fillPortion 1
-              , view =
-                    \task ->
-                        el
-                            [ width fill
-                            , paddingXY 5 10
-                            , Border.color Palette.neutral6
-                            , Font.alignLeft
-                            ]
-                            (text (TaskName.toString <| Task.name task))
-              }
-            , { header = none
-              , width = fillPortion 1
-              , view =
-                    \task ->
-                        el
-                            [ width fill
-                            , paddingXY 5 10
-                            , Border.color Palette.neutral6
-                            , Font.alignLeft
-                            ]
-                            (text (Task.description task))
-              }
+        [ row
+            [ Font.size 20
+            , width fill
+            , Font.alignLeft
+            , paddingXY 10 20
             ]
-        }
+            [ text "Tasks"
+            , viewTaskSelectDropdown tasks
+            ]
+        , row
+            [ width fill
+            , height fill
+            , clipX
+            , Border.widthEach { top = 1, left = 0, right = 0, bottom = 0 }
+            , Border.color Palette.neutral6
+            , paddingXY 10 10
+            , spacing 10
+            ]
+            [ selected
+            ]
+        ]
+
+
+viewTaskSelectButton : Length -> BranchDropdown -> Element Msg
+viewTaskSelectButton widthLength (BranchDropdown state) =
+    el
+        [ width fill
+        , height fill
+        ]
+        (Button.button BranchDropdownToggleClicked
+            { leftIcon = Nothing
+            , rightIcon = Nothing
+            , centerLeftIcon = Nothing
+            , centerRightIcon = Nothing
+            , scheme =
+                if state == Closed then
+                    Button.Secondary
+
+                else
+                    Button.Primary
+            , content =
+                row [ spacingXY 5 0 ]
+                    [ el [] (text "Branch:")
+                    , el [ Font.heavy ] (text "master")
+                    , el [] (Icon.arrowDown { size = 12, sizeUnit = Icon.Pixels, strokeWidth = 1 })
+                    ]
+            , size = Button.Small
+            , widthLength = widthLength
+            , heightLength = shrink
+            , disabled = False
+            }
+        )
+
+
+
+--    table
+--        [ width fill
+--        , Font.size 14
+--        , clipX
+--        ]
+--        { data = tasks
+--        , columns =
+--            [ { header = none
+--              , width = fillPortion 1
+--              , view =
+--                    \task ->
+--                        paragraph
+--                            [ width fill
+--                            , paddingXY 5 10
+--                            , Border.color Palette.neutral6
+--                            , Border.widthXY 0 1
+--                            , Font.alignLeft
+--                            ]
+--                            [ text (TaskName.toString <| Task.name task) ]
+--              }
+--            , { header = none
+--              , width = fillPortion 1
+--              , view =
+--                    \task ->
+--                        paragraph
+--                            [ width fill
+--                            , paddingXY 5 10
+--                            , Border.color Palette.neutral6
+--                            , Font.alignLeft
+--                            , Border.widthXY 0 1
+--                            , clipX
+--                            ]
+--                            [ text (Task.description task) ]
+--              }
+--            ]
+--        }
+
+
+viewTaskInformation : Task -> Element Msg
+viewTaskInformation task =
+    column [ width fill, Font.alignLeft ]
+        [ paragraph [] [ text (Task.name task |> TaskName.toString) ]
+        , row [] [ text "Last 5 builds:" ]
+        , row []
+            [ el
+                [ Background.color Palette.success5
+                , width (px 30)
+                , height (px 30)
+                , Border.rounded 90
+                , Border.width 1
+                , Border.color Palette.success4
+                ]
+                none
+            ]
+        ]
+
+
+viewTaskSelectDropdown : List Task -> Element Msg
+viewTaskSelectDropdown tasks =
+    column [ width fill ]
+        [ row
+            [ width fill
+            , padding 10
+            ]
+            [ el
+                [ Background.color Palette.white
+                , width fill
+                ]
+                (Input.search
+                    { leftIcon = Just Icon.search
+                    , rightIcon = Nothing
+                    , label = Input.labelHidden "Search for a task"
+                    , placeholder = Just "Find a task..."
+                    , dirty = False
+                    , value = ""
+                    , problems = []
+                    , onChange = always NoOp
+                    }
+                )
+            ]
+        , column
+            [ width fill
+            , paddingEach { top = 0, left = 0, right = 0, bottom = 0 }
+            ]
+            (List.indexedMap
+                (\i b ->
+                    let
+                        rounded =
+                            if i + 1 == List.length tasks then
+                                { topLeft = 0
+                                , topRight = 0
+                                , bottomLeft = 5
+                                , bottomRight = 5
+                                }
+
+                            else
+                                { topLeft = 0
+                                , topRight = 0
+                                , bottomLeft = 0
+                                , bottomRight = 0
+                                }
+                    in
+                    viewTaskSelectDropdownItem rounded b
+                )
+                tasks
+            )
+        ]
 
 
 viewTaskIcons : List Task -> Element Msg
@@ -1229,6 +1352,7 @@ viewRecentTaskItem task =
     in
     column
         [ width fill
+        , clipX
         , paddingXY 10 20
         , Font.size 15
         , spacingXY 0 10
@@ -1252,6 +1376,35 @@ viewRecentTaskItem task =
         , el
             [ height fill, Font.color Palette.neutral3, width shrink, centerX ]
             (el [ alignBottom ] (text "3 months ago"))
+        ]
+
+
+viewTaskSelectDropdownItem :
+    { topLeft : Int
+    , topRight : Int
+    , bottomLeft : Int
+    , bottomRight : Int
+    }
+    -> Task
+    -> Element Msg
+viewTaskSelectDropdownItem rounded task =
+    row
+        [ Border.widthEach { top = 1, bottom = 0, right = 0, left = 0 }
+        , Border.color Palette.neutral6
+        , width fill
+        , padding 10
+        , Background.color Palette.white
+        , spacingXY 10 0
+        , Font.color Palette.neutral1
+        , Border.roundEach rounded
+        , pointer
+        , mouseOver
+            [ Background.color Palette.primary4
+            , Font.color Palette.neutral7
+            ]
+        ]
+        [ el [ width (px 16), centerY ] none
+        , el [ width fill, centerY, Font.alignLeft, clipX ] (task |> Task.name |> TaskName.toString |> text)
         ]
 
 
@@ -1290,8 +1443,8 @@ viewBranchSelectButton widthLength (BranchDropdown state) =
         )
 
 
-viewBranchSelectDropdown : List Branch -> Element Msg
-viewBranchSelectDropdown branches =
+viewBranchSelectDropdown : Slug -> List Branch -> Connection Commit -> Element Msg
+viewBranchSelectDropdown projectSlug branches commitConnection =
     column [ width fill ]
         [ row
             [ width fill
@@ -1335,7 +1488,16 @@ viewBranchSelectDropdown branches =
                                 , bottomRight = 0
                                 }
                     in
-                    viewBranchSelectDropdownItem rounded b
+                    viewBranchSelectDropdownItem rounded
+                        b
+                        (\branchName ->
+                            Route.Project
+                                { maybeBranch = Just branchName
+                                , slug = projectSlug
+                                , maybeBefore = Nothing
+                                , maybeAfter = Just <| PageInfo.startCursor commitConnection.pageInfo
+                                }
+                        )
                 )
                 branches
             )
@@ -1349,26 +1511,30 @@ viewBranchSelectDropdownItem :
     , bottomRight : Int
     }
     -> Branch
+    -> (BranchName.Name -> Route.Route)
     -> Element Msg
-viewBranchSelectDropdownItem rounded branch =
-    row
-        [ Border.widthEach { top = 1, bottom = 0, right = 0, left = 0 }
-        , Border.color Palette.neutral6
-        , width fill
-        , padding 10
-        , Background.color Palette.white
-        , spacingXY 10 0
-        , Font.color Palette.neutral1
-        , Border.roundEach rounded
-        , pointer
-        , mouseOver
-            [ Background.color Palette.primary4
-            , Font.color Palette.neutral7
+viewBranchSelectDropdownItem rounded branch toRoute =
+    Route.link []
+        (row
+            [ Border.widthEach { top = 1, bottom = 0, right = 0, left = 0 }
+            , Border.color Palette.neutral6
+            , width fill
+            , padding 10
+            , Background.color Palette.white
+            , spacingXY 10 0
+            , Font.color Palette.neutral1
+            , Border.roundEach rounded
+            , pointer
+            , mouseOver
+                [ Background.color Palette.primary4
+                , Font.color Palette.neutral7
+                ]
             ]
-        ]
-        [ el [ width (px 16), centerY ] none
-        , el [ width fill, centerY, Font.alignLeft, clipX ] (Branch.text branch)
-        ]
+            [ el [ width (px 16), centerY ] none
+            , el [ width fill, centerY, Font.alignLeft, clipX ] (Branch.text branch)
+            ]
+        )
+        (toRoute <| Branch.name branch)
 
 
 

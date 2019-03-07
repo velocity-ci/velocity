@@ -7,6 +7,7 @@ import Element exposing (..)
 import Element.Font as Font
 import Page.Home.ActivePanel as ActivePanel exposing (ActivePanel)
 import Palette
+import Project.Branch.Name as BranchName
 import Project.Build.Id as BuildId
 import Project.Slug
 import Url exposing (Url)
@@ -25,7 +26,7 @@ type Route
     | Root
     | Login
     | Logout
-    | Project { slug : Project.Slug.Slug, maybeAfter : Maybe Edge.Cursor, maybeBefore : Maybe Edge.Cursor }
+    | Project { slug : Project.Slug.Slug, maybeBranch : Maybe BranchName.Name, maybeAfter : Maybe Edge.Cursor, maybeBefore : Maybe Edge.Cursor }
     | Build BuildId.Id
 
 
@@ -36,17 +37,19 @@ parser =
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
         , Parser.map
-            (\slug maybeAfter maybeBefore ->
+            (\slug maybeAfter maybeBefore maybeBranch ->
                 Project <|
                     { slug = slug
                     , maybeAfter = maybeAfter
                     , maybeBefore = maybeBefore
+                    , maybeBranch = maybeBranch
                     }
             )
             (s "project"
                 </> Project.Slug.urlParser
                 <?> Edge.afterQueryParser (QueryParser.string "after")
                 <?> Edge.afterQueryParser (QueryParser.string "before")
+                <?> BranchName.queryParser (QueryParser.string "branch")
             )
         , Parser.map Build (s "build" </> BuildId.urlParser)
         ]

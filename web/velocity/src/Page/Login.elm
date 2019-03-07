@@ -15,9 +15,7 @@ import Form.Input
 import Graphql.Http
 import Icon
 import Loading
-import Page.Home.ActivePanel as HomeActivePanel
 import Palette
-import Route exposing (Route)
 import Task exposing (Task)
 
 
@@ -71,10 +69,19 @@ view model =
         Element.column
             [ width fill
             , height fill
-            , spacingXY 0 20
+            , Background.color Palette.white
             ]
-            [ viewProblems model.problems
-            , viewFormContainer model.form model.problems model.submitting
+            [ Element.column
+                [ centerX
+                , width (fill |> maximum 460)
+                , spacingXY 0 40
+                , height fill
+                ]
+                [ viewBrand
+                , viewProblems model.problems
+                , viewFormContainer model.form model.problems model.submitting
+                , viewFooter
+                ]
             ]
     }
 
@@ -85,17 +92,18 @@ viewProblems problems =
         none
 
     else
-        Element.row
-            [ paddingXY 5 10
-            , width (fill |> maximum 450)
-            , Font.size 15
-            , centerX
-            , Border.width 1
-            , Border.color Palette.neutral4
-            , Background.color Palette.danger7
-            , Border.rounded 5
-            ]
-            (List.map viewProblem problems)
+        el [ width (fill |> maximum 400) ] <|
+            row
+                [ paddingXY 5 10
+                , Font.size 15
+                , width fill
+                , centerX
+                , Border.width 1
+                , Border.color Palette.neutral4
+                , Background.color Palette.danger7
+                , Border.rounded 5
+                ]
+                (List.map viewProblem problems)
 
 
 viewProblem : Problem -> Element msg
@@ -111,11 +119,12 @@ viewProblem problem =
     in
     el
         [ width fill
+        , centerX
         , Font.center
         , Font.color Palette.neutral2
         ]
     <|
-        row [ width shrink, centerX, spacingXY 5 0 ]
+        row [ width fill, centerX, spacingXY 5 0 ]
             [ el [ Font.color Palette.danger3 ] (Icon.x Icon.defaultOptions)
             , el [] <| text errorMessage
             ]
@@ -123,39 +132,45 @@ viewProblem problem =
 
 viewFormContainer : Form -> List Problem -> Bool -> Element (Msg msg)
 viewFormContainer form problems submitting =
-    Element.column
-        [ width (fill |> maximum 450)
+    el
+        [ width fill
         , centerX
-        , spacingXY 0 20
+        , centerY
         , padding 20
-        , Font.size 15
         , Font.color Palette.neutral3
-        , Background.color Palette.white
-        , Border.width 1
-        , Border.color Palette.primary5
-        , Border.rounded 10
         ]
-        [ viewBrand
-        , viewLoginDescription
-        , viewForm form problems submitting
-        ]
+    <|
+        viewForm form problems submitting
 
 
 viewBrand : Element msg
 viewBrand =
-    el
-        [ Font.color Palette.primary3
-        , Font.heavy
-        , Font.size 28
-        , Font.center
+    column
+        [ Font.center
         , width fill
-        , Font.letterSpacing -1
-        , Font.family
-            [ Font.typeface "titillium web"
-            , Font.sansSerif
-            ]
+        , spacingXY 0 20
+        , paddingXY 0 20
         ]
-        (text "Velocity")
+        [ el
+            [ Font.heavy
+            , Font.size 40
+            , Font.center
+            , width fill
+            , Font.letterSpacing -1
+            , Font.color Palette.primary3
+            , Font.family
+                [ Font.typeface "titillium web"
+                , Font.sansSerif
+                ]
+            ]
+            (text "Velocity")
+        , el
+            [ width fill
+            , Font.color Palette.primary4
+            ]
+          <|
+            text "Log in to continue to Velocity"
+        ]
 
 
 viewLoginDescription : Element msg
@@ -186,8 +201,8 @@ viewForm form problems submitting =
         [ width (fill |> maximum 400)
         , height fill
         , centerX
-        , spacingXY 0 20
         , paddingXY 0 20
+        , spacingXY 0 30
         , Font.size 15
         ]
         [ row [ width fill ]
@@ -216,7 +231,7 @@ viewForm form problems submitting =
             ]
         , row
             [ width fill
-            , paddingEach { top = 10, left = 0, right = 0, bottom = 0 }
+            , paddingEach { top = 0, left = 0, right = 0, bottom = 0 }
             ]
             [ Input.button
                 [ width fill
@@ -237,7 +252,7 @@ viewForm form problems submitting =
                      else
                         Palette.neutral6
                     )
-                , height (px 40)
+                , height (px 45)
                 , mouseOver
                     (if submitting then
                         []
@@ -258,6 +273,28 @@ viewForm form problems submitting =
                 }
             ]
         ]
+
+
+viewFooter : Element (Msg baseMsg)
+viewFooter =
+    el
+        [ height fill
+        , width fill
+        , paddingXY 0 20
+        ]
+        (newTabLink
+            [ alignBottom
+            , height (px 40)
+            , centerX
+            , Font.color Palette.primary3
+            , mouseOver
+                [ Font.color Palette.primary5
+                ]
+            ]
+            { url = "https://github.com/velocity-ci/velocity"
+            , label = Icon.github Icon.fullSizeOptions
+            }
+        )
 
 
 
@@ -306,11 +343,21 @@ update msg model =
             )
 
         CompletedLogin (Ok response) ->
-            ( { model | submitting = False }
-            , Api.responseResult response
-                |> Maybe.map Api.storeCredWith
-                |> Maybe.withDefault Cmd.none
-            )
+            let
+                maybeStore =
+                    Api.responseResult response
+                        |> Maybe.map Api.storeCredWith
+            in
+            case maybeStore of
+                Just store ->
+                    ( { model | problems = [] }
+                    , store
+                    )
+
+                Nothing ->
+                    ( { model | problems = [ ServerError "Error accessing local storage" ] }
+                    , Cmd.none
+                    )
 
         CompletedLogin (Err (Graphql.Http.GraphqlError _ errors)) ->
             let

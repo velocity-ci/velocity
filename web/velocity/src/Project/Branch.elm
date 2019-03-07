@@ -1,4 +1,4 @@
-module Project.Branch exposing (Branch, connectionSelectionSet, selectionSet, text)
+module Project.Branch exposing (Branch, connectionSelectionSet, name, selectionSet, text)
 
 import Api.Compiled.Object
 import Api.Compiled.Object.BranchConnection as BranchConnection
@@ -24,9 +24,14 @@ type alias Internals =
 -- INFO
 
 
+name : Branch -> Name
+name (Branch internals) =
+    internals.name
+
+
 text : Branch -> Element msg
-text (Branch { name }) =
-    Name.text name
+text (Branch internals) =
+    Name.text internals.name
 
 
 

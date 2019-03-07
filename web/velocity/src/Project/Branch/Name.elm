@@ -1,10 +1,11 @@
-module Project.Branch.Name exposing (Name, default, name, selectionSet, text, toString, urlParser)
+module Project.Branch.Name exposing (Name, default, name, queryParser, selectionSet, text, toString, urlParser)
 
 import Api.Compiled.Object
 import Api.Compiled.Object.Branch as Branch
 import Element exposing (..)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
 import Url.Parser exposing (Parser)
+import Url.Parser.Query as QueryParser
 
 
 
@@ -46,6 +47,11 @@ text (Name str) =
 urlParser : Parser (Name -> a) a
 urlParser =
     Url.Parser.custom "Name" (\str -> Just (Name str))
+
+
+queryParser : QueryParser.Parser (Maybe String) -> QueryParser.Parser (Maybe Name)
+queryParser =
+    QueryParser.map (Maybe.map Name)
 
 
 
