@@ -96,27 +96,6 @@ type dockerLoginOutput struct {
 	Address            string `json:"address"`
 }
 
-func GetAuthToken(image string, dockerRegistries []DockerRegistry) string {
-	tagParts := strings.Split(image, "/")
-	registry := tagParts[0]
-	if strings.Contains(registry, ".") {
-		// private
-		for _, r := range dockerRegistries {
-			if r.Address == registry {
-				return r.AuthorizationToken
-			}
-		}
-	} else {
-		for _, r := range dockerRegistries {
-			if strings.Contains(r.Address, "https://registry.hub.docker.com") || strings.Contains(r.Address, "https://index.docker.io") {
-				return r.AuthorizationToken
-			}
-		}
-	}
-
-	return ""
-}
-
 func GetAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthConfig {
 	authConfigs := map[string]types.AuthConfig{}
 	for _, r := range dockerRegistries {
@@ -135,4 +114,11 @@ func GetAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthC
 	}
 
 	return authConfigs
+}
+
+func GetAddressAuthTokensMap(dockerRegistries []DockerRegistry) (r map[string]string) {
+	for _, dR := range dockerRegistries {
+		r[dR.Address] = dR.AuthorizationToken
+	}
+	return r
 }

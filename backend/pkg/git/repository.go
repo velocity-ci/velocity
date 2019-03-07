@@ -11,7 +11,6 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 
-	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/exec"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
@@ -48,28 +47,6 @@ type HostKeyError string
 
 func (s HostKeyError) Error() string {
 	return string(s)
-}
-
-func getUniqueWorkspace(r *Repository) (string, error) {
-	dir := fmt.Sprintf("%s/_%s-%s",
-		"",
-		// slug.Make(r.Address),
-		auth.RandomString(8),
-		auth.RandomString(8),
-	)
-
-	err := os.RemoveAll(dir)
-	if err != nil {
-		logging.GetLogger().Fatal("could not create unique workspace", zap.Error(err))
-		return "", err
-	}
-	err = os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		logging.GetLogger().Fatal("could not create unique workspace", zap.Error(err))
-		return "", err
-	}
-
-	return dir, nil
 }
 
 func initWorkspace(r *Repository, dir string, writer io.Writer) (string, error) {

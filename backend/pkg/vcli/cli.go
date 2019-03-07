@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/urfave/cli"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/task"
 )
 
 type CLI struct {
@@ -52,7 +52,7 @@ func (c *CLI) Run() {
 }
 
 func List(c *cli.Context) error {
-	tasks, err := velocity.GetTasksFromCurrentDir()
+	tasks, err := task.GetTasksFromCurrentDir()
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func RunCompletion(c *cli.Context) {
 	if c.NArg() > 0 {
 		return
 	}
-	tasks, _ := velocity.GetTasksFromCurrentDir()
+	tasks, _ := task.GetTasksFromCurrentDir()
 	for _, t := range tasks {
 		fmt.Println(t.Name)
 	}
@@ -109,7 +109,7 @@ func RunCompletion(c *cli.Context) {
 func Info(c *cli.Context) error {
 	emitter := NewEmitter()
 
-	basicParams, err := velocity.GetBasicParams(emitter.GetStreamWriter("setup"))
+	basicParams, err := task.GetBasicParams(emitter.GetStreamWriter("setup"))
 	if err != nil {
 		return err
 	}
@@ -123,28 +123,28 @@ func Run(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return fmt.Errorf("incorrect amount of args")
 	}
-	tasks, err := velocity.GetTasksFromCurrentDir()
+	tasks, err := task.GetTasksFromCurrentDir()
 	if err != nil {
 		return err
 	}
-	task, err := getRequestedTaskByName(c.Args().Get(0), tasks)
+	t, err := getRequestedTaskByName(c.Args().Get(0), tasks)
 	if err != nil {
 		return err
 	}
-	fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", task.Name)))
+	fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
 	emitter := NewEmitter()
 
-	task.Steps = append([]velocity.Step{velocity.NewSetup()}, task.Steps...)
-	for i, step := range task.Steps {
+	t.Steps = append([]task.Step{task.NewSetup()}, t.Steps...)
+	for i, step := range t.Steps {
 		// if !r.run {
 		// 	return
 		// }
 		if step.GetType() == "setup" {
-			step.(*velocity.Setup).Init(&ParameterResolver{}, nil, "")
+			step.(*task.Setup).Init(&ParameterResolver{}, nil, "")
 		}
 		emitter.SetStepNumber(uint64(i))
-		step.SetProjectRoot(task.ProjectRoot)
-		err := step.Execute(emitter, task)
+		step.SetProjectRoot(t.ProjectRoot)
+		err := step.Execute(emitter, t)
 		if err != nil {
 			fmt.Printf("encountered error: %s", err)
 			return err
@@ -154,7 +154,7 @@ func Run(c *cli.Context) error {
 	return nil
 }
 
-func getRequestedTaskByName(taskName string, tasks []*velocity.Task) (*velocity.Task, error) {
+func getRequestedTaskByName(taskName string, tasks []*task.Task) (*task.Task, error) {
 	for _, t := range tasks {
 		if t.Name == taskName {
 			return t, nil

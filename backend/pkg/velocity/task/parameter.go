@@ -17,6 +17,16 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
+func getSecrets(params map[string]Parameter) (r []string) {
+	for _, p := range params {
+		if p.IsSecret {
+			r = append(r, p.Value)
+		}
+	}
+
+	return r
+}
+
 type Parameter struct {
 	Name     string `json:"name"`
 	Value    string `json:"value"`

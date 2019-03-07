@@ -5,14 +5,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type DockerBuild struct {
 	BaseStep
-	Dockerfile string   `json:"dockerfile"`
-	Context    string   `json:"context"`
-	Tags       []string `json:"tags"`
+	config.StepDockerBuild
+	// Dockerfile string   `json:"dockerfile"`
+	// Context    string   `json:"context"`
+	// Tags       []string `json:"tags"`
 }
 
 func NewDockerBuild() *DockerBuild {
@@ -38,11 +41,11 @@ func (dB *DockerBuild) Execute(emitter out.Emitter, t *Task) error {
 
 	buildContext := filepath.Join(dB.ProjectRoot, dB.Context)
 
-	err := buildContainer(
+	err := docker.BuildContainer(
 		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
-		t.ResolvedParameters,
+		getSecrets(t.ResolvedParameters),
 		writer,
 		authConfigs,
 	)

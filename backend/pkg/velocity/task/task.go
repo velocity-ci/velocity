@@ -1,7 +1,6 @@
 package task
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -9,113 +8,25 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"go.uber.org/zap"
 )
 
 type Task struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Docker      TaskDocker        `json:"docker"`
-	Parameters  []ParameterConfig `json:"parameters"`
-	Steps       []Step            `json:"steps"`
+	config.Task
+	// Name        string            `json:"name"`
+	// Description string            `json:"description"`
+	// Docker      TaskDocker        `json:"docker"`
+	// Parameters  []ParameterConfig `json:"parameters"`
+	// Steps       []Step            `json:"steps"`
 
-	ParseErrors      []string `json:"parseErrors"`
-	ValidationErrors []string `json:"validationErrors"`
+	// ParseErrors      []string `json:"parseErrors"`
+	// ValidationErrors []string `json:"validationErrors"`
 
 	ProjectRoot        string               `json:"-"`
 	RunID              string               `json:"-"`
 	ResolvedParameters map[string]Parameter `json:"-"`
-}
-
-func handleUnmarshalError(t *Task, err error) *Task {
-	if err != nil {
-		t.ParseErrors = append(t.ParseErrors, err.Error())
-	}
-
-	return t
-}
-
-func NewTask() *Task {
-	return &Task{
-		Name:        "",
-		Description: "",
-		Docker: TaskDocker{
-			Registries: []DockerRegistry{},
-		},
-		Parameters:         []ParameterConfig{},
-		Steps:              []Step{},
-		ParseErrors:        []string{},
-		ValidationErrors:   []string{},
-		ProjectRoot:        "",
-		RunID:              "",
-		ResolvedParameters: map[string]Parameter{},
-	}
-}
-
-func (t *Task) UnmarshalJSON(b []byte) error {
-	// We don't return any errors from this function so we can show more helpful parse errors
-	var objMap map[string]*json.RawMessage
-	// We'll store the error (if any) so we can return it if necessary
-	err := json.Unmarshal(b, &objMap)
-	if err != nil {
-		t = handleUnmarshalError(t, err)
-	}
-
-	// Deserialize Name TODO: remove
-	if _, ok := objMap["name"]; ok {
-		err = json.Unmarshal(*objMap["name"], &t.Name)
-		t = handleUnmarshalError(t, err)
-	}
-
-	// Deserialize Description
-	if _, ok := objMap["description"]; ok {
-		err = json.Unmarshal(*objMap["description"], &t.Description)
-		t = handleUnmarshalError(t, err)
-	}
-
-	// Deserialize Parameters
-	if val, _ := objMap["parameters"]; val != nil {
-		var rawParameters []*json.RawMessage
-		err = json.Unmarshal(*val, &rawParameters)
-		t = handleUnmarshalError(t, err)
-		if err == nil {
-			for _, rawMessage := range rawParameters {
-				param, err := unmarshalConfigParameter(*rawMessage)
-				t = handleUnmarshalError(t, err)
-				if param != nil {
-					t.Parameters = append(t.Parameters, param)
-				}
-			}
-		}
-	}
-
-	// Deserialize Docker
-	if _, ok := objMap["docker"]; ok {
-		err = json.Unmarshal(*objMap["docker"], &t.Docker)
-		t = handleUnmarshalError(t, err)
-	}
-
-	// Deserialize Steps by type
-	if val, _ := objMap["steps"]; val != nil {
-		var rawSteps []*json.RawMessage
-		err = json.Unmarshal(*val, &rawSteps)
-		t = handleUnmarshalError(t, err)
-		if err == nil {
-			for _, rawMessage := range rawSteps {
-				s, err := getStepFromBytes(*rawMessage)
-				t = handleUnmarshalError(t, err)
-				if err == nil {
-					err = json.Unmarshal(*rawMessage, s)
-					t = handleUnmarshalError(t, err)
-					if err == nil {
-						t.Steps = append(t.Steps, s)
-					}
-				}
-			}
-		}
-	}
-
-	return nil
 }
 
 func findProjectRoot(cwd string, attempted []string) (string, error) {
@@ -125,7 +36,7 @@ func findProjectRoot(cwd string, attempted []string) (string, error) {
 	}
 	for _, f := range files {
 		if f.IsDir() && f.Name() == ".git" {
-			GetLogger().Debug("found project root", zap.String("dir", cwd))
+			logging.GetLogger().Debug("found project root", zap.String("dir", cwd))
 			return cwd, nil
 		}
 	}
@@ -145,7 +56,7 @@ func findTasksDirectory(projectRoot string) (string, error) {
 	repoConfigPath := filepath.Join(projectRoot, ".velocity.yml")
 	if f, err := os.Stat(repoConfigPath); !os.IsNotExist(err) {
 		if !f.IsDir() {
-			var repoConfig RepositoryConfig
+			var repoConfig Root
 			repoYaml, _ := ioutil.ReadFile(repoConfigPath)
 			err = yaml.Unmarshal(repoYaml, &repoConfig)
 			if err == nil {
@@ -184,7 +95,7 @@ func GetTasksFromCurrentDir() ([]*Task, error) {
 		return tasks, err
 	}
 
-	GetLogger().Debug("looking for tasks in", zap.String("dir", tasksDir))
+	logging.GetLogger().Debug("looking for tasks in", zap.String("dir", tasksDir))
 	err = filepath.Walk(tasksDir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() && (strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml")) {
 			// fmt.Printf("-> reading %s\n", path)
@@ -210,3 +121,94 @@ func GetTasksFromCurrentDir() ([]*Task, error) {
 
 	return tasks, err
 }
+
+// func handleUnmarshalError(t *Task, err error) *Task {
+// 	if err != nil {
+// 		t.ParseErrors = append(t.ParseErrors, err.Error())
+// 	}
+
+// 	return t
+// }
+
+// // func NewTask() *Task {
+// // 	return &Task{
+// // 		Name:        "",
+// // 		Description: "",
+// // 		Docker: TaskDocker{
+// // 			Registries: []DockerRegistry{},
+// // 		},
+// // 		Parameters:         []ParameterConfig{},
+// // 		Steps:              []Step{},
+// // 		ParseErrors:        []string{},
+// // 		ValidationErrors:   []string{},
+// // 		ProjectRoot:        "",
+// // 		RunID:              "",
+// // 		ResolvedParameters: map[string]Parameter{},
+// // 	}
+// // }
+
+// func (t *Task) UnmarshalJSON(b []byte) error {
+// 	// We don't return any errors from this function so we can show more helpful parse errors
+// 	var objMap map[string]*json.RawMessage
+// 	// We'll store the error (if any) so we can return it if necessary
+// 	err := json.Unmarshal(b, &objMap)
+// 	if err != nil {
+// 		t = handleUnmarshalError(t, err)
+// 	}
+
+// 	// Deserialize Name TODO: remove
+// 	if _, ok := objMap["name"]; ok {
+// 		err = json.Unmarshal(*objMap["name"], &t.Name)
+// 		t = handleUnmarshalError(t, err)
+// 	}
+
+// 	// Deserialize Description
+// 	if _, ok := objMap["description"]; ok {
+// 		err = json.Unmarshal(*objMap["description"], &t.Description)
+// 		t = handleUnmarshalError(t, err)
+// 	}
+
+// 	// Deserialize Parameters
+// 	if val, _ := objMap["parameters"]; val != nil {
+// 		var rawParameters []*json.RawMessage
+// 		err = json.Unmarshal(*val, &rawParameters)
+// 		t = handleUnmarshalError(t, err)
+// 		if err == nil {
+// 			for _, rawMessage := range rawParameters {
+// 				param, err := unmarshalConfigParameter(*rawMessage)
+// 				t = handleUnmarshalError(t, err)
+// 				if param != nil {
+// 					t.Parameters = append(t.Parameters, param)
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	// Deserialize Docker
+// 	if _, ok := objMap["docker"]; ok {
+// 		err = json.Unmarshal(*objMap["docker"], &t.Docker)
+// 		t = handleUnmarshalError(t, err)
+// 	}
+
+// 	// Deserialize Steps by type
+// 	if val, _ := objMap["steps"]; val != nil {
+// 		var rawSteps []*json.RawMessage
+// 		err = json.Unmarshal(*val, &rawSteps)
+// 		t = handleUnmarshalError(t, err)
+// 		if err == nil {
+// 			for _, rawMessage := range rawSteps {
+// 				s, err := getStepFromBytes(*rawMessage)
+// 				t = handleUnmarshalError(t, err)
+// 				if err == nil {
+// 					err = json.Unmarshal(*rawMessage, s)
+// 					t = handleUnmarshalError(t, err)
+// 					if err == nil {
+// 						t.Steps = append(t.Steps, s)
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	return nil
+// }

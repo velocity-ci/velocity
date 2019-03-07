@@ -1,18 +1,16 @@
-package repository
+package task
 
 import (
 	"encoding/json"
-
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/task"
 )
 
 type RepositoryConfig struct {
 	Project *ProjectConfig `json:"project"`
 	Git     *GitConfig     `json:"git"`
 
-	Parameters []task.ParameterConfig `json:"paramaters"`
-	Plugins    []*PluginConfig        `json:"plugins"`
-	Stages     []*StageConfig         `json:"stages"`
+	Parameters []ParameterConfig `json:"paramaters"`
+	Plugins    []*PluginConfig   `json:"plugins"`
+	Stages     []*StageConfig    `json:"stages"`
 }
 
 type ProjectConfig struct {

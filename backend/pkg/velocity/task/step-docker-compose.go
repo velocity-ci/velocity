@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
+
 	"github.com/docker/docker/api/types/network"
 	"github.com/ghodss/yaml"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
@@ -74,7 +76,7 @@ func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
 
 	serviceOrder := v3.GetServiceOrder(dC.Contents.Services, []string{})
 
-	services := []*serviceRunner{}
+	services := []*docker.ServiceRunner{}
 	var wg sync.WaitGroup
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
@@ -102,12 +104,12 @@ func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
 		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, serviceName, networkResp.ID)
 
 		// Create service runners
-		sR := newServiceRunner(
+		sR := docker.NewServiceRunner(
 			cli,
 			ctx,
 			writer,
 			&wg,
-			t.ResolvedParameters,
+			getSecrets(t.ResolvedParameters),
 			fmt.Sprintf("%s-%s", dC.GetRunID(), serviceName),
 			s.Image,
 			&s.Build,
@@ -122,7 +124,7 @@ func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
 
 	// Pull/Build images
 	for _, serviceRunner := range services {
-		serviceRunner.PullOrBuild(t.Docker.Registries)
+		serviceRunner.PullOrBuild(GetAuthConfigsMap(t.Docker.Registries), GetAddressAuthTokensMap(t.Docker.Registries))
 	}
 
 	// Create services
@@ -147,7 +149,7 @@ func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
 	}
 	success := true
 	for _, serviceRunner := range services {
-		if serviceRunner.exitCode != 0 {
+		if serviceRunner.ExitCode != 0 {
 			success = false
 
 			break
@@ -209,11 +211,11 @@ func (dC *DockerCompose) generateContainerAndHostConfig(s v3.DockerComposeServic
 		var target string
 		var alias string
 		if len(parts) == 1 {
-			target = getContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), l))
+			target = docker.GetContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), l))
 			alias = l
 		} else {
 			target = parts[0]
-			target = getContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), target))
+			target = docker.GetContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), target))
 			alias = parts[1]
 		}
 		links = append(links, fmt.Sprintf("%s:%s", target, alias))

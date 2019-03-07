@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
@@ -89,12 +90,12 @@ func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
 		logging.GetLogger().Error("could not create docker network", zap.Error(err))
 	}
 
-	sR := newServiceRunner(
+	sR := docker.NewServiceRunner(
 		cli,
 		ctx,
 		writer,
 		&wg,
-		t.ResolvedParameters,
+		getSecrets(t.ResolvedParameters),
 		fmt.Sprintf("%s-%s", dR.GetRunID(), "run"),
 		dR.Image,
 		nil,
@@ -104,7 +105,7 @@ func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
 		networkResp.ID,
 	)
 
-	sR.PullOrBuild(t.Docker.Registries)
+	sR.PullOrBuild(GetAuthConfigsMap(t.Docker.Registries), GetAddressAuthTokensMap(t.Docker.Registries))
 	sR.Create()
 	stopServicesChannel := make(chan string, 32)
 	wg.Add(1)
@@ -114,10 +115,10 @@ func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
-		GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
+		logging.GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
 	}
 
-	exitCode := sR.exitCode
+	exitCode := sR.ExitCode
 
 	if err != nil {
 		return err
@@ -125,13 +126,13 @@ func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, colorFmt(ansiError, "-> error (exited: %d)"), exitCode)
+		fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> error (exited: %d)"), exitCode)
 
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, colorFmt(ansiSuccess, "-> success (exited: %d)"), exitCode)
+	fmt.Fprintf(writer, out.ColorFmt(out.ANSISuccess, "-> success (exited: %d)"), exitCode)
 
 	return nil
 }

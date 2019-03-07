@@ -1,4 +1,4 @@
-package repository_test
+package task_test
 
 import (
 	"testing"

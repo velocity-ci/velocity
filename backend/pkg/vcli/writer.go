@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type StreamWriter struct {
@@ -26,7 +26,7 @@ func (e *Emitter) SetStepNumber(n uint64) {
 	e.StepNumber = n
 }
 
-func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
+func (e *Emitter) GetStreamWriter(streamName string) out.StreamWriter {
 	return &StreamWriter{
 		StreamName: streamName,
 		StepNumber: e.StepNumber,

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/task"
 )
 
 type runner struct {
@@ -23,9 +23,9 @@ func (r *runner) Run(taskName string) {
 	r.run = true
 	defer r.wg.Done()
 	defer func() { r.run = false }()
-	tasks, _ := velocity.GetTasksFromCurrentDir()
+	tasks, _ := task.GetTasksFromCurrentDir()
 
-	var t *velocity.Task
+	var t *task.Task
 	// find Task requested
 	for _, tsk := range tasks {
 		if tsk.Name == taskName {
@@ -42,7 +42,7 @@ func (r *runner) Run(taskName string) {
 
 	emitter := NewEmitter()
 
-	t.Steps = append([]velocity.Step{velocity.NewSetup()}, t.Steps...)
+	t.Steps = append([]task.Step{task.NewSetup()}, t.Steps...)
 
 	// Run each step unless they fail (optional)
 	for i, step := range t.Steps {
@@ -50,7 +50,7 @@ func (r *runner) Run(taskName string) {
 			return
 		}
 		if step.GetType() == "setup" {
-			step.(*velocity.Setup).Init(&ParameterResolver{}, nil, "")
+			step.(*task.Setup).Init(&ParameterResolver{}, nil, "")
 		}
 		emitter.SetStepNumber(uint64(i))
 		err := step.Execute(emitter, t)

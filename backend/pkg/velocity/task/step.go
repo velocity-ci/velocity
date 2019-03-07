@@ -48,14 +48,14 @@ const (
 )
 
 type BaseStep struct {
-	Type          string   `json:"type" yaml:"type"`
-	Description   string   `json:"description" yaml:"description"`
-	OutputStreams []string `json:"outputStreams" yaml:"-"`
+	Type        string `json:"type" yaml:"type"`
+	Description string `json:"description" yaml:"description"`
 
-	Status      string    `json:"status"`
-	StartedAt   time.Time `json:"startedAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	CompletedAt time.Time `json:"completedAt"`
+	OutputStreams []string  `json:"outputStreams" yaml:"-"`
+	Status        string    `json:"status"`
+	StartedAt     time.Time `json:"startedAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
+	CompletedAt   time.Time `json:"completedAt"`
 
 	// Params      map[string]Parameter `json:"params" yaml:"-"`
 	runID       string
