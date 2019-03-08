@@ -1,4 +1,4 @@
-package task
+package build
 
 import (
 	"context"
@@ -12,39 +12,39 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
-	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
-type DockerRun struct {
+type StepDockerRun struct {
 	BaseStep
-	Image          string                             `json:"image"`
-	Command        v3.DockerComposeServiceCommand     `json:"command"`
-	Environment    v3.DockerComposeServiceEnvironment `json:"environment"`
-	WorkingDir     string                             `json:"workingDir"`
-	MountPoint     string                             `json:"mountPoint"`
-	IgnoreExitCode bool                               `json:"ignoreExitCode"`
+	Image          string            `json:"image"`
+	Command        []string          `json:"command"`
+	Environment    map[string]string `json:"environment"`
+	WorkingDir     string            `json:"workingDir"`
+	MountPoint     string            `json:"mountPoint"`
+	IgnoreExitCode bool              `json:"ignoreExitCode"`
 }
 
-func NewDockerRun() *DockerRun {
-	return &DockerRun{
-		Image:          "",
-		Command:        []string{},
-		Environment:    map[string]string{},
-		WorkingDir:     "",
-		MountPoint:     "",
-		IgnoreExitCode: false,
+func NewStepDockerRun(c *config.StepDockerRun) *StepDockerRun {
+	return &StepDockerRun{
 		BaseStep:       newBaseStep("run", []string{"run"}),
+		Image:          c.Image,
+		Command:        c.Command,
+		Environment:    c.Environment,
+		WorkingDir:     c.WorkingDir,
+		MountPoint:     c.MountPoint,
+		IgnoreExitCode: c.IgnoreExitCode,
 	}
 }
 
-func (dR DockerRun) GetDetails() string {
+func (dR StepDockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
+func (dR *StepDockerRun) Execute(emitter out.Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("run")
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
@@ -95,7 +95,7 @@ func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
 		ctx,
 		writer,
 		&wg,
-		getSecrets(t.ResolvedParameters),
+		getSecrets(t.Parameters),
 		fmt.Sprintf("%s-%s", dR.GetRunID(), "run"),
 		dR.Image,
 		nil,
@@ -137,7 +137,7 @@ func (dR *DockerRun) Execute(emitter out.Emitter, t *Task) error {
 	return nil
 }
 
-func (dR DockerRun) Validate(params map[string]Parameter) error {
+func (dR StepDockerRun) Validate(params map[string]Parameter) error {
 	re := regexp.MustCompile("\\$\\{(.+)\\}")
 
 	requiredParams := re.FindAllStringSubmatch(dR.Image, -1)
@@ -168,7 +168,7 @@ func (dR DockerRun) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dR *DockerRun) SetParams(params map[string]Parameter) error {
+func (dR *StepDockerRun) SetParams(params map[string]Parameter) error {
 	for paramName, param := range params {
 		dR.Image = strings.Replace(dR.Image, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 		dR.WorkingDir = strings.Replace(dR.WorkingDir, fmt.Sprintf("${%s}", paramName), param.Value, -1)

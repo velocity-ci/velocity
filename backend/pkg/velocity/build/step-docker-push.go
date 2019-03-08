@@ -1,32 +1,33 @@
-package task
+package build
 
 import (
 	"fmt"
 	"strings"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 )
 
-type DockerPush struct {
+type StepDockerPush struct {
 	BaseStep
 	Tags []string `json:"tags"`
 }
 
-func NewDockerPush() *DockerPush {
-	return &DockerPush{
-		Tags:     []string{},
+func NewStepDockerPush(c *config.StepDockerPush) *StepDockerPush {
+	return &StepDockerPush{
 		BaseStep: newBaseStep("push", []string{"push"}),
+		Tags:     c.Tags,
 	}
 }
 
-func (dP DockerPush) GetDetails() string {
+func (dP StepDockerPush) GetDetails() string {
 	return fmt.Sprintf("tags: %s", dP.Tags)
 }
 
-func (dP *DockerPush) Execute(emitter out.Emitter, tsk *Task) error {
+func (dP *StepDockerPush) Execute(emitter out.Emitter, tsk *Task) error {
 	writer := emitter.GetStreamWriter("push")
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
@@ -37,7 +38,7 @@ func (dP *DockerPush) Execute(emitter out.Emitter, tsk *Task) error {
 			writer,
 			t,
 			GetAddressAuthTokensMap(tsk.Docker.Registries),
-			getSecrets(tsk.ResolvedParameters),
+			getSecrets(tsk.Parameters),
 		)
 		if err != nil {
 			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
@@ -53,11 +54,11 @@ func (dP *DockerPush) Execute(emitter out.Emitter, tsk *Task) error {
 
 }
 
-func (dP DockerPush) Validate(params map[string]Parameter) error {
+func (dP StepDockerPush) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dP *DockerPush) SetParams(params map[string]Parameter) error {
+func (dP *StepDockerPush) SetParams(params map[string]Parameter) error {
 	for paramName, param := range params {
 		tags := []string{}
 		for _, c := range dP.Tags {

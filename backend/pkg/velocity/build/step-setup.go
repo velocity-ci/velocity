@@ -1,4 +1,4 @@
-package task
+package build
 
 import (
 	"fmt"
@@ -44,20 +44,17 @@ func getUniqueWorkspace(r *git.Repository) (string, error) {
 	return dir, nil
 }
 
-func NewSetup() *Setup {
-	return &Setup{
-		BaseStep: newBaseStep("setup", []string{"setup"}),
-	}
-}
-
-func (s *Setup) Init(
-	backupResolver BackupResolver,
+func NewStepSetup(
+	resolver BackupResolver,
 	repository *git.Repository,
-	commitHash string,
-) {
-	s.backupResolver = backupResolver
-	s.repository = repository
-	s.commitHash = commitHash
+	commitSha string,
+) *Setup {
+	return &Setup{
+		BaseStep:       newBaseStep("setup", []string{"setup"}),
+		backupResolver: resolver,
+		repository:     repository,
+		commitHash:     commitSha,
+	}
 }
 
 func (s Setup) GetDetails() string {
@@ -109,27 +106,23 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 	}
 
 	// Resolve parameters
-	parameters := map[string]Parameter{}
-	basicParams, err := GetBasicParams(writer)
+	basicParams, err := GetGlobalParams(writer, t.ProjectRoot)
 	if err != nil {
 		return err
 	}
 	for k, v := range basicParams {
-		parameters[k] = v
+		t.Parameters[k] = &v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
-
-	// config
-	for _, config := range t.Parameters {
-		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", config.GetInfo())))
-		params, err := config.GetParameters(writer, t, s.backupResolver)
+	for configParam := range t.Config.Parameters {
+		resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
 		if err != nil {
 			writer.SetStatus(StateFailed)
 			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> could not resolve parameter: %s"), err)
 			return fmt.Errorf("could not resolve %v", err)
 		}
-		for _, param := range params {
-			parameters[param.Name] = param
+		for _, param := range resolvedParams {
+			t.Parameters[param.Name] = param
 			if param.IsSecret {
 				fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: ***"), param.Name)
 			} else {
@@ -138,7 +131,26 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 		}
 	}
 
-	t.ResolvedParameters = parameters
+	// config
+	// for _, config := range t.Parameters {
+	// 	writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", config.GetInfo())))
+	// 	params, err := config.GetParameters(writer, t, s.backupResolver)
+	// 	if err != nil {
+	// 		writer.SetStatus(StateFailed)
+	// 		fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> could not resolve parameter: %s"), err)
+	// 		return fmt.Errorf("could not resolve %v", err)
+	// 	}
+	// 	for _, param := range params {
+	// 		parameters[param.Name] = param
+	// 		if param.IsSecret {
+	// 			fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: ***"), param.Name)
+	// 		} else {
+	// 			fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: %v"), param.Name, param.Value)
+	// 		}
+	// 	}
+	// }
+
+	// t.ResolvedParameters = parameters
 
 	// // Update params on steps
 	// for _, s := range t.Steps {
@@ -148,7 +160,7 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}
 	for _, registry := range t.Docker.Registries {
-		r, err := dockerLogin(registry, writer, t, parameters)
+		r, err := dockerLogin(registry, writer, t)
 		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
 			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> could not login to Docker registry: %s"), err)
@@ -175,16 +187,16 @@ func (s Setup) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func GetBasicParams(writer io.Writer) (map[string]Parameter, error) {
+func GetGlobalParams(writer io.Writer, projectRoot string) (map[string]Parameter, error) {
 	params := map[string]Parameter{}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return params, err
-	}
-	projectRoot, err := findProjectRoot(cwd, []string{})
-	if err != nil {
-		return params, err
-	}
+	// cwd, err := os.Getwd()
+	// if err != nil {
+	// 	return params, err
+	// }
+	// projectRoot, err := findProjectRoot(cwd, []string{})
+	// if err != nil {
+	// 	return params, err
+	// }
 
 	repo := &git.RawRepository{Directory: projectRoot}
 

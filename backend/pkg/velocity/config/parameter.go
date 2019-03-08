@@ -2,7 +2,8 @@ package config
 
 import "encoding/json"
 
-type Parameter interface{}
+type Parameter interface {
+}
 
 type BaseParameter struct {
 	Type string `json:"type"`

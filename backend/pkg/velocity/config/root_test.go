@@ -1,14 +1,14 @@
-package task_test
+package config_test
 
 import (
 	"testing"
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
 
-func TestRepositoryConfigUnmarshal(t *testing.T) {
+func TestRootUnmarshal(t *testing.T) {
 	repositoryConfigYaml := `
 ---
 project: 
@@ -50,23 +50,23 @@ stages:
   - deploy_api	
 `
 
-	var repositoryConfig velocity.RepositoryConfig
+	var repositoryConfig config.Root
 	err := yaml.Unmarshal([]byte(repositoryConfigYaml), &repositoryConfig)
 
 	assert.Nil(t, err)
 	logo := string("image.png")
-	expectedRepositoryConfig := velocity.RepositoryConfig{
-		Project: &velocity.ProjectConfig{
+	expectedRepositoryConfig := config.Root{
+		Project: &config.RootProject{
 			Logo:      &logo,
 			TasksPath: "./tasks",
 		},
-		Git: &velocity.GitConfig{
+		Git: &config.RootGit{
 			Submodule: false,
 		},
-		Parameters: []velocity.ParameterConfig{
-			&velocity.DerivedParameter{
-				Type: "derived",
-				Use:  "param-s3-bin-uri",
+		Parameters: []config.Parameter{
+			&config.ParameterDerived{
+				BaseParameter: config.BaseParameter{Type: "derived"},
+				Use:           "param-s3-bin-uri",
 				Arguments: map[string]string{
 					"uri": "s3://mybucket/project_secrets",
 				},
@@ -76,8 +76,8 @@ stages:
 				Secret: true,
 			},
 		},
-		Plugins: []*velocity.PluginConfig{
-			&velocity.PluginConfig{
+		Plugins: []*config.RootPlugin{
+			&config.RootPlugin{
 				Use: "param-slack-bin-uri",
 				Arguments: map[string]string{
 					"CHANNEL":     "ci",
@@ -86,16 +86,16 @@ stages:
 				Events: []string{"BUILD_START", "BUILD_FAIL", "BUILD_SUCCESS"},
 			},
 		},
-		Stages: []*velocity.StageConfig{
-			&velocity.StageConfig{
+		Stages: []*config.RootStage{
+			&config.RootStage{
 				Name:  "test",
 				Tasks: []string{"test_web", "test_api"},
 			},
-			&velocity.StageConfig{
+			&config.RootStage{
 				Name:  "release",
 				Tasks: []string{"release_web", "release_api"},
 			},
-			&velocity.StageConfig{
+			&config.RootStage{
 				Name:  "deploy",
 				Tasks: []string{"deploy_web", "deploy_api"},
 			},
@@ -145,22 +145,22 @@ stages:
   - deploy_api	
 `
 
-	var repositoryConfig = velocity.NewRepositoryConfig()
-	err := yaml.Unmarshal([]byte(repositoryConfigYaml), repositoryConfig)
+	var repositoryConfig config.Root
+	err := yaml.Unmarshal([]byte(repositoryConfigYaml), &repositoryConfig)
 
 	assert.Nil(t, err)
-	expectedRepositoryConfig := &velocity.RepositoryConfig{
-		Project: &velocity.ProjectConfig{
+	expectedRepositoryConfig := &config.Root{
+		Project: &config.RootProject{
 			Logo:      nil,
 			TasksPath: "./tasks",
 		},
-		Git: &velocity.GitConfig{
+		Git: &config.RootGit{
 			Submodule: false,
 		},
-		Parameters: []velocity.ParameterConfig{
-			&velocity.DerivedParameter{
-				Type: "derived",
-				Use:  "param-s3-bin-uri",
+		Parameters: []config.Parameter{
+			&config.ParameterDerived{
+				BaseParameter: config.BaseParameter{Type: "derived"},
+				Use:           "param-s3-bin-uri",
 				Arguments: map[string]string{
 					"uri": "s3://mybucket/project_secrets",
 				},
@@ -170,8 +170,8 @@ stages:
 				Secret: true,
 			},
 		},
-		Plugins: []*velocity.PluginConfig{
-			&velocity.PluginConfig{
+		Plugins: []*config.RootPlugin{
+			&config.RootPlugin{
 				Use: "param-slack-bin-uri",
 				Arguments: map[string]string{
 					"CHANNEL":     "ci",
@@ -180,20 +180,20 @@ stages:
 				Events: []string{"BUILD_START", "BUILD_FAIL", "BUILD_SUCCESS"},
 			},
 		},
-		Stages: []*velocity.StageConfig{
-			&velocity.StageConfig{
+		Stages: []*config.RootStage{
+			&config.RootStage{
 				Name:  "test",
 				Tasks: []string{"test_web", "test_api"},
 			},
-			&velocity.StageConfig{
+			&config.RootStage{
 				Name:  "release",
 				Tasks: []string{"release_web", "release_api"},
 			},
-			&velocity.StageConfig{
+			&config.RootStage{
 				Name:  "deploy",
 				Tasks: []string{"deploy_web", "deploy_api"},
 			},
 		},
 	}
-	assert.Equal(t, expectedRepositoryConfig, repositoryConfig)
+	assert.Equal(t, expectedRepositoryConfig, &repositoryConfig)
 }

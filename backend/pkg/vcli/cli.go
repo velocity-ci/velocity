@@ -7,7 +7,8 @@ import (
 	"sync"
 
 	"github.com/urfave/cli"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/task"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
 
 type CLI struct {
@@ -52,7 +53,7 @@ func (c *CLI) Run() {
 }
 
 func List(c *cli.Context) error {
-	tasks, err := task.GetTasksFromCurrentDir()
+	tasks, _, err := config.GetTasksFromCurrentDir()
 	if err != nil {
 		return err
 	}
@@ -89,27 +90,34 @@ func List(c *cli.Context) error {
 
 		}
 	} else {
-		jsonBytes, _ := json.MarshalIndent(tasks, "", "  ")
+		jsonBytes, err := json.MarshalIndent(tasks, "", "  ")
+		if err != nil {
+			return err
+		}
 		fmt.Printf("%s\n", jsonBytes)
 	}
 
 	return nil
 }
 
-func RunCompletion(c *cli.Context) {
-	if c.NArg() > 0 {
-		return
-	}
-	tasks, _ := task.GetTasksFromCurrentDir()
-	for _, t := range tasks {
-		fmt.Println(t.Name)
-	}
-}
+// func RunCompletion(c *cli.Context) {
+// 	if c.NArg() > 0 {
+// 		return
+// 	}
+// 	tasks, _ := task.GetTasksFromCurrentDir()
+// 	for _, t := range tasks {
+// 		fmt.Println(t.Name)
+// 	}
+// }
 
 func Info(c *cli.Context) error {
+	_, projectRoot, err := config.GetTasksFromCurrentDir()
+	if err != nil {
+		return err
+	}
 	emitter := NewEmitter()
 
-	basicParams, err := task.GetBasicParams(emitter.GetStreamWriter("setup"))
+	basicParams, err := build.GetGlobalParams(emitter.GetStreamWriter("setup"), projectRoot)
 	if err != nil {
 		return err
 	}
@@ -123,38 +131,38 @@ func Run(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return fmt.Errorf("incorrect amount of args")
 	}
-	tasks, err := task.GetTasksFromCurrentDir()
-	if err != nil {
-		return err
-	}
-	t, err := getRequestedTaskByName(c.Args().Get(0), tasks)
-	if err != nil {
-		return err
-	}
-	fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
-	emitter := NewEmitter()
+	// tasks, err := task.GetTasksFromCurrentDir()
+	// if err != nil {
+	// 	return err
+	// }
+	// t, err := getRequestedTaskByName(c.Args().Get(0), tasks)
+	// if err != nil {
+	// 	return err
+	// }
+	// fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
+	// emitter := NewEmitter()
 
-	t.Steps = append([]task.Step{task.NewSetup()}, t.Steps...)
-	for i, step := range t.Steps {
-		// if !r.run {
-		// 	return
-		// }
-		if step.GetType() == "setup" {
-			step.(*task.Setup).Init(&ParameterResolver{}, nil, "")
-		}
-		emitter.SetStepNumber(uint64(i))
-		step.SetProjectRoot(t.ProjectRoot)
-		err := step.Execute(emitter, t)
-		if err != nil {
-			fmt.Printf("encountered error: %s", err)
-			return err
-		}
-	}
+	// t.Steps = append([]task.Step{task.NewSetup()}, t.Steps...)
+	// for i, step := range t.Steps {
+	// 	// if !r.run {
+	// 	// 	return
+	// 	// }
+	// 	if step.GetType() == "setup" {
+	// 		step.(*task.Setup).Init(&ParameterResolver{}, nil, "")
+	// 	}
+	// 	emitter.SetStepNumber(uint64(i))
+	// 	step.SetProjectRoot(t.ProjectRoot)
+	// 	err := step.Execute(emitter, t)
+	// 	if err != nil {
+	// 		fmt.Printf("encountered error: %s", err)
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
 
-func getRequestedTaskByName(taskName string, tasks []*task.Task) (*task.Task, error) {
+func getRequestedTaskByName(taskName string, tasks []*config.Task) (*config.Task, error) {
 	for _, t := range tasks {
 		if t.Name == taskName {
 			return t, nil

@@ -1,4 +1,4 @@
-package task
+package build
 
 import (
 	"fmt"
@@ -10,28 +10,27 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
-type DockerBuild struct {
+type StepDockerBuild struct {
 	BaseStep
-	config.StepDockerBuild
-	// Dockerfile string   `json:"dockerfile"`
-	// Context    string   `json:"context"`
-	// Tags       []string `json:"tags"`
+	Dockerfile string   `json:"dockerfile"`
+	Context    string   `json:"context"`
+	Tags       []string `json:"tags"`
 }
 
-func NewDockerBuild() *DockerBuild {
-	return &DockerBuild{
-		Dockerfile: "",
-		Context:    "",
-		Tags:       []string{},
+func NewStepDockerBuild(c *config.StepDockerBuild) *StepDockerBuild {
+	return &StepDockerBuild{
 		BaseStep:   newBaseStep("build", []string{"build"}),
+		Dockerfile: c.Dockerfile,
+		Context:    c.Context,
+		Tags:       c.Tags,
 	}
 }
 
-func (dB DockerBuild) GetDetails() string {
+func (dB StepDockerBuild) GetDetails() string {
 	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }
 
-func (dB *DockerBuild) Execute(emitter out.Emitter, t *Task) error {
+func (dB *StepDockerBuild) Execute(emitter out.Emitter, t *Task) error {
 	writer := emitter.GetStreamWriter("build")
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
@@ -45,7 +44,7 @@ func (dB *DockerBuild) Execute(emitter out.Emitter, t *Task) error {
 		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
-		getSecrets(t.ResolvedParameters),
+		getSecrets(t.Parameters),
 		writer,
 		authConfigs,
 	)
@@ -63,11 +62,11 @@ func (dB *DockerBuild) Execute(emitter out.Emitter, t *Task) error {
 	return nil
 }
 
-func (dB *DockerBuild) Validate(params map[string]Parameter) error {
+func (dB *StepDockerBuild) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dB *DockerBuild) SetParams(params map[string]Parameter) error {
+func (dB *StepDockerBuild) SetParams(params map[string]Parameter) error {
 	for paramName, param := range params {
 		dB.Context = strings.Replace(dB.Context, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 		dB.Dockerfile = strings.Replace(dB.Dockerfile, fmt.Sprintf("${%s}", paramName), param.Value, -1)

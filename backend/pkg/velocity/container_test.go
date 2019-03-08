@@ -1,35 +1,29 @@
 package velocity
 
-import (
-	"testing"
+// func TestGetAuthTokenPrivate(t *testing.T) {
+// 	registries := []DockerRegistry{
+// 		DockerRegistry{
+// 			Address:            "xxxx.dkr.ecr.xxxx.amazonaws.com",
+// 			AuthorizationToken: "abcdef",
+// 		},
+// 	}
 
-	"github.com/stretchr/testify/assert"
-)
+// 	image := "xxxx.dkr.ecr.xxxx.amazonaws.com/velocity:zxcv"
 
-func TestGetAuthTokenPrivate(t *testing.T) {
-	registries := []DockerRegistry{
-		DockerRegistry{
-			Address:            "xxxx.dkr.ecr.xxxx.amazonaws.com",
-			AuthorizationToken: "abcdef",
-		},
-	}
+// 	token := getAuthToken(image, registries)
+// 	assert.Equal(t, "abcdef", token)
+// }
 
-	image := "xxxx.dkr.ecr.xxxx.amazonaws.com/velocity:zxcv"
+// func TestGetAuthTokenDockerHub(t *testing.T) {
+// 	registries := []DockerRegistry{
+// 		DockerRegistry{
+// 			Address:            "https://index.docker.io",
+// 			AuthorizationToken: "abcdef",
+// 		},
+// 	}
 
-	token := getAuthToken(image, registries)
-	assert.Equal(t, "abcdef", token)
-}
+// 	image := "civelocity/velocity:zxcv"
 
-func TestGetAuthTokenDockerHub(t *testing.T) {
-	registries := []DockerRegistry{
-		DockerRegistry{
-			Address:            "https://index.docker.io",
-			AuthorizationToken: "abcdef",
-		},
-	}
-
-	image := "civelocity/velocity:zxcv"
-
-	token := getAuthToken(image, registries)
-	assert.Equal(t, "abcdef", token)
-}
+// 	token := getAuthToken(image, registries)
+// 	assert.Equal(t, "abcdef", token)
+// }

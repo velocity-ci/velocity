@@ -1,4 +1,4 @@
-package task
+package build
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type DockerRegistry struct {
 	AuthorizationToken string            `json:"authToken"`
 }
 
-func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task, parameters map[string]Parameter) (r DockerRegistry, _ error) {
+func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task) (r DockerRegistry, _ error) {
 
 	type registryAuthConfig struct {
 		Username      string `json:"username"`
@@ -45,7 +45,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task, paramete
 
 	extraEnv := []string{}
 	for k, v := range registry.Arguments {
-		for _, pV := range parameters {
+		for _, pV := range task.Parameters {
 			v = strings.Replace(v, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 			k = strings.Replace(k, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 		}

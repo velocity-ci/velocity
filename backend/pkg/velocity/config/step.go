@@ -60,6 +60,7 @@ func unmarshalStep(rawMessage []byte) (Step, error) {
 			BaseStep: BaseStep{
 				Type: "run",
 			},
+			Command: []string{},
 		}
 	case "build":
 		s = &StepDockerBuild{

@@ -1,4 +1,4 @@
-package task
+package build
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 
 	"github.com/docker/docker/api/types/network"
@@ -22,31 +23,35 @@ import (
 	"github.com/docker/docker/client"
 )
 
-type DockerCompose struct {
+type StepDockerCompose struct {
 	BaseStep
 	ComposeFile string `json:"composeFile"`
 	Contents    v3.DockerComposeYaml
 }
 
-func NewDockerCompose() *DockerCompose {
-	return &DockerCompose{
-		BaseStep: newBaseStep("compose", []string{}),
+func NewStepDockerCompose(c *config.StepDockerCompose) *StepDockerCompose {
+	s := &StepDockerCompose{
+		BaseStep:    newBaseStep("compose", []string{}),
+		ComposeFile: c.ComposeFile,
 	}
+
+	// err := s.parseDockerComposeFile()
+	return s
 }
 
-func (dC DockerCompose) GetDetails() string {
+func (dC StepDockerCompose) GetDetails() string {
 	return fmt.Sprintf("composeFile: %s", dC.ComposeFile)
 }
 
-func (dC *DockerCompose) Validate(params map[string]Parameter) error {
+func (dC *StepDockerCompose) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dC *DockerCompose) SetParams(params map[string]Parameter) error {
+func (dC *StepDockerCompose) SetParams(params map[string]Parameter) error {
 	return nil
 }
 
-func (dC *DockerCompose) parseDockerComposeFile() error {
+func (dC *StepDockerCompose) parseDockerComposeFile() error {
 	dockerComposeYml, err := ioutil.ReadFile(filepath.Join(dC.ProjectRoot, dC.ComposeFile))
 	if err != nil {
 		return err
@@ -67,7 +72,7 @@ func (dC *DockerCompose) parseDockerComposeFile() error {
 	return nil
 }
 
-func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
+func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 
 	err := dC.parseDockerComposeFile()
 	if err != nil {
@@ -109,7 +114,7 @@ func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
 			ctx,
 			writer,
 			&wg,
-			getSecrets(t.ResolvedParameters),
+			getSecrets(t.Parameters),
 			fmt.Sprintf("%s-%s", dC.GetRunID(), serviceName),
 			s.Image,
 			&s.Build,
@@ -173,7 +178,7 @@ func (dC *DockerCompose) Execute(emitter out.Emitter, t *Task) error {
 	return nil
 }
 
-func (dC *DockerCompose) generateContainerAndHostConfig(s v3.DockerComposeService, serviceName, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
+func (dC *StepDockerCompose) generateContainerAndHostConfig(s v3.DockerComposeService, serviceName, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
 	env := []string{}
 	for k, v := range s.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
