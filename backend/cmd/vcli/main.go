@@ -11,13 +11,6 @@ import (
 var BuildVersion = "dev"
 
 func main() {
-	// vcli := vcli.New()
-
-	// quit := make(chan os.Signal)
-	// signal.Notify(quit, os.Interrupt)
-	// go a.Start(quit)
-	// <-quit
-	// a.Stop()
 
 	app := cli.NewApp()
 	app.Name = "Velocity CLI"
@@ -43,6 +36,16 @@ func main() {
 			Aliases: []string{"r"},
 			Usage:   "Run a given task",
 			Action:  vcli.Run,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "plan-only",
+					Usage: "Only output the build plan",
+				},
+				cli.BoolFlag{
+					Name:  "machine-readable",
+					Usage: "Output in machine readable format (JSON)",
+				},
+			},
 			// BashComplete: vcli.RunCompletion,
 		},
 		{

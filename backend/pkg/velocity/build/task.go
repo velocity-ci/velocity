@@ -1,6 +1,9 @@
 package build
 
 import (
+	"time"
+
+	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
@@ -8,23 +11,18 @@ import (
 )
 
 type Task struct {
-	Config config.Task
-	// Name        string            `json:"name"`
-	// Description string            `json:"description"`
-	// Docker      TaskDocker        `json:"docker"`
-	// Parameters  []ParameterConfig `json:"parameters"`
-	// Steps       []Step            `json:"steps"`
+	parameters map[string]*Parameter
 
-	// ParseErrors      []string `json:"parseErrors"`
-	// ValidationErrors []string `json:"validationErrors"`
+	Config config.Task `json:"config"`
+	Docker TaskDocker  `json:"docker"`
+	Steps  []Step      `json:"steps"`
 
-	Steps      []Step                `json:"steps"`
-	Parameters map[string]*Parameter `json:"-"` // Never serialise as resolved
-	Docker     TaskDocker
+	StartedAt   *time.Time `json:"startedAt"`
+	UpdatedAt   *time.Time `json:"updatedAt"`
+	CompletedAt *time.Time `json:"completedAt"`
 
 	ProjectRoot string `json:"-"`
 	RunID       string `json:"-"`
-	// ResolvedParameters map[string]Parameter `json:"-"`
 }
 
 func (t *Task) Execute(emitter out.Emitter) error {
@@ -56,7 +54,7 @@ func NewTask(
 			steps = append(steps, NewStepDockerBuild(x))
 			break
 		case *config.StepDockerCompose:
-			steps = append(steps, NewStepDockerCompose(x))
+			steps = append(steps, NewStepDockerCompose(x, projectRoot))
 			break
 		case *config.StepDockerPush:
 			steps = append(steps, NewStepDockerPush(x))
@@ -66,8 +64,8 @@ func NewTask(
 	return &Task{
 		Config:      *c,
 		ProjectRoot: projectRoot,
-		RunID:       "gen",
+		RunID:       uuid.NewV4().String(),
 		Steps:       steps,
-		Parameters:  map[string]*Parameter{},
+		parameters:  map[string]*Parameter{},
 	}
 }

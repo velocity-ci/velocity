@@ -38,7 +38,7 @@ func (dP *StepDockerPush) Execute(emitter out.Emitter, tsk *Task) error {
 			writer,
 			t,
 			GetAddressAuthTokensMap(tsk.Docker.Registries),
-			getSecrets(tsk.Parameters),
+			getSecrets(tsk.parameters),
 		)
 		if err != nil {
 			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))

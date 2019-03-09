@@ -25,17 +25,17 @@ import (
 
 type StepDockerCompose struct {
 	BaseStep
-	ComposeFile string `json:"composeFile"`
-	Contents    v3.DockerComposeYaml
+	ComposeFile string               `json:"composeFile"`
+	Contents    v3.DockerComposeYaml `json:"contents"`
 }
 
-func NewStepDockerCompose(c *config.StepDockerCompose) *StepDockerCompose {
+func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *StepDockerCompose {
 	s := &StepDockerCompose{
 		BaseStep:    newBaseStep("compose", []string{}),
 		ComposeFile: c.ComposeFile,
 	}
 
-	// err := s.parseDockerComposeFile()
+	s.parseDockerComposeFile(projectRoot)
 	return s
 }
 
@@ -114,7 +114,7 @@ func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 			ctx,
 			writer,
 			&wg,
-			getSecrets(t.Parameters),
+			getSecrets(t.parameters),
 			fmt.Sprintf("%s-%s", dC.GetRunID(), serviceName),
 			s.Image,
 			&s.Build,

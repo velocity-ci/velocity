@@ -3,54 +3,11 @@ package vcli
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"sync"
 
 	"github.com/urfave/cli"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
-
-type CLI struct {
-	wg     sync.WaitGroup
-	runner *runner
-}
-
-func New() *CLI {
-	c := &CLI{
-		wg: sync.WaitGroup{},
-	}
-	c.runner = newRunner(&c.wg)
-	return c
-}
-
-func (c *CLI) Start(quit chan os.Signal) {
-	// c.routeFlags()
-
-	quit <- os.Interrupt
-}
-
-func (c *CLI) Stop() error {
-	c.runner.Stop()
-	c.wg.Wait()
-	return nil
-}
-
-func (c *CLI) Run() {
-
-	switch os.Args[1] {
-	case "run":
-		c.wg.Add(1)
-		c.runner.Run(os.Args[2])
-		break
-	default:
-		c.wg.Add(1)
-		c.runner.Run(os.Args[1])
-		break
-	}
-
-	c.Stop()
-}
 
 func List(c *cli.Context) error {
 	tasks, _, err := config.GetTasksFromCurrentDir()
@@ -100,15 +57,15 @@ func List(c *cli.Context) error {
 	return nil
 }
 
-// func RunCompletion(c *cli.Context) {
-// 	if c.NArg() > 0 {
-// 		return
-// 	}
-// 	tasks, _ := task.GetTasksFromCurrentDir()
-// 	for _, t := range tasks {
-// 		fmt.Println(t.Name)
-// 	}
-// }
+func RunCompletion(c *cli.Context) {
+	if c.NArg() > 0 {
+		return
+	}
+	tasks, _, _ := config.GetTasksFromCurrentDir()
+	for _, t := range tasks {
+		fmt.Println(t.Name)
+	}
+}
 
 func Info(c *cli.Context) error {
 	_, projectRoot, err := config.GetTasksFromCurrentDir()
@@ -142,8 +99,6 @@ func Run(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
-
 	buildTask := build.NewTask(
 		t,
 		&ParameterResolver{},
@@ -152,10 +107,23 @@ func Run(c *cli.Context) error {
 		projectRoot,
 	)
 
-	emitter := NewEmitter()
-	err = buildTask.Execute(emitter)
-	if err != nil {
-		return err
+	if c.Bool("plan-only") && c.Bool("machine-readable") {
+		jsonBytes, err := json.MarshalIndent(buildTask, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s\n", jsonBytes)
+	} else if c.Bool("plan-only") {
+		// print plan in plain format
+	} else if c.Bool("machine-readable") {
+		// execute in json format
+	} else {
+		fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
+		emitter := NewEmitter()
+		err = buildTask.Execute(emitter)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

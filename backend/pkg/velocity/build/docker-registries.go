@@ -45,7 +45,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task) (r Docke
 
 	extraEnv := []string{}
 	for k, v := range registry.Arguments {
-		for _, pV := range task.Parameters {
+		for _, pV := range task.parameters {
 			v = strings.Replace(v, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 			k = strings.Replace(k, fmt.Sprintf("${%s}", pV.Name), pV.Value, -1)
 		}

@@ -95,7 +95,7 @@ func (dR *StepDockerRun) Execute(emitter out.Emitter, t *Task) error {
 		ctx,
 		writer,
 		&wg,
-		getSecrets(t.Parameters),
+		getSecrets(t.parameters),
 		fmt.Sprintf("%s-%s", dR.GetRunID(), "run"),
 		dR.Image,
 		nil,

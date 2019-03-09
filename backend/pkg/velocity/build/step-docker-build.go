@@ -44,7 +44,7 @@ func (dB *StepDockerBuild) Execute(emitter out.Emitter, t *Task) error {
 		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
-		getSecrets(t.Parameters),
+		getSecrets(t.parameters),
 		writer,
 		authConfigs,
 	)

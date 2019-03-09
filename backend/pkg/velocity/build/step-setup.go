@@ -111,7 +111,7 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 		return err
 	}
 	for k, v := range basicParams {
-		t.Parameters[k] = &v
+		t.parameters[k] = &v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
 	for configParam := range t.Config.Parameters {
@@ -122,7 +122,7 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 			return fmt.Errorf("could not resolve %v", err)
 		}
 		for _, param := range resolvedParams {
-			t.Parameters[param.Name] = param
+			t.parameters[param.Name] = param
 			if param.IsSecret {
 				fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: ***"), param.Name)
 			} else {
