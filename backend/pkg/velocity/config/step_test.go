@@ -1,11 +1,10 @@
-package config_test
+package config
 
 import (
 	"testing"
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
 
 func TestDockerBuildUnmarshal(t *testing.T) {
@@ -21,15 +20,15 @@ steps:
       - test/a:333
       - test/b:344
 `
-	taskConfig := config.NewTask()
+	taskConfig := newTask()
 	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := config.NewTask()
+	expectedTaskConfig := newTask()
 	expectedTaskConfig.Description = "Builds a docker image"
-	expectedTaskConfig.Steps = []config.Step{
-		&config.StepDockerBuild{
-			BaseStep: config.BaseStep{
+	expectedTaskConfig.Steps = []Step{
+		&StepDockerBuild{
+			BaseStep: BaseStep{
 				Type:        "build",
 				Description: "Docker build",
 			},
@@ -54,15 +53,15 @@ steps:
     description: Docker compose
     composeFile: test.docker-compose.yml
 `
-	taskConfig := config.NewTask()
+	taskConfig := newTask()
 	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := config.NewTask()
+	expectedTaskConfig := newTask()
 	expectedTaskConfig.Description = "Runs integration tests"
-	expectedTaskConfig.Steps = []config.Step{
-		&config.StepDockerCompose{
-			BaseStep: config.BaseStep{
+	expectedTaskConfig.Steps = []Step{
+		&StepDockerCompose{
+			BaseStep: BaseStep{
 				Type:        "compose",
 				Description: "Docker compose",
 			},
@@ -84,15 +83,15 @@ steps:
       - test/a:333
       - test/b:344
 `
-	taskConfig := config.NewTask()
+	taskConfig := newTask()
 	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := config.NewTask()
+	expectedTaskConfig := newTask()
 	expectedTaskConfig.Description = "Pushes a docker container"
-	expectedTaskConfig.Steps = []config.Step{
-		&config.StepDockerPush{
-			BaseStep: config.BaseStep{
+	expectedTaskConfig.Steps = []Step{
+		&StepDockerPush{
+			BaseStep: BaseStep{
 				Type:        "push",
 				Description: "Docker push",
 			},
@@ -126,16 +125,16 @@ steps:
     environment:
      - HELLO=WORLD
 `
-	taskConfig := config.NewTask()
+	taskConfig := newTask()
 
 	err := yaml.Unmarshal([]byte(taskConfigYaml), taskConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := config.NewTask()
+	expectedTaskConfig := newTask()
 	expectedTaskConfig.Description = "Runs a docker container"
-	expectedTaskConfig.Steps = []config.Step{
-		&config.StepDockerRun{
-			BaseStep: config.BaseStep{
+	expectedTaskConfig.Steps = []Step{
+		&StepDockerRun{
+			BaseStep: BaseStep{
 				Type:        "run",
 				Description: "Hello Docker",
 			},
@@ -148,8 +147,8 @@ steps:
 			MountPoint:     "/app",
 			IgnoreExitCode: false,
 		},
-		&config.StepDockerRun{
-			BaseStep: config.BaseStep{
+		&StepDockerRun{
+			BaseStep: BaseStep{
 				Type:        "run",
 				Description: "Hello Array Environment",
 			},

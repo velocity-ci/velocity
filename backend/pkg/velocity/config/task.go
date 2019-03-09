@@ -24,7 +24,7 @@ type Task struct {
 	ValidationErrors []string `json:"validationErrors"`
 }
 
-func NewTask() *Task {
+func newTask() *Task {
 	return &Task{
 		Name:        "",
 		Description: "",
@@ -144,7 +144,7 @@ func GetTasksFromRoot(root *Root) ([]*Task, error) {
 			if err != nil {
 				return err
 			}
-			t := NewTask()
+			t := newTask()
 			relativePath, err := filepath.Rel(tasksPath, path)
 			if err != nil {
 				return err

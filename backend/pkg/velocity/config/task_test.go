@@ -1,9 +1,7 @@
-package config_test
+package config
 
 import (
 	"testing"
-
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
@@ -30,16 +28,16 @@ docker:
         username: registry_user
         password: registry_password
 `
-	taskConfig := config.NewTask()
+	taskConfig := newTask()
 
 	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := config.NewTask()
+	expectedTaskConfig := newTask()
 	expectedTaskConfig.Description = "Hello Velocity"
-	expectedTaskConfig.Parameters = []config.Parameter{
-		&config.ParameterDerived{
-			BaseParameter: config.BaseParameter{Type: "derived"},
+	expectedTaskConfig.Parameters = []Parameter{
+		&ParameterDerived{
+			BaseParameter: BaseParameter{Type: "derived"},
 			Use:           "https://velocityci.io/parameter-test",
 			Arguments: map[string]string{
 				"name": "/velocityci/foo",
@@ -48,15 +46,15 @@ docker:
 				"value": "bar",
 			},
 		},
-		&config.ParameterBasic{
-			BaseParameter: config.BaseParameter{Type: "basic"},
+		&ParameterBasic{
+			BaseParameter: BaseParameter{Type: "basic"},
 			Name:          "your_name",
 			Secret:        true,
 		},
 	}
-	expectedTaskConfig.Docker = config.TaskDocker{
-		Registries: []config.TaskDockerRegistry{
-			config.TaskDockerRegistry{
+	expectedTaskConfig.Docker = TaskDocker{
+		Registries: []TaskDockerRegistry{
+			TaskDockerRegistry{
 				Address: "",
 				Use:     "https://velocityci.io/registry-test",
 				Arguments: map[string]string{
