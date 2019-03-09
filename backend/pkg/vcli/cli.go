@@ -5,13 +5,16 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli"
-	"github.com/velocity-ci/velocity/backend/pkg/git"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
 
 func List(c *cli.Context) error {
-	tasks, _, err := config.GetTasksFromCurrentDir()
+	root, err := config.GetRootConfig()
+	if err != nil {
+		return err
+	}
+	tasks, err := config.GetTasksFromRoot(root)
 	if err != nil {
 		return err
 	}
@@ -62,31 +65,36 @@ func RunCompletion(c *cli.Context) {
 	if c.NArg() > 0 {
 		return
 	}
-	tasks, _, _ := config.GetTasksFromCurrentDir()
+	root, err := config.GetRootConfig()
+	if err != nil {
+		return
+	}
+	tasks, err := config.GetTasksFromRoot(root)
+	if err != nil {
+		return
+	}
 	for _, t := range tasks {
 		fmt.Println(t.Name)
 	}
 }
 
 func Info(c *cli.Context) error {
-	_, projectRoot, err := config.GetTasksFromCurrentDir()
-	if err != nil {
-		return err
-	}
-	emitter := NewEmitter()
 
-	branch, err := git.CurrentBranch(projectRoot)
+	root, err := config.GetRootConfig()
 	if err != nil {
 		return err
 	}
 
-	basicParams, err := build.GetGlobalParams(emitter.GetStreamWriter("setup"), projectRoot, branch)
-	if err != nil {
-		return err
+	if c.Bool("machine-readable") {
+		jsonBytes, err := json.MarshalIndent(root, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s\n", jsonBytes)
+	} else {
+		fmt.Printf("TODO\n")
 	}
-	for key, val := range basicParams {
-		fmt.Printf("%s: %s\n", key, val.Value)
-	}
+
 	return nil
 }
 
@@ -95,7 +103,14 @@ func Run(c *cli.Context) error {
 		return fmt.Errorf("incorrect amount of args")
 	}
 
-	tasks, projectRoot, err := config.GetTasksFromCurrentDir()
+	root, err := config.GetRootConfig()
+	if err != nil {
+		return err
+	}
+	tasks, err := config.GetTasksFromRoot(root)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}
@@ -111,7 +126,7 @@ func Run(c *cli.Context) error {
 		nil,
 		"",
 		"branch", // TODO: get branch from git
-		projectRoot,
+		root.Path,
 	)
 
 	if c.Bool("plan-only") && c.Bool("machine-readable") {

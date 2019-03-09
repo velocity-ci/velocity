@@ -53,6 +53,12 @@ func main() {
 			Aliases: []string{"i"},
 			Usage:   "Print out information about the current project",
 			Action:  vcli.Info,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "machine-readable",
+					Usage: "Output in machine readable format (JSON)",
+				},
+			},
 		},
 	}
 

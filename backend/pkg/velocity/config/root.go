@@ -1,8 +1,19 @@
 package config
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
+	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"go.uber.org/zap"
+)
 
 type Root struct {
+	Path    string       `json:"-"`
 	Project *RootProject `json:"project"`
 	Git     *RootGit     `json:"git"`
 
@@ -30,6 +41,20 @@ type RootPlugin struct {
 type RootStage struct {
 	Name  string   `json:"name"`
 	Tasks []string `json:"tasks"`
+}
+
+func newRoot() *Root {
+	return &Root{
+		Project: &RootProject{
+			TasksPath: "./tasks",
+		},
+		Git: &RootGit{
+			Submodule: true,
+		},
+		Parameters: []Parameter{},
+		Plugins:    []*RootPlugin{},
+		Stages:     []*RootStage{},
+	}
 }
 
 func (r *Root) UnmarshalJSON(b []byte) error {
@@ -91,4 +116,49 @@ func (r *Root) UnmarshalJSON(b []byte) error {
 		}
 	}
 	return nil
+}
+
+func GetRootConfig() (*Root, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	projectRoot, err := findProjectRoot(cwd, []string{})
+	if err != nil {
+		return nil, err
+	}
+
+	rootConfig := newRoot()
+	rootConfigPath := filepath.Join(projectRoot, ".velocity.yml")
+	if f, err := os.Stat(rootConfigPath); !os.IsNotExist(err) {
+		if !f.IsDir() {
+			repoYaml, _ := ioutil.ReadFile(rootConfigPath)
+			err := yaml.Unmarshal(repoYaml, rootConfig)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	rootConfig.Path = projectRoot
+	return rootConfig, nil
+}
+
+func findProjectRoot(cwd string, attempted []string) (string, error) {
+	files, err := ioutil.ReadDir(cwd)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		if f.IsDir() && f.Name() == ".git" {
+			logging.GetLogger().Debug("found project root", zap.String("dir", cwd))
+			return cwd, nil
+		}
+	}
+
+	if filepath.Dir(cwd) == cwd {
+		return "", fmt.Errorf("could not find project root. Tried: %v", append(attempted, cwd))
+	}
+
+	return findProjectRoot(filepath.Dir(cwd), append(attempted, cwd))
 }

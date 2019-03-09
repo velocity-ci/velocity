@@ -32,18 +32,20 @@ defmodule ArchitectWeb.BuilderChannel do
   """
   def handle_info(:job_build, socket) do
     push(socket, "#{@event_prefix}job-do-build", %{
-      build: %{
-        id: "",
-        task: %{},
-        parameters: %{},
-        status: "",
-        createdAt: "",
-        updatedAt: "",
-        startedAt: "",
-        completedAt: ""
+      id: "",
+      project: %{
+        name: "",
+        address: "",
+        privateKey: ""
       },
-      steps: [],
-      streams: []
+      knownHost: %{
+        entry: ""
+      },
+      # output from vcli plan
+      buildTask: %{},
+      branch: "",
+      commit: "",
+      parameters: %{}
     })
 
     {:noreply, socket}

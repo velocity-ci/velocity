@@ -30,11 +30,16 @@ type Project struct {
 	PrivateKey string `json:"privateKey"`
 }
 
+type KnownHost struct {
+	Entry string `json:"entry"`
+}
+
 type Build struct {
 	*baseJob
 
-	ID      string  `json:"id"`
-	Project Project `json:"project"`
+	ID        string    `json:"id"`
+	Project   Project   `json:"project"`
+	KnownHost KnownHost `json:"knownHost"`
 
 	Task       *build.Task       `json:"buildTask"`
 	Branch     string            `json:"branch"`
@@ -64,6 +69,8 @@ func (j *Build) Do(ws *phoenix.Client) error {
 		Address:    j.Project.Address,
 		PrivateKey: j.Project.PrivateKey,
 	}, j.Branch, j.Commit)
+
+	// TODO: add knownhost file management
 
 	j.Task.Execute(emitter)
 

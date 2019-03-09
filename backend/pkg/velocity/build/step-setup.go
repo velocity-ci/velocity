@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/gosimple/slug"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
@@ -26,8 +27,7 @@ type Setup struct {
 func getUniqueWorkspace(r *git.Repository) (string, error) {
 	dir := fmt.Sprintf("%s/_%s-%s",
 		"",
-		// slug.Make(r.Address),
-		auth.RandomString(8),
+		slug.Make(r.Address),
 		auth.RandomString(8),
 	)
 

@@ -112,74 +112,32 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func findTasksDirectory(projectRoot string) (string, error) {
-	// fmt.Printf("checking %s for tasks directory.\n", cwd)
+func findTasksDirectory(root *Root) (string, error) {
 	tasksDir := "tasks"
-
-	// check for tasks setting in velocity.yml
-	repoConfigPath := filepath.Join(projectRoot, ".velocity.yml")
-	if f, err := os.Stat(repoConfigPath); !os.IsNotExist(err) {
-		if !f.IsDir() {
-			var repoConfig Root
-			repoYaml, _ := ioutil.ReadFile(repoConfigPath)
-			err = yaml.Unmarshal(repoYaml, &repoConfig)
-			if err == nil {
-				if repoConfig.Project.TasksPath != "" {
-					tasksDir = repoConfig.Project.TasksPath
-				}
-			}
-		}
+	if root.Project.TasksPath != "" {
+		tasksDir = root.Project.TasksPath
 	}
 
-	tasksPath := filepath.Join(projectRoot, tasksDir)
+	tasksPath := filepath.Join(root.Path, tasksDir)
 	if f, err := os.Stat(tasksPath); !os.IsNotExist(err) {
 		if f.IsDir() {
 			return tasksPath, nil
 		}
 	}
 
-	return "", fmt.Errorf("could not find tasks in: %s", filepath.Join(projectRoot, tasksDir))
+	return "", fmt.Errorf("could not find tasks in: %s", tasksPath)
 }
 
-func findProjectRoot(cwd string, attempted []string) (string, error) {
-	files, err := ioutil.ReadDir(cwd)
-	if err != nil {
-		return "", err
-	}
-	for _, f := range files {
-		if f.IsDir() && f.Name() == ".git" {
-			logging.GetLogger().Debug("found project root", zap.String("dir", cwd))
-			return cwd, nil
-		}
-	}
-
-	if filepath.Dir(cwd) == cwd {
-		return "", fmt.Errorf("could not find project root. Tried: %v", append(attempted, cwd))
-	}
-
-	return findProjectRoot(filepath.Dir(cwd), append(attempted, cwd))
-}
-
-func GetTasksFromCurrentDir() ([]*Task, string, error) {
+func GetTasksFromRoot(root *Root) ([]*Task, error) {
 	tasks := []*Task{}
 
-	cwd, err := os.Getwd()
+	tasksPath, err := findTasksDirectory(root)
 	if err != nil {
-		return tasks, "", err
+		return tasks, err
 	}
 
-	projectRoot, err := findProjectRoot(cwd, []string{})
-	if err != nil {
-		return tasks, "", err
-	}
-
-	tasksDir, err := findTasksDirectory(projectRoot)
-	if err != nil {
-		return tasks, "", err
-	}
-
-	logging.GetLogger().Debug("looking for tasks in", zap.String("dir", tasksDir))
-	err = filepath.Walk(tasksDir, func(path string, f os.FileInfo, err error) error {
+	logging.GetLogger().Debug("looking for tasks in", zap.String("dir", tasksPath))
+	err = filepath.Walk(tasksPath, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() && (strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml")) {
 			// fmt.Printf("-> reading %s\n", path)
 			taskYml, err := ioutil.ReadFile(path)
@@ -187,12 +145,11 @@ func GetTasksFromCurrentDir() ([]*Task, string, error) {
 				return err
 			}
 			t := NewTask()
-			relativePath, err := filepath.Rel(tasksDir, path)
+			relativePath, err := filepath.Rel(tasksPath, path)
 			if err != nil {
 				return err
 			}
 			t.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
-			// t.ProjectRoot = projectRoot
 			err = yaml.Unmarshal(taskYml, &t)
 			if err != nil {
 				return err
@@ -202,5 +159,5 @@ func GetTasksFromCurrentDir() ([]*Task, string, error) {
 		return nil
 	})
 
-	return tasks, projectRoot, err
+	return tasks, err
 }
