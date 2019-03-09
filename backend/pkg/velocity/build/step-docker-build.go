@@ -38,7 +38,7 @@ func (dB *StepDockerBuild) Execute(emitter out.Emitter, t *Task) error {
 
 	authConfigs := GetAuthConfigsMap(t.Docker.Registries)
 
-	buildContext := filepath.Join(dB.ProjectRoot, dB.Context)
+	buildContext := filepath.Join(t.ProjectRoot, dB.Context)
 
 	err := docker.BuildContainer(
 		buildContext,

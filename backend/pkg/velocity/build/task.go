@@ -4,6 +4,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/git"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type Task struct {
@@ -26,11 +27,22 @@ type Task struct {
 	// ResolvedParameters map[string]Parameter `json:"-"`
 }
 
+func (t *Task) Execute(emitter out.Emitter) error {
+	for _, step := range t.Steps {
+		err := step.Execute(emitter, t)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func NewTask(
 	c *config.Task,
 	paramResolver BackupResolver,
 	repository *git.Repository,
 	commitSha string,
+	projectRoot string,
 ) *Task {
 	steps := []Step{
 		NewStepSetup(paramResolver, repository, commitSha),
@@ -50,22 +62,12 @@ func NewTask(
 			steps = append(steps, NewStepDockerPush(x))
 		}
 	}
-	// parameters := map[string]Parameter{}
-	// for _, configParameter := range c.Parameters {
-	// 	// TODO: resolve, add flag to not resolve
-	// 	switch x := configParameter.(type) {
-	// 	case *config.ParameterBasic:
-	// 		// parameters[x.Name] = x
-	// 		break
-	// 	case *config.ParameterDerived:
-	// 		// resolve (add flag to not resolve)
-	// 		break
-	// 	}
-	// }
 
 	return &Task{
 		Config:      *c,
-		ProjectRoot: "root",
+		ProjectRoot: projectRoot,
 		RunID:       "gen",
+		Steps:       steps,
+		Parameters:  map[string]*Parameter{},
 	}
 }

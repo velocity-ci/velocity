@@ -131,33 +131,32 @@ func Run(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return fmt.Errorf("incorrect amount of args")
 	}
-	// tasks, err := task.GetTasksFromCurrentDir()
-	// if err != nil {
-	// 	return err
-	// }
-	// t, err := getRequestedTaskByName(c.Args().Get(0), tasks)
-	// if err != nil {
-	// 	return err
-	// }
-	// fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
-	// emitter := NewEmitter()
 
-	// t.Steps = append([]task.Step{task.NewSetup()}, t.Steps...)
-	// for i, step := range t.Steps {
-	// 	// if !r.run {
-	// 	// 	return
-	// 	// }
-	// 	if step.GetType() == "setup" {
-	// 		step.(*task.Setup).Init(&ParameterResolver{}, nil, "")
-	// 	}
-	// 	emitter.SetStepNumber(uint64(i))
-	// 	step.SetProjectRoot(t.ProjectRoot)
-	// 	err := step.Execute(emitter, t)
-	// 	if err != nil {
-	// 		fmt.Printf("encountered error: %s", err)
-	// 		return err
-	// 	}
-	// }
+	tasks, projectRoot, err := config.GetTasksFromCurrentDir()
+	if err != nil {
+		return err
+	}
+
+	t, err := getRequestedTaskByName(c.Args().Get(0), tasks)
+	if err != nil {
+		return err
+	}
+
+	fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
+
+	buildTask := build.NewTask(
+		t,
+		&ParameterResolver{},
+		nil,
+		"",
+		projectRoot,
+	)
+
+	emitter := NewEmitter()
+	err = buildTask.Execute(emitter)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

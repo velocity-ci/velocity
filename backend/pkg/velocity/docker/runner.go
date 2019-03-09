@@ -136,7 +136,7 @@ func (sR *ServiceRunner) PullOrBuild(authConfigs map[string]types.AuthConfig, ad
 			},
 		)
 		if err != nil {
-			logging.GetLogger().Error("could not pull image", zap.String("err", err.Error()))
+			logging.GetLogger().Error("could not pull image", zap.String("image", sR.image), zap.String("err", err.Error()))
 		}
 		defer pullResp.Close()
 		out.HandleOutput(pullResp, sR.secrets, sR.writer)
@@ -265,5 +265,5 @@ func resolvePullImage(image string) string {
 		return image
 	}
 
-	return fmt.Sprintf("docker.io/%s", image)
+	return fmt.Sprintf("docker.io/library/%s", image)
 }

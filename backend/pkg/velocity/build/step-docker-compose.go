@@ -51,8 +51,8 @@ func (dC *StepDockerCompose) SetParams(params map[string]Parameter) error {
 	return nil
 }
 
-func (dC *StepDockerCompose) parseDockerComposeFile() error {
-	dockerComposeYml, err := ioutil.ReadFile(filepath.Join(dC.ProjectRoot, dC.ComposeFile))
+func (dC *StepDockerCompose) parseDockerComposeFile(projectRoot string) error {
+	dockerComposeYml, err := ioutil.ReadFile(filepath.Join(projectRoot, dC.ComposeFile))
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (dC *StepDockerCompose) parseDockerComposeFile() error {
 
 func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 
-	err := dC.parseDockerComposeFile()
+	err := dC.parseDockerComposeFile(t.ProjectRoot)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 		s := dC.Contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig
-		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, serviceName, networkResp.ID)
+		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, serviceName, networkResp.ID, t.ProjectRoot)
 
 		// Create service runners
 		sR := docker.NewServiceRunner(
@@ -178,7 +178,12 @@ func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 	return nil
 }
 
-func (dC *StepDockerCompose) generateContainerAndHostConfig(s v3.DockerComposeService, serviceName, networkID string) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
+func (dC *StepDockerCompose) generateContainerAndHostConfig(
+	s v3.DockerComposeService,
+	serviceName,
+	networkID,
+	projectRoot string,
+) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
 	env := []string{}
 	for k, v := range s.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -194,8 +199,8 @@ func (dC *StepDockerCompose) generateContainerAndHostConfig(s v3.DockerComposeSe
 			guestMount := parts[1:]
 			volumes[parts[1]] = struct{}{}
 			if !filepath.IsAbs(hostMount) { // no absolute paths allowed.
-				hostMount = filepath.Join(dC.ProjectRoot, filepath.Dir(dC.ComposeFile), hostMount)
-				if strings.Contains(hostMount, dC.ProjectRoot) { // no further up from project root
+				hostMount = filepath.Join(projectRoot, filepath.Dir(dC.ComposeFile), hostMount)
+				if strings.Contains(hostMount, projectRoot) { // no further up from project root
 					binds = append(binds, strings.Join(append([]string{hostMount}, guestMount...), ":"))
 				}
 			}

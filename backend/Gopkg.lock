@@ -72,7 +72,7 @@
   version = "v2.7.1"
 
 [[projects]]
-  digest = "1:a60acfb78bd12ce7b2101f0cc0bca8cd83db6aa60bf1e6ddfd33e83013083ddf"
+  digest = "1:e197595b6d3711c79b556868fd869faa27ff8d047b68383e5a1fa623240a7c0d"
   name = "github.com/docker/docker"
   packages = [
     "api/types",
@@ -102,8 +102,8 @@
     "pkg/tlsconfig",
   ]
   pruneopts = ""
-  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
-  version = "v1.13.1"
+  revision = "eef6495eddab52828327aade186443681ed71a4e"
+  version = "v17.03.2-ce-rc1"
 
 [[projects]]
   branch = "master"
@@ -312,12 +312,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:bf6f8915c0338e875383cb7fdebd58a4d360a232f461d9a029d7ccb12f90c5d7"
+  digest = "1:36e30024844a32a43254a0d072a31eba96c2083ee3ee8c46bdf614f3a0f5a9ea"
   name = "github.com/valyala/fasttemplate"
   packages = ["."]
   pruneopts = ""
-  revision = "dcecefd839c4193db0d35b88ec65b4c12d360ab0"
+  revision = "189f40e8adae8acb7c6c3b065d7489f187a548e4"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:8fe1bf6222077787bf88db4eae509f1c910743be1b82e1a6a57444fe092fc4a5"
@@ -360,7 +360,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7a77b79efe106f3304dcf50dc86836151758f246169b527722552a5eb2ae14fc"
+  digest = "1:f1282b7b8f47533e585be65217b076a5fa31c8b78aa2a3bd353e2bf5dcd8ce2e"
   name = "golang.org/x/crypto"
   packages = [
     "acme",
@@ -378,11 +378,11 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "8dd112bcdc25174059e45e07517d9fc663123347"
+  revision = "c2843e01d9a2bc60bb26ad24e09734fdc2d9ec58"
 
 [[projects]]
   branch = "master"
-  digest = "1:2b08539d056d6b2da4233648f5014d84cb70a9c278523374c75776a75a32d03e"
+  digest = "1:7489cf41e267d966cbc16d9b98622e7124818af9339d5466aaec4fc736c404c0"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -393,11 +393,11 @@
     "proxy",
   ]
   pruneopts = ""
-  revision = "92fc7df08ae7536330f5a21328292abfa70520a8"
+  revision = "16b79f2e4e95ea23b2bf9903c9809ff7b013ce85"
 
 [[projects]]
   branch = "master"
-  digest = "1:74ce8329385730bb2d01e4e91b66183beceeb1512084e4253653ac2439f1ef8c"
+  digest = "1:7157453cf1945d64e643e85cd4912e8fb50dd437deaf0511de5de7722abddacb"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -405,7 +405,7 @@
     "windows",
   ]
   pruneopts = ""
-  revision = "a34e9553db1e492c9a76e60db2296ae7e5fbb772"
+  revision = "980fc434d28e11f0a5c1ae102a263b8c56641011"
 
 [[projects]]
   digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"

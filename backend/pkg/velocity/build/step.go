@@ -15,7 +15,6 @@ type Step interface {
 	Validate(map[string]Parameter) error
 	SetParams(map[string]Parameter) error
 	GetOutputStreams() []string
-	SetProjectRoot(string)
 }
 
 // Step state constants
@@ -56,8 +55,7 @@ type BaseStep struct {
 	CompletedAt   time.Time `json:"completedAt"`
 
 	// Params      map[string]Parameter `json:"params" yaml:"-"`
-	runID       string
-	ProjectRoot string `json:"-"`
+	runID string
 }
 
 func newBaseStep(t string, streams []string) BaseStep {
@@ -91,10 +89,6 @@ func (bS *BaseStep) GetRunID() string {
 	}
 
 	return bS.runID
-}
-
-func (bS *BaseStep) SetProjectRoot(path string) {
-	bS.ProjectRoot = path
 }
 
 type StreamLine struct {

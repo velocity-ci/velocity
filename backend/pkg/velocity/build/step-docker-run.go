@@ -75,7 +75,7 @@ func (dR *StepDockerRun) Execute(emitter out.Emitter, t *Task) error {
 
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s", dR.ProjectRoot, dR.MountPoint),
+			fmt.Sprintf("%s:%s", t.ProjectRoot, dR.MountPoint),
 		},
 	}
 
