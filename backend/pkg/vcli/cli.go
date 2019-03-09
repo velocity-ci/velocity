@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli"
+	"github.com/velocity-ci/velocity/backend/pkg/git"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
@@ -74,7 +75,12 @@ func Info(c *cli.Context) error {
 	}
 	emitter := NewEmitter()
 
-	basicParams, err := build.GetGlobalParams(emitter.GetStreamWriter("setup"), projectRoot)
+	branch, err := git.CurrentBranch(projectRoot)
+	if err != nil {
+		return err
+	}
+
+	basicParams, err := build.GetGlobalParams(emitter.GetStreamWriter("setup"), projectRoot, branch)
 	if err != nil {
 		return err
 	}
@@ -104,6 +110,7 @@ func Run(c *cli.Context) error {
 		&ParameterResolver{},
 		nil,
 		"",
+		"branch", // TODO: get branch from git
 		projectRoot,
 	)
 

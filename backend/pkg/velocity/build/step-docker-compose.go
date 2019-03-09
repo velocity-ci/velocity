@@ -25,68 +25,76 @@ import (
 
 type StepDockerCompose struct {
 	BaseStep
-	ComposeFile string               `json:"composeFile"`
-	Contents    v3.DockerComposeYaml `json:"contents"`
+	ComposeFilePath string `json:"composeFile"`
+	// Contents    v3.DockerComposeYaml `json:"contents"`
 }
 
 func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *StepDockerCompose {
-	s := &StepDockerCompose{
-		BaseStep:    newBaseStep("compose", []string{}),
-		ComposeFile: c.ComposeFile,
-	}
+	streams, _ := getComposeFileStreams(filepath.Join(projectRoot, c.ComposeFile))
 
-	s.parseDockerComposeFile(projectRoot)
-	return s
+	return &StepDockerCompose{
+		BaseStep:        newBaseStep("compose", streams),
+		ComposeFilePath: c.ComposeFile,
+	}
 }
 
 func (dC StepDockerCompose) GetDetails() string {
-	return fmt.Sprintf("composeFile: %s", dC.ComposeFile)
+	return fmt.Sprintf("composeFile: %s", dC.ComposeFilePath)
 }
 
 func (dC *StepDockerCompose) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dC *StepDockerCompose) SetParams(params map[string]Parameter) error {
+func (dC *StepDockerCompose) SetParams(params map[string]*Parameter) error {
 	return nil
 }
 
-func (dC *StepDockerCompose) parseDockerComposeFile(projectRoot string) error {
-	dockerComposeYml, err := ioutil.ReadFile(filepath.Join(projectRoot, dC.ComposeFile))
+func parseComposeFile(path string) (*v3.DockerComposeYaml, error) {
+	dockerComposeYml, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = yaml.Unmarshal(dockerComposeYml, &dC.Contents)
+	var contents v3.DockerComposeYaml
+	err = yaml.Unmarshal(dockerComposeYml, &contents)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	services := make([]string, len(dC.Contents.Services))
+	return &contents, nil
+}
+
+func getComposeFileStreams(path string) ([]string, error) {
+	contents, err := parseComposeFile(path)
+	if err != nil {
+		return nil, err
+	}
+	services := make([]string, len(contents.Services))
 	i := 0
-	for k := range dC.Contents.Services {
+	for k := range contents.Services {
 		services[i] = k
 		i++
 	}
-	dC.OutputStreams = services
 
-	return nil
+	return services, nil
 }
 
 func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 
-	err := dC.parseDockerComposeFile(t.ProjectRoot)
+	// err := dC.parseDockerComposeFile(t.ProjectRoot)
+	contents, err := parseComposeFile(filepath.Join(t.ProjectRoot, dC.ComposeFilePath))
 	if err != nil {
 		return err
 	}
 
-	serviceOrder := v3.GetServiceOrder(dC.Contents.Services, []string{})
+	serviceOrder := v3.GetServiceOrder(contents.Services, []string{})
 
 	services := []*docker.ServiceRunner{}
 	var wg sync.WaitGroup
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
 
-	networkResp, err := cli.NetworkCreate(ctx, fmt.Sprintf("vci-%s", dC.GetRunID()), types.NetworkCreate{
+	networkResp, err := cli.NetworkCreate(ctx, fmt.Sprintf("vci-%s", dC.ID), types.NetworkCreate{
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
@@ -103,7 +111,7 @@ func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 	for _, serviceName := range serviceOrder {
 		writer := writers[serviceName]
 		writer.SetStatus(StateRunning)
-		s := dC.Contents.Services[serviceName]
+		s := contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig
 		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, serviceName, networkResp.ID, t.ProjectRoot)
@@ -115,7 +123,7 @@ func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 			writer,
 			&wg,
 			getSecrets(t.parameters),
-			fmt.Sprintf("%s-%s", dC.GetRunID(), serviceName),
+			fmt.Sprintf("%s-%s", dC.ID, serviceName),
 			s.Image,
 			&s.Build,
 			containerConfig,
@@ -199,7 +207,7 @@ func (dC *StepDockerCompose) generateContainerAndHostConfig(
 			guestMount := parts[1:]
 			volumes[parts[1]] = struct{}{}
 			if !filepath.IsAbs(hostMount) { // no absolute paths allowed.
-				hostMount = filepath.Join(projectRoot, filepath.Dir(dC.ComposeFile), hostMount)
+				hostMount = filepath.Join(projectRoot, filepath.Dir(dC.ComposeFilePath), hostMount)
 				if strings.Contains(hostMount, projectRoot) { // no further up from project root
 					binds = append(binds, strings.Join(append([]string{hostMount}, guestMount...), ":"))
 				}
@@ -221,11 +229,11 @@ func (dC *StepDockerCompose) generateContainerAndHostConfig(
 		var target string
 		var alias string
 		if len(parts) == 1 {
-			target = docker.GetContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), l))
+			target = docker.GetContainerName(fmt.Sprintf("%s-%s", dC.ID, l))
 			alias = l
 		} else {
 			target = parts[0]
-			target = docker.GetContainerName(fmt.Sprintf("%s-%s", dC.GetRunID(), target))
+			target = docker.GetContainerName(fmt.Sprintf("%s-%s", dC.ID, target))
 			alias = parts[1]
 		}
 		links = append(links, fmt.Sprintf("%s:%s", target, alias))

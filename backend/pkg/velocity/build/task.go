@@ -27,6 +27,7 @@ type Task struct {
 
 func (t *Task) Execute(emitter out.Emitter) error {
 	for _, step := range t.Steps {
+		step.SetParams(t.parameters)
 		err := step.Execute(emitter, t)
 		if err != nil {
 			return err
@@ -39,11 +40,12 @@ func NewTask(
 	c *config.Task,
 	paramResolver BackupResolver,
 	repository *git.Repository,
+	branch string,
 	commitSha string,
 	projectRoot string,
 ) *Task {
 	steps := []Step{
-		NewStepSetup(paramResolver, repository, commitSha),
+		NewStepSetup(paramResolver, repository, branch, commitSha),
 	}
 	for _, configStep := range c.Steps {
 		switch x := configStep.(type) {
@@ -68,4 +70,16 @@ func NewTask(
 		Steps:       steps,
 		parameters:  map[string]*Parameter{},
 	}
+}
+
+func (t *Task) UpdateSetup(
+	backupResolver BackupResolver,
+	repository *git.Repository,
+	branch string,
+	commitSha string,
+) {
+	t.Steps[0].(*Setup).backupResolver = backupResolver
+	t.Steps[0].(*Setup).repository = repository
+	t.Steps[0].(*Setup).branch = branch
+	t.Steps[0].(*Setup).commitHash = commitSha
 }

@@ -12,9 +12,10 @@ type Step interface {
 	GetType() string
 	GetDescription() string
 	GetDetails() string
+	SetParams(map[string]*Parameter) error
+	GetOutputStreams() []*Stream
+
 	Validate(map[string]Parameter) error
-	SetParams(map[string]Parameter) error
-	GetOutputStreams() []string
 }
 
 // Step state constants
@@ -44,25 +45,38 @@ const (
 	EventBuildFail     = "BUILD_FAIL"
 )
 
+type Stream struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
 type BaseStep struct {
+	ID          string `json:"id"`
 	Type        string `json:"type" yaml:"type"`
 	Description string `json:"description" yaml:"description"`
 
-	OutputStreams []string   `json:"outputStreams" yaml:"-"`
+	OutputStreams []*Stream  `json:"outputStreams" yaml:"-"`
 	Status        string     `json:"status"`
 	StartedAt     *time.Time `json:"startedAt"`
 	UpdatedAt     *time.Time `json:"updatedAt"`
 	CompletedAt   *time.Time `json:"completedAt"`
-
-	runID string
 }
 
-func newBaseStep(t string, streams []string) BaseStep {
+func newBaseStep(t string, streamNames []string) BaseStep {
+	streams := []*Stream{}
+	for _, streamName := range streamNames {
+		streams = append(streams, &Stream{
+			ID:     uuid.NewV4().String(),
+			Name:   streamName,
+			Status: StateWaiting,
+		})
+	}
 	return BaseStep{
+		ID:            uuid.NewV4().String(),
 		Type:          t,
 		OutputStreams: streams,
 		Status:        StateWaiting,
-		// Params:        map[string]Parameter{},
 	}
 }
 
@@ -74,20 +88,8 @@ func (bS *BaseStep) GetDescription() string {
 	return bS.Description
 }
 
-func (bS *BaseStep) GetOutputStreams() []string {
+func (bS *BaseStep) GetOutputStreams() []*Stream {
 	return bS.OutputStreams
-}
-
-// func (bS *BaseStep) SetParams(params map[string]Parameter) {
-// 	bS.Params = params
-// }
-
-func (bS *BaseStep) GetRunID() string {
-	if bS.runID == "" {
-		bS.runID = uuid.NewV4().String()
-	}
-
-	return bS.runID
 }
 
 type StreamLine struct {

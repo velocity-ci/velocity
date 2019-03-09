@@ -58,7 +58,7 @@ func (dP StepDockerPush) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dP *StepDockerPush) SetParams(params map[string]Parameter) error {
+func (dP *StepDockerPush) SetParams(params map[string]*Parameter) error {
 	for paramName, param := range params {
 		tags := []string{}
 		for _, c := range dP.Tags {

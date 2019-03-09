@@ -36,18 +36,18 @@ func resolveConfigParameter(
 ) (parameters []*Parameter, err error) {
 	// resolve parameter value at build time
 	switch x := p.(type) {
-	case config.ParameterBasic:
+	case *config.ParameterBasic:
 		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", x.Name)))
 		return resolveConfigParameterBasic(x, bR)
-	case config.ParameterDerived:
+	case *config.ParameterDerived:
 		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", x.Use)))
 		return resolveConfigParameterDerived(x, bR, projectRoot, writer)
+	default:
+		return parameters, fmt.Errorf("type: %T: %v", x, p)
 	}
-
-	return parameters, err
 }
 
-func resolveConfigParameterBasic(p config.ParameterBasic, backupResolver BackupResolver) (parameters []*Parameter, err error) {
+func resolveConfigParameterBasic(p *config.ParameterBasic, backupResolver BackupResolver) (parameters []*Parameter, err error) {
 	v := p.Default
 	val, err := backupResolver.Resolve(p.Name)
 	if err != nil {
@@ -62,7 +62,7 @@ func resolveConfigParameterBasic(p config.ParameterBasic, backupResolver BackupR
 }
 
 func resolveConfigParameterDerived(
-	p config.ParameterDerived,
+	p *config.ParameterDerived,
 	backupResolver BackupResolver,
 	projectRoot string,
 	writer io.Writer,

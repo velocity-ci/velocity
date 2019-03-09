@@ -6,11 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
-	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
-	"go.uber.org/zap"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
+	"go.uber.org/zap"
 )
 
 // TODO: Debouncing
@@ -40,7 +41,7 @@ type Emitter struct {
 	StepNumber int
 }
 
-func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
+func (e *Emitter) GetStreamWriter(streamName string) out.StreamWriter {
 	streamID := ""
 	for _, s := range e.Streams {
 		if s.Name == streamName {
@@ -49,7 +50,7 @@ func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 		}
 	}
 	if streamID == "" {
-		velocity.GetLogger().Error("could not find streamID", zap.String("stream name", streamName))
+		logging.GetLogger().Error("could not find streamID", zap.String("stream name", streamName))
 	}
 
 	sw := &StreamWriter{
@@ -67,24 +68,23 @@ func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 	return sw
 }
 
-func (e *Emitter) SetStepAndStreams(step *build.Step, streams []*build.Stream) {
-	e.StepID = step.ID
-	e.Streams = []*build.Stream{}
-	for _, s := range streams {
-		if s.Step.ID == step.ID {
-			e.Streams = append(e.Streams, s)
-		}
-	}
-}
+// func (e *Emitter) SetStepAndStreams(step *build.Step, streams []*build.Stream) {
+// 	e.StepID = step.ID
+// 	e.Streams = []*build.Stream{}
+// 	for _, s := range streams {
+// 		if s.Step.ID == step.ID {
+// 			e.Streams = append(e.Streams, s)
+// 		}
+// 	}
+// }
 
 func (e *Emitter) SetStepNumber(n int) {
 	e.StepNumber = n
 }
 
-func NewEmitter(ws *phoenix.Client, b *build.Build) *Emitter {
+func NewEmitter(ws *phoenix.Client) *Emitter {
 	return &Emitter{
-		ws:      ws,
-		BuildID: b.ID,
+		ws: ws,
 	}
 }
 

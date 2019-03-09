@@ -23,10 +23,9 @@ func HandleOutput(body io.ReadCloser, censored []string, writer io.Writer) {
 		} else {
 			o = handleLogOutput(allBytes)
 		}
-
 		if o != "*" {
 			for _, c := range censored {
-				strings.Replace(o, c, "***", -1)
+				o = strings.Replace(o, c, "***", -1)
 			}
 			writer.Write([]byte(o))
 		}

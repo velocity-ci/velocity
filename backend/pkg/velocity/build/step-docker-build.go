@@ -66,7 +66,7 @@ func (dB *StepDockerBuild) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dB *StepDockerBuild) SetParams(params map[string]Parameter) error {
+func (dB *StepDockerBuild) SetParams(params map[string]*Parameter) error {
 	for paramName, param := range params {
 		dB.Context = strings.Replace(dB.Context, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 		dB.Dockerfile = strings.Replace(dB.Dockerfile, fmt.Sprintf("${%s}", paramName), param.Value, -1)

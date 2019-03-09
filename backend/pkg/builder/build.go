@@ -7,11 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+
+	"github.com/velocity-ci/velocity/backend/pkg/git"
+
 	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"go.uber.org/zap"
 )
+
+const WorkspaceDir = "/opt/velocityci"
 
 // Builder -> Architect (Build events)
 var (
@@ -19,11 +24,22 @@ var (
 	EventBuildNewEvent = fmt.Sprintf("%snew-event", eventBuildPrefix)
 )
 
+type Project struct {
+	Name       string `json:"name"`
+	Address    string `json:"address"`
+	PrivateKey string `json:"privateKey"`
+}
+
 type Build struct {
 	*baseJob
-	Build   *build.Build    `json:"build"`
-	Steps   []*build.Step   `json:"steps"`
-	Streams []*build.Stream `json:"streams"`
+
+	ID      string  `json:"id"`
+	Project Project `json:"project"`
+
+	Task       *build.Task       `json:"buildTask"`
+	Branch     string            `json:"branch"`
+	Commit     string            `json:"commit"`
+	Parameters map[string]string `json:"parameters"`
 }
 
 func NewBuild() *Build {
@@ -39,38 +55,24 @@ func (j *Build) Parse(payloadBytes []byte) error {
 }
 
 func (j *Build) Do(ws *phoenix.Client) error {
-	velocity.GetLogger().Info("running build", zap.String("buildID", j.Build.ID))
+	logging.GetLogger().Info("running build", zap.String("buildID", j.ID))
 
-	emitter := NewEmitter(ws, j.Build)
+	emitter := NewEmitter(ws)
+	backupResolver := NewParameterResolver(j.Parameters)
 
-	backupResolver := NewParameterResolver(j.Build.Parameters)
+	j.Task.UpdateSetup(backupResolver, &git.Repository{
+		Address:    j.Project.Address,
+		PrivateKey: j.Project.PrivateKey,
+	}, j.Branch, j.Commit)
 
-	vT := j.Build.Task.VTask
+	j.Task.Execute(emitter)
 
-	for i, step := range vT.Steps {
-		bStep := j.Steps[i]
-		velocity.GetLogger().Debug("running step", zap.String("stepID", bStep.ID))
-		emitter.SetStepAndStreams(bStep, j.Streams)
-
-		if step.GetType() == "setup" {
-			step.(*velocity.Setup).Init(
-				&backupResolver,
-				&j.Build.Task.Commit.Project.Config,
-				j.Build.Task.Commit.Hash,
-			)
-		}
-		step.SetProjectRoot(vT.ProjectRoot)
-		err := step.Execute(emitter, vT)
-		if err != nil {
-			break
-		}
-	}
 	wd, _ := os.Getwd()
-	if strings.Contains(wd, velocity.WorkspaceDir) {
+	if strings.HasPrefix(wd, WorkspaceDir) {
 		os.RemoveAll(wd)
 	}
-	velocity.GetLogger().Info("completed build", zap.String("buildID", j.Build.ID))
-	os.Chdir("/opt/velocityci")
+	logging.GetLogger().Info("completed build", zap.String("buildID", j.ID))
+	os.Chdir(WorkspaceDir)
 	return nil
 }
 

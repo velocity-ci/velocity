@@ -8,7 +8,6 @@ import (
 )
 
 type StreamWriter struct {
-	StepNumber uint64
 	StreamName string
 	status     string
 	ansiColour string
@@ -22,14 +21,9 @@ func NewEmitter() *Emitter {
 	return &Emitter{}
 }
 
-func (e *Emitter) SetStepNumber(n uint64) {
-	e.StepNumber = n
-}
-
 func (e *Emitter) GetStreamWriter(streamName string) out.StreamWriter {
 	return &StreamWriter{
 		StreamName: streamName,
-		StepNumber: e.StepNumber,
 	}
 }
 

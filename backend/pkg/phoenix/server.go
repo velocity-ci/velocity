@@ -5,11 +5,12 @@ import (
 	"os"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
@@ -50,7 +51,7 @@ func jwtKeyFunc(t *jwt.Token) (interface{}, error) {
 }
 
 func (s *Server) subscribe(m *PhoenixMessage) error {
-	velocity.GetLogger().Debug("got subscribe", zap.String("topic", m.Topic))
+	logging.GetLogger().Debug("got subscribe", zap.String("topic", m.Topic))
 	topic := m.Topic
 	ref := m.Ref
 	payload := m.Payload.(*PhoenixGuardianJoinPayload)
@@ -67,7 +68,7 @@ func (s *Server) subscribe(m *PhoenixMessage) error {
 				},
 			},
 		}, false)
-		velocity.GetLogger().Warn("could not authenticate client to channel", zap.String("serverID", s.ID), zap.Error(err))
+		logging.GetLogger().Warn("could not authenticate client to channel", zap.String("serverID", s.ID), zap.Error(err))
 		return err
 	}
 	if err := s.authFunc(s, token, topic); err != nil {
@@ -82,12 +83,12 @@ func (s *Server) subscribe(m *PhoenixMessage) error {
 				},
 			},
 		}, false)
-		velocity.GetLogger().Warn("could not authenticate client to channel", zap.String("serverID", s.ID), zap.Error(err))
+		logging.GetLogger().Warn("could not authenticate client to channel", zap.String("serverID", s.ID), zap.Error(err))
 		return err
 	}
 	s.subscribedTopics.Store(topic, true)
 	s.Socket.ReplyOK(m)
-	velocity.GetLogger().Debug("subscribed to", zap.String("topic", m.Topic))
+	logging.GetLogger().Debug("subscribed to", zap.String("topic", m.Topic))
 	return nil
 }
 

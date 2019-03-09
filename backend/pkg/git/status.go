@@ -14,3 +14,12 @@ func (r *RawRepository) GetDescribe() string {
 
 	return strings.TrimSpace(s.Stdout[0])
 }
+
+func (r *RawRepository) GetDescribeAll() string {
+	r.RLock()
+	defer r.RUnlock()
+	shCmd := []string{"git", "describe", "--all", "--always"}
+	s := exec.Run(shCmd, r.Directory, []string{}, nil)
+
+	return strings.TrimSpace(s.Stdout[0])
+}

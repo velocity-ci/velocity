@@ -83,7 +83,7 @@ func (dR *StepDockerRun) Execute(emitter out.Emitter, t *Task) error {
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
 
-	networkResp, err := cli.NetworkCreate(ctx, fmt.Sprintf("vci-%s", dR.GetRunID()), types.NetworkCreate{
+	networkResp, err := cli.NetworkCreate(ctx, fmt.Sprintf("vci-%s", dR.ID), types.NetworkCreate{
 		Labels: map[string]string{"owner": "velocity-ci"},
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func (dR *StepDockerRun) Execute(emitter out.Emitter, t *Task) error {
 		writer,
 		&wg,
 		getSecrets(t.parameters),
-		fmt.Sprintf("%s-%s", dR.GetRunID(), "run"),
+		fmt.Sprintf("%s-%s", dR.ID, "run"),
 		dR.Image,
 		nil,
 		config,
@@ -168,7 +168,7 @@ func (dR StepDockerRun) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func (dR *StepDockerRun) SetParams(params map[string]Parameter) error {
+func (dR *StepDockerRun) SetParams(params map[string]*Parameter) error {
 	for paramName, param := range params {
 		dR.Image = strings.Replace(dR.Image, fmt.Sprintf("${%s}", paramName), param.Value, -1)
 		dR.WorkingDir = strings.Replace(dR.WorkingDir, fmt.Sprintf("${%s}", paramName), param.Value, -1)

@@ -19,6 +19,7 @@ type Setup struct {
 	BaseStep
 	backupResolver BackupResolver
 	repository     *git.Repository
+	branch         string
 	commitHash     string
 }
 
@@ -47,12 +48,14 @@ func getUniqueWorkspace(r *git.Repository) (string, error) {
 func NewStepSetup(
 	resolver BackupResolver,
 	repository *git.Repository,
+	branch,
 	commitSha string,
 ) *Setup {
 	return &Setup{
 		BaseStep:       newBaseStep("setup", []string{"setup"}),
 		backupResolver: resolver,
 		repository:     repository,
+		branch:         branch,
 		commitHash:     commitSha,
 	}
 }
@@ -106,7 +109,7 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 	}
 
 	// Resolve parameters
-	basicParams, err := GetGlobalParams(writer, t.ProjectRoot)
+	basicParams, err := GetGlobalParams(writer, t.ProjectRoot, s.branch)
 	if err != nil {
 		return err
 	}
@@ -114,7 +117,7 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 		t.parameters[k] = &v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
-	for configParam := range t.Config.Parameters {
+	for _, configParam := range t.Config.Parameters {
 		resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
 		if err != nil {
 			writer.SetStatus(StateFailed)
@@ -130,32 +133,6 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 			}
 		}
 	}
-
-	// config
-	// for _, config := range t.Parameters {
-	// 	writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", config.GetInfo())))
-	// 	params, err := config.GetParameters(writer, t, s.backupResolver)
-	// 	if err != nil {
-	// 		writer.SetStatus(StateFailed)
-	// 		fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> could not resolve parameter: %s"), err)
-	// 		return fmt.Errorf("could not resolve %v", err)
-	// 	}
-	// 	for _, param := range params {
-	// 		parameters[param.Name] = param
-	// 		if param.IsSecret {
-	// 			fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: ***"), param.Name)
-	// 		} else {
-	// 			fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: %v"), param.Name, param.Value)
-	// 		}
-	// 	}
-	// }
-
-	// t.ResolvedParameters = parameters
-
-	// // Update params on steps
-	// for _, s := range t.Steps {
-	// 	s.SetParams(parameters)
-	// }
 
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}
@@ -179,7 +156,7 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 	return nil
 }
 
-func (s *Setup) SetParams(params map[string]Parameter) error {
+func (s *Setup) SetParams(params map[string]*Parameter) error {
 	return nil
 }
 
@@ -187,16 +164,8 @@ func (s Setup) Validate(params map[string]Parameter) error {
 	return nil
 }
 
-func GetGlobalParams(writer io.Writer, projectRoot string) (map[string]Parameter, error) {
+func GetGlobalParams(writer io.Writer, projectRoot, branch string) (map[string]Parameter, error) {
 	params := map[string]Parameter{}
-	// cwd, err := os.Getwd()
-	// if err != nil {
-	// 	return params, err
-	// }
-	// projectRoot, err := findProjectRoot(cwd, []string{})
-	// if err != nil {
-	// 	return params, err
-	// }
 
 	repo := &git.RawRepository{Directory: projectRoot}
 
@@ -207,7 +176,10 @@ func GetGlobalParams(writer io.Writer, projectRoot string) (map[string]Parameter
 	rawCommit, _ := repo.GetCurrentCommitInfo()
 
 	buildTimestamp := time.Now().UTC()
-
+	params["GIT_BRANCH"] = Parameter{
+		Value:    branch,
+		IsSecret: false,
+	}
 	params["GIT_COMMIT_LONG_SHA"] = Parameter{
 		Value:    rawCommit.SHA,
 		IsSecret: false,
@@ -218,6 +190,10 @@ func GetGlobalParams(writer io.Writer, projectRoot string) (map[string]Parameter
 	}
 	params["GIT_DESCRIBE"] = Parameter{
 		Value:    repo.GetDescribe(),
+		IsSecret: false,
+	}
+	params["GIT_DESCRIBE_ALL"] = Parameter{
+		Value:    repo.GetDescribeAll(),
 		IsSecret: false,
 	}
 	params["GIT_COMMIT_AUTHOR"] = Parameter{
