@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gosimple/slug"
-	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
@@ -71,8 +70,8 @@ func makeVelocityDirs(projectRoot string) error {
 }
 
 func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
-	t.RunID = fmt.Sprintf("vci-%s", uuid.NewV4().String())
-	logging.GetLogger().Debug("set run id", zap.String("runID", t.RunID))
+	// t.ID = fmt.Sprintf("vci-%s", uuid.NewV4().String())
+	// logging.GetLogger().Debug("set run id", zap.String("runID", t.ID))
 
 	writer := emitter.GetStreamWriter("setup")
 	defer writer.Close()

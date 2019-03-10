@@ -24,7 +24,7 @@ var (
 	EventBuildNewEvent = fmt.Sprintf("%snew-event", eventBuildPrefix)
 )
 
-type Project struct {
+type ArchitectProject struct {
 	Name       string `json:"name"`
 	Address    string `json:"address"`
 	PrivateKey string `json:"privateKey"`
@@ -37,9 +37,9 @@ type KnownHost struct {
 type Build struct {
 	*baseJob
 
-	ID        string    `json:"id"`
-	Project   Project   `json:"project"`
-	KnownHost KnownHost `json:"knownHost"`
+	ID        string           `json:"id"`
+	Project   ArchitectProject `json:"project"`
+	KnownHost KnownHost        `json:"knownHost"`
 
 	Task       *build.Task       `json:"buildTask"`
 	Branch     string            `json:"branch"`

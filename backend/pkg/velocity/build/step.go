@@ -1,6 +1,8 @@
 package build
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -96,4 +98,52 @@ type StreamLine struct {
 	LineNumber uint64    `json:"lineNumber"`
 	Timestamp  time.Time `json:"timestamp"`
 	Output     string    `json:"output"`
+}
+
+func unmarshalStep(rawMessage []byte) (Step, error) {
+	var m map[string]interface{}
+	err := json.Unmarshal(rawMessage, &m)
+	if err != nil {
+		return nil, err
+	}
+	var s Step
+	switch m["type"] {
+	// case "setup":
+	// 	s =
+	case "run":
+		s = &StepDockerRun{
+			BaseStep: BaseStep{
+				Type: "run",
+			},
+			Command: []string{},
+		}
+	case "build":
+		s = &StepDockerBuild{
+			BaseStep: BaseStep{
+				Type: "build",
+			},
+		}
+	case "compose":
+		s = &StepDockerCompose{
+			BaseStep: BaseStep{
+				Type: "compose",
+			},
+		}
+	case "push":
+		s = &StepDockerPush{
+			BaseStep: BaseStep{
+				Type: "push",
+			},
+		}
+		// case "plugin":
+		// 	s = NewPlugin()
+		// 	break
+	}
+
+	if s == nil {
+		return nil, fmt.Errorf("could not determine step %+v", m)
+	}
+
+	err = json.Unmarshal(rawMessage, s)
+	return s, err
 }
