@@ -669,9 +669,20 @@ viewProjectPanel project =
                     , spacingXY 10 0
                     ]
                     [ paragraph [ width fill ]
-                        [ Route.link [ width fill, clip ] (text <| Project.name project) (Route.Project <| Project.slug project)
+                        [ Route.link [ width fill, clip ]
+                            (text <| Project.name project)
+                            (Route.Project
+                                { slug = Project.slug project
+                                , maybeAfter = Nothing
+                                , maybeBefore = Nothing
+                                , maybeBranch = Nothing
+                                }
+                            )
                         ]
-                    , viewIf (Project.syncing project) <| column [ width shrink, Font.color Palette.primary1 ] [ Loading.icon { width = 20, height = 20 } ]
+                    , viewIf (Project.syncing project) <|
+                        column
+                            [ width shrink, Font.color Palette.primary1 ]
+                            [ Loading.icon { width = 20, height = 20 } ]
                     ]
                 , column
                     [ paddingEach { bottom = 0, left = 0, right = 0, top = 10 }
@@ -775,13 +786,7 @@ type Msg msg
 
 update : Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
 update msg model =
-    case Session.cred model.session of
-        Just cred ->
-            updateAuthenticated cred msg model
-
-        Nothing ->
-            -- Handle unauthenticated
-            ( model, Cmd.none )
+    updateAuthenticated (Session.cred model.session) msg model
 
 
 updateAuthenticated : Cred -> Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
@@ -1014,11 +1019,8 @@ scrollToTop =
 
 
 subscriptions : Model msg -> Sub (Msg msg)
-subscriptions model =
-    Sub.batch
-        [ Session.changes UpdateSession model.context model.session
-        , parsedRepositorySub
-        ]
+subscriptions _ =
+    parsedRepositorySub
 
 
 parsedRepositorySub : Sub (Msg msg)

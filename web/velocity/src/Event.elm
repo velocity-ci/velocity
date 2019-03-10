@@ -127,18 +127,13 @@ addEvent event (Log internals) =
 type alias ViewConfiguration =
     { projects : List Project
     , knownHosts : List KnownHost
-    , maybeLog : Maybe Log
+    , log : Log
     }
 
 
 view : ViewConfiguration -> Element msg
 view config =
-    case config.maybeLog of
-        Just log ->
-            viewLogContainer log config
-
-        Nothing ->
-            none
+    viewLogContainer config.log config
 
 
 viewLogContainer : Log -> ViewConfiguration -> Element msg

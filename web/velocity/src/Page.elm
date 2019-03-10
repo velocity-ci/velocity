@@ -113,26 +113,55 @@ view : Config msg -> { title : String, body : List (Html msg) }
 view config =
     { title = config.title ++ " - Conduit"
     , body =
-        [ Element.layout
-            [ Font.family
-                [ Font.typeface "Roboto"
-                , Font.sansSerif
-                ]
-            , inFront (viewHeader config)
-            , inFront (viewFooter config)
-            ]
-            (Element.row
-                [ width fill
-                , height fill
-                , inFront <| viewSmallScreenNotificationsPanel config
-                , inFront <| viewMediumScreenNotificationsPanel config
-                ]
-                [ viewBody config.content
-                , viewLargeScreenNotificationsPanel config
-                ]
-            )
-        ]
+        if config.page == Login then
+            viewLoginPageBody config
+
+        else
+            viewAuthedPageBody config
     }
+
+
+viewLoginPageBody : Config msg -> List (Html msg)
+viewLoginPageBody config =
+    [ Element.layout
+        [ Font.family
+            [ Font.typeface "Roboto"
+            , Font.sansSerif
+            ]
+        , Background.color Palette.neutral6
+        ]
+        (Element.row
+            [ width fill
+            , height fill
+            ]
+            [ viewBody config.content
+            ]
+        )
+    ]
+
+
+viewAuthedPageBody : Config msg -> List (Html msg)
+viewAuthedPageBody config =
+    [ Element.layout
+        [ Font.family
+            [ Font.typeface "Roboto"
+            , Font.sansSerif
+            ]
+        , inFront (viewHeader config)
+        , inFront (viewFooter config)
+        , Background.color Palette.white
+        ]
+        (Element.row
+            [ width fill
+            , height fill
+            , inFront <| viewSmallScreenNotificationsPanel config
+            , inFront <| viewMediumScreenNotificationsPanel config
+            ]
+            [ viewBody config.content
+            , viewLargeScreenNotificationsPanel config
+            ]
+        )
+    ]
 
 
 
@@ -198,7 +227,7 @@ viewLargeScreenNotificationsPanel { context, session } =
             [ Event.view
                 { projects = Session.projects session
                 , knownHosts = Session.knownHosts session
-                , maybeLog = Session.log session
+                , log = Session.log session
                 }
             ]
         )
@@ -214,7 +243,7 @@ viewCollapsableNotificationsPanel { session, layout } =
         Event.view
             { projects = Session.projects session
             , knownHosts = Session.knownHosts session
-            , maybeLog = Session.log session
+            , log = Session.log session
             }
 
     else
@@ -258,11 +287,16 @@ viewBody content =
 
 viewHeader : Config msg -> Element msg
 viewHeader config =
-    if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
-        viewMobileHeader config
+    case config.page of
+        Login ->
+            none
 
-    else
-        viewDesktopHeader config
+        _ ->
+            if List.member (.class (Context.device config.context)) [ Phone, Tablet ] then
+                viewMobileHeader config
+
+            else
+                viewDesktopHeader config
 
 
 viewBrand : Element msg
@@ -349,18 +383,12 @@ viewMobileHeaderMenu config =
         linkTo =
             navbarLink config.page
     in
-    case Session.viewer config.session of
-        Just viewer ->
-            [ Header.notificationsToggle
-                { amount = 1
-                , toggled = notificationsOpen
-                , toggleMsg = Layout userMenu >> config.updateLayout
-                }
-            ]
-
-        Nothing ->
-            [ linkTo Route.Login (text "Sign in")
-            ]
+    [ Header.notificationsToggle
+        { amount = 1
+        , toggled = notificationsOpen
+        , toggleMsg = Layout userMenu >> config.updateLayout
+        }
+    ]
 
 
 viewDesktopHeaderMenu : Page -> Session msg -> (Layout -> msg) -> Layout -> List (Element msg)
@@ -369,55 +397,49 @@ viewDesktopHeaderMenu page session layoutMsg (Layout status notificationsPanel) 
         linkTo =
             navbarLink page
     in
-    case Session.viewer session of
-        Just viewer ->
-            [ el
-                [ width (px 30)
-                , height (px 30)
-                , alignTop
-                , Border.rounded 180
-                , Background.image (Asset.src Asset.defaultAvatar)
-                , Font.size 16
-                , pointer
-                , below
-                    (if status == ListenClicks then
-                        Header.userMenuToggle
+    [ el
+        [ width (px 30)
+        , height (px 30)
+        , alignTop
+        , Border.rounded 180
+        , Background.image (Asset.src Asset.defaultAvatar)
+        , Font.size 16
+        , pointer
+        , below
+            (if status == ListenClicks then
+                Header.userMenuToggle
 
-                     else
-                        none
-                    )
-                , onClick
-                    (if status == Closed then
-                        layoutMsg (Layout Open notificationsPanel)
-
-                     else
-                        layoutMsg (Layout status notificationsPanel)
-                    )
-                , Border.shadow
-                    { offset = ( 0, 0 )
-                    , size =
-                        if status == ListenClicks then
-                            5
-
-                        else
-                            0
-                    , blur = 10
-                    , color = Palette.neutral4
-                    }
-                ]
+             else
                 none
-            , el
-                [ Font.color Palette.neutral7
-                , centerY
-                , Font.heavy
-                , Font.size 16
-                ]
-                (text "Eddy Lane")
-            ]
+            )
+        , onClick
+            (if status == Closed then
+                layoutMsg (Layout Open notificationsPanel)
 
-        Nothing ->
-            [ linkTo Route.Login (text "Sign in")
-            ]
+             else
+                layoutMsg (Layout status notificationsPanel)
+            )
+        , Border.shadow
+            { offset = ( 0, 0 )
+            , size =
+                if status == ListenClicks then
+                    5
+
+                else
+                    0
+            , blur = 10
+            , color = Palette.neutral4
+            }
+        ]
+        none
+    , el
+        [ Font.color Palette.neutral7
+        , centerY
+        , Font.heavy
+        , Font.size 16
+        ]
+        (text "Eddy Lane")
+    ]
 
 
 navbarLink : Page -> Route -> Element msg -> Element msg

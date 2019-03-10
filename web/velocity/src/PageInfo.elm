@@ -10,6 +10,7 @@ module PageInfo exposing
 
 import Api.Compiled.Object
 import Api.Compiled.Object.PageInfo as PageInfo
+import Edge
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, with)
 
 
@@ -22,8 +23,8 @@ type PageInfo
 
 
 type alias Internals =
-    { startCursor : Maybe String
-    , endCursor : Maybe String
+    { startCursor : Maybe Edge.Cursor
+    , endCursor : Maybe Edge.Cursor
     , hasNextPage : Bool
     , hasPreviousPage : Bool
     }
@@ -48,8 +49,8 @@ selectionSet =
 internalsSelectionSet : SelectionSet Internals Api.Compiled.Object.PageInfo
 internalsSelectionSet =
     SelectionSet.succeed Internals
-        |> SelectionSet.with PageInfo.startCursor
-        |> SelectionSet.with PageInfo.endCursor
+        |> SelectionSet.with (Edge.cursorSelectionSet PageInfo.startCursor)
+        |> SelectionSet.with (Edge.cursorSelectionSet PageInfo.endCursor)
         |> SelectionSet.with PageInfo.hasNextPage
         |> SelectionSet.with PageInfo.hasPreviousPage
 
@@ -58,12 +59,12 @@ internalsSelectionSet =
 -- INFO
 
 
-startCursor : PageInfo -> Maybe String
+startCursor : PageInfo -> Maybe Edge.Cursor
 startCursor (PageInfo internals) =
     internals.startCursor
 
 
-endCursor : PageInfo -> Maybe String
+endCursor : PageInfo -> Maybe Edge.Cursor
 endCursor (PageInfo internals) =
     internals.endCursor
 

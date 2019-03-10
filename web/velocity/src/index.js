@@ -28,7 +28,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    console.log(Object.keys(app.ports));
 
     app.ports.subscribeTo.subscribe(function ([id, operation]) {
         console.log("subscribeTo called with", id, operation);
@@ -39,7 +38,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
 
         function onStart(data) {
-            console.log(">>> Start", JSON.stringify(data));
             app.ports.socketStatusConnected.send(id);
         }
 
@@ -53,7 +51,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         function onResult(value) {
-            console.log(">>> Result", JSON.stringify(value));
             app.ports.gotSubscriptionData.send({ id, value });
         }
 
@@ -64,10 +61,10 @@ document.addEventListener("DOMContentLoaded", function() {
             onResult
         })
 
+
     });
 
     app.ports.parseRepository.subscribe((repository) => {
-        console.log('repository', repository);
         try {
             const gitUrl = parseGitUrl(repository);
             app.ports.parsedRepository.send({repository, gitUrl});
@@ -80,6 +77,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
     app.ports.storeCache.subscribe(function (val) {
+
+        console.log('STORE CACHE', val);
         if (val === null) {
             localStorage.removeItem(storageKey);
         } else {
@@ -87,6 +86,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         // Report that the new session was stored succesfully.
         setTimeout(function () {
+            console.log('port', 'onStoreChange NEW', val);
+
             app.ports.onStoreChange.send(val);
         }, 0);
     });
@@ -94,6 +95,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // Whenever localStorage changes in another tab, report it if necessary.
     window.addEventListener("storage", function (event) {
+        console.log('port', 'onStoreChange', event.newValue);
+
+
         if (event.storageArea === localStorage && event.key === storageKey) {
             app.ports.onStoreChange.send(event.newValue);
         }
