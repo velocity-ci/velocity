@@ -35,15 +35,15 @@ defmodule ArchitectWeb.BuilderChannel do
       id: "",
       project: %{
         name: "",
-        address: "",
+        address: "https://github.com/velocity-ci/velocity.git",
         privateKey: ""
       },
       knownHost: %{
-        entry: ""
+        # entry: ""
       },
       # output from vcli plan
       buildTask: %{},
-      branch: "",
+      branch: "master",
       commit: "",
       parameters: %{}
     })

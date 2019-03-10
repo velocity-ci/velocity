@@ -9,11 +9,15 @@ defmodule Architect.VCLI do
 
   def list(dir, opts), do: cmd(dir, opts, ["list", "--machine-readable"])
 
+  def project_config(dir, opts), do: cmd(dir, opts, ["info", "--machine-readable"])
+
+  def build_task(dir, opts, task_name), do: cmd(dir, opts, ["run", task_name, "--plan-only", "--machine-readable"])
+
   defp cmd(dir, %{bin: bin, timeout: timeout, log_errors: log_errors}, cmd) when is_list(cmd) do
     try do
-      {out, _} =
+      %Porcelain.Result{err: nil, out: out, status: 0} =
         Task.async(fn ->
-          System.cmd(bin, cmd, stderr_to_stdout: true, cd: dir)
+          Porcelain.exec(bin, cmd, dir: dir)
         end)
         |> Task.await(timeout)
 

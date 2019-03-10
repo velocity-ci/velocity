@@ -82,6 +82,13 @@ defmodule Architect.Projects.Repository do
     GenServer.call(repository, {:list_tasks, selector})
   end
 
+  @doc ~S"""
+  Get the project configuration for a repository from the default branch
+  """
+  def project_configuration(repository) do
+    GenServer.call(repository, {:project_config})
+  end
+
   # Server
 
   @impl true
@@ -219,6 +226,23 @@ defmodule Architect.Projects.Repository do
       |> Task.parse()
 
     {:reply, tasks, state}
+  end
+
+  @impl true
+  def handle_call(
+        {:project_config},
+        _from,
+        %__MODULE{dir: dir, vcli: vcli} = state
+      ) do
+
+    default_branch = Branch.default(dir)
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["checkout", default_branch.name], dir: dir)
+
+    project_config =
+      VCLI.project_config(dir, vcli)
+
+    {:reply, project_config, state}
   end
 
   @impl true

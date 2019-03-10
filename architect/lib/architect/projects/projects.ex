@@ -181,6 +181,13 @@ defmodule Architect.Projects do
   def list_tasks(%Project{} = project, selector),
     do: call_repository(project, {:list_tasks, [selector]})
 
+  @doc ~S"""
+  Project Configuration
+
+  """
+  def project_configuration(%Project{} = project),
+    do: call_repository(project, {:project_configuration, []})
+
   ### Server
 
   @impl true
