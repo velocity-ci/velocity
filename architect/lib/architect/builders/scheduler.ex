@@ -10,7 +10,7 @@ defmodule Architect.Builders.Scheduler do
 
   require Logger
 
-  @poll_timeout 15000
+  @poll_timeout 5000
 
   defstruct [
     :history
@@ -32,34 +32,44 @@ defmodule Architect.Builders.Scheduler do
   #
   # Server
   #
+  @impl
   def init(state) do
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
     PubSub.subscribe(Architect.PubSub, Presence.topic())
 
+    Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
+
     {:ok, state}
   end
 
+  @impl
   def handle_call(:history, _from, state) do
     {:reply, state.history, state}
   end
 
+  @impl
   def handle_info(:poll_builds, state) do
-    Logger.debug("checking for available builders")
+    Logger.debug("checking for waiting builds")
+    builds = Architect.Builds.list_builds() # TODO: list_waiting_builds
+    if length(builds) > 0 do
+      Enum.each(builds, fn b ->
+        Logger.debug("attempting to schedule build:#{b.id}")
+        builders = Presence.list()
+        Enum.each(builders, fn {id, %{metas: [metas]}} ->
+          Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
+          send(metas.socket, b)
 
-    builders = Presence.list()
-
-    Enum.each(builders, fn {id, %{metas: [metas]}} ->
-      Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
-      send(metas.socket, :send_ping)
-
-      # How do we emit messages direct to the socket?
-    end)
+          # How do we emit messages direct to the socket?
+        end)
+      end)
+    end
 
     Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
     {:noreply, state}
   end
 
+  @impl
   def handle_info(
         %Socket.Broadcast{event: "presence_diff"} = broadcast,
         %__MODULE__{history: history} = state

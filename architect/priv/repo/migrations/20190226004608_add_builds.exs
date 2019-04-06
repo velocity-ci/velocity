@@ -5,8 +5,9 @@ defmodule Architect.Repo.Migrations.AddBuilds do
     create table(:builds, primary_key: false) do
       add(:id, :uuid, primary_key: true)
       add(:project_id, references(:projects, type: :uuid))
-      add(:task_name, :string)
       add(:commit_sha, :string)
+      add(:branch_name, :string)
+      add(:task_name, :string)
       add(:parameters, :map)
       add(:status, :string)
 

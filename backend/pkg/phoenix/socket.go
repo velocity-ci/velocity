@@ -162,6 +162,7 @@ func (s *Socket) Send(m *PhoenixMessage, sync bool) *PhoenixReplyPayload {
 func (s *Socket) handleMessage(m *PhoenixMessage) {
 	if eventFunc, ok := s.customEvents[m.Event]; ok {
 		logging.GetLogger().Debug("executing custom event", zap.String("event", m.Event))
+		logging.GetLogger().Debug("received", zap.Any("payload", m.Payload))
 		if err := eventFunc(m); err != nil {
 			logging.GetLogger().Error("error in custom event", zap.Error(err))
 		}

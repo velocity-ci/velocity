@@ -24,6 +24,19 @@ mix test --trace
 ```
 If you wish to use your host elixir/otp.
 
+Dev internal:
+```
+{:ok, u} = Architect.Accounts.create_user(%{username: "admin", password: "admin"})
+or
+[u] = Architect.Accounts.list_users()
+
+{:ok, {p, e}}Architect.Projects.create_project(u, "https://github.com/velocity-ci/velocity.git")
+or
+p = Architect.Projects.get_project_by_slug!("velocity-ci-velocity-at-github-com")
+
+Architect.Builds.create_build(u, p, "master", "34810c7571dae80b66b0f9aadc054565319179fb", "hello-velocity")
+```
+
 ## Tests
 ```
 docker-compose -f docker-compose.test.yml up --abort-on-container-exit

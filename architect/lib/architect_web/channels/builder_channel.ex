@@ -2,6 +2,8 @@ defmodule ArchitectWeb.BuilderChannel do
   use Phoenix.Channel
   alias Architect.Builders
 
+  require Logger
+
   @event_prefix "vlcty_"
 
   def join("builders:pool", _, socket) do
@@ -22,19 +24,40 @@ defmodule ArchitectWeb.BuilderChannel do
   Builder will say when it is 'ready' to request any waiting jobs.
   """
   def handle_in("#{@event_prefix}builder-ready", nil, socket) do
-    # push(socket, "")
-    # {:noreply, socket}
+    # IO.inspect(Architect.Builds.list_builds())
+
+    {:reply, :ok, socket}
+  end
+
+  @doc """
+  Handle build update-build events.
+  """
+  def handle_in("#{@event_prefix}update-build", nil, socket) do
+    {:reply, :ok, socket}
+  end
+
+  @doc """
+  Handle build update-step events.
+  """
+  def handle_in("#{@event_prefix}update-step", nil, socket) do
+    {:reply, :ok, socket}
+  end
+
+  @doc """
+  Handle build update-stream events.
+  """
+  def handle_in("#{@event_prefix}update-stream", nil, socket) do
     {:reply, :ok, socket}
   end
 
   @doc """
   Starts a build job for a builder.
   """
-  def handle_info(:job_build, socket) do
+  def handle_info(b = %Architect.Builds.Build{}, socket) do
     push(socket, "#{@event_prefix}job-do-build", %{
-      id: "",
+      id: b.id,
       project: %{
-        name: "",
+        name: b.project.name,
         address: "https://github.com/velocity-ci/velocity.git",
         privateKey: ""
       },

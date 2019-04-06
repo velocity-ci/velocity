@@ -24,11 +24,13 @@ defmodule Architect.Builds.Build do
   @foreign_key_type :binary_id
   schema "builds" do
     belongs_to(:project, Project)
-    field(:task_name, :string)
+    field(:branch_name, :string)
     field(:commit_sha, :string)
+    field(:task_name, :string)
     field(:parameters, :map)
-    field(:status, :string)
+    field(:plan, :json)
 
+    field(:status, :string)
     field(:created_at, :utc_datetime)
     field(:updated_at, :utc_datetime)
     field(:started_at, :utc_datetime)
@@ -38,12 +40,19 @@ defmodule Architect.Builds.Build do
   end
 
   @doc false
-  def changeset(%__MODULE__{} = known_host, attrs) do
-    # Check repository has task_name in commit_sha
-    known_host
-    |> cast(attrs, [:project_id, :task_name, :commit_sha, :parameters, :created_by_id])
+  def changeset(%__MODULE__{} = build, attrs) do
+    # Check repository has task_name in commit_sha and task is 'valid' (vcli)
+    build
+    |> cast(attrs, [
+      :project_id,
+      :branch_name,
+      :commit_sha,
+      :task_name,
+      :parameters,
+      :created_by_id,
+    ])
+    |> assoc_constraint(:project)
     |> assoc_constraint(:created_by)
-    |> validate_required([:host])
-    |> unique_constraint(:host)
+    |> validate_required([:task_name, :commit_sha])
   end
 end

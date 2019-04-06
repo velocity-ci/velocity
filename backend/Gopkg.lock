@@ -2,18 +2,6 @@
 
 
 [[projects]]
-  digest = "1:84bb9c1287cbda49b753f981d0eec113b28426f224dce2edbf44a8dd69d6be96"
-  name = "github.com/DATA-DOG/godog"
-  packages = [
-    ".",
-    "colors",
-    "gherkin",
-  ]
-  pruneopts = ""
-  revision = "d1db163b8f115dc74e1f504fc6a5558bdb5b3256"
-  version = "v0.7.10"
-
-[[projects]]
   digest = "1:a76496d5e3d2144d9f3b1f7a54e1cfcf9be07f0b0466452c690958dc5feb4b86"
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
@@ -28,21 +16,6 @@
   pruneopts = ""
   revision = "e1e72e9de974bd926e5c56f83753fba2df402ce5"
   version = "v1.3.0"
-
-[[projects]]
-  digest = "1:89489f2599600e37927528eb37f27a85cc5d1f464b745ff2ff88170c3bf0132e"
-  name = "github.com/asdine/storm"
-  packages = [
-    ".",
-    "codec",
-    "codec/json",
-    "index",
-    "internal",
-    "q",
-  ]
-  pruneopts = ""
-  revision = "fe89819f6282b0b611a547efaf78edcd2d5bc148"
-  version = "v2.2.0"
 
 [[projects]]
   digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
@@ -106,14 +79,6 @@
   version = "v17.03.2-ce-rc1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:405b47352aed13ed1f5c822de9d42bdeee50be6a6f6640d08ee7272b53026694"
-  name = "github.com/docker/go"
-  packages = ["canonical/json"]
-  pruneopts = ""
-  revision = "d30aec9fd63c35133f8f79c3412ad91a3b08be06"
-
-[[projects]]
   digest = "1:ebe593d8b65a2947b78b6e164a2dac1a230b977a700b694da3a398b03b7afb04"
   name = "github.com/docker/go-connections"
   packages = [
@@ -150,26 +115,6 @@
   version = "v1.0.4"
 
 [[projects]]
-  digest = "1:68d892747cfa2f0638a70b8193bc12c83d9474d93c78f41e4b45a305b2f21e24"
-  name = "github.com/go-playground/locales"
-  packages = [
-    ".",
-    "currency",
-    "en",
-  ]
-  pruneopts = ""
-  revision = "e4cbcb5d0652150d40ad0646651076b6bd2be4f6"
-  version = "v0.11.2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:154ddc783d7ea675eb21733eaf5bba75c610c6c6273ad605259d8637df577ed1"
-  name = "github.com/go-playground/universal-translator"
-  packages = ["."]
-  pruneopts = ""
-  revision = "71201497bace774495daed26a3874fd339e0b538"
-
-[[projects]]
   digest = "1:09aa5dd1332b93c96bde671bafb053249dc813febf7d5ca84e8f382ba255d67d"
   name = "github.com/gorilla/websocket"
   packages = ["."]
@@ -192,49 +137,6 @@
   pruneopts = ""
   revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
   version = "v1.0.2"
-
-[[projects]]
-  digest = "1:4beb546223497fdc767dd15f2f48e271598817cecda2beaf2ad7bf43282d5bf7"
-  name = "github.com/labstack/echo"
-  packages = ["."]
-  pruneopts = ""
-  revision = "38772c686c76b501f94bd6cd5b77f5842e93b559"
-  version = "v3.3.10"
-
-[[projects]]
-  digest = "1:44f403f58ba6ffcc60f0946169d02879dc79a4bf5a84d4215f5f7c6a5865f74b"
-  name = "github.com/labstack/gommon"
-  packages = [
-    "color",
-    "log",
-  ]
-  pruneopts = ""
-  revision = "7fd9f68ece0bcb1a905fac8f1549f0083f71c51b"
-  version = "v0.2.8"
-
-[[projects]]
-  digest = "1:69979393fd313159f0eccc6bc260164c8796ef3cbacb943f8ad0bf272b2a5dff"
-  name = "github.com/leodido/go-urn"
-  packages = ["."]
-  pruneopts = ""
-  revision = "70078a794e8ea4b497ba7c19a78cd60f90ccf0f4"
-  version = "v1.1.0"
-
-[[projects]]
-  digest = "1:85fdd2ce48a3fd1ddc4671b972f50a47dcf2eebb24813e90b28a8a1fcf65ee5a"
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  pruneopts = ""
-  revision = "3a70a971f94a22f2fa562ffcc7a0eb45f5daf045"
-  version = "v0.1.1"
-
-[[projects]]
-  digest = "1:5be0052cfccc784a7aa8b3c4ea46e4f2fe1e51fc9d79cc8e1feea638231aea76"
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  pruneopts = ""
-  revision = "369ecd8cea9851e459abb67eb171853e3986591e"
-  version = "v0.0.6"
 
 [[projects]]
   digest = "1:5d9b668b0b4581a978f07e7d2e3314af18eb27b3fb5d19b70185b7c575723d11"
@@ -304,30 +206,6 @@
   version = "v1.20.0"
 
 [[projects]]
-  digest = "1:857a9ecd5cb13379ecc8f798f6e6b6b574c98b9355657d91e068275f1120aaf7"
-  name = "github.com/valyala/bytebufferpool"
-  packages = ["."]
-  pruneopts = ""
-  revision = "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7"
-  version = "v1.0.0"
-
-[[projects]]
-  digest = "1:36e30024844a32a43254a0d072a31eba96c2083ee3ee8c46bdf614f3a0f5a9ea"
-  name = "github.com/valyala/fasttemplate"
-  packages = ["."]
-  pruneopts = ""
-  revision = "189f40e8adae8acb7c6c3b065d7489f187a548e4"
-  version = "v1.0.0"
-
-[[projects]]
-  digest = "1:8fe1bf6222077787bf88db4eae509f1c910743be1b82e1a6a57444fe092fc4a5"
-  name = "go.etcd.io/bbolt"
-  packages = ["."]
-  pruneopts = ""
-  revision = "63597a96ec0ad9e6d43c3fc81e809909e0237461"
-  version = "v1.3.2"
-
-[[projects]]
   digest = "1:74f86c458e82e1c4efbab95233e0cf51b7cc02dc03193be9f62cd81224e10401"
   name = "go.uber.org/atomic"
   packages = ["."]
@@ -363,10 +241,6 @@
   digest = "1:f1282b7b8f47533e585be65217b076a5fa31c8b78aa2a3bd353e2bf5dcd8ce2e"
   name = "golang.org/x/crypto"
   packages = [
-    "acme",
-    "acme/autocert",
-    "bcrypt",
-    "blowfish",
     "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
@@ -431,17 +305,6 @@
   version = "v0.3.0"
 
 [[projects]]
-  digest = "1:dd95cd9b5ad7438c5149f39b3a4af4d6d0da845df9b51e73d41e89184f124290"
-  name = "gopkg.in/go-playground/validator.v9"
-  packages = [
-    ".",
-    "translations/en",
-  ]
-  pruneopts = ""
-  revision = "b199fa0642d29caca62b6a99d65cc981ba5edc3b"
-  version = "v9.27.0"
-
-[[projects]]
   digest = "1:cedccf16b71e86db87a24f8d4c70b0a855872eb967cb906a66b95de56aefbd0d"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -453,10 +316,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/DATA-DOG/godog",
-    "github.com/DATA-DOG/godog/gherkin",
-    "github.com/asdine/storm",
-    "github.com/asdine/storm/q",
     "github.com/dgrijalva/jwt-go",
     "github.com/docker/docker/api/types",
     "github.com/docker/docker/api/types/container",
@@ -464,24 +323,17 @@
     "github.com/docker/docker/builder/dockerignore",
     "github.com/docker/docker/client",
     "github.com/docker/docker/pkg/archive",
-    "github.com/docker/go/canonical/json",
     "github.com/ghodss/yaml",
     "github.com/go-cmd/cmd",
-    "github.com/go-playground/locales/en",
-    "github.com/go-playground/universal-translator",
     "github.com/gorilla/websocket",
     "github.com/gosimple/slug",
-    "github.com/labstack/echo",
     "github.com/satori/go.uuid",
     "github.com/stretchr/testify/assert",
     "github.com/urfave/cli",
     "go.uber.org/zap",
-    "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/ssh",
     "golang.org/x/crypto/ssh/agent",
     "golang.org/x/net/http/httpproxy",
-    "gopkg.in/go-playground/validator.v9",
-    "gopkg.in/go-playground/validator.v9/translations/en",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
