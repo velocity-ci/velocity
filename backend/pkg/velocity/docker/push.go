@@ -8,7 +8,6 @@ import (
 	"github.com/docker/docker/api/types"
 
 	"github.com/docker/docker/client"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 func PushImage(
@@ -25,11 +24,11 @@ func PushImage(
 		All:          true,
 		RegistryAuth: authToken,
 	})
-	out.HandleOutput(reader, secrets, writer)
+	HandleOutput(reader, secrets, writer)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> pushed: %s"), tag)
+	fmt.Fprintf(writer, ColorFmt(ANSIInfo, "-> pushed: %s"), tag)
 
 	return nil
 }

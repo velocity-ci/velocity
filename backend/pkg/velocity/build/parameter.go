@@ -15,7 +15,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/exec"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 func getSecrets(params map[string]*Parameter) (r []string) {
@@ -80,7 +79,7 @@ func resolveConfigParameterDerived(
 	}
 
 	// Run binary
-	s := exec.Run(cmd, "", os.Environ(), out.BlankWriter{})
+	s := exec.Run(cmd, "", os.Environ(), BlankWriter{})
 	if s.Error != nil {
 		return parameters, s.Error
 	}

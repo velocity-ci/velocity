@@ -2,13 +2,14 @@ package build
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 )
 
 type Task struct {
@@ -72,21 +73,27 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	}
 
 	// Deserialize StartedAt
-	err = json.Unmarshal(*objMap["startedAt"], t.StartedAt)
-	if err != nil {
-		return err
+	if objMap["startedAt"] != nil {
+		err = json.Unmarshal(*objMap["startedAt"], t.StartedAt)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Deserialize UpdatedAt
-	err = json.Unmarshal(*objMap["updatedAt"], t.UpdatedAt)
-	if err != nil {
-		return err
+	if objMap["updatedAt"] != nil {
+		err = json.Unmarshal(*objMap["updatedAt"], t.UpdatedAt)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Deserialize CompletedAt
-	err = json.Unmarshal(*objMap["completedAt"], t.CompletedAt)
-	if err != nil {
-		return err
+	if objMap["completedAt"] != nil {
+		err = json.Unmarshal(*objMap["completedAt"], t.CompletedAt)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Deserialize ID
@@ -98,14 +105,34 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (t *Task) Execute(emitter out.Emitter) error {
+func (t *Task) Execute(emitter Emitter) error {
+	taskWriter := emitter.GetTaskWriter(t)
+	defer taskWriter.Close()
 	for _, step := range t.Steps {
-		step.SetParams(t.parameters)
-		err := step.Execute(emitter, t)
+		err := t.executeStep(emitter, step)
 		if err != nil {
+			taskWriter.SetStatus(StateFailed)
+			fmt.Fprintf(taskWriter, docker.ColorFmt(docker.ANSIError, "-> error in task %s"), t.ID)
 			return err
 		}
 	}
+	taskWriter.SetStatus(StateSuccess)
+	fmt.Fprintf(taskWriter, docker.ColorFmt(docker.ANSISuccess, "-> successfully completed task %s"), t.ID)
+	return nil
+}
+
+func (t *Task) executeStep(emitter Emitter, step Step) error {
+	stepWriter := emitter.GetStepWriter(step)
+	defer stepWriter.Close()
+	step.SetParams(t.parameters)
+	err := step.Execute(emitter, t)
+	if err != nil {
+		stepWriter.SetStatus(StateFailed)
+		fmt.Fprintf(stepWriter, docker.ColorFmt(docker.ANSIError, "-> error in step %s"), step.GetID())
+		return err
+	}
+	stepWriter.SetStatus(StateSuccess)
+	fmt.Fprintf(stepWriter, docker.ColorFmt(docker.ANSISuccess, "-> successfully completed step %s"), step.GetID())
 	return nil
 }
 

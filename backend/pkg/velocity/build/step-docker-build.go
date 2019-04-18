@@ -7,7 +7,6 @@ import (
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type StepDockerBuild struct {
@@ -30,17 +29,20 @@ func (dB StepDockerBuild) GetDetails() string {
 	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
 }
 
-func (dB *StepDockerBuild) Execute(emitter out.Emitter, t *Task) error {
-	writer := emitter.GetStreamWriter("build")
+func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
+	writer, err := dB.GetStreamWriter(emitter, "build")
+	if err != nil {
+		return err
+	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> %s"), dB.Description)
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dB.Description)
 
 	authConfigs := GetAuthConfigsMap(t.Docker.Registries)
 
 	buildContext := filepath.Join(t.ProjectRoot, dB.Context)
 
-	err := docker.BuildContainer(
+	err = docker.BuildContainer(
 		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
@@ -51,13 +53,13 @@ func (dB *StepDockerBuild) Execute(emitter out.Emitter, t *Task) error {
 
 	if err != nil {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> failed: %s"), err)
+		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s"), err)
 
 		return err
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, out.ColorFmt(out.ANSISuccess, "-> success"))
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success"))
 
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 )
 
@@ -27,11 +26,14 @@ func (dP StepDockerPush) GetDetails() string {
 	return fmt.Sprintf("tags: %s", dP.Tags)
 }
 
-func (dP *StepDockerPush) Execute(emitter out.Emitter, tsk *Task) error {
-	writer := emitter.GetStreamWriter("push")
+func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
+	writer, err := dP.GetStreamWriter(emitter, "push")
+	if err != nil {
+		return err
+	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> %s"), dP.Description)
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dP.Description)
 
 	for _, t := range dP.Tags {
 		err := docker.PushImage(
@@ -43,13 +45,13 @@ func (dP *StepDockerPush) Execute(emitter out.Emitter, tsk *Task) error {
 		if err != nil {
 			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> push failed: %s"), err)
+			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> push failed: %s"), err)
 			return err
 		}
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, out.ColorFmt(out.ANSISuccess, "-> success"))
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success"))
 	return nil
 
 }

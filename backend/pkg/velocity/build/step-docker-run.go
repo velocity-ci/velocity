@@ -15,7 +15,6 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type StepDockerRun struct {
@@ -44,11 +43,14 @@ func (dR StepDockerRun) GetDetails() string {
 	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
 }
 
-func (dR *StepDockerRun) Execute(emitter out.Emitter, t *Task) error {
-	writer := emitter.GetStreamWriter("run")
+func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
+	writer, err := dR.GetStreamWriter(emitter, "run")
+	if err != nil {
+		return err
+	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> %s"), dR.Description)
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dR.Description)
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"
@@ -126,13 +128,13 @@ func (dR *StepDockerRun) Execute(emitter out.Emitter, t *Task) error {
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> error (exited: %d)"), exitCode)
+		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> error (exited: %d)"), exitCode)
 
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, out.ColorFmt(out.ANSISuccess, "-> success (exited: %d)"), exitCode)
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success (exited: %d)"), exitCode)
 
 	return nil
 }

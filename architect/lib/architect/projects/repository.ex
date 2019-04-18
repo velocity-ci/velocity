@@ -89,6 +89,13 @@ defmodule Architect.Projects.Repository do
     GenServer.call(repository, {:project_config})
   end
 
+  @doc ~S"""
+  Get the build plan for a task on a commit sha
+  """
+  def plan_task(repository, commit, task_name) do
+    GenServer.call(repository, {:plan_task, commit, task_name})
+  end
+
   # Server
 
   @impl true
@@ -243,6 +250,25 @@ defmodule Architect.Projects.Repository do
       VCLI.project_config(dir, vcli)
 
     {:reply, project_config, state}
+  end
+
+  @impl true
+  def handle_call(
+        {:plan_task, commit, task_name},
+        _from,
+        %__MODULE{dir: dir, vcli: vcli} = state
+      ) do
+
+      %Porcelain.Result{err: nil, out: _, status: 0} =
+        Porcelain.exec("git", ["checkout", commit], dir: dir)
+
+      %Porcelain.Result{err: nil, out: _, status: 0} =
+        Porcelain.exec("git", ["clean", "-fd"], dir: dir)
+
+    task_plan =
+      VCLI.build_task(dir, vcli, task_name)
+
+    {:reply, task_plan, state}
   end
 
   @impl true

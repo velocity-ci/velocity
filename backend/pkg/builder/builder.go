@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	// EventStartBuild    = "build:start"
-	// EventSetKnownHosts = "knownhosts:set"
 	PoolTopic = "builders:pool"
 )
 
@@ -66,9 +64,12 @@ func (b *Builder) connect() {
 	for _, j := range jobs {
 		eventHandlers[fmt.Sprintf("%s%s", EventJobDoPrefix, j.GetName())] = func(m *phoenix.PhoenixMessage) error {
 			payloadBytes, _ := json.Marshal(m.Payload)
-			j.Parse(payloadBytes)
+			err := j.Parse(payloadBytes)
+			if err != nil {
+				logging.GetLogger().Error("could not unmarshal payload", zap.Error(err))
+			}
 
-			err := j.Do(b.ws)
+			err = j.Do(b.ws)
 			if err != nil {
 				b.ws.Socket.Send(&phoenix.PhoenixMessage{
 					Event: EventJobStatus,

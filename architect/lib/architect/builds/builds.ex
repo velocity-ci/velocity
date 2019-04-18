@@ -7,13 +7,34 @@ defmodule Architect.Builds do
   alias Architect.Repo
 
   alias Architect.Builds.Build
-  alias Comeonin.Bcrypt
 
   @doc """
   Returns the list of builds.
   """
   def list_builds do
-    Repo.all(Build)
+    Repo.all from b in Build,
+      join: p in assoc(b, :project),
+      preload: [project: p]
+  end
+
+  @doc """
+  Returns the list of waiting builds.
+  """
+  def list_waiting_builds do
+    Repo.all from b in Build,
+      where: b.status == "waiting",
+      join: p in assoc(b, :project),
+      preload: [project: p]
+  end
+
+  @doc """
+  Returns the list of running builds.
+  """
+  def list_running_builds do
+    Repo.all from b in Build,
+      where: b.status == "running",
+      join: p in assoc(b, :project),
+      preload: [project: p]
   end
 
   @doc """
@@ -35,6 +56,7 @@ defmodule Architect.Builds do
       task_name: task_name,
       parameters: parameters,
       created_by_id: user.id,
+      status: "waiting",
     })
     |> Repo.insert()
   end

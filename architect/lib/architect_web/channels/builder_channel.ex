@@ -32,21 +32,21 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Handle build update-build events.
   """
-  def handle_in("#{@event_prefix}update-build", nil, socket) do
+  def handle_in("#{@event_prefix}build-stream:new-loglines:" <> stream_id, nil, socket) do
     {:reply, :ok, socket}
   end
 
   @doc """
   Handle build update-step events.
   """
-  def handle_in("#{@event_prefix}update-step", nil, socket) do
+  def handle_in("#{@event_prefix}build-step:" <> step_id, nil, socket) do
     {:reply, :ok, socket}
   end
 
   @doc """
   Handle build update-stream events.
   """
-  def handle_in("#{@event_prefix}update-stream", nil, socket) do
+  def handle_in("#{@event_prefix}build-task:" <> task_id, nil, socket) do
     {:reply, :ok, socket}
   end
 
@@ -58,17 +58,17 @@ defmodule ArchitectWeb.BuilderChannel do
       id: b.id,
       project: %{
         name: b.project.name,
-        address: "https://github.com/velocity-ci/velocity.git",
+        address: b.project.address,
         privateKey: ""
       },
       knownHost: %{
         # entry: ""
       },
       # output from vcli plan
-      buildTask: %{},
-      branch: "master",
-      commit: "",
-      parameters: %{}
+      buildTask: b.plan,
+      branch: b.branch_name,
+      commit: b.commit_sha,
+      parameters: b.parameters,
     })
 
     {:noreply, socket}

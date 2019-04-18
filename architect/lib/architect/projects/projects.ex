@@ -188,6 +188,12 @@ defmodule Architect.Projects do
   def project_configuration(%Project{} = project),
     do: call_repository(project, {:project_configuration, []})
 
+  @doc ~S"""
+  Get the build plan for a task on a commit sha
+  """
+  def plan_task(%Project{} = project, commit, task_name),
+    do: call_repository(project, {:plan_task, [commit, task_name]})
+
   ### Server
 
   @impl true

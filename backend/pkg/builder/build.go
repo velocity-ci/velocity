@@ -20,8 +20,7 @@ const WorkspaceDir = "/opt/velocityci"
 
 // Builder -> Architect (Build events)
 var (
-	eventBuildPrefix   = fmt.Sprintf("%sbuild-", EventPrefix)
-	EventBuildNewEvent = fmt.Sprintf("%snew-event", eventBuildPrefix)
+	eventBuildPrefix = fmt.Sprintf("%sbuild-", EventPrefix)
 )
 
 type ArchitectProject struct {
@@ -37,7 +36,6 @@ type KnownHost struct {
 type Build struct {
 	*baseJob
 
-	ID        string           `json:"id"`
 	Project   ArchitectProject `json:"project"`
 	KnownHost KnownHost        `json:"knownHost"`
 

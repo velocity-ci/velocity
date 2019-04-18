@@ -10,8 +10,8 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 )
 
@@ -25,7 +25,7 @@ type Setup struct {
 
 func getUniqueWorkspace(r *git.Repository) (string, error) {
 	dir := fmt.Sprintf("%s/_%s-%s",
-		"",
+		"/tmp",
 		slug.Make(r.Address),
 		auth.RandomString(8),
 	)
@@ -69,11 +69,14 @@ func makeVelocityDirs(projectRoot string) error {
 	return nil
 }
 
-func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
+func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	// t.ID = fmt.Sprintf("vci-%s", uuid.NewV4().String())
 	// logging.GetLogger().Debug("set run id", zap.String("runID", t.ID))
 
-	writer := emitter.GetStreamWriter("setup")
+	writer, err := s.GetStreamWriter(emitter, "setup")
+	if err != nil {
+		return err
+	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
 
@@ -89,14 +92,14 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 		if err != nil {
 			logging.GetLogger().Error("could not clone repository", zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> failed: %s"), err)
+			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s"), err)
 			return err
 		}
 		err = repo.Checkout(s.commitHash)
 		if err != nil {
 			logging.GetLogger().Error("could not checkout", zap.Error(err), zap.String("commit", s.commitHash))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> failed: %s"), err)
+			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s"), err)
 			return err
 		}
 		os.Chdir(repo.Directory)
@@ -108,6 +111,7 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 	}
 
 	// Resolve parameters
+	t.parameters = map[string]*Parameter{}
 	basicParams, err := GetGlobalParams(writer, t.ProjectRoot, s.branch)
 	if err != nil {
 		return err
@@ -120,15 +124,15 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 		resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
 		if err != nil {
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> could not resolve parameter: %s"), err)
+			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> could not resolve parameter: %s"), err)
 			return fmt.Errorf("could not resolve %v", err)
 		}
 		for _, param := range resolvedParams {
 			t.parameters[param.Name] = param
 			if param.IsSecret {
-				fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: ***"), param.Name)
+				fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> set %s: ***"), param.Name)
 			} else {
-				fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> set %s: %v"), param.Name, param.Value)
+				fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> set %s: %v"), param.Name, param.Value)
 			}
 		}
 	}
@@ -139,12 +143,12 @@ func (s *Setup) Execute(emitter out.Emitter, t *Task) error {
 		r, err := dockerLogin(registry, writer, t)
 		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, out.ColorFmt(out.ANSIError, "-> could not login to Docker registry: %s"), err)
+			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> could not login to Docker registry: %s"), err)
 
 			return err
 		}
 		authedRegistries = append(authedRegistries, r)
-		fmt.Fprintf(writer, out.ColorFmt(out.ANSIInfo, "-> authenticated with Docker registry: %s"), r.Address)
+		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> authenticated with Docker registry: %s"), r.Address)
 	}
 
 	t.Docker.Registries = authedRegistries
@@ -169,7 +173,7 @@ func GetGlobalParams(writer io.Writer, projectRoot, branch string) (map[string]P
 	repo := &git.RawRepository{Directory: projectRoot}
 
 	if repo.IsDirty() {
-		fmt.Fprintf(writer, out.ColorFmt(out.ANSIWarn, "-> Project files are dirty. Build repeatability is not guaranteed."))
+		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIWarn, "-> Project files are dirty. Build repeatability is not guaranteed."))
 	}
 
 	rawCommit, _ := repo.GetCurrentCommitInfo()

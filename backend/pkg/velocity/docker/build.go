@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 )
 
@@ -56,7 +55,7 @@ func BuildContainer(
 	}
 
 	defer buildResp.Body.Close()
-	out.HandleOutput(buildResp.Body, secrets, writer)
+	HandleOutput(buildResp.Body, secrets, writer)
 
 	logging.GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 	return nil

@@ -30,7 +30,7 @@ Dev internal:
 or
 [u] = Architect.Accounts.list_users()
 
-{:ok, {p, e}}Architect.Projects.create_project(u, "https://github.com/velocity-ci/velocity.git")
+{:ok, {p, e}} = Architect.Projects.create_project(u, "https://github.com/velocity-ci/velocity.git")
 or
 p = Architect.Projects.get_project_by_slug!("velocity-ci-velocity-at-github-com")
 

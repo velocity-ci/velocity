@@ -6,11 +6,11 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 )
 
 type Step interface {
-	Execute(emitter out.Emitter, t *Task) error
+	GetID() string
+	Execute(emitter Emitter, t *Task) error
 	GetType() string
 	GetDescription() string
 	GetDetails() string
@@ -82,6 +82,10 @@ func newBaseStep(t string, streamNames []string) BaseStep {
 	}
 }
 
+func (bS *BaseStep) GetID() string {
+	return bS.ID
+}
+
 func (bS *BaseStep) GetType() string {
 	return bS.Type
 }
@@ -92,6 +96,24 @@ func (bS *BaseStep) GetDescription() string {
 
 func (bS *BaseStep) GetOutputStreams() []*Stream {
 	return bS.OutputStreams
+}
+
+func (bS *BaseStep) GetStreamWriter(emitter Emitter, streamName string) (StreamWriter, error) {
+	for _, outputStream := range bS.GetOutputStreams() {
+		if outputStream.Name == streamName {
+			return emitter.GetStreamWriter(outputStream), nil
+		}
+	}
+	return nil, fmt.Errorf("could not find stream id for '%s'", streamName)
+}
+
+func (bS *BaseStep) GetStreamID(streamName string) (string, error) {
+	for _, outputStream := range bS.GetOutputStreams() {
+		if outputStream.Name == streamName {
+			return outputStream.ID, nil
+		}
+	}
+	return "", fmt.Errorf("could not find id for stream: %s", streamName)
 }
 
 type StreamLine struct {
@@ -108,8 +130,12 @@ func unmarshalStep(rawMessage []byte) (Step, error) {
 	}
 	var s Step
 	switch m["type"] {
-	// case "setup":
-	// 	s =
+	case "setup":
+		s = &Setup{
+			BaseStep: BaseStep{
+				Type: "setup",
+			},
+		}
 	case "run":
 		s = &StepDockerRun{
 			BaseStep: BaseStep{

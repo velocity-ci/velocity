@@ -13,7 +13,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/velocity-ci/velocity/backend/pkg/exec"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 )
 
@@ -52,7 +51,7 @@ func dockerLogin(registry DockerRegistry, writer io.Writer, task *Task) (r Docke
 		extraEnv = append(extraEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	s := exec.Run([]string{bin}, "", append(os.Environ(), extraEnv...), out.BlankWriter{})
+	s := exec.Run([]string{bin}, "", append(os.Environ(), extraEnv...), BlankWriter{})
 	if s.Error != nil {
 		return r, err
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/ghodss/yaml"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 
 	"github.com/docker/docker/api/types"
@@ -79,7 +78,7 @@ func getComposeFileStreams(path string) ([]string, error) {
 	return services, nil
 }
 
-func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
+func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 
 	// err := dC.parseDockerComposeFile(t.ProjectRoot)
 	contents, err := parseComposeFile(filepath.Join(t.ProjectRoot, dC.ComposeFilePath))
@@ -101,10 +100,14 @@ func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 		logging.GetLogger().Error("could not create docker network", zap.String("err", err.Error()))
 	}
 
-	writers := map[string]out.StreamWriter{}
+	writers := map[string]StreamWriter{}
 	// Create writers
 	for _, serviceName := range serviceOrder {
-		writers[serviceName] = emitter.GetStreamWriter(serviceName)
+		serviceWriter, err := dC.GetStreamWriter(emitter, serviceName)
+		if err != nil {
+			return err
+		}
+		writers[serviceName] = serviceWriter
 		defer writers[serviceName].Close()
 	}
 
@@ -172,13 +175,13 @@ func (dC *StepDockerCompose) Execute(emitter out.Emitter, t *Task) error {
 	if !success {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateFailed)
-			fmt.Fprintf(writers[serviceName], out.ColorFmt(out.ANSIError, "-> %s error"), serviceName)
+			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSIError, "-> %s error"), serviceName)
 
 		}
 	} else {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateSuccess)
-			fmt.Fprintf(writers[serviceName], out.ColorFmt(out.ANSISuccess, "-> %s success"), serviceName)
+			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSISuccess, "-> %s success"), serviceName)
 
 		}
 	}

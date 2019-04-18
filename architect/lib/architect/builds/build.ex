@@ -28,7 +28,7 @@ defmodule Architect.Builds.Build do
     field(:commit_sha, :string)
     field(:task_name, :string)
     field(:parameters, :map)
-    field(:plan, :json)
+    field(:plan, :map)
 
     field(:status, :string)
     field(:created_at, :utc_datetime)
@@ -50,9 +50,30 @@ defmodule Architect.Builds.Build do
       :task_name,
       :parameters,
       :created_by_id,
+      :status,
     ])
     |> assoc_constraint(:project)
     |> assoc_constraint(:created_by)
     |> validate_required([:task_name, :commit_sha])
+    |> set_plan()
   end
+
+  def set_plan(
+    %Changeset{
+      valid?: true,
+      changes: %{
+        task_name: task_name,
+        commit_sha: commit_sha,
+        project_id: project_id,
+      }
+    } = changeset
+  ) do
+    project = Architect.Projects.get_project!(project_id)
+    plan = Architect.Projects.plan_task(project, commit_sha, task_name)
+    IO.inspect(plan)
+    changeset
+    |> put_change(:plan, plan)
+  end
+
+  def set_plan(changeset), do: changeset
 end

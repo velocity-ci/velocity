@@ -14,7 +14,6 @@ import (
 	"github.com/docker/docker/client"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/out"
 	"go.uber.org/zap"
 	"golang.org/x/net/http/httpproxy"
 )
@@ -139,9 +138,9 @@ func (sR *ServiceRunner) PullOrBuild(authConfigs map[string]types.AuthConfig, ad
 			logging.GetLogger().Error("could not pull image", zap.String("image", sR.image), zap.String("err", err.Error()))
 		}
 		defer pullResp.Close()
-		out.HandleOutput(pullResp, sR.secrets, sR.writer)
+		HandleOutput(pullResp, sR.secrets, sR.writer)
 
-		fmt.Fprintf(sR.writer, out.ColorFmt(out.ANSIInfo, "-> pulled image: %s"), sR.image)
+		fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> pulled image: %s"), sR.image)
 
 	}
 }
@@ -181,7 +180,7 @@ func respectProxyEnv(env []string) []string {
 }
 
 func (sR *ServiceRunner) Create() {
-	fmt.Fprintf(sR.writer, out.ColorFmt(out.ANSIInfo, "-> %s created"), GetContainerName(sR.name))
+	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s created"), GetContainerName(sR.name))
 
 	sR.containerConfig.Env = respectProxyEnv(sR.containerConfig.Env)
 
@@ -199,7 +198,7 @@ func (sR *ServiceRunner) Create() {
 }
 
 func (sR *ServiceRunner) Run(stop chan string) { // rename to start
-	fmt.Fprintf(sR.writer, out.ColorFmt(out.ANSIInfo, "-> %s running"), GetContainerName(sR.name))
+	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s running"), GetContainerName(sR.name))
 	err := sR.dockerCli.ContainerStart(
 		sR.context,
 		sR.containerID,
@@ -217,7 +216,7 @@ func (sR *ServiceRunner) Run(stop chan string) { // rename to start
 		logging.GetLogger().Error("could not get container logs", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 	}
 	defer logsResp.Close()
-	out.HandleOutput(logsResp, sR.secrets, sR.writer)
+	HandleOutput(logsResp, sR.secrets, sR.writer)
 
 	stop <- sR.name
 }
@@ -241,7 +240,7 @@ func (sR *ServiceRunner) Stop() {
 	}
 
 	sR.ExitCode = container.State.ExitCode
-	fmt.Fprintf(sR.writer, out.ColorFmt(out.ANSIInfo, "-> %s container exited: %d"), GetContainerName(sR.name), sR.ExitCode)
+	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s container exited: %d"), GetContainerName(sR.name), sR.ExitCode)
 
 	if !sR.removing {
 		sR.removing = true
@@ -253,7 +252,7 @@ func (sR *ServiceRunner) Stop() {
 		if err != nil {
 			logging.GetLogger().Error("could not remove container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 		}
-		fmt.Fprintf(sR.writer, out.ColorFmt(out.ANSIInfo, "-> %s removed"), GetContainerName(sR.name))
+		fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s removed"), GetContainerName(sR.name))
 
 	}
 }
