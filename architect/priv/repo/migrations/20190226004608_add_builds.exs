@@ -8,8 +8,13 @@ defmodule Architect.Repo.Migrations.AddBuilds do
       add(:commit_sha, :string)
       add(:branch_name, :string)
       add(:task_name, :string)
-      add(:plan, :map)
       add(:parameters, :map)
+
+      # Task Plan
+      add(:plan, :map)
+
+      # Final state (array of steps w/ streams and stream output sources)
+      add(:steps, {:array, :map})
 
       add(:status, :string)
       add(:created_at, :utc_datetime)

@@ -33,7 +33,13 @@ defmodule ArchitectWeb.BuilderChannel do
   Handle build update-build events.
   """
   def handle_in("#{@event_prefix}build-stream:new-loglines", payload, socket) do
-    # IO.inspect(payload)
+    Enum.each(payload["lines"], fn l ->
+      Architect.Builds.ETSStore.put_stream_line(
+        payload["id"],
+        l["lineNumber"],
+        l
+      )
+    end)
     {:reply, :ok, socket}
   end
 
@@ -41,7 +47,10 @@ defmodule ArchitectWeb.BuilderChannel do
   Handle build update-step events.
   """
   def handle_in("#{@event_prefix}build-step:update", payload, socket) do
-    # IO.inspect(payload)
+    Architect.Builds.ETSStore.put_step_update(
+        payload["id"],
+        payload
+      )
     {:reply, :ok, socket}
   end
 
@@ -49,7 +58,10 @@ defmodule ArchitectWeb.BuilderChannel do
   Handle build update-stream events.
   """
   def handle_in("#{@event_prefix}build-task:update", payload, socket) do
-    # IO.inspect(payload)
+    Architect.Builds.ETSStore.put_task_update(
+        payload["id"],
+        payload
+      )
     {:reply, :ok, socket}
   end
 
