@@ -11,9 +11,7 @@ import (
 )
 
 type Emitter struct {
-	ws      *phoenix.Client
-	BuildID string
-	StepID  string
+	ws *phoenix.Client
 }
 
 func NewEmitter(ws *phoenix.Client) *Emitter {
