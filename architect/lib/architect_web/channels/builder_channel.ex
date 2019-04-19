@@ -23,7 +23,7 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Builder will say when it is 'ready' to request any waiting jobs.
   """
-  def handle_in("#{@event_prefix}builder-ready", nil, socket) do
+  def handle_in("#{@event_prefix}builder-ready", payload, socket) do
     # IO.inspect(Architect.Builds.list_builds())
 
     {:reply, :ok, socket}
@@ -32,21 +32,24 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Handle build update-build events.
   """
-  def handle_in("#{@event_prefix}build-stream:new-loglines:" <> stream_id, nil, socket) do
+  def handle_in("#{@event_prefix}build-stream:new-loglines", payload, socket) do
+    # IO.inspect(payload)
     {:reply, :ok, socket}
   end
 
   @doc """
   Handle build update-step events.
   """
-  def handle_in("#{@event_prefix}build-step:" <> step_id, nil, socket) do
+  def handle_in("#{@event_prefix}build-step:update", payload, socket) do
+    # IO.inspect(payload)
     {:reply, :ok, socket}
   end
 
   @doc """
   Handle build update-stream events.
   """
-  def handle_in("#{@event_prefix}build-task:" <> task_id, nil, socket) do
+  def handle_in("#{@event_prefix}build-task:update", payload, socket) do
+    # IO.inspect(payload)
     {:reply, :ok, socket}
   end
 

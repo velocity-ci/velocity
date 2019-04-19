@@ -25,13 +25,32 @@ func NewEmitter(ws *phoenix.Client) *Emitter {
 func (e *Emitter) GetStreamWriter(stream *build.Stream) build.StreamWriter {
 	sw := &BufferedWriter{
 		builderBaseWriter: &builderBaseWriter{
-			ws:   e.ws,
-			open: true,
-			// topic: fmt.Sprintf("%sstream:%s", eventBuildPrefix, stream.ID),
-			topic:       PoolTopic,
-			eventPrefix: fmt.Sprintf("%sstream:%s:", eventBuildPrefix, stream.ID),
+			ws:    e.ws,
+			open:  true,
+			topic: PoolTopic,
+			event: fmt.Sprintf("%sstream:new-loglines", eventBuildPrefix),
 		},
-		LineNumber: 0,
+		bufferedPayloadRenderer: func(w *BufferedWriter) interface{} {
+			return &StreamNewLogLinePayload{
+				ID:    stream.ID,
+				Lines: w.buffer,
+			}
+		},
+		bufferedRenderer: func(w *BufferedWriter, p []byte) interface{} {
+			o := strings.TrimSpace(string(p))
+			if !strings.HasSuffix(string(p), "\r") {
+				w.lineNumber++
+				o += "\n"
+			}
+
+			l := &BuildLogLine{
+				Timestamp:  time.Now().UTC(),
+				LineNumber: w.lineNumber,
+				Output:     o,
+			}
+
+			return l
+		},
 	}
 
 	go sw.worker()
@@ -44,7 +63,14 @@ func (e *Emitter) GetStepWriter(step build.Step) build.StepWriter {
 		builderBaseWriter: &builderBaseWriter{
 			ws:    e.ws,
 			open:  true,
-			topic: fmt.Sprintf("%sstep:%s", eventBuildPrefix, step.GetID()),
+			topic: PoolTopic,
+			event: fmt.Sprintf("%sstep:update", eventBuildPrefix),
+			payloadRenderer: func(w *builderBaseWriter, p []byte) interface{} {
+				return &StepUpdatePayload{
+					ID:    step.GetID(),
+					State: w.status,
+				}
+			},
 		},
 	}
 
@@ -56,7 +82,14 @@ func (e *Emitter) GetTaskWriter(task *build.Task) build.TaskWriter {
 		builderBaseWriter: &builderBaseWriter{
 			ws:    e.ws,
 			open:  true,
-			topic: fmt.Sprintf("%stask:%s", eventBuildPrefix, task.ID),
+			topic: PoolTopic,
+			event: fmt.Sprintf("%stask:update", eventBuildPrefix),
+			payloadRenderer: func(w *builderBaseWriter, p []byte) interface{} {
+				return &TaskUpdatePayload{
+					ID:    task.ID,
+					State: w.status,
+				}
+			},
 		},
 	}
 
@@ -64,11 +97,11 @@ func (e *Emitter) GetTaskWriter(task *build.Task) build.TaskWriter {
 }
 
 type builderBaseWriter struct {
-	ws          *phoenix.Client
-	topic       string
-	eventPrefix string
-	event       string
-	status      string
+	ws              *phoenix.Client
+	topic           string
+	event           string
+	status          string
+	payloadRenderer func(*builderBaseWriter, []byte) interface{}
 
 	open bool
 }
@@ -83,13 +116,14 @@ func (w *builderBaseWriter) Close() {
 
 type StateWriter struct {
 	*builderBaseWriter
+	id string
 }
 
 func (w *StateWriter) Write(p []byte) (n int, err error) {
 	w.ws.Socket.Send(&phoenix.PhoenixMessage{
-		Event: fmt.Sprintf("%s%s", w.eventPrefix, w.event),
-		Topic: w.topic,
-		// Payload: map[string]string{},
+		Event:   w.event,
+		Topic:   w.topic,
+		Payload: w.payloadRenderer(w.builderBaseWriter, p),
 	}, false)
 
 	return len(p), nil
@@ -97,9 +131,14 @@ func (w *StateWriter) Write(p []byte) (n int, err error) {
 
 type BufferedWriter struct {
 	*builderBaseWriter
-	buffer     []*BuildLogLine
+	buffer     []interface{}
 	bufferLock sync.Mutex
-	LineNumber int
+
+	bufferedRenderer        func(*BufferedWriter, []byte) interface{}
+	bufferedPayloadRenderer func(*BufferedWriter) interface{}
+
+	lineNumber int
+	id         string
 }
 
 func (w *BufferedWriter) worker() {
@@ -107,13 +146,11 @@ func (w *BufferedWriter) worker() {
 		if len(w.buffer) > 0 {
 			w.bufferLock.Lock()
 			w.ws.Socket.Send(&phoenix.PhoenixMessage{
-				Event: fmt.Sprintf("%s%s", w.eventPrefix, w.event),
-				Topic: w.topic,
-				Payload: &BuildLogPayload{
-					Lines: w.buffer,
-				},
+				Event:   w.event,
+				Topic:   w.topic,
+				Payload: w.bufferedPayloadRenderer(w),
 			}, false)
-			w.buffer = []*BuildLogLine{}
+			w.buffer = []interface{}{}
 			w.bufferLock.Unlock()
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -121,18 +158,8 @@ func (w *BufferedWriter) worker() {
 }
 
 func (w *BufferedWriter) Write(p []byte) (n int, err error) {
-	o := strings.TrimSpace(string(p))
-	if !strings.HasSuffix(string(p), "\r") {
-		w.LineNumber++
-		o += "\n"
-	}
 
-	l := &BuildLogLine{
-		Timestamp:  time.Now().UTC(),
-		LineNumber: w.LineNumber,
-		Status:     w.status,
-		Output:     o,
-	}
+	l := w.bufferedRenderer(w, p)
 
 	w.bufferLock.Lock()
 	w.buffer = append(w.buffer, l)

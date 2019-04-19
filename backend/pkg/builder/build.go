@@ -89,11 +89,22 @@ func (j *Build) Stop(ws *phoenix.Client) error {
 type BuildLogLine struct {
 	Timestamp  time.Time `json:"timestamp"`
 	LineNumber int       `json:"lineNumber"`
-	Status     string    `json:"status"`
-	Output     string    `json:"output"`
+	// Status     string    `json:"status"`
+	Output string `json:"output"`
 }
 
-type BuildLogPayload struct {
-	StreamID string          `json:"streamId"`
-	Lines    []*BuildLogLine `json:"lines"`
+type TaskUpdatePayload struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+type StepUpdatePayload struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+type StreamNewLogLinePayload struct {
+	ID string `json:"id"`
+	// Lines []*BuildLogLine `json:"lines"`
+	Lines []interface{} `json:"lines"`
 }
