@@ -79,8 +79,8 @@ defmodule ArchitectWeb.BuilderChannel do
       knownHost: %{
         # entry: ""
       },
-      # output from vcli plan
-      buildTask: b.plan,
+      # single task output from vcli construction plan
+      task: b.plan,
       branch: b.branch_name,
       commit: b.commit_sha,
       parameters: b.parameters,

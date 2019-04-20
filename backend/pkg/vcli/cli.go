@@ -14,7 +14,7 @@ func List(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	tasks, err := config.GetTasksFromRoot(root)
+	tasks, err := config.GetBlueprintsFromRoot(root)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func RunCompletion(c *cli.Context) {
 	if err != nil {
 		return
 	}
-	tasks, err := config.GetTasksFromRoot(root)
+	tasks, err := config.GetBlueprintsFromRoot(root)
 	if err != nil {
 		return
 	}
@@ -107,7 +107,7 @@ func Run(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	tasks, err := config.GetTasksFromRoot(root)
+	tasks, err := config.GetBlueprintsFromRoot(root)
 	if err != nil {
 		return err
 	}
@@ -115,22 +115,26 @@ func Run(c *cli.Context) error {
 		return err
 	}
 
-	t, err := getRequestedTaskByName(c.Args().Get(0), tasks)
-	if err != nil {
-		return err
-	}
+	// t, err := getRequestedBlueprintByName(c.Args().Get(0), tasks)
+	// if err != nil {
+	// 	return err
+	// }
 
-	buildTask := build.NewTask(
-		t,
+	constructionPlan, err := build.NewConstructionPlan(
+		c.Args().Get(0),
+		tasks,
 		&ParameterResolver{},
 		nil,
 		"",
 		"branch", // TODO: get branch from git
 		root.Path,
 	)
+	if err != nil {
+		return err
+	}
 
 	if c.Bool("plan-only") && c.Bool("machine-readable") {
-		jsonBytes, err := json.MarshalIndent(buildTask, "", "  ")
+		jsonBytes, err := json.MarshalIndent(constructionPlan, "", "  ")
 		if err != nil {
 			return err
 		}
@@ -140,25 +144,14 @@ func Run(c *cli.Context) error {
 	} else if c.Bool("machine-readable") {
 		// execute in json format
 	} else {
-		fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", t.Name)))
 		emitter := NewEmitter()
-		err = buildTask.Execute(emitter)
+		err = constructionPlan.Execute(emitter)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func getRequestedTaskByName(taskName string, tasks []*config.Task) (*config.Task, error) {
-	for _, t := range tasks {
-		if t.Name == taskName {
-			return t, nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not find %s", taskName)
 }
 
 // func run(c *cli.Context) error {

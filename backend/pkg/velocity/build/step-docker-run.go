@@ -50,7 +50,7 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dR.Description)
+	fmt.Fprintf(writer, "\r")
 
 	if dR.MountPoint == "" {
 		dR.MountPoint = "/velocity_ci"

@@ -1,4 +1,5 @@
 description: "Builds and publishes CLI"
+cache: 1hr/pathOrDirChange
 
 parameters:
   - use: https://github.com/velocity-ci/parameter.aws-ssm/releases/download/0.1.1/aws-ssm
@@ -7,8 +8,7 @@ parameters:
     exports:
       value: github_release_token
 
-steps: 
-
+steps:
   - type: run
     description: Builds CLI binaries
     image: golang:1.11

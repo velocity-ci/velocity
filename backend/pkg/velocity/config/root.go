@@ -23,8 +23,8 @@ type Root struct {
 }
 
 type RootProject struct {
-	Logo      *string `json:"logo"`
-	TasksPath string  `json:"tasksPath"`
+	Logo           *string `json:"logo"`
+	BlueprintsPath string  `json:"blueprintsPath"`
 }
 
 type RootGit struct {
@@ -39,15 +39,13 @@ type RootPlugin struct {
 }
 
 type RootStage struct {
-	Name  string   `json:"name"`
-	Tasks []string `json:"tasks"`
+	Name       string   `json:"name"`
+	Blueprints []string `json:"blueprints"`
 }
 
 func newRoot() *Root {
 	return &Root{
-		Project: &RootProject{
-			TasksPath: "./tasks",
-		},
+		Project: &RootProject{},
 		Git: &RootGit{
 			Submodule: true,
 		},

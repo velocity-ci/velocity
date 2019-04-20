@@ -13,7 +13,7 @@ defmodule Architect.Projects.Repository do
   use GenServer
   require Logger
   alias Architect.VCLI
-  alias Architect.Projects.Task
+  alias Architect.Projects.Blueprint
   alias Git.{Branch, Commit}
 
   # Client
@@ -76,10 +76,10 @@ defmodule Architect.Projects.Repository do
   def default_branch(repository), do: GenServer.call(repository, :default_branch)
 
   @doc ~S"""
-  Ge the tasks for a commit or branch
+  Ge the blueprints for a commit or branch
   """
-  def list_tasks(repository, selector) do
-    GenServer.call(repository, {:list_tasks, selector})
+  def list_blueprints(repository, selector) do
+    GenServer.call(repository, {:list_blueprints, selector})
   end
 
   @doc ~S"""
@@ -90,10 +90,10 @@ defmodule Architect.Projects.Repository do
   end
 
   @doc ~S"""
-  Get the build plan for a task on a commit sha
+  Get the construction plan for a blueprint on a commit sha
   """
-  def plan_task(repository, commit, task_name) do
-    GenServer.call(repository, {:plan_task, commit, task_name})
+  def plan_construction(repository, commit, blueprint_name) do
+    GenServer.call(repository, {:plan_construction, commit, blueprint_name})
   end
 
   # Server
@@ -221,18 +221,18 @@ defmodule Architect.Projects.Repository do
 
   @impl true
   def handle_call(
-        {:list_tasks, {:branch, branch}},
+        {:list_blueprints, {:branch, branch}},
         _from,
         %__MODULE{dir: dir, vcli: vcli} = state
       ) do
     %Porcelain.Result{err: nil, out: _, status: 0} =
       Porcelain.exec("git", ["checkout", branch], dir: dir)
 
-    tasks =
+    blueprints =
       VCLI.list(dir, vcli)
-      |> Task.parse()
+      |> Blueprint.parse()
 
-    {:reply, tasks, state}
+    {:reply, blueprints, state}
   end
 
   @impl true
@@ -254,7 +254,7 @@ defmodule Architect.Projects.Repository do
 
   @impl true
   def handle_call(
-        {:plan_task, commit, task_name},
+        {:plan_construction, commit, blueprint_name},
         _from,
         %__MODULE{dir: dir, vcli: vcli} = state
       ) do
@@ -265,10 +265,10 @@ defmodule Architect.Projects.Repository do
       %Porcelain.Result{err: nil, out: _, status: 0} =
         Porcelain.exec("git", ["clean", "-fd"], dir: dir)
 
-    task_plan =
-      VCLI.build_task(dir, vcli, task_name)
+    blueprint_plan =
+      VCLI.plan_construction(dir, vcli, blueprint_name)
 
-    {:reply, task_plan, state}
+    {:reply, blueprint_plan, state}
   end
 
   @impl true

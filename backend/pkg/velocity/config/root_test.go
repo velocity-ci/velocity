@@ -13,7 +13,7 @@ func TestRootUnmarshal(t *testing.T) {
 ---
 project: 
   logo: image.png
-  tasksPath: ./tasks
+  blueprintsPath: ./blueprints
 git: 
   depth: 10
 
@@ -37,15 +37,15 @@ plugins:
 
 stages: 
 - name: test
-  tasks: 
+  blueprints: 
   - test_web
   - test_api
 - name: release
-  tasks: 
+  blueprints: 
   - release_web
   - release_api
 - name: deploy
-  tasks: 
+  blueprints: 
   - deploy_web
   - deploy_api	
 `
@@ -57,8 +57,8 @@ stages:
 	logo := string("image.png")
 	expectedRepositoryConfig := config.Root{
 		Project: &config.RootProject{
-			Logo:      &logo,
-			TasksPath: "./tasks",
+			Logo:           &logo,
+			BlueprintsPath: "./blueprints",
 		},
 		Git: &config.RootGit{
 			Submodule: false,
@@ -88,16 +88,16 @@ stages:
 		},
 		Stages: []*config.RootStage{
 			&config.RootStage{
-				Name:  "test",
-				Tasks: []string{"test_web", "test_api"},
+				Name:       "test",
+				Blueprints: []string{"test_web", "test_api"},
 			},
 			&config.RootStage{
-				Name:  "release",
-				Tasks: []string{"release_web", "release_api"},
+				Name:       "release",
+				Blueprints: []string{"release_web", "release_api"},
 			},
 			&config.RootStage{
-				Name:  "deploy",
-				Tasks: []string{"deploy_web", "deploy_api"},
+				Name:       "deploy",
+				Blueprints: []string{"deploy_web", "deploy_api"},
 			},
 		},
 	}
@@ -108,7 +108,7 @@ func TestRepositoryConfigUnmarshalLogoNil(t *testing.T) {
 	repositoryConfigYaml := `
 ---
 project: 
-  tasksPath: ./tasks
+  blueprintsPath: ./blueprints
 git: 
   depth: 10
 
@@ -132,15 +132,15 @@ plugins:
 
 stages: 
 - name: test
-  tasks: 
+  blueprints: 
   - test_web
   - test_api
 - name: release
-  tasks: 
+  blueprints: 
   - release_web
   - release_api
 - name: deploy
-  tasks: 
+  blueprints: 
   - deploy_web
   - deploy_api	
 `
@@ -151,8 +151,8 @@ stages:
 	assert.Nil(t, err)
 	expectedRepositoryConfig := &config.Root{
 		Project: &config.RootProject{
-			Logo:      nil,
-			TasksPath: "./tasks",
+			Logo:           nil,
+			BlueprintsPath: "./blueprints",
 		},
 		Git: &config.RootGit{
 			Submodule: false,
@@ -182,16 +182,16 @@ stages:
 		},
 		Stages: []*config.RootStage{
 			&config.RootStage{
-				Name:  "test",
-				Tasks: []string{"test_web", "test_api"},
+				Name:       "test",
+				Blueprints: []string{"test_web", "test_api"},
 			},
 			&config.RootStage{
-				Name:  "release",
-				Tasks: []string{"release_web", "release_api"},
+				Name:       "release",
+				Blueprints: []string{"release_web", "release_api"},
 			},
 			&config.RootStage{
-				Name:  "deploy",
-				Tasks: []string{"deploy_web", "deploy_api"},
+				Name:       "deploy",
+				Blueprints: []string{"deploy_web", "deploy_api"},
 			},
 		},
 	}

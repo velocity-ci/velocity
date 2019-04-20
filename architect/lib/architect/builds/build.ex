@@ -31,9 +31,6 @@ defmodule Architect.Builds.Build do
 
     field(:plan, :map)
 
-    # Final state (array of steps w/ streams and stream output sources)
-    embeds_one(:steps, {:array, Architect.Builds.Step})
-
     field(:status, :string)
     field(:created_at, :utc_datetime)
     field(:updated_at, :utc_datetime)
@@ -74,40 +71,10 @@ defmodule Architect.Builds.Build do
   ) do
     project = Architect.Projects.get_project!(project_id)
     plan = Architect.Projects.plan_task(project, commit_sha, task_name)
-    IO.inspect(plan)
     changeset
     |> put_change(:plan, plan)
+    |> put_change(:id, plan["id"])
   end
 
   def set_plan(changeset), do: changeset
-end
-
-defmodule Architect.Builds.Step do
-  use Ecto.Schema
-
-  embedded_schema do
-    field(:status, :string)
-    field(:updated_at, :utc_datetime)
-    field(:started_at, :utc_datetime)
-    field(:completed_at, :utc_datetime)
-
-    embeds_one(:streams, {:map, Architect.Builds.Stream})
-  end
-
-end
-
-defmodule Architect.Builds.Stream do
-  use Ecto.Schema
-
-  embedded_schema do
-    field(:status, :string)
-    field(:updated_at, :utc_datetime)
-    field(:started_at, :utc_datetime)
-    field(:completed_at, :utc_datetime)
-
-    # Store the sources of streams rather than contents so we don't store actual logs in the database
-    # Can do plugins for schemes like ets://, file://, s3://, dynamodb://, mongodb:// etc.
-    field(:source, :string)
-  end
-
 end

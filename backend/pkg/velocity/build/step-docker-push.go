@@ -33,7 +33,7 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dP.Description)
+	fmt.Fprintf(writer, "\r")
 
 	for _, t := range dP.Tags {
 		err := docker.PushImage(

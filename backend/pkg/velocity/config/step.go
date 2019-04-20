@@ -18,6 +18,12 @@ type BaseStep struct {
 type StepSetup struct {
 }
 
+type StepBlueprint struct {
+	BaseStep
+	Name  string `json:"name"`
+	Cache bool   `json:"cache"`
+}
+
 type StepDockerRun struct {
 	BaseStep
 	Image          string                             `json:"image"`
@@ -78,6 +84,12 @@ func unmarshalStep(rawMessage []byte) (Step, error) {
 		s = &StepDockerPush{
 			BaseStep: BaseStep{
 				Type: "push",
+			},
+		}
+	case "blueprint":
+		s = &StepBlueprint{
+			BaseStep: BaseStep{
+				Type: "blueprint",
 			},
 		}
 		// case "plugin":

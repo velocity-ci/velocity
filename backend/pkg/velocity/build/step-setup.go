@@ -79,6 +79,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
+	fmt.Fprintf(writer, "\r")
 
 	// Clone repository if necessary
 	if s.repository != nil {
@@ -120,7 +121,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		t.parameters[k] = &v
 		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
 	}
-	for _, configParam := range t.Config.Parameters {
+	for _, configParam := range t.Blueprint.Parameters {
 		resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
 		if err != nil {
 			writer.SetStatus(StateFailed)

@@ -36,7 +36,7 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 	}
 	defer writer.Close()
 	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dB.Description)
+	fmt.Fprintf(writer, "\r")
 
 	authConfigs := GetAuthConfigsMap(t.Docker.Registries)
 

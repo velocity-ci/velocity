@@ -59,5 +59,6 @@ defmodule Architect.Builds do
       status: "waiting",
     })
     |> Repo.insert()
+    # TODO: put tasks from construction plan into ETS
   end
 end

@@ -39,7 +39,7 @@ type Build struct {
 	Project   ArchitectProject `json:"project"`
 	KnownHost KnownHost        `json:"knownHost"`
 
-	Task       *build.Task       `json:"buildTask"`
+	Task       *build.Task       `json:"task"`
 	Branch     string            `json:"branch"`
 	Commit     string            `json:"commit"`
 	Parameters map[string]string `json:"parameters"`

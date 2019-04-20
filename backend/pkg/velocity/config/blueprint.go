@@ -13,23 +13,23 @@ import (
 	"go.uber.org/zap"
 )
 
-type Task struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	Docker      TaskDocker  `json:"docker"`
-	Parameters  []Parameter `json:"parameters"`
-	Steps       []Step      `json:"steps"`
+type Blueprint struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Docker      BlueprintDocker `json:"docker"`
+	Parameters  []Parameter     `json:"parameters"`
+	Steps       []Step          `json:"steps"`
 
 	ParseErrors      []string `json:"parseErrors"`
 	ValidationErrors []string `json:"validationErrors"`
 }
 
-func newTask() *Task {
-	return &Task{
+func newBlueprint() *Blueprint {
+	return &Blueprint{
 		Name:        "",
 		Description: "",
-		Docker: TaskDocker{
-			Registries: []TaskDockerRegistry{},
+		Docker: BlueprintDocker{
+			Registries: []BlueprintDockerRegistry{},
 		},
 		Parameters:       []Parameter{},
 		Steps:            []Step{},
@@ -38,7 +38,7 @@ func newTask() *Task {
 	}
 }
 
-func handleUnmarshalError(t *Task, err error) *Task {
+func handleUnmarshalError(t *Blueprint, err error) *Blueprint {
 	if err != nil {
 		t.ParseErrors = append(t.ParseErrors, err.Error())
 	}
@@ -46,7 +46,7 @@ func handleUnmarshalError(t *Task, err error) *Task {
 	return t
 }
 
-func (t *Task) UnmarshalJSON(b []byte) error {
+func (t *Blueprint) UnmarshalJSON(b []byte) error {
 	// We don't return any errors from this function so we can show more helpful parse errors
 	var objMap map[string]*json.RawMessage
 	// We'll store the error (if any) so we can return it if necessary
@@ -112,52 +112,52 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func findTasksDirectory(root *Root) (string, error) {
-	tasksDir := "tasks"
-	if root.Project.TasksPath != "" {
-		tasksDir = root.Project.TasksPath
+func findBlueprintsDirectory(root *Root) (string, error) {
+	blueprintsDir := filepath.Join(".velocityci", "blueprints")
+	if root.Project.BlueprintsPath != "" {
+		blueprintsDir = root.Project.BlueprintsPath
 	}
 
-	tasksPath := filepath.Join(root.Path, tasksDir)
-	if f, err := os.Stat(tasksPath); !os.IsNotExist(err) {
+	blueprintsPath := filepath.Join(root.Path, blueprintsDir)
+	if f, err := os.Stat(blueprintsPath); !os.IsNotExist(err) {
 		if f.IsDir() {
-			return tasksPath, nil
+			return blueprintsPath, nil
 		}
 	}
 
-	return "", fmt.Errorf("could not find tasks in: %s", tasksPath)
+	return "", fmt.Errorf("could not find blueprints in: %s", blueprintsPath)
 }
 
-func GetTasksFromRoot(root *Root) ([]*Task, error) {
-	tasks := []*Task{}
+func GetBlueprintsFromRoot(root *Root) ([]*Blueprint, error) {
+	blueprints := []*Blueprint{}
 
-	tasksPath, err := findTasksDirectory(root)
+	blueprintsPath, err := findBlueprintsDirectory(root)
 	if err != nil {
-		return tasks, err
+		return blueprints, err
 	}
 
-	logging.GetLogger().Debug("looking for tasks in", zap.String("dir", tasksPath))
-	err = filepath.Walk(tasksPath, func(path string, f os.FileInfo, err error) error {
+	logging.GetLogger().Debug("looking for blueprints in", zap.String("dir", blueprintsPath))
+	err = filepath.Walk(blueprintsPath, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() && (strings.HasSuffix(f.Name(), ".yml") || strings.HasSuffix(f.Name(), ".yaml")) {
 			// fmt.Printf("-> reading %s\n", path)
-			taskYml, err := ioutil.ReadFile(path)
+			blueprintYml, err := ioutil.ReadFile(path)
 			if err != nil {
 				return err
 			}
-			t := newTask()
-			relativePath, err := filepath.Rel(tasksPath, path)
+			t := newBlueprint()
+			relativePath, err := filepath.Rel(blueprintsPath, path)
 			if err != nil {
 				return err
 			}
 			t.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
-			err = yaml.Unmarshal(taskYml, &t)
+			err = yaml.Unmarshal(blueprintYml, &t)
 			if err != nil {
 				return err
 			}
-			tasks = append(tasks, t)
+			blueprints = append(blueprints, t)
 		}
 		return nil
 	})
 
-	return tasks, err
+	return blueprints, err
 }

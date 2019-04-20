@@ -57,13 +57,16 @@ defmodule Architect.Builders.Scheduler do
 
   @impl
   def handle_info(:poll_builds, state) do
-    Logger.debug("checking for waiting builds")
-    builds = Architect.Builds.list_waiting_builds()
-    Enum.each(builds, fn b ->
-      Logger.debug("attempting to schedule build:#{b.id}")
+    Logger.debug("checking for waiting tasks")
+    # builds = Architect.Builds.list_waiting_builds()
+    # TODO: Get waiting tasks from ETS
+    tasks = Architect.Builds.ETSStore.get_pending_tasks()
+    Enum.each(tasks, fn t ->
+      Logger.debug("attempting to schedule task:#{t.id}")
       builders = Presence.list()
       Enum.each(builders, fn {id, %{metas: [metas]}} ->
         Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
+        # TODO: if builder is ready
         send(metas.socket, b)
         changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
         {:ok, _b} = Architect.Repo.update(changeset)

@@ -1,5 +1,4 @@
 description: "Hello Velocity"
-name: hello-velocity
 
 steps:
   - type: run

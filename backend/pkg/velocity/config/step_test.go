@@ -8,7 +8,7 @@ import (
 )
 
 func TestDockerBuildUnmarshal(t *testing.T) {
-	taskConfigYaml := `
+	blueprintConfigYaml := `
 ---
 description: Builds a docker image
 steps:
@@ -20,13 +20,13 @@ steps:
       - test/a:333
       - test/b:344
 `
-	taskConfig := newTask()
-	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
+	blueprintConfig := newBlueprint()
+	err := yaml.Unmarshal([]byte(blueprintConfigYaml), &blueprintConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := newTask()
-	expectedTaskConfig.Description = "Builds a docker image"
-	expectedTaskConfig.Steps = []Step{
+	expectedBlueprintConfig := newBlueprint()
+	expectedBlueprintConfig.Description = "Builds a docker image"
+	expectedBlueprintConfig.Steps = []Step{
 		&StepDockerBuild{
 			BaseStep: BaseStep{
 				Type:        "build",
@@ -41,11 +41,11 @@ steps:
 		},
 	}
 
-	assert.EqualValues(t, expectedTaskConfig, taskConfig)
+	assert.EqualValues(t, expectedBlueprintConfig, blueprintConfig)
 }
 
 func TestDockerComposeUnmarshal(t *testing.T) {
-	taskConfigYaml := `
+	blueprintConfigYaml := `
 ---
 description: Runs integration tests
 steps:
@@ -53,13 +53,13 @@ steps:
     description: Docker compose
     composeFile: test.docker-compose.yml
 `
-	taskConfig := newTask()
-	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
+	blueprintConfig := newBlueprint()
+	err := yaml.Unmarshal([]byte(blueprintConfigYaml), &blueprintConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := newTask()
-	expectedTaskConfig.Description = "Runs integration tests"
-	expectedTaskConfig.Steps = []Step{
+	expectedBlueprintConfig := newBlueprint()
+	expectedBlueprintConfig.Description = "Runs integration tests"
+	expectedBlueprintConfig.Steps = []Step{
 		&StepDockerCompose{
 			BaseStep: BaseStep{
 				Type:        "compose",
@@ -69,11 +69,11 @@ steps:
 		},
 	}
 
-	assert.EqualValues(t, expectedTaskConfig, taskConfig)
+	assert.EqualValues(t, expectedBlueprintConfig, blueprintConfig)
 }
 
 func TestDockerPushUnmarshal(t *testing.T) {
-	taskConfigYaml := `
+	blueprintConfigYaml := `
 ---
 description: Pushes a docker container
 steps:
@@ -83,13 +83,13 @@ steps:
       - test/a:333
       - test/b:344
 `
-	taskConfig := newTask()
-	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
+	blueprintConfig := newBlueprint()
+	err := yaml.Unmarshal([]byte(blueprintConfigYaml), &blueprintConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := newTask()
-	expectedTaskConfig.Description = "Pushes a docker container"
-	expectedTaskConfig.Steps = []Step{
+	expectedBlueprintConfig := newBlueprint()
+	expectedBlueprintConfig.Description = "Pushes a docker container"
+	expectedBlueprintConfig.Steps = []Step{
 		&StepDockerPush{
 			BaseStep: BaseStep{
 				Type:        "push",
@@ -102,11 +102,11 @@ steps:
 		},
 	}
 
-	assert.Equal(t, expectedTaskConfig, taskConfig)
+	assert.Equal(t, expectedBlueprintConfig, blueprintConfig)
 }
 
 func TestDockerRunUnmarshal(t *testing.T) {
-	taskConfigYaml := `
+	blueprintConfigYaml := `
 ---
 description: Runs a docker container
 steps:
@@ -125,14 +125,14 @@ steps:
     environment:
      - HELLO=WORLD
 `
-	taskConfig := newTask()
+	blueprintConfig := newBlueprint()
 
-	err := yaml.Unmarshal([]byte(taskConfigYaml), taskConfig)
+	err := yaml.Unmarshal([]byte(blueprintConfigYaml), blueprintConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := newTask()
-	expectedTaskConfig.Description = "Runs a docker container"
-	expectedTaskConfig.Steps = []Step{
+	expectedBlueprintConfig := newBlueprint()
+	expectedBlueprintConfig.Description = "Runs a docker container"
+	expectedBlueprintConfig.Steps = []Step{
 		&StepDockerRun{
 			BaseStep: BaseStep{
 				Type:        "run",
@@ -160,5 +160,5 @@ steps:
 		},
 	}
 
-	assert.Equal(t, expectedTaskConfig, taskConfig)
+	assert.Equal(t, expectedBlueprintConfig, blueprintConfig)
 }
