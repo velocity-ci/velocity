@@ -65,5 +65,5 @@ func (j *baseJob) GetName() string {
 }
 
 var jobs = []Job{
-	NewSynchronise(),
+	NewBuild(),
 }

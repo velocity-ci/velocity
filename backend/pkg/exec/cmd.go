@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-cmd/cmd"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"go.uber.org/zap"
 	"golang.org/x/net/http/httpproxy"
 )
@@ -36,11 +36,11 @@ func Run(shCmd []string, directory string, env []string, writer io.Writer) cmd.S
 		}
 	}()
 
-	velocity.GetLogger().Debug("running command", zap.Strings("cmd", shCmd), zap.String("directory", directory))
+	logging.GetLogger().Debug("running command", zap.Strings("cmd", shCmd), zap.String("directory", directory))
 	go func() {
 		<-time.After(5 * time.Second)
 		if !c.Status().Complete && (len(stdout) < 1 && len(stderr) < 1) {
-			velocity.GetLogger().Debug("5s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
+			logging.GetLogger().Debug("5s", zap.Strings("cmd", shCmd), zap.Strings("stdout", stdout), zap.Strings("stderr", stderr), zap.Int("status", c.Status().Exit))
 			c.Stop()
 		}
 	}()
@@ -53,7 +53,7 @@ func Run(shCmd []string, directory string, env []string, writer io.Writer) cmd.S
 	finalStatus.Stdout = stdout
 	finalStatus.Stderr = stderr
 
-	velocity.GetLogger().Debug("completed cmd",
+	logging.GetLogger().Debug("completed cmd",
 		zap.String("cmd", strings.Join(shCmd, " ")),
 		zap.Int("exited", finalStatus.Exit),
 		zap.Strings("stdout", finalStatus.Stdout),
@@ -84,12 +84,12 @@ func respectProxyEnv(env []string) []string {
 
 func GetStatusError(s cmd.Status) error {
 	if s.Error != nil {
-		velocity.GetLogger().Error("unknown cmd error", zap.Error(s.Error))
+		logging.GetLogger().Error("unknown cmd error", zap.Error(s.Error))
 		return s.Error
 	}
 
 	if s.Exit != 0 {
-		velocity.GetLogger().Error("non-zero exit code", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
+		logging.GetLogger().Error("non-zero exit code", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
 		return fmt.Errorf(strings.Join(s.Stderr, "\n"))
 	}
 

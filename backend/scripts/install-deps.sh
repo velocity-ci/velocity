@@ -1,3 +1,5 @@
 #!/bin/sh -e
 
-dep ensure -v
+go mod download
+go mod vendor
+go mod verify

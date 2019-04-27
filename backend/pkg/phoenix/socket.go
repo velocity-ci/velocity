@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+
 	"github.com/gorilla/websocket"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
@@ -23,10 +24,10 @@ func NewSocket(ws *websocket.Conn, customEvents map[string]func(*PhoenixMessage)
 	}
 
 	for k := range customEvents {
-		velocity.GetLogger().Debug("registered handler for custom event", zap.String("event", k))
+		logging.GetLogger().Debug("registered handler for custom event", zap.String("event", k))
 	}
 
-	velocity.GetLogger().Debug("new socket", zap.String("ws", ws.LocalAddr().String()), zap.Bool("interlocked", interlock))
+	logging.GetLogger().Debug("new socket", zap.String("ws", ws.LocalAddr().String()), zap.Bool("interlocked", interlock))
 
 	go s.monitor()
 	if s.interlock {
@@ -90,7 +91,7 @@ func (s *Socket) worker() {
 						v.sent = time.Now()
 						s.sentUnacked.Store(*m.Ref, v)
 					} else {
-						velocity.GetLogger().Debug("invalid value found in map", zap.String("map", "sentUnacked"))
+						logging.GetLogger().Debug("invalid value found in map", zap.String("map", "sentUnacked"))
 					}
 				}
 			}
@@ -98,13 +99,13 @@ func (s *Socket) worker() {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	velocity.GetLogger().Debug("worker ended", zap.String("remote", s.ws.RemoteAddr().String()))
+	logging.GetLogger().Debug("worker ended", zap.String("remote", s.ws.RemoteAddr().String()))
 }
 
 func (s *Socket) heartbeat() {
 	for s.connected {
 		if s.lastHeartbeatRef != nil {
-			velocity.GetLogger().Warn("heartbeat timed out", zap.Uint64("ref", *s.lastHeartbeatRef))
+			logging.GetLogger().Warn("heartbeat timed out", zap.Uint64("ref", *s.lastHeartbeatRef))
 			s.connected = false
 			break
 		}
@@ -127,7 +128,7 @@ func (s *Socket) heartbeat() {
 		time.Sleep(5 * time.Second)
 	}
 
-	velocity.GetLogger().Debug("heartbeat ended", zap.String("remote", s.ws.RemoteAddr().String()))
+	logging.GetLogger().Debug("heartbeat ended", zap.String("remote", s.ws.RemoteAddr().String()))
 }
 
 func (s *Socket) Send(m *PhoenixMessage, sync bool) *PhoenixReplyPayload {
@@ -136,7 +137,7 @@ func (s *Socket) Send(m *PhoenixMessage, sync bool) *PhoenixReplyPayload {
 	// if sync,
 	// 3. wait for response chan, return response payload
 	// if _, ok := s.subscribedTopics[m.Topic]; !ok {
-	// 	velocity.GetLogger().Error("not sending as not subscribed", zap.String("topic", m.Topic))
+	// 	logging.GetLogger().Error("not sending as not subscribed", zap.String("topic", m.Topic))
 	// 	return nil
 	// }
 	if m.Ref == nil {
@@ -160,9 +161,10 @@ func (s *Socket) Send(m *PhoenixMessage, sync bool) *PhoenixReplyPayload {
 
 func (s *Socket) handleMessage(m *PhoenixMessage) {
 	if eventFunc, ok := s.customEvents[m.Event]; ok {
-		velocity.GetLogger().Debug("executing custom event", zap.String("event", m.Event))
+		logging.GetLogger().Debug("executing custom event", zap.String("event", m.Event))
+		logging.GetLogger().Debug("received", zap.Any("payload", m.Payload))
 		if err := eventFunc(m); err != nil {
-			velocity.GetLogger().Error("error in custom event", zap.Error(err))
+			logging.GetLogger().Error("error in custom event", zap.Error(err))
 		}
 	} else {
 		switch m.Event {
@@ -173,7 +175,7 @@ func (s *Socket) handleMessage(m *PhoenixMessage) {
 			s.handlePhxHeartbeatEvent(m.Ref)
 			break
 		default:
-			velocity.GetLogger().Warn("event not handled", zap.String("event", m.Event), zap.String("topic", m.Topic))
+			logging.GetLogger().Warn("event not handled", zap.String("event", m.Event), zap.String("topic", m.Topic))
 			break
 		}
 	}
@@ -181,7 +183,7 @@ func (s *Socket) handleMessage(m *PhoenixMessage) {
 
 func recoverWSReadJSON(message []byte) {
 	if r := recover(); r != nil {
-		velocity.GetLogger().Warn("recieved websocket message", zap.ByteString("message", message))
+		logging.GetLogger().Warn("recieved websocket message", zap.ByteString("message", message))
 		fmt.Println(r)
 	}
 }
@@ -191,7 +193,7 @@ func (s *Socket) monitor() {
 		m := &PhoenixMessage{}
 		_, bytes, err := s.ws.ReadMessage()
 		if err != nil {
-			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
+			logging.GetLogger().Error("could not read websocket message", zap.Error(err))
 			s.ws.Close()
 			s.connected = false
 			break
@@ -199,7 +201,7 @@ func (s *Socket) monitor() {
 		defer recoverWSReadJSON(bytes)
 		err = json.Unmarshal(bytes, &m)
 		if err != nil {
-			velocity.GetLogger().Error("could not read websocket message", zap.Error(err))
+			logging.GetLogger().Error("could not read websocket message", zap.Error(err))
 			s.ws.Close()
 			s.connected = false
 			break
@@ -208,7 +210,7 @@ func (s *Socket) monitor() {
 		go s.handleMessage(m)
 		time.Sleep(10 * time.Millisecond)
 	}
-	velocity.GetLogger().Debug("monitor ended", zap.String("remote", s.ws.RemoteAddr().String()))
+	logging.GetLogger().Debug("monitor ended", zap.String("remote", s.ws.RemoteAddr().String()))
 }
 
 func (s *Socket) ReplyOK(m *PhoenixMessage) {
@@ -228,7 +230,7 @@ func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
 		if (s.lastHeartbeatRef == nil) || *m.Ref == *s.lastHeartbeatRef {
 			s.lastHeartbeatRef = nil
 			if val, ok := s.sentUnacked.Load(*m.Ref); ok {
-				velocity.GetLogger().Debug("heartbeat pong", zap.Uint64("ref", *m.Ref), zap.Duration("latency", time.Now().Sub(val.(*wsMessage).sent)))
+				logging.GetLogger().Debug("heartbeat pong", zap.Uint64("ref", *m.Ref), zap.Duration("latency", time.Now().Sub(val.(*wsMessage).sent)))
 			}
 			s.healthy = true
 			// requeue
@@ -239,7 +241,11 @@ func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
 						s.sentUnacked.Store(k, m)
 						s.messageQueue = append(s.messageQueue, m.message)
 
-						velocity.GetLogger().Debug("requeued", zap.Uint64("ref", k.(uint64)))
+						logging.GetLogger().Debug("requeued",
+							zap.Uint64("ref", k.(uint64)),
+							zap.String("topic", m.message.Topic),
+							zap.String("event", m.message.Event),
+						)
 					}
 				}
 				return true
@@ -251,11 +257,18 @@ func (s *Socket) handlePhxReplyEvent(m *PhoenixMessage) {
 					val.response <- m.Payload.(*PhoenixReplyPayload)
 					close(val.response)
 				}
+				if val.message.Event != PhxHeartbeatEvent {
+					logging.GetLogger().Debug("acked",
+						zap.Uint64("ref", *m.Ref),
+						zap.String("topic", val.message.Topic),
+						zap.String("event", val.message.Event),
+					)
+				}
 				s.sentUnacked.Delete(*m.Ref)
 			}
 		}
 	} else {
-		velocity.GetLogger().Warn("message not unacked (interlock is disabled?)", zap.Uint64("ref", *m.Ref), zap.String("event", m.Event), zap.String("topic", m.Topic))
+		logging.GetLogger().Warn("message not unacked (interlock is disabled?)", zap.Uint64("ref", *m.Ref), zap.String("event", m.Event), zap.String("topic", m.Topic))
 	}
 }
 

@@ -14,6 +14,7 @@ defmodule Architect.Application do
       supervisor(Architect.Projects, []),
       ArchitectWeb.Endpoint,
       supervisor(Architect.Builders, []),
+      supervisor(Architect.Builds.ETSStore, []),
       supervisor(Absinthe.Subscription, [ArchitectWeb.Endpoint])
     ]
 

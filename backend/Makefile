@@ -1,20 +1,25 @@
 GIT_VERSION = $(shell git describe --always)
 AWS_DEFAULT_REGION ?= eu-west-1
+GOPATH ?= ${CURDIR}/.gopath
 
 .PHONY: test install
 
 install:
 	@docker run --rm -it \
-	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
-	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	vjftw/go-dep:1.11 \
+	--volume ${CURDIR}:/app \
+	--volume ${GOPATH}/pkg/mod/cache:/go/pkg/mod/cache \
+	--workdir /app \
+	--env GO111MODULE=on \
+	golang:1.12 \
 	scripts/install-deps.sh
 
 test:
 	@docker run --rm -it \
-	--volume ${CURDIR}:/go/src/github.com/velocity-ci/velocity/backend \
-	--workdir /go/src/github.com/velocity-ci/velocity/backend \
-	golang:1.11 \
+	--volume ${CURDIR}:/app \
+	--volume ${GOPATH}/pkg/mod/cache:/go/pkg/mod/cache \
+	--workdir /app \
+	--env GO111MODULE=on \
+	golang:1.12 \
 	scripts/test-unit.sh
 
 download-test-repo:

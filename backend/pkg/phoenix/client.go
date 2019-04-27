@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+
 	"github.com/gorilla/websocket"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
@@ -67,7 +68,7 @@ func (c *Client) dial() error {
 
 		err := c.Subscribe(topic.(string), payload.(PhoenixGuardianJoinPayload).Token)
 		if err != nil {
-			velocity.GetLogger().Warn("could not resubscribe", zap.String("topic", topic.(string)))
+			logging.GetLogger().Warn("could not resubscribe", zap.String("topic", topic.(string)))
 		}
 		return true
 	})
@@ -76,7 +77,7 @@ func (c *Client) dial() error {
 }
 
 func (c *Client) Subscribe(topic, token string) error {
-	velocity.GetLogger().Debug("subscribing to", zap.String("topic", topic), zap.Int("token(len)", len(token)))
+	logging.GetLogger().Debug("subscribing to", zap.String("topic", topic), zap.Int("token(len)", len(token)))
 	resp := c.Socket.Send(&PhoenixMessage{
 		Event: PhxJoinEvent,
 		Topic: topic,
@@ -86,11 +87,11 @@ func (c *Client) Subscribe(topic, token string) error {
 	}, true)
 
 	if resp.Status != ResponseOK {
-		velocity.GetLogger().Error("could not subscribe", zap.String("topic", topic), zap.Int("token(len)", len(token)))
+		logging.GetLogger().Error("could not subscribe", zap.String("topic", topic), zap.Int("token(len)", len(token)))
 		return fmt.Errorf("%v", resp.Response)
 	}
 
-	velocity.GetLogger().Debug("subscribed to", zap.String("topic", topic))
+	logging.GetLogger().Debug("subscribed to", zap.String("topic", topic))
 
 	c.subscribedTopics.Store(topic, PhoenixGuardianJoinPayload{
 		Token: token,

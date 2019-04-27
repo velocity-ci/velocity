@@ -170,16 +170,29 @@ defmodule Architect.Projects do
     do: call_repository(project, {:commit_count, [branch]})
 
   @doc ~S"""
-  List tasks
+  List blueprints
 
   ## Examples
 
-      iex> list_tasks(project, {:sha, "925fbc450c8bdb7665ec3af3129ce715927433fe"})
-      [%Architect.Projects.Task{}, ...]
+      iex> list_blueprints(project, {:sha, "925fbc450c8bdb7665ec3af3129ce715927433fe"})
+      [%Architect.Projects.Blueprint{}, ...]
 
   """
-  def list_tasks(%Project{} = project, selector),
-    do: call_repository(project, {:list_tasks, [selector]})
+  def list_blueprints(%Project{} = project, selector),
+    do: call_repository(project, {:list_blueprints, [selector]})
+
+  @doc ~S"""
+  Project Configuration
+
+  """
+  def project_configuration(%Project{} = project),
+    do: call_repository(project, {:project_configuration, []})
+
+  @doc ~S"""
+  Get the build plan for a blueprint on a commit sha
+  """
+  def plan_blueprint(%Project{} = project, commit, blueprint_name),
+    do: call_repository(project, {:plan_blueprint, [commit, blueprint_name]})
 
   ### Server
 
@@ -236,12 +249,12 @@ defmodule Architect.Projects do
 end
 
 defmodule Architect.Projects.Starter do
-  use Task
+  use Blueprint
   require Logger
   alias Architect.Projects.Repository
 
   def start_link(opts) do
-    Task.start_link(__MODULE__, :run, [opts])
+    Blueprint.start_link(__MODULE__, :run, [opts])
   end
 
   def run(%{projects: projects, supervisor: supervisor, registry: registry}) do

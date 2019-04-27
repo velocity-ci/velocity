@@ -6,60 +6,49 @@ import (
 	"sync"
 	"time"
 
-	"github.com/velocity-ci/velocity/backend/pkg/domain/build"
 	"github.com/velocity-ci/velocity/backend/pkg/phoenix"
-	"go.uber.org/zap"
-
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 )
 
-// TODO: Debouncing
-type StreamWriter struct {
-	ws         *phoenix.Client
-	StepNumber int
-
-	BuildID  string
-	StepID   string
-	StreamID string
-
-	LineNumber int
-	status     string
-
-	buffer     []*BuildLogLine
-	bufferLock sync.Mutex
-
-	open bool
-}
-
 type Emitter struct {
-	ws      *phoenix.Client
-	BuildID string
-	StepID  string
-	Streams []*build.Stream
-
-	StepNumber int
+	ws *phoenix.Client
 }
 
-func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
-	streamID := ""
-	for _, s := range e.Streams {
-		if s.Name == streamName {
-			streamID = s.ID
-			break
-		}
+func NewEmitter(ws *phoenix.Client) *Emitter {
+	return &Emitter{
+		ws: ws,
 	}
-	if streamID == "" {
-		velocity.GetLogger().Error("could not find streamID", zap.String("stream name", streamName))
-	}
+}
 
-	sw := &StreamWriter{
-		ws:         e.ws,
-		BuildID:    e.BuildID,
-		StepID:     e.StepID,
-		StreamID:   streamID,
-		StepNumber: e.StepNumber,
-		LineNumber: 0,
-		open:       true,
+func (e *Emitter) GetStreamWriter(stream *build.Stream) build.StreamWriter {
+	sw := &BufferedWriter{
+		builderBaseWriter: &builderBaseWriter{
+			ws:    e.ws,
+			open:  true,
+			topic: PoolTopic,
+			event: fmt.Sprintf("%sstream:new-loglines", eventBuildPrefix),
+		},
+		bufferedPayloadRenderer: func(w *BufferedWriter) interface{} {
+			return &StreamNewLogLinePayload{
+				ID:    stream.ID,
+				Lines: w.buffer,
+			}
+		},
+		bufferedRenderer: func(w *BufferedWriter, p []byte) interface{} {
+			o := strings.TrimSpace(string(p))
+			if !strings.HasSuffix(string(p), "\r") {
+				w.lineNumber++
+				o += "\n"
+			}
+
+			l := &BuildLogLine{
+				Timestamp:  time.Now().UTC(),
+				LineNumber: w.lineNumber,
+				Output:     o,
+			}
+
+			return l
+		},
 	}
 
 	go sw.worker()
@@ -67,73 +56,112 @@ func (e *Emitter) GetStreamWriter(streamName string) velocity.StreamWriter {
 	return sw
 }
 
-func (e *Emitter) SetStepAndStreams(step *build.Step, streams []*build.Stream) {
-	e.StepID = step.ID
-	e.Streams = []*build.Stream{}
-	for _, s := range streams {
-		if s.Step.ID == step.ID {
-			e.Streams = append(e.Streams, s)
-		}
+func (e *Emitter) GetStepWriter(step build.Step) build.StepWriter {
+	sw := &StateWriter{
+		builderBaseWriter: &builderBaseWriter{
+			ws:    e.ws,
+			open:  true,
+			topic: PoolTopic,
+			event: fmt.Sprintf("%sstep:update", eventBuildPrefix),
+			payloadRenderer: func(w *builderBaseWriter, p []byte) interface{} {
+				return &StepUpdatePayload{
+					ID:    step.GetID(),
+					State: w.status,
+				}
+			},
+		},
 	}
+
+	return sw
 }
 
-func (e *Emitter) SetStepNumber(n int) {
-	e.StepNumber = n
+func (e *Emitter) GetTaskWriter(task *build.Task) build.TaskWriter {
+	sw := &StateWriter{
+		builderBaseWriter: &builderBaseWriter{
+			ws:    e.ws,
+			open:  true,
+			topic: PoolTopic,
+			event: fmt.Sprintf("%stask:update", eventBuildPrefix),
+			payloadRenderer: func(w *builderBaseWriter, p []byte) interface{} {
+				return &TaskUpdatePayload{
+					ID:    task.ID,
+					State: w.status,
+				}
+			},
+		},
+	}
+
+	return sw
 }
 
-func NewEmitter(ws *phoenix.Client, b *build.Build) *Emitter {
-	return &Emitter{
-		ws:      ws,
-		BuildID: b.ID,
-	}
+type builderBaseWriter struct {
+	ws              *phoenix.Client
+	topic           string
+	event           string
+	status          string
+	payloadRenderer func(*builderBaseWriter, []byte) interface{}
+
+	open bool
 }
 
-func (w *StreamWriter) Write(p []byte) (n int, err error) {
-	o := strings.TrimSpace(string(p))
-	if !strings.HasSuffix(string(p), "\r") {
-		w.LineNumber++
-		o += "\n"
-	}
+func (w *builderBaseWriter) SetStatus(s string) {
+	w.status = s
+}
 
-	l := &BuildLogLine{
-		Timestamp:  time.Now().UTC(),
-		LineNumber: w.LineNumber,
-		Status:     w.status,
-		Output:     o,
-	}
+func (w *builderBaseWriter) Close() {
+	w.open = false
+}
 
-	w.buffer = append(w.buffer, l)
+type StateWriter struct {
+	*builderBaseWriter
+	id string
+}
+
+func (w *StateWriter) Write(p []byte) (n int, err error) {
+	w.ws.Socket.Send(&phoenix.PhoenixMessage{
+		Event:   w.event,
+		Topic:   w.topic,
+		Payload: w.payloadRenderer(w.builderBaseWriter, p),
+	}, false)
 
 	return len(p), nil
 }
 
-func (w *StreamWriter) SetStatus(s string) {
-	w.status = s
+type BufferedWriter struct {
+	*builderBaseWriter
+	buffer     []interface{}
+	bufferLock sync.Mutex
+
+	bufferedRenderer        func(*BufferedWriter, []byte) interface{}
+	bufferedPayloadRenderer func(*BufferedWriter) interface{}
+
+	lineNumber int
+	id         string
 }
 
-func (w *StreamWriter) Close() {
-	w.open = false
-}
-
-func (w *StreamWriter) worker() {
+func (w *BufferedWriter) worker() {
 	for w.open || len(w.buffer) > 0 {
 		if len(w.buffer) > 0 {
 			w.bufferLock.Lock()
 			w.ws.Socket.Send(&phoenix.PhoenixMessage{
-				Event: EventNewStreamLines,
-				Topic: fmt.Sprintf("stream:%s", w.StreamID),
-				Payload: &BuildLogPayload{
-					StreamID: w.StreamID,
-					Lines:    w.buffer,
-				},
+				Event:   w.event,
+				Topic:   w.topic,
+				Payload: w.bufferedPayloadRenderer(w),
 			}, false)
-			w.buffer = []*BuildLogLine{}
+			w.buffer = []interface{}{}
 			w.bufferLock.Unlock()
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-const (
-	EventNewStreamLines = "streamLines:new"
-)
+func (w *BufferedWriter) Write(p []byte) (n int, err error) {
+
+	l := w.bufferedRenderer(w, p)
+
+	w.bufferLock.Lock()
+	w.buffer = append(w.buffer, l)
+	w.bufferLock.Unlock()
+
+	return len(p), nil
+}

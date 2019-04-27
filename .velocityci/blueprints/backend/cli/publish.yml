@@ -1,0 +1,35 @@
+description: "Builds and publishes CLI"
+cache: 1hr/pathOrDirChange
+
+parameters:
+  - use: https://github.com/velocity-ci/parameter.aws-ssm/releases/download/0.1.1/aws-ssm
+    arguments:
+      name: /velocityci/github-release-token
+    exports:
+      value: github_release_token
+
+steps:
+  - type: run
+    description: Builds CLI binaries
+    image: golang:1.11
+    workingDir: backend
+    mountPoint: /go/src/github.com/velocity-ci/velocity
+    environment:
+      GIT_DESCRIBE: ${GIT_DESCRIBE}
+    command: ./scripts/build-cli.sh
+
+  - description: Upload linux_amd64 release binary
+    type: run
+    image: civelocity/run.github-release
+    workingDir: backend
+    environment:
+      GITHUB_ACCESS_TOKEN: ${github_release_token}
+    command: velocity-ci velocity ${GIT_DESCRIBE} dist/vcli_linux_amd64
+
+  - description: Upload darwin_amd64 release binary
+    type: run
+    image: civelocity/run.github-release
+    workingDir: backend
+    environment:
+      GITHUB_ACCESS_TOKEN: ${github_release_token}
+    command: velocity-ci velocity ${GIT_DESCRIBE} dist/vcli_darwin_amd64

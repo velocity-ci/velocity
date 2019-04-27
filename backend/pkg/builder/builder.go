@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 
@@ -17,8 +19,6 @@ import (
 )
 
 const (
-	// EventStartBuild    = "build:start"
-	// EventSetKnownHosts = "knownhosts:set"
 	PoolTopic = "builders:pool"
 )
 
@@ -47,12 +47,12 @@ func (b *Builder) Start() {
 	}
 
 	if !waitForService(b.http, fmt.Sprintf("%s/v1/health", b.baseArchitectAddress)) {
-		velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", b.baseArchitectAddress))
+		logging.GetLogger().Fatal("could not connect to architect", zap.String("address", b.baseArchitectAddress))
 		b.Stop()
 		return
 	}
 
-	velocity.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress))
+	logging.GetLogger().Info("connecting to architect", zap.String("address", b.baseArchitectAddress))
 	b.connect()
 }
 
@@ -64,9 +64,12 @@ func (b *Builder) connect() {
 	for _, j := range jobs {
 		eventHandlers[fmt.Sprintf("%s%s", EventJobDoPrefix, j.GetName())] = func(m *phoenix.PhoenixMessage) error {
 			payloadBytes, _ := json.Marshal(m.Payload)
-			j.Parse(payloadBytes)
+			err := j.Parse(payloadBytes)
+			if err != nil {
+				logging.GetLogger().Error("could not unmarshal payload", zap.Error(err))
+			}
 
-			err := j.Do(b.ws)
+			err = j.Do(b.ws)
 			if err != nil {
 				b.ws.Socket.Send(&phoenix.PhoenixMessage{
 					Event: EventJobStatus,
@@ -100,11 +103,11 @@ func (b *Builder) connect() {
 	ws, err := phoenix.NewClient(wsAddress, eventHandlers)
 
 	if err != nil {
-		velocity.GetLogger().Error("could not establish websocket connection", zap.Error(err))
+		logging.GetLogger().Error("could not establish websocket connection", zap.Error(err))
 		b.Stop()
 		return
 	}
-	velocity.GetLogger().Debug("established websocket connection", zap.String("address", wsAddress))
+	logging.GetLogger().Debug("established websocket connection", zap.String("address", wsAddress))
 	b.ws = ws
 
 	err = b.ws.Subscribe(
@@ -112,7 +115,7 @@ func (b *Builder) connect() {
 		b.secret,
 	)
 	if err != nil {
-		velocity.GetLogger().Error("could not subscribe to builder topic", zap.String("topic", PoolTopic), zap.Error(err))
+		logging.GetLogger().Error("could not subscribe to builder topic", zap.String("topic", PoolTopic), zap.Error(err))
 		b.Stop()
 		return
 	}
@@ -129,11 +132,11 @@ func New() velocity.App {
 func getArchitectAddress() string {
 	address := os.Getenv("ARCHITECT_ADDRESS") // http://architect || https://architect
 	if address == "" {
-		velocity.GetLogger().Fatal("missing environment variable", zap.String("environment variable", "ARCHITECT_ADDRESS"))
+		logging.GetLogger().Fatal("missing environment variable", zap.String("environment variable", "ARCHITECT_ADDRESS"))
 	}
 
 	if address[:5] != "https" {
-		velocity.GetLogger().Warn("builds are not protected by TLS")
+		logging.GetLogger().Warn("builds are not protected by TLS")
 
 	}
 
@@ -143,7 +146,7 @@ func getArchitectAddress() string {
 func getBuilderSecret() string {
 	secret := os.Getenv("BUILDER_SECRET")
 	if secret == "" {
-		velocity.GetLogger().Fatal("missing environment variable", zap.String("environment variable", "ARCHITECT_ADDRESS"))
+		logging.GetLogger().Fatal("missing environment variable", zap.String("environment variable", "ARCHITECT_ADDRESS"))
 	}
 
 	return secret
@@ -152,12 +155,12 @@ func getBuilderSecret() string {
 func waitForService(client *http.Client, address string) bool {
 
 	for i := 0; i < 6; i++ {
-		velocity.GetLogger().Debug("attempting connection to", zap.String("address", address))
+		logging.GetLogger().Debug("attempting connection to", zap.String("address", address))
 		_, err := client.Get(address)
 		if err != nil {
-			velocity.GetLogger().Debug("connection error", zap.Error(err))
+			logging.GetLogger().Debug("connection error", zap.Error(err))
 		} else {
-			velocity.GetLogger().Debug("connection success")
+			logging.GetLogger().Debug("connection success")
 			return true
 		}
 		time.Sleep(5 * time.Second)
@@ -192,7 +195,7 @@ func connectToArchitect(address string, secret string) *websocket.Conn {
 	if err != nil {
 		h := sha256.New()
 		h.Write([]byte(secret))
-		velocity.GetLogger().Fatal("could not connect to architect", zap.String("address", address), zap.String("secretSHA256", string(h.Sum(nil))))
+		logging.GetLogger().Fatal("could not connect to architect", zap.String("address", address), zap.String("secretSHA256", string(h.Sum(nil))))
 	}
 
 	return conn

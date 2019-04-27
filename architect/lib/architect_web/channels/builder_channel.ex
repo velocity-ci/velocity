@@ -2,6 +2,8 @@ defmodule ArchitectWeb.BuilderChannel do
   use Phoenix.Channel
   alias Architect.Builders
 
+  require Logger
+
   @event_prefix "vlcty_"
 
   def join("builders:pool", _, socket) do
@@ -21,15 +23,68 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Builder will say when it is 'ready' to request any waiting jobs.
   """
-  def handle_in("#{@event_prefix}builder-ready", nil, socket) do
-    {:noreply, socket}
+  def handle_in("#{@event_prefix}builder-ready", payload, socket) do
+    # IO.inspect(Architect.Builds.list_builds())
+
+    {:reply, :ok, socket}
   end
 
   @doc """
-  Starts a synchronisation job for a builder.
+  Handle build update-build events.
   """
-  def handle_info(:job_synchronise, socket) do
-    push(socket, "#{@event_prefix}do-synchronise", %{})
+  def handle_in("#{@event_prefix}build-stream:new-loglines", payload, socket) do
+    Enum.each(payload["lines"], fn l ->
+      Architect.Builds.ETSStore.put_stream_line(
+        payload["id"],
+        l["lineNumber"],
+        l
+      )
+    end)
+    {:reply, :ok, socket}
+  end
+
+  @doc """
+  Handle build update-step events.
+  """
+  def handle_in("#{@event_prefix}build-step:update", payload, socket) do
+    Architect.Builds.ETSStore.put_step_update(
+        payload["id"],
+        payload
+      )
+    {:reply, :ok, socket}
+  end
+
+  @doc """
+  Handle build update-stream events.
+  """
+  def handle_in("#{@event_prefix}build-task:update", payload, socket) do
+    Architect.Builds.ETSStore.put_task_update(
+        payload["id"],
+        payload
+      )
+    {:reply, :ok, socket}
+  end
+
+  @doc """
+  Starts a build job for a builder.
+  """
+  def handle_info(b = %Architect.Builds.Build{}, socket) do
+    push(socket, "#{@event_prefix}job-do-build", %{
+      id: b.id,
+      project: %{
+        name: b.project.name,
+        address: b.project.address,
+        privateKey: ""
+      },
+      knownHost: %{
+        # entry: ""
+      },
+      # single task output from vcli construction plan
+      task: b.plan,
+      branch: b.branch_name,
+      commit: b.commit_sha,
+      parameters: b.parameters,
+    })
 
     {:noreply, socket}
   end

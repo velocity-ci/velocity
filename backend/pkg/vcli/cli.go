@@ -3,56 +3,18 @@ package vcli
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"sync"
 
 	"github.com/urfave/cli"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
 
-type CLI struct {
-	wg     sync.WaitGroup
-	runner *runner
-}
-
-func New() *CLI {
-	c := &CLI{
-		wg: sync.WaitGroup{},
-	}
-	c.runner = newRunner(&c.wg)
-	return c
-}
-
-func (c *CLI) Start(quit chan os.Signal) {
-	// c.routeFlags()
-
-	quit <- os.Interrupt
-}
-
-func (c *CLI) Stop() error {
-	c.runner.Stop()
-	c.wg.Wait()
-	return nil
-}
-
-func (c *CLI) Run() {
-
-	switch os.Args[1] {
-	case "run":
-		c.wg.Add(1)
-		c.runner.Run(os.Args[2])
-		break
-	default:
-		c.wg.Add(1)
-		c.runner.Run(os.Args[1])
-		break
-	}
-
-	c.Stop()
-}
-
 func List(c *cli.Context) error {
-	tasks, err := velocity.GetTasksFromCurrentDir()
+	root, err := config.GetRootConfig()
+	if err != nil {
+		return err
+	}
+	tasks, err := config.GetBlueprintsFromRoot(root)
 	if err != nil {
 		return err
 	}
@@ -69,9 +31,17 @@ func List(c *cli.Context) error {
 				fmt.Println()
 				continue
 			}
-			if len(task.ValidationWarnings) > 0 {
+			if len(task.ValidationErrors) > 0 {
 				fmt.Printf(" has warnings:\n")
-				for _, warn := range task.ValidationWarnings {
+				for _, warn := range task.ValidationErrors {
+					fmt.Print(colorFmt(ansiWarn, fmt.Sprintf("  %s\n", warn)))
+				}
+				fmt.Println()
+				continue
+			}
+			if len(task.ParseErrors) > 0 {
+				fmt.Printf(" has warnings:\n")
+				for _, warn := range task.ParseErrors {
 					fmt.Print(colorFmt(ansiWarn, fmt.Sprintf("  %s\n", warn)))
 				}
 				fmt.Println()
@@ -81,7 +51,10 @@ func List(c *cli.Context) error {
 
 		}
 	} else {
-		jsonBytes, _ := json.MarshalIndent(tasks, "", "  ")
+		jsonBytes, err := json.MarshalIndent(tasks, "", "  ")
+		if err != nil {
+			return err
+		}
 		fmt.Printf("%s\n", jsonBytes)
 	}
 
@@ -92,22 +65,36 @@ func RunCompletion(c *cli.Context) {
 	if c.NArg() > 0 {
 		return
 	}
-	tasks, _ := velocity.GetTasksFromCurrentDir()
+	root, err := config.GetRootConfig()
+	if err != nil {
+		return
+	}
+	tasks, err := config.GetBlueprintsFromRoot(root)
+	if err != nil {
+		return
+	}
 	for _, t := range tasks {
 		fmt.Println(t.Name)
 	}
 }
 
 func Info(c *cli.Context) error {
-	emitter := NewEmitter()
 
-	basicParams, err := velocity.GetBasicParams(emitter.GetStreamWriter("setup"))
+	root, err := config.GetRootConfig()
 	if err != nil {
 		return err
 	}
-	for key, val := range basicParams {
-		fmt.Printf("%s: %s\n", key, val.Value)
+
+	if c.Bool("machine-readable") {
+		jsonBytes, err := json.MarshalIndent(root, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s\n", jsonBytes)
+	} else {
+		fmt.Printf("TODO\n")
 	}
+
 	return nil
 }
 
@@ -115,45 +102,56 @@ func Run(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return fmt.Errorf("incorrect amount of args")
 	}
-	tasks, err := velocity.GetTasksFromCurrentDir()
-	if err != nil {
-		return err
-	}
-	task, err := getRequestedTaskByName(c.Args().Get(0), tasks)
-	if err != nil {
-		return err
-	}
-	fmt.Print(colorFmt(ansiInfo, fmt.Sprintf("-> running: %s\n", task.Name)))
-	emitter := NewEmitter()
 
-	task.Steps = append([]velocity.Step{velocity.NewSetup()}, task.Steps...)
-	for i, step := range task.Steps {
-		// if !r.run {
-		// 	return
-		// }
-		if step.GetType() == "setup" {
-			step.(*velocity.Setup).Init(&ParameterResolver{}, nil, "")
-		}
-		emitter.SetStepNumber(uint64(i))
-		step.SetProjectRoot(task.ProjectRoot)
-		err := step.Execute(emitter, task)
+	root, err := config.GetRootConfig()
+	if err != nil {
+		return err
+	}
+	tasks, err := config.GetBlueprintsFromRoot(root)
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+
+	// t, err := getRequestedBlueprintByName(c.Args().Get(0), tasks)
+	// if err != nil {
+	// 	return err
+	// }
+
+	constructionPlan, err := build.NewConstructionPlan(
+		c.Args().Get(0),
+		tasks,
+		&ParameterResolver{},
+		nil,
+		"",
+		"branch", // TODO: get branch from git
+		root.Path,
+	)
+	if err != nil {
+		return err
+	}
+
+	if c.Bool("plan-only") && c.Bool("machine-readable") {
+		jsonBytes, err := json.MarshalIndent(constructionPlan, "", "  ")
 		if err != nil {
-			fmt.Printf("encountered error: %s", err)
+			return err
+		}
+		fmt.Printf("%s\n", jsonBytes)
+	} else if c.Bool("plan-only") {
+		// print plan in plain format
+	} else if c.Bool("machine-readable") {
+		// execute in json format
+	} else {
+		emitter := NewEmitter()
+		err = constructionPlan.Execute(emitter)
+		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func getRequestedTaskByName(taskName string, tasks []velocity.Task) (*velocity.Task, error) {
-	for _, t := range tasks {
-		if t.Name == taskName {
-			return &t, nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not find %s", taskName)
 }
 
 // func run(c *cli.Context) error {

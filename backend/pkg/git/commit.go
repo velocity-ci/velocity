@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+
 	"github.com/velocity-ci/velocity/backend/pkg/exec"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +28,7 @@ func (r *RawRepository) GetCommitInfo(sha string) (*RawCommit, error) {
 	s := exec.Run(shCmd, r.Directory, []string{}, nil)
 
 	if len(s.Stdout) < 6 {
-		velocity.GetLogger().Error("unexpected commit info output", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
+		logging.GetLogger().Error("unexpected commit info output", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
 		return nil, fmt.Errorf("unexpected commit info output")
 	}
 
@@ -63,7 +64,7 @@ func (r *RawRepository) GetTotalCommits() uint64 {
 
 	total, err := strconv.ParseUint(strings.TrimSpace(s.Stdout[0]), 10, 64)
 	if err != nil {
-		velocity.GetLogger().Error("could not get total commits", zap.Error(err))
+		logging.GetLogger().Error("could not get total commits", zap.Error(err))
 	}
 
 	return total

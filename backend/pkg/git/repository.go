@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/velocity-ci/velocity/backend/pkg/auth"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+
 	"github.com/velocity-ci/velocity/backend/pkg/exec"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -47,28 +47,6 @@ type HostKeyError string
 
 func (s HostKeyError) Error() string {
 	return string(s)
-}
-
-func getUniqueWorkspace(r *Repository) (string, error) {
-	dir := fmt.Sprintf("%s/_%s-%s",
-		"",
-		// slug.Make(r.Address),
-		auth.RandomString(8),
-		auth.RandomString(8),
-	)
-
-	err := os.RemoveAll(dir)
-	if err != nil {
-		velocity.GetLogger().Fatal("could not create unique workspace", zap.Error(err))
-		return "", err
-	}
-	err = os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		velocity.GetLogger().Fatal("could not create unique workspace", zap.Error(err))
-		return "", err
-	}
-
-	return dir, nil
 }
 
 func initWorkspace(r *Repository, dir string, writer io.Writer) (string, error) {
@@ -120,7 +98,7 @@ func handleGitSSH(r *Repository) (d func(*Repository), err error) {
 			a := agent.NewClient(sshAgent)
 			a.Add(agent.AddedKey{PrivateKey: key})
 			signer, _ := ssh.NewSignerFromKey(key)
-			velocity.GetLogger().Debug("added ssh key to ssh-agent", zap.String("address", r.Address))
+			logging.GetLogger().Debug("added ssh key to ssh-agent", zap.String("address", r.Address))
 			r.Agent = a
 			r.PublicKey = signer.PublicKey()
 			return cleanSSHAgent, nil
@@ -135,7 +113,7 @@ func handleGitSSH(r *Repository) (d func(*Repository), err error) {
 func cleanSSHAgent(r *Repository) {
 	if r.Agent != nil {
 		r.Agent.Remove(r.PublicKey)
-		velocity.GetLogger().Debug("removed ssh key from ssh-agent", zap.String("address", r.Address))
+		logging.GetLogger().Debug("removed ssh key from ssh-agent", zap.String("address", r.Address))
 	}
 }
 
@@ -172,7 +150,7 @@ func Clone(
 		// shCmd = append(shCmd, "origin", cloneOpts.Commit)
 	}
 
-	velocity.GetLogger().Info("fetching repository", zap.String("cmd", strings.Join(shCmd, " ")))
+	logging.GetLogger().Info("fetching repository", zap.String("cmd", strings.Join(shCmd, " ")))
 
 	deferFunc, err := handleGitSSH(r)
 	if err != nil {
@@ -186,7 +164,7 @@ func Clone(
 		return nil, err
 	}
 
-	velocity.GetLogger().Info("fetched repository", zap.String("address", r.Address), zap.String("dir", dir))
+	logging.GetLogger().Info("fetched repository", zap.String("address", r.Address), zap.String("dir", dir))
 
 	return &RawRepository{Directory: dir, Repository: r}, nil
 }
@@ -216,7 +194,7 @@ func (r *RawRepository) Checkout(ref string) error {
 		return err
 	}
 
-	velocity.GetLogger().Debug("checked out", zap.String("reference", ref), zap.String("repository", r.Directory))
+	logging.GetLogger().Debug("checked out", zap.String("reference", ref), zap.String("repository", r.Directory))
 
 	return nil
 }

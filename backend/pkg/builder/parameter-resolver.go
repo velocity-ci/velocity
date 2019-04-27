@@ -9,8 +9,8 @@ type ParameterResolver struct {
 	Params map[string]string
 }
 
-func NewParameterResolver(params map[string]string) ParameterResolver {
-	return ParameterResolver{
+func NewParameterResolver(params map[string]string) *ParameterResolver {
+	return &ParameterResolver{
 		Params: params,
 	}
 }

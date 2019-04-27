@@ -11,3 +11,4 @@ cli/cli
 gogs-data
 *.tar.gz
 *_data
+.gopath
