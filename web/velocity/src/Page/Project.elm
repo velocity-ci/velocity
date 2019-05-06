@@ -350,25 +350,28 @@ viewErrored =
 
 
 viewSubHeader : Device -> Model msg -> Element Msg
-viewSubHeader device { session, slug, branchDropdown } =
+viewSubHeader device { session, slug, branchDropdown, commitConnection } =
     case Session.projectWithSlug slug session of
         Just project ->
             let
                 branches =
                     Project.branches project
             in
-            case device.class of
-                Phone ->
-                    viewMobileSubHeader project branches branchDropdown
+            case ( device.class, commitConnection ) of
+                ( Phone, Loaded connection ) ->
+                    viewMobileSubHeader project connection branches branchDropdown
 
-                Tablet ->
-                    viewDesktopSubHeader project branches branchDropdown
+                ( Tablet, Loaded connection ) ->
+                    viewDesktopSubHeader project connection branches branchDropdown
 
-                Desktop ->
-                    viewDesktopSubHeader project branches branchDropdown
+                ( Desktop, Loaded connection ) ->
+                    viewDesktopSubHeader project connection branches branchDropdown
 
-                BigDesktop ->
-                    viewDesktopSubHeader project branches branchDropdown
+                ( BigDesktop, Loaded connection ) ->
+                    viewDesktopSubHeader project connection branches branchDropdown
+
+                _ ->
+                    none
 
         Nothing ->
             none
@@ -392,14 +395,7 @@ viewMobileSubHeader project commitConnection branches branchDropdown =
             }
         , below
             (if branchDropdown == BranchDropdown ListenClicks then
-                el
-                    [ width fill
-                    , height (px 9999)
-                    , moveDown 1
-                    , Background.color Palette.neutral7
-                    , Font.color Palette.primary5
-                    ]
-                    (viewBranchSelectDropdown branches)
+                none
 
              else
                 none
@@ -484,7 +480,7 @@ viewDesktopSubHeader project commitConnection branches branchDropdown =
                                         ]
                                         (Icon.x Icon.defaultOptions)
                                     ]
-                                , viewBranchSelectDropdown branches commitConnection
+                                , viewBranchSelectDropdown (Project.slug project) branches commitConnection
                                 ]
                             ]
 
@@ -1495,7 +1491,7 @@ viewBranchSelectDropdown projectSlug branches commitConnection =
                                 { maybeBranch = Just branchName
                                 , slug = projectSlug
                                 , maybeBefore = Nothing
-                                , maybeAfter = Just <| PageInfo.startCursor commitConnection.pageInfo
+                                , maybeAfter = PageInfo.startCursor commitConnection.pageInfo
                                 }
                         )
                 )

@@ -74,7 +74,8 @@ defmodule Architect.MixProject do
       {:mix_test_watch, "~> 0.9", only: :dev, runtime: false},
       {:porcelain, "~> 2.0"},
       {:temp, "~> 0.4"},
-      {:ecto_enum, "~> 1.2"}
+      {:ecto_enum, "~> 1.2"},
+      {:gen_stage, "~> 0.14"}
     ]
   end
 
