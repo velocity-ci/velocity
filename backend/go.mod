@@ -16,6 +16,8 @@ require (
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/gorilla/websocket v1.4.0
 	github.com/gosimple/slug v1.5.0
+	github.com/hashicorp/go-version v1.2.0 // indirect
+	github.com/mitchellh/gox v1.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect

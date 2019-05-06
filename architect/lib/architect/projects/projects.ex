@@ -170,7 +170,7 @@ defmodule Architect.Projects do
     do: call_repository(project, {:commit_count, [branch]})
 
   @doc ~S"""
-  List blueprints
+  List Blueprint
 
   ## Examples
 
@@ -189,7 +189,7 @@ defmodule Architect.Projects do
     do: call_repository(project, {:project_configuration, []})
 
   @doc ~S"""
-  Get the build plan for a blueprint on a commit sha
+  Get the construction plan for a Blueprint on a commit sha
   """
   def plan_blueprint(%Project{} = project, commit, blueprint_name),
     do: call_repository(project, {:plan_blueprint, [commit, blueprint_name]})
@@ -249,20 +249,20 @@ defmodule Architect.Projects do
 end
 
 defmodule Architect.Projects.Starter do
-  use Blueprint
+  use Task
   require Logger
   alias Architect.Projects.Repository
 
   def start_link(opts) do
-    Blueprint.start_link(__MODULE__, :run, [opts])
+    Task.start_link(__MODULE__, :run, [opts])
   end
 
-  def run(%{projects: projects, supervisor: supervisor, registry: registry}) do
+  def run(%{projects: projects, supervisor: _supervisor, registry: _registry}) do
     for project <- projects do
       repository_name =
         {:via, Registry, {Architect.Projects.Registry, "#{project.address}-#{project.name}"}}
 
-      {:ok, pid} =
+      {:ok, _pid} =
         DynamicSupervisor.start_child(
           # supervisor,
           Architect.Projects.Supervisor,

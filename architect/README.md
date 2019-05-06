@@ -34,7 +34,7 @@ or
 or
 p = Architect.Projects.get_project_by_slug!("velocity-ci-velocity-at-github-com")
 
-Architect.Builds.create_build(u, p, "master", "34810c7571dae80b66b0f9aadc054565319179fb", "hello-velocity")
+Architect.Builds.create_build(u, p, "master", "671663fda8cad9545661346017f90eff74a2d248", "examples/hello-velocity")
 ```
 
 ## Tests

@@ -32,7 +32,6 @@ defmodule Architect.Builders.Scheduler do
   #
   # Server
   #
-  @impl
   def init(state) do
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
@@ -50,35 +49,34 @@ defmodule Architect.Builders.Scheduler do
     {:ok, state}
   end
 
-  @impl
   def handle_call(:history, _from, state) do
     {:reply, state.history, state}
   end
 
-  @impl
   def handle_info(:poll_builds, state) do
+    Logger.debug("checking for waiting builds")
+    # put TaskIDs from waiting builds into ETS
     Logger.debug("checking for waiting tasks")
     # builds = Architect.Builds.list_waiting_builds()
     # TODO: Get waiting tasks from ETS
-    tasks = Architect.Builds.ETSStore.get_pending_tasks()
-    Enum.each(tasks, fn t ->
-      Logger.debug("attempting to schedule task:#{t.id}")
-      builders = Presence.list()
-      Enum.each(builders, fn {id, %{metas: [metas]}} ->
-        Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
-        # TODO: if builder is ready
-        send(metas.socket, b)
-        changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
-        {:ok, _b} = Architect.Repo.update(changeset)
+    # tasks = Architect.Builds.ETSStore.get_pending_tasks()
+    # Enum.each(tasks, fn t ->
+    #   Logger.debug("attempting to schedule task:#{t.id}")
+    #   builders = Presence.list()
+    #   Enum.each(builders, fn {id, %{metas: [metas]}} ->
+    #     Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
+    #     # TODO: if builder is ready
+    #     # send(metas.socket, b)
+    #     # changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
+    #     # {:ok, _b} = Architect.Repo.update(changeset)
 
-      end)
-    end)
+    #   end)
+    # end)
 
     Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
     {:noreply, state}
   end
 
-  @impl
   def handle_info(
         %Socket.Broadcast{event: "presence_diff"} = broadcast,
         %__MODULE__{history: history} = state

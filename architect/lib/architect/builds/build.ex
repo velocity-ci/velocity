@@ -70,7 +70,7 @@ defmodule Architect.Builds.Build do
     } = changeset
   ) do
     project = Architect.Projects.get_project!(project_id)
-    plan = Architect.Projects.plan_task(project, commit_sha, task_name)
+    plan = Architect.Projects.plan_blueprint(project, commit_sha, task_name)
     changeset
     |> put_change(:plan, plan)
     |> put_change(:id, plan["id"])

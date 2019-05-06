@@ -8,18 +8,20 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
 
+// Stage represents a set of Tasks that can run in parallel, therefore Tasks is a map[TaskID]Task.
 type Stage struct {
 	// k: Task.ID
 	Tasks map[string]*Task `json:"tasks"`
 }
 
+// ConstructionPlan represents a collection of Stages to be executed in order.
 type ConstructionPlan struct {
 	ID     string   `json:"id"`
 	Stages []*Stage `json:"stages"`
 }
 
 func NewConstructionPlan(
-	blueprintName string,
+	targetBlueprintName string,
 	blueprints []*config.Blueprint,
 	paramResolver BackupResolver,
 	repository *git.Repository,
@@ -27,12 +29,12 @@ func NewConstructionPlan(
 	commitSha string,
 	projectRoot string,
 ) (*ConstructionPlan, error) {
-	blueprint, err := getRequestedBlueprintByName(blueprintName, blueprints)
+	targetBlueprint, err := getRequestedBlueprintByName(targetBlueprintName, blueprints)
 	if err != nil {
 		return nil, err
 	}
 	task := NewTask(
-		blueprint,
+		targetBlueprint,
 		paramResolver,
 		repository,
 		branch,

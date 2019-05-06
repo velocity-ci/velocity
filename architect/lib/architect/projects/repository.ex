@@ -92,8 +92,8 @@ defmodule Architect.Projects.Repository do
   @doc ~S"""
   Get the construction plan for a blueprint on a commit sha
   """
-  def plan_construction(repository, commit, blueprint_name) do
-    GenServer.call(repository, {:plan_construction, commit, blueprint_name})
+  def plan_blueprint(repository, commit, blueprint_name) do
+    GenServer.call(repository, {:plan_blueprint, commit, blueprint_name})
   end
 
   # Server
@@ -254,7 +254,7 @@ defmodule Architect.Projects.Repository do
 
   @impl true
   def handle_call(
-        {:plan_construction, commit, blueprint_name},
+        {:plan_blueprint, commit, blueprint_name},
         _from,
         %__MODULE{dir: dir, vcli: vcli} = state
       ) do
@@ -266,7 +266,7 @@ defmodule Architect.Projects.Repository do
         Porcelain.exec("git", ["clean", "-fd"], dir: dir)
 
     blueprint_plan =
-      VCLI.plan_construction(dir, vcli, blueprint_name)
+      VCLI.plan_blueprint(dir, vcli, blueprint_name)
 
     {:reply, blueprint_plan, state}
   end
