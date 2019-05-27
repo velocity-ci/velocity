@@ -127,6 +127,11 @@ defmodule Architect.Projects.Repository do
       %Porcelain.Result{err: err, out: out, status: _} ->
         Logger.error("Failed verifying #{address} in #{repo_dir}. #{err}: #{out}")
         {:noreply, %__MODULE__{state | verified: false}}
+
+
+      :error ->
+        Logger.error("Failed verifying #{address} in #{repo_dir}.")
+        {:noreply, %__MODULE__{state | verified: false}}
     end
   end
 

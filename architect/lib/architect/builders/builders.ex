@@ -1,5 +1,5 @@
 defmodule Architect.Builders do
-  alias Architect.Builders.{Scheduler, Presence}
+  alias Architect.Builders.{Scheduler, StageScheduler, Presence}
 
   use Supervisor
 
@@ -22,7 +22,8 @@ defmodule Architect.Builders do
 
   def init(:ok) do
     children = [
-      Scheduler,
+#      Scheduler,
+      StageScheduler,
       Presence
     ]
 
