@@ -1,5 +1,6 @@
 # Velocity CI
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/e18236b6f6df49999e1f68a9a6d11e36)](https://app.codacy.com/app/VJftw/velocity?utm_source=github.com&utm_medium=referral&utm_content=velocity-ci/velocity&utm_campaign=Badge_Grade_Settings)
 [![Go Report Card](https://goreportcard.com/badge/github.com/velocity-ci/velocity)](https://goreportcard.com/report/github.com/velocity-ci/velocity)
 
 ## Docker Images
