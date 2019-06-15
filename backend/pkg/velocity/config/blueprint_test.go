@@ -54,7 +54,7 @@ docker:
 	}
 	expectedBlueprintConfig.Docker = BlueprintDocker{
 		Registries: []BlueprintDockerRegistry{
-			BlueprintDockerRegistry{
+			{
 				Address: "",
 				Use:     "https://velocityci.io/registry-test",
 				Arguments: map[string]string{

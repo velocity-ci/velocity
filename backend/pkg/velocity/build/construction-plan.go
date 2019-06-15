@@ -18,6 +18,7 @@ type Stage struct {
 type ConstructionPlan struct {
 	ID     string   `json:"id"`
 	Stages []*Stage `json:"stages"`
+	// Plugins []*Plugin `json:"plugins"`
 }
 
 func NewConstructionPlan(
@@ -44,7 +45,7 @@ func NewConstructionPlan(
 	return &ConstructionPlan{
 		ID: uuid.NewV4().String(),
 		Stages: []*Stage{
-			&Stage{
+			{
 				Tasks: map[string]*Task{
 					task.ID: task,
 				},
@@ -54,14 +55,25 @@ func NewConstructionPlan(
 }
 
 func (p *ConstructionPlan) Execute(emitter Emitter) error {
+	eventBuildStart(p)
+	defer eventBuildComplete(p)
 	for _, stage := range p.Stages {
 		for _, task := range stage.Tasks {
+			eventTaskStart(p, task)
 			err := task.Execute(emitter)
+			eventTaskComplete(p, task)
 			if err != nil {
-				return err
+				eventTaskFail(p, task, err)
+				if !task.IgnoreErrors {
+					eventBuildFail(p, task, err)
+					return err
+				}
 			}
+			eventTaskSuccess(p, task)
 		}
 	}
+
+	eventBuildSuccess(p)
 
 	return nil
 }

@@ -16,9 +16,10 @@ type Task struct {
 	ID         string `json:"id"`
 	parameters map[string]*Parameter
 
-	Blueprint config.Blueprint `json:"blueprint"`
-	Docker    TaskDocker       `json:"docker"`
-	Steps     []Step           `json:"steps"`
+	Blueprint    config.Blueprint `json:"blueprint"`
+	IgnoreErrors bool             `json:"ignoreErrors"`
+	Docker       TaskDocker       `json:"docker"`
+	Steps        []Step           `json:"steps"`
 
 	StartedAt   *time.Time `json:"startedAt"`
 	UpdatedAt   *time.Time `json:"updatedAt"`
@@ -102,6 +103,12 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	// Deserialize IgnoreErrors
+	err = json.Unmarshal(*objMap["ignoreErrors"], &t.IgnoreErrors)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -112,7 +119,7 @@ func (t *Task) Execute(emitter Emitter) error {
 	totalSteps := len(t.Steps)
 	for i, step := range t.Steps {
 		err := t.executeStep(i+1, totalSteps, emitter, step)
-		if err != nil {
+		if err != nil { // TODO: add support for ignoring errors from specific steps in Blueprint
 			fmt.Fprintf(taskWriter, docker.ColorFmt(docker.ANSIError, "-> error in task %s (%s)"), t.Blueprint.Name, t.ID)
 			taskWriter.SetStatus(StateFailed)
 			return err

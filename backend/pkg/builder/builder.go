@@ -77,7 +77,7 @@ func (b *Builder) connect() {
 					Payload: map[string]interface{}{
 						"status": "error",
 						"errors": []map[string]string{
-							map[string]string{
+							{
 								"message": err.Error(),
 							},
 						},

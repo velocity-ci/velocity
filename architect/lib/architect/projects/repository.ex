@@ -230,6 +230,7 @@ defmodule Architect.Projects.Repository do
 
     blueprints =
       VCLI.list(dir, vcli)
+      |> Map.get("blueprints")
       |> Blueprint.parse()
 
     {:reply, blueprints, state}

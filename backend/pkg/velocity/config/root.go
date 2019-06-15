@@ -19,12 +19,11 @@ type Root struct {
 
 	Parameters []Parameter   `json:"parameters"`
 	Plugins    []*RootPlugin `json:"plugins"`
-	Stages     []*RootStage  `json:"stages"`
 }
 
 type RootProject struct {
-	Logo           *string `json:"logo"`
-	BlueprintsPath string  `json:"blueprintsPath"`
+	Logo       *string `json:"logo"`
+	ConfigPath string  `json:"configPath"`
 }
 
 type RootGit struct {
@@ -38,20 +37,16 @@ type RootPlugin struct {
 	Events    []string          `json:"events"`
 }
 
-type RootStage struct {
-	Name       string   `json:"name"`
-	Blueprints []string `json:"blueprints"`
-}
-
 func newRoot() *Root {
 	return &Root{
-		Project: &RootProject{},
+		Project: &RootProject{
+			ConfigPath: ".velocityci",
+		},
 		Git: &RootGit{
 			Submodule: true,
 		},
 		Parameters: []Parameter{},
 		Plugins:    []*RootPlugin{},
-		Stages:     []*RootStage{},
 	}
 }
 
@@ -106,13 +101,6 @@ func (r *Root) UnmarshalJSON(b []byte) error {
 		}
 	}
 
-	// Deserialize Git
-	if _, ok := objMap["stages"]; ok {
-		err = json.Unmarshal(*objMap["stages"], &r.Stages)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

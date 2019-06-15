@@ -14,7 +14,7 @@ import (
 
 func Run(shCmd []string, directory string, env []string, writer io.Writer) cmd.Status {
 	opts := cmd.Options{Buffered: false, Streaming: true}
-	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:len(shCmd)]...)
+	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:]...)
 	c.Env = respectProxyEnv(env)
 	c.Dir = directory
 	stdout := []string{}

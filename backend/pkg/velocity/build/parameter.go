@@ -53,7 +53,7 @@ func resolveConfigParameterBasic(p *config.ParameterBasic, backupResolver Backup
 		return nil, err
 	}
 	v = val
-	return []*Parameter{&Parameter{
+	return []*Parameter{{
 		Name:     p.Name,
 		Value:    v,
 		IsSecret: p.Secret,

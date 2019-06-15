@@ -77,7 +77,7 @@ stages:
 			},
 		},
 		Plugins: []*config.RootPlugin{
-			&config.RootPlugin{
+			{
 				Use: "param-slack-bin-uri",
 				Arguments: map[string]string{
 					"CHANNEL":     "ci",
@@ -87,15 +87,15 @@ stages:
 			},
 		},
 		Stages: []*config.RootStage{
-			&config.RootStage{
+			{
 				Name:       "test",
 				Blueprints: []string{"test_web", "test_api"},
 			},
-			&config.RootStage{
+			{
 				Name:       "release",
 				Blueprints: []string{"release_web", "release_api"},
 			},
-			&config.RootStage{
+			{
 				Name:       "deploy",
 				Blueprints: []string{"deploy_web", "deploy_api"},
 			},
@@ -171,7 +171,7 @@ stages:
 			},
 		},
 		Plugins: []*config.RootPlugin{
-			&config.RootPlugin{
+			{
 				Use: "param-slack-bin-uri",
 				Arguments: map[string]string{
 					"CHANNEL":     "ci",
@@ -181,15 +181,15 @@ stages:
 			},
 		},
 		Stages: []*config.RootStage{
-			&config.RootStage{
+			{
 				Name:       "test",
 				Blueprints: []string{"test_web", "test_api"},
 			},
-			&config.RootStage{
+			{
 				Name:       "release",
 				Blueprints: []string{"release_web", "release_api"},
 			},
-			&config.RootStage{
+			{
 				Name:       "deploy",
 				Blueprints: []string{"deploy_web", "deploy_api"},
 			},

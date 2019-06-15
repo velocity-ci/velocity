@@ -66,10 +66,10 @@ defmodule ArchitectWeb.BuilderChannel do
   end
 
   @doc """
-  Starts a build job for a builder.
+  Starts a task on a builder.
   """
   def handle_info(b = %Architect.Builds.Build{}, socket) do
-    push(socket, "#{@event_prefix}job-do-build", %{
+    push(socket, "#{@event_prefix}job-do-task", %{
       id: b.id,
       project: %{
         name: b.project.name,
