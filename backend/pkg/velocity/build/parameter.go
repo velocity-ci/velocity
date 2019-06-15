@@ -47,12 +47,11 @@ func resolveConfigParameter(
 }
 
 func resolveConfigParameterBasic(p *config.ParameterBasic, backupResolver BackupResolver) (parameters []*Parameter, err error) {
-	v := p.Default
 	val, err := backupResolver.Resolve(p.Name)
 	if err != nil {
 		return nil, err
 	}
-	v = val
+	v := val
 	return []*Parameter{{
 		Name:     p.Name,
 		Value:    v,

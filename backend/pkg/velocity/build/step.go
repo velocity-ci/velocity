@@ -36,7 +36,7 @@ const (
 	EventBuildStart    = "BUILD_START"
 	EventTaskStart     = "TASK_START"
 	EventStepStart     = "STEP_START"
-	EventStepComplete  = "STEP_COMPLETE" // fires regardless of sucess/fail
+	EventStepComplete  = "STEP_COMPLETE" // fires regardless of success/fail
 	EventStepSuccess   = "STEP_SUCCESS"
 	EventStepFail      = "STEP_FAIL"
 	EventTaskComplete  = "TASK_COMPLETE" // fires regardless of success/fail
