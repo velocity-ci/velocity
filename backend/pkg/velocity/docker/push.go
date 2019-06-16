@@ -28,7 +28,7 @@ func PushImage(
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(writer, ColorFmt(ANSIInfo, "-> pushed: %s"), tag)
+	fmt.Fprintf(writer, ColorFmt(ANSIInfo, "-> pushed: %s", "\n"), tag)
 
 	return nil
 }

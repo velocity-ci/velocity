@@ -15,8 +15,8 @@ const (
 	ANSIInfo    = "\x1b[1m\x1b[49m\x1b[34m"
 )
 
-func ColorFmt(ansiColor, format string) string {
-	return fmt.Sprintf("%s%s\x1b[0m", ansiColor, format)
+func ColorFmt(ansiColor, format, suffix string) string {
+	return fmt.Sprintf("%s%s\x1b[0m%s", ansiColor, format, suffix)
 }
 
 func HandleOutput(body io.ReadCloser, censored []string, writer io.Writer) {

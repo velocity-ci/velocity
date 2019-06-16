@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
 var (
@@ -20,7 +20,9 @@ var rootCmd = &cobra.Command{
 	Short: "Velocity CLI",
 	Long:  `Runs Velocity CI blueprints and pipelines locally`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		color.NoColor = noColor
+		if noColor {
+			output.ColorDisable()
+		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()

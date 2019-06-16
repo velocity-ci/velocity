@@ -53,13 +53,13 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	if err != nil {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s"), err)
+		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s", "\n"), err)
 
 		return err
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success"))
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success", "\n"))
 
 	return nil
 }

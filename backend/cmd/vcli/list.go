@@ -6,9 +6,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
 func init() {
@@ -49,8 +49,7 @@ var listCmd = &cobra.Command{
 func listText(blueprints []*config.Blueprint, pipelines []*config.Pipeline) error {
 	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	italic := color.New(color.Italic).SprintFunc()
-	fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", italic("Blueprints"))
+	fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", output.Italic("Blueprints"))
 	if len(blueprints) > 0 {
 		for _, blueprint := range blueprints {
 			fmt.Fprintf(tabWriter, "  %s\t%s\n", blueprint.Name, blueprint.Description)
@@ -60,7 +59,7 @@ func listText(blueprints []*config.Blueprint, pipelines []*config.Pipeline) erro
 		fmt.Fprintln(os.Stdout, "  none found")
 	}
 
-	fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", italic("Pipelines"))
+	fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", output.Italic("Pipelines"))
 	if len(pipelines) > 0 {
 		for _, pipeline := range pipelines {
 			fmt.Fprintf(tabWriter, "  %s\t%s\n", pipeline.Name, pipeline.Description)

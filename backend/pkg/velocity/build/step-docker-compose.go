@@ -175,13 +175,13 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 	if !success {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateFailed)
-			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSIError, "-> %s error"), serviceName)
+			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSIError, "-> %s error", "\n"), serviceName)
 
 		}
 	} else {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateSuccess)
-			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSISuccess, "-> %s success"), serviceName)
+			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSISuccess, "-> %s success", "\n"), serviceName)
 
 		}
 	}

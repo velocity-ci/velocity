@@ -128,13 +128,13 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> error (exited: %d)"), exitCode)
+		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> error (exited: %d)", "\n"), exitCode)
 
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success (exited: %d)"), exitCode)
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success (exited: %d)", "\n"), exitCode)
 
 	return nil
 }

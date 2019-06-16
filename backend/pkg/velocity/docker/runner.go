@@ -140,7 +140,7 @@ func (sR *ServiceRunner) PullOrBuild(authConfigs map[string]types.AuthConfig, ad
 		defer pullResp.Close()
 		HandleOutput(pullResp, sR.secrets, sR.writer)
 
-		fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> pulled image: %s"), sR.image)
+		fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> pulled image: %s", "\n"), sR.image)
 
 	}
 }
@@ -180,7 +180,7 @@ func respectProxyEnv(env []string) []string {
 }
 
 func (sR *ServiceRunner) Create() {
-	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s created"), GetContainerName(sR.name))
+	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s created", "\n"), GetContainerName(sR.name))
 
 	sR.containerConfig.Env = respectProxyEnv(sR.containerConfig.Env)
 
@@ -198,7 +198,7 @@ func (sR *ServiceRunner) Create() {
 }
 
 func (sR *ServiceRunner) Run(stop chan string) { // rename to start
-	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s running"), GetContainerName(sR.name))
+	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s running", "\n"), GetContainerName(sR.name))
 	err := sR.dockerCli.ContainerStart(
 		sR.context,
 		sR.containerID,
@@ -240,7 +240,7 @@ func (sR *ServiceRunner) Stop() {
 	}
 
 	sR.ExitCode = container.State.ExitCode
-	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s container exited: %d"), GetContainerName(sR.name), sR.ExitCode)
+	fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s container exited: %d", "\n"), GetContainerName(sR.name), sR.ExitCode)
 
 	if !sR.removing {
 		sR.removing = true
@@ -252,7 +252,7 @@ func (sR *ServiceRunner) Stop() {
 		if err != nil {
 			logging.GetLogger().Error("could not remove container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
 		}
-		fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s removed"), GetContainerName(sR.name))
+		fmt.Fprintf(sR.writer, ColorFmt(ANSIInfo, "-> %s removed", "\n"), GetContainerName(sR.name))
 
 	}
 }

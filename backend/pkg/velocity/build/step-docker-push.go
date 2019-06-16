@@ -45,13 +45,13 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 		if err != nil {
 			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> push failed: %s"), err)
+			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> push failed: %s", "\n"), err)
 			return err
 		}
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success"))
+	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success", "\n"))
 	return nil
 
 }
