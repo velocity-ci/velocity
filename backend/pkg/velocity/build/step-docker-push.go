@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
+
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
@@ -45,13 +47,13 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 		if err != nil {
 			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> push failed: %s", "\n"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> push failed: %s", "\n"), err)
 			return err
 		}
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success", "\n"))
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success", "\n"))
 	return nil
 
 }

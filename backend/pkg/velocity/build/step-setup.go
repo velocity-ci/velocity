@@ -13,8 +13,8 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 	"go.uber.org/zap"
 )
 
@@ -106,14 +106,14 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		if err != nil {
 			logging.GetLogger().Error("could not clone repository", zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> Could not clone repository: %s", "\n"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> Could not clone repository: %s", "\n"), err)
 			return err
 		}
 		err = repo.Checkout(s.commitHash)
 		if err != nil {
 			logging.GetLogger().Error("could not checkout", zap.Error(err), zap.String("commit", s.commitHash))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "Could not checkout ref: %s", "\n"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not checkout ref: %s", "\n"), err)
 			return err
 		}
 		os.Chdir(repo.Directory)
@@ -141,7 +141,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
 		if err != nil {
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "Could not resolve parameter: %s", "\n"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not resolve parameter: %s", "\n"), err)
 			return fmt.Errorf("could not resolve %v", err)
 		}
 		for _, param := range resolvedParams {
@@ -160,12 +160,12 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		r, err := dockerLogin(registry, writer, t)
 		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "Could not login to Docker registry: %s", "\n"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not login to Docker registry: %s", "\n"), err)
 
 			return err
 		}
 		authedRegistries = append(authedRegistries, r)
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "Authenticated with Docker registry: %s", "\n"), r.Address)
+		fmt.Fprintf(writer, output.ColorFmt(output.ANSIInfo, "Authenticated with Docker registry: %s", "\n"), r.Address)
 	}
 
 	t.Docker.Registries = authedRegistries
@@ -190,7 +190,7 @@ func GetGlobalParams(writer io.Writer, projectRoot, branch string) (map[string]P
 	repo := &git.RawRepository{Directory: projectRoot}
 
 	if repo.IsDirty() {
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIWarn, "Project files are dirty. Build repeatability is not guaranteed.", "\n"))
+		fmt.Fprintf(writer, output.ColorFmt(output.ANSIWarn, "Project files are dirty. Build repeatability is not guaranteed.", "\n"))
 	}
 
 	rawCommit, err := repo.GetCurrentCommitInfo()

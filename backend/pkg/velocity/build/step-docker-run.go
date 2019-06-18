@@ -15,6 +15,7 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
 type StepDockerRun struct {
@@ -128,13 +129,13 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 
 	if exitCode != 0 && !dR.IgnoreExitCode {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> error (exited: %d)", "\n"), exitCode)
+		fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> error (exited: %d)", "\n"), exitCode)
 
 		return fmt.Errorf("Non-zero exit code: %d", exitCode)
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success (exited: %d)", "\n"), exitCode)
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success (exited: %d)", "\n"), exitCode)
 
 	return nil
 }

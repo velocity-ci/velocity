@@ -13,7 +13,7 @@ func TestRootUnmarshal(t *testing.T) {
 ---
 project: 
   logo: image.png
-  blueprintsPath: ./blueprints
+  configPath: .velocity
 git: 
   depth: 10
 
@@ -26,7 +26,7 @@ parameters:
   secret: true
 
 plugins: 
-- use: param-slack-bin-uri
+- use: plugin-slack-bin-uri
   arguments: 
     CHANNEL: ci
     SLACK_TOKEN: "${slack}"
@@ -34,20 +34,6 @@ plugins:
   - BUILD_START
   - BUILD_FAIL
   - BUILD_SUCCESS
-
-stages: 
-- name: test
-  blueprints: 
-  - test_web
-  - test_api
-- name: release
-  blueprints: 
-  - release_web
-  - release_api
-- name: deploy
-  blueprints: 
-  - deploy_web
-  - deploy_api	
 `
 
 	var repositoryConfig config.Root
@@ -57,8 +43,8 @@ stages:
 	logo := string("image.png")
 	expectedRepositoryConfig := config.Root{
 		Project: &config.RootProject{
-			Logo:           &logo,
-			BlueprintsPath: "./blueprints",
+			Logo:       &logo,
+			ConfigPath: ".velocity",
 		},
 		Git: &config.RootGit{
 			Submodule: false,
@@ -78,26 +64,12 @@ stages:
 		},
 		Plugins: []*config.RootPlugin{
 			{
-				Use: "param-slack-bin-uri",
+				Use: "plugin-slack-bin-uri",
 				Arguments: map[string]string{
 					"CHANNEL":     "ci",
 					"SLACK_TOKEN": "${slack}",
 				},
 				Events: []string{"BUILD_START", "BUILD_FAIL", "BUILD_SUCCESS"},
-			},
-		},
-		Stages: []*config.RootStage{
-			{
-				Name:       "test",
-				Blueprints: []string{"test_web", "test_api"},
-			},
-			{
-				Name:       "release",
-				Blueprints: []string{"release_web", "release_api"},
-			},
-			{
-				Name:       "deploy",
-				Blueprints: []string{"deploy_web", "deploy_api"},
 			},
 		},
 	}
@@ -108,7 +80,7 @@ func TestRepositoryConfigUnmarshalLogoNil(t *testing.T) {
 	repositoryConfigYaml := `
 ---
 project: 
-  blueprintsPath: ./blueprints
+  configPath: .velocity
 git: 
   depth: 10
 
@@ -129,20 +101,6 @@ plugins:
   - BUILD_START
   - BUILD_FAIL
   - BUILD_SUCCESS
-
-stages: 
-- name: test
-  blueprints: 
-  - test_web
-  - test_api
-- name: release
-  blueprints: 
-  - release_web
-  - release_api
-- name: deploy
-  blueprints: 
-  - deploy_web
-  - deploy_api	
 `
 
 	var repositoryConfig config.Root
@@ -151,8 +109,8 @@ stages:
 	assert.Nil(t, err)
 	expectedRepositoryConfig := &config.Root{
 		Project: &config.RootProject{
-			Logo:           nil,
-			BlueprintsPath: "./blueprints",
+			Logo:       nil,
+			ConfigPath: ".velocity",
 		},
 		Git: &config.RootGit{
 			Submodule: false,
@@ -178,20 +136,6 @@ stages:
 					"SLACK_TOKEN": "${slack}",
 				},
 				Events: []string{"BUILD_START", "BUILD_FAIL", "BUILD_SUCCESS"},
-			},
-		},
-		Stages: []*config.RootStage{
-			{
-				Name:       "test",
-				Blueprints: []string{"test_web", "test_api"},
-			},
-			{
-				Name:       "release",
-				Blueprints: []string{"release_web", "release_api"},
-			},
-			{
-				Name:       "deploy",
-				Blueprints: []string{"deploy_web", "deploy_api"},
 			},
 		},
 	}

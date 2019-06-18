@@ -84,15 +84,6 @@ func unmarshalStep(rawMessage []byte) (Step, error) {
 				Type: "push",
 			},
 		}
-	case "blueprint":
-		s = &StepBlueprint{
-			BaseStep: BaseStep{
-				Type: "blueprint",
-			},
-		}
-		// case "plugin":
-		// 	s = NewPlugin()
-		// 	break
 	}
 
 	if s == nil {

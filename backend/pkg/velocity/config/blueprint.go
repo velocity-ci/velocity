@@ -57,12 +57,6 @@ func (t *Blueprint) UnmarshalJSON(b []byte) error {
 		t = handleBlueprintUnmarshalError(t, err)
 	}
 
-	// Deserialize Name TODO: remove
-	if _, ok := objMap["name"]; ok {
-		err = json.Unmarshal(*objMap["name"], &t.Name)
-		t = handleBlueprintUnmarshalError(t, err)
-	}
-
 	// Deserialize Description
 	if _, ok := objMap["description"]; ok {
 		err = json.Unmarshal(*objMap["description"], &t.Description)

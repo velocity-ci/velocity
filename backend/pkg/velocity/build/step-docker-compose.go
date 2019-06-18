@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
+
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 
@@ -175,13 +177,13 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 	if !success {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateFailed)
-			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSIError, "-> %s error", "\n"), serviceName)
+			fmt.Fprintf(writers[serviceName], output.ColorFmt(output.ANSIError, "-> %s error", "\n"), serviceName)
 
 		}
 	} else {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateSuccess)
-			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSISuccess, "-> %s success", "\n"), serviceName)
+			fmt.Fprintf(writers[serviceName], output.ColorFmt(output.ANSISuccess, "-> %s success", "\n"), serviceName)
 
 		}
 	}
