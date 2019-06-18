@@ -20,7 +20,7 @@ func GetLogger() *zap.Logger {
 			config = zap.NewProductionConfig()
 		}
 		config.OutputPaths = []string{
-			"vcli.log",
+			// "vcli.log",
 		}
 		logger, _ = config.Build()
 	})
