@@ -11,9 +11,9 @@ parameters:
 steps:
   - type: run
     description: Builds CLI binaries
-    image: golang:1.11
+    image: golang:1.12
     workingDir: backend
-    mountPoint: /go/src/github.com/velocity-ci/velocity
+    mountPoint: /app
     environment:
       GIT_DESCRIBE: ${GIT_DESCRIBE}
     command: ./scripts/build-cli.sh
