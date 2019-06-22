@@ -2,8 +2,8 @@ defmodule Architect.Builds.Build do
   @moduledoc """
   # Notes
   ## Important differences from PoC:
-  ### We don't store Git History or Tasks in the Architect's data-store:
-    * A build belongs to a Task, which belongs to a Commit, but we don't want to lose the Build if say the commit gets deleted on the repository.
+  ### We don't store Git History or Blueprints in the Architect's data-store:
+    * A build belongs to a Blueprint, which belongs to a Commit, but we don't want to lose the Build if say the commit gets deleted on the repository.
     * *=compound key
     Build:
       UUID:
@@ -13,12 +13,14 @@ defmodule Architect.Builds.Build do
       *CreatedAt
 
   """
+
   use Ecto.Schema
   import Ecto.Changeset
   alias Ecto.Changeset
   require Logger
   alias Architect.Accounts.User
   alias Architect.Projects.Project
+  alias Architect.Builds.Task
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -31,12 +33,13 @@ defmodule Architect.Builds.Build do
 
     field(:plan, :map)
 
-    field(:status, :string)
+    field(:status, :string, default: "waiting")
     field(:created_at, :utc_datetime)
     field(:updated_at, :utc_datetime)
     field(:started_at, :utc_datetime)
     field(:completed_at, :utc_datetime)
 
+    has_many(:tasks, Task)
     belongs_to(:created_by, User)
   end
 
@@ -51,7 +54,7 @@ defmodule Architect.Builds.Build do
       :task_name,
       :parameters,
       :created_by_id,
-      :status,
+      :status
     ])
     |> assoc_constraint(:project)
     |> assoc_constraint(:created_by)
@@ -60,20 +63,35 @@ defmodule Architect.Builds.Build do
   end
 
   def set_plan(
-    %Changeset{
-      valid?: true,
-      changes: %{
-        task_name: task_name,
-        commit_sha: commit_sha,
-        project_id: project_id,
-      }
-    } = changeset
-  ) do
+        %Changeset{
+          valid?: true,
+          changes: %{
+            task_name: task_name,
+            commit_sha: commit_sha,
+            project_id: project_id,
+            branch_name: branch_name
+          }
+        } = changeset
+      ) do
     project = Architect.Projects.get_project!(project_id)
-    plan = Architect.Projects.plan_blueprint(project, commit_sha, task_name)
+    plan = Architect.Projects.plan_blueprint(project, branch_name, commit_sha, task_name)
+
+    tasks =
+      Enum.concat(
+        Enum.map(plan["stages"], fn stage ->
+          Enum.map(stage["tasks"], fn {id, task} ->
+            %Task{
+              id: id
+            }
+            |> Task.changeset(%{plan: task})
+          end)
+        end)
+      )
+
     changeset
     |> put_change(:plan, plan)
     |> put_change(:id, plan["id"])
+    |> put_assoc(:tasks, tasks)
   end
 
   def set_plan(changeset), do: changeset

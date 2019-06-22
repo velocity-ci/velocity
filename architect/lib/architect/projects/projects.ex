@@ -191,8 +191,8 @@ defmodule Architect.Projects do
   @doc ~S"""
   Get the construction plan for a Blueprint on a commit sha
   """
-  def plan_blueprint(%Project{} = project, commit, blueprint_name),
-    do: call_repository(project, {:plan_blueprint, [commit, blueprint_name]})
+  def plan_blueprint(%Project{} = project, branch_name, commit, blueprint_name),
+    do: call_repository(project, {:plan_blueprint, [branch_name, commit, blueprint_name]}, false)
 
   ### Server
 
@@ -216,15 +216,20 @@ defmodule Architect.Projects do
   end
 
   @doc false
-  defp call_repository(project, callback, attempt \\ 1)
+  defp call_repository(project, callback, cache \\ true, attempt \\ 1)
 
-  defp call_repository(_, _, attempt) when attempt > 2, do: {:error, "Failed"}
+  defp call_repository(_, _, _, attempt) when attempt > 2, do: {:error, "Failed"}
 
-  defp call_repository(%Project{address: address, name: name} = project, {fun, args}, attempt) do
+  defp call_repository(
+         %Project{address: address, name: name} = project,
+         {fun, args},
+         cache,
+         attempt
+       ) do
     case Registry.lookup(@registry, "#{address}-#{name}") do
       [{repository, _}] ->
         try do
-          Architect.ETSCache.get(Repository, fun, [repository | args])
+          Architect.ETSCache.get(Repository, cache, fun, [repository | args])
         catch
           kind, reason ->
             Logger.warn(
@@ -235,7 +240,7 @@ defmodule Architect.Projects do
 
             Process.sleep(1_000)
 
-            call_repository(project, {fun, args}, attempt + 1)
+            call_repository(project, {fun, args}, attempt + 1, cache)
         end
 
       [] ->
@@ -243,7 +248,7 @@ defmodule Architect.Projects do
           "Failed to call builder #{address} #{name} on #{inspect(@registry)}; does not exist"
         )
 
-        call_repository(project, {fun, args}, attempt + 1)
+        call_repository(project, {fun, args}, attempt + 1, cache)
     end
   end
 end

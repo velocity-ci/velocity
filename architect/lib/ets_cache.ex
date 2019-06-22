@@ -7,10 +7,15 @@ defmodule Architect.ETSCache do
   Retrieve a cached value or apply the given function caching and returning
   the result.
   """
-  def get(mod, fun, args, opts \\ []) do
+  def get(mod, cache \\ true, fun, args, opts \\ []) do
+    ttl = Keyword.get(opts, :ttl, 3600)
+
+    if not cache do
+      cache_apply(mod, fun, args, ttl)
+    end
+
     case lookup(mod, fun, args) do
       nil ->
-        ttl = Keyword.get(opts, :ttl, 3600)
         cache_apply(mod, fun, args, ttl)
 
       result ->

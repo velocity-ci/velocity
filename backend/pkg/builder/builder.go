@@ -40,6 +40,7 @@ func (b *Builder) Stop() error {
 	return nil
 }
 func (b *Builder) Start() {
+	logging.GetLogger().Info("starting builder")
 	b.baseArchitectAddress = getArchitectAddress()
 	b.secret = getBuilderSecret()
 	b.http = &http.Client{

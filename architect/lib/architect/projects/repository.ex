@@ -92,8 +92,8 @@ defmodule Architect.Projects.Repository do
   @doc ~S"""
   Get the construction plan for a blueprint on a commit sha
   """
-  def plan_blueprint(repository, commit, blueprint_name) do
-    GenServer.call(repository, {:plan_blueprint, commit, blueprint_name})
+  def plan_blueprint(repository, branch_name, commit, blueprint_name) do
+    GenServer.call(repository, {:plan_blueprint, branch_name, commit, blueprint_name})
   end
 
   # Server
@@ -242,32 +242,29 @@ defmodule Architect.Projects.Repository do
         _from,
         %__MODULE{dir: dir, vcli: vcli} = state
       ) do
-
     default_branch = Branch.default(dir)
+
     %Porcelain.Result{err: nil, out: _, status: 0} =
       Porcelain.exec("git", ["checkout", default_branch.name], dir: dir)
 
-    project_config =
-      VCLI.project_config(dir, vcli)
+    project_config = VCLI.project_config(dir, vcli)
 
     {:reply, project_config, state}
   end
 
   @impl true
   def handle_call(
-        {:plan_blueprint, commit, blueprint_name},
+        {:plan_blueprint, branch_name, commit, blueprint_name},
         _from,
         %__MODULE{dir: dir, vcli: vcli} = state
       ) do
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["checkout", commit], dir: dir)
 
-      %Porcelain.Result{err: nil, out: _, status: 0} =
-        Porcelain.exec("git", ["checkout", commit], dir: dir)
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["clean", "-fd"], dir: dir)
 
-      %Porcelain.Result{err: nil, out: _, status: 0} =
-        Porcelain.exec("git", ["clean", "-fd"], dir: dir)
-
-    blueprint_plan =
-      VCLI.plan_blueprint(dir, vcli, blueprint_name)
+    blueprint_plan = VCLI.plan_blueprint(dir, vcli, branch_name, blueprint_name)
 
     {:reply, blueprint_plan, state}
   end

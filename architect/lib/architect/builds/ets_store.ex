@@ -12,11 +12,14 @@ defmodule Architect.Builds.ETSStore do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def put_stream_line(stream_id, line_no, payload), do: GenServer.call(__MODULE__, {:put_stream_line, stream_id, line_no, payload})
+  def put_stream_line(stream_id, line_no, payload),
+    do: GenServer.call(__MODULE__, {:put_stream_line, stream_id, line_no, payload})
 
-  def put_step_update(step_id, payload), do: GenServer.call(__MODULE__, {:put_step_update, step_id, payload})
+  def put_step_update(step_id, payload),
+    do: GenServer.call(__MODULE__, {:put_step_update, step_id, payload})
 
-  def put_task_update(task_id, payload), do: GenServer.call(__MODULE__, {:put_task_update, task_id, payload})
+  def put_task_update(task_id, payload),
+    do: GenServer.call(__MODULE__, {:put_task_update, task_id, payload})
 
   #
   # Server
@@ -33,23 +36,22 @@ defmodule Architect.Builds.ETSStore do
 
   @impl
   def handle_call({:put_stream_line, stream_id, line_no, payload}, _from, state) do
-    res = :ets.insert(:build_streams, {"#{stream_id}:#{line_no}", payload})
+    res = :ets.insert(:build_streams, {"#{stream_id}:#{line_no}", Poison.encode!(payload)})
 
     {:reply, res, state}
   end
 
   @impl
   def handle_call({:put_step_update, step_id, payload}, _from, state) do
-    res = :ets.insert(:build_steps, {step_id, payload})
+    res = :ets.insert(:build_steps, {step_id, Poison.encode!(payload)})
 
     {:reply, res, state}
   end
 
   @impl
   def handle_call({:put_task_update, task_id, payload}, _from, state) do
-    res = :ets.insert(:build_tasks, {task_id, payload})
+    res = :ets.insert(:build_tasks, {task_id, Poison.encode!(payload)})
 
     {:reply, res, state}
   end
-
 end

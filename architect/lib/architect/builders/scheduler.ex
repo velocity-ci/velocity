@@ -36,6 +36,7 @@ defmodule Architect.Builders.Scheduler do
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
     builds = Architect.Builds.list_running_builds()
+
     Enum.each(builds, fn b ->
       changeset = Architect.Builds.Build.changeset(b, %{status: "waiting"})
       {:ok, _b} = Architect.Repo.update(changeset)
@@ -54,9 +55,45 @@ defmodule Architect.Builders.Scheduler do
   end
 
   def handle_info(:poll_builds, state) do
-    Logger.debug("checking for waiting builds")
+    Logger.debug("checking for tasks")
+    builds = Architect.Builds.list_waiting_builds()
+
+    Enum.each(builds, fn build ->
+      build.plan["stages"]
+      |> Stream.with_index(1)
+      |> Enum.each(fn {stage, i} ->
+        # only schedule one waiting stage from the build
+        # if stage["status"] == "waiting" do
+        Enum.each(stage["tasks"], fn {_task_id, task} ->
+          # if task["status"] == "waiting" do
+          Logger.debug("scheduling task: #{task["id"]} from stage: #{i} from build: #{build.id}")
+
+          builders = Presence.list()
+
+          Enum.each(builders, fn {id, %{metas: [metas]}} ->
+            Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
+
+            # if metas.status == "ready" do
+            IO.inspect(task)
+            send(metas.socket, {build, task})
+            # end
+
+            # changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
+            # {:ok, _b} = Architect.Repo.update(changeset)
+          end)
+
+          # end
+        end)
+
+        # end
+      end)
+
+      # update build plan with new statuses
+    end)
+
+    # Logger.debug("checking for waiting builds")
     # put TaskIDs from waiting builds into ETS
-    Logger.debug("checking for waiting tasks")
+    # Logger.debug("checking for waiting tasks")
     # builds = Architect.Builds.list_waiting_builds()
     # TODO: Get waiting tasks from ETS
     # tasks = Architect.Builds.ETSStore.get_pending_tasks()

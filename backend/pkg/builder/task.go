@@ -20,7 +20,7 @@ const WorkspaceDir = "/opt/velocityci"
 
 // Builder -> Architect (Build events)
 var (
-	eventBuildPrefix = fmt.Sprintf("%sbuild-", EventPrefix)
+	eventBuildPrefix = fmt.Sprintf("%stask-", EventPrefix)
 )
 
 type ArchitectProject struct {
@@ -33,7 +33,7 @@ type KnownHost struct {
 	Entry string `json:"entry"`
 }
 
-type Build struct {
+type Task struct {
 	*baseJob
 
 	Project   ArchitectProject `json:"project"`
@@ -45,20 +45,20 @@ type Build struct {
 	Parameters map[string]string `json:"parameters"`
 }
 
-func NewBuild() *Build {
-	return &Build{
+func NewTask() *Task {
+	return &Task{
 		baseJob: &baseJob{
-			Name: "build",
+			Name: "task",
 		},
 	}
 }
 
-func (j *Build) Parse(payloadBytes []byte) error {
+func (j *Task) Parse(payloadBytes []byte) error {
 	return json.Unmarshal(payloadBytes, j)
 }
 
-func (j *Build) Do(ws *phoenix.Client) error {
-	logging.GetLogger().Info("running build", zap.String("buildID", j.ID))
+func (j *Task) Do(ws *phoenix.Client) error {
+	logging.GetLogger().Info("running task", zap.String("taskID", j.ID))
 
 	emitter := NewEmitter(ws)
 	backupResolver := NewParameterResolver(j.Parameters)
@@ -76,12 +76,12 @@ func (j *Build) Do(ws *phoenix.Client) error {
 	if strings.HasPrefix(wd, WorkspaceDir) {
 		os.RemoveAll(wd)
 	}
-	logging.GetLogger().Info("completed build", zap.String("buildID", j.ID))
+	logging.GetLogger().Info("completed task", zap.String("taskID", j.ID))
 	os.Chdir(WorkspaceDir)
 	return nil
 }
 
-func (j *Build) Stop(ws *phoenix.Client) error {
+func (j *Task) Stop(ws *phoenix.Client) error {
 
 	return nil
 }

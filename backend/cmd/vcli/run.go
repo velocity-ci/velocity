@@ -4,10 +4,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var runPlanOnly bool
+var (
+	runPlanOnly bool
+	runBranch   string
+)
 
 func init() {
 	runCmd.PersistentFlags().BoolVar(&runPlanOnly, "plan-only", false, "Only output the build plan")
+	runCmd.PersistentFlags().StringVar(&runBranch, "branch", "", "The branch to run with")
 	rootCmd.AddCommand(runCmd)
 }
 

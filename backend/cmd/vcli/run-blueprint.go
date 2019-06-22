@@ -32,9 +32,15 @@ var runBlueprintCmd = &cobra.Command{
 			return err
 		}
 
-		branch, err := git.CurrentBranch(root.Path)
+		branch, err := cmd.Flags().GetString("branch")
 		if err != nil {
 			return err
+		}
+		if branch == "" {
+			branch, err = git.CurrentBranch(root.Path)
+			if err != nil {
+				return err
+			}
 		}
 
 		constructionPlan, err := build.NewConstructionPlan(
