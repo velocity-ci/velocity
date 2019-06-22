@@ -24,4 +24,4 @@ serve:
 	--workdir /app \
 	-p 8080:8080 \
 	vjftw/vuepress \
-	dev -h 0.0.0.0
+	dev --host 0.0.0.0
