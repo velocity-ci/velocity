@@ -20,5 +20,9 @@ defmodule Architect.Builders.Presence do
     })
   end
 
+  def update_status(%Socket{assigns: %{id: id}, channel_pid: pid}, status) do
+    Presence.update(pid, topic(), id, fn x -> Map.put(x, :status, status) end)
+  end
+
   def list(), do: Presence.list(topic())
 end

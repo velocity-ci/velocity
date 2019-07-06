@@ -123,6 +123,7 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 func (t *Task) Execute(emitter Emitter) error {
 	taskWriter := emitter.GetTaskWriter(t)
 	defer taskWriter.Close()
+	taskWriter.SetStatus(StateBuilding)
 	fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSIInfo, "-> running task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
 	totalSteps := len(t.Steps)
 	for i, step := range t.Steps {

@@ -91,7 +91,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		return err
 	}
 	defer writer.Close()
-	writer.SetStatus(StateRunning)
+	writer.SetStatus(StateBuilding)
 	fmt.Fprintf(writer, "\r")
 
 	// Clone repository if necessary

@@ -15,6 +15,7 @@ defmodule Architect.Builds.Stage do
     belongs_to(:build, Build)
     has_many(:tasks, Task)
 
+    field(:index, :integer)
     field(:status, :string, default: "waiting")
     field(:created_at, :utc_datetime)
     field(:updated_at, :utc_datetime)
@@ -22,15 +23,26 @@ defmodule Architect.Builds.Stage do
     field(:completed_at, :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  """
   def create_changeset(%__MODULE__{} = stage, attrs) do
     stage
     |> cast(attrs, [
-      :id
+      :id,
+      :index
     ])
     |> assoc_constraint(:build)
-    |> validate_required([:id])
+    |> validate_required([:id, :index])
     |> parse_tasks(attrs["tasks"], attrs["index"])
+  end
+
+  @doc """
+  """
+  def update_changeset(%__MODULE__{} = stage, attrs) do
+    stage
+    |> cast(attrs, [
+      :status
+    ])
   end
 
   defp parse_tasks(

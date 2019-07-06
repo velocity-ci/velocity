@@ -33,8 +33,8 @@ defmodule Architect.Builds.Task do
   end
 
   @doc false
-  def update_changeset(%__MODULE__{} = build, attrs) do
-    build
+  def update_changeset(%__MODULE__{} = task, attrs) do
+    task
     |> cast(attrs, [
       :plan,
       :status

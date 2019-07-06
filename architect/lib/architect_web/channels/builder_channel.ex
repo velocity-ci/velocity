@@ -23,8 +23,8 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Builder will say when it is 'ready' to request any waiting jobs.
   """
-  def handle_in("#{@event_prefix}builder-ready", payload, socket) do
-    # IO.inspect(Architect.Builds.list_builds())
+  def handle_in("#{@event_prefix}builder-ready", _payload, socket) do
+    {:ok, _} = Builders.update_status(socket, :ready)
 
     {:reply, :ok, socket}
   end
@@ -60,9 +60,9 @@ defmodule ArchitectWeb.BuilderChannel do
   Handle build update-stream events.
   """
   def handle_in("#{@event_prefix}task-task:update", payload, socket) do
-    Architect.Builds.ETSStore.put_task_update(
+    Architect.Builds.update_task(
       payload["id"],
-      payload
+      payload["state"]
     )
 
     {:reply, :ok, socket}
@@ -88,6 +88,8 @@ defmodule ArchitectWeb.BuilderChannel do
       commit: b.commit_sha,
       parameters: b.parameters
     })
+
+    {:ok, _} = Builders.update_status(socket, :busy)
 
     {:noreply, socket}
   end

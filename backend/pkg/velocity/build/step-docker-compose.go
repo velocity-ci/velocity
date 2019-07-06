@@ -115,7 +115,7 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 
 	for _, serviceName := range serviceOrder {
 		writer := writers[serviceName]
-		writer.SetStatus(StateRunning)
+		writer.SetStatus(StateBuilding)
 		s := contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig

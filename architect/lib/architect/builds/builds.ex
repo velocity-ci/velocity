@@ -3,11 +3,13 @@ defmodule Architect.Builds do
   The Builds context.
   """
 
+  require Logger
   import Ecto.Query, warn: false
   alias Architect.Repo
 
   alias Architect.Builds.Build
   alias Architect.Builds.Task
+  alias Architect.Builds.Stage
 
   @doc """
   Returns the list of builds.
@@ -62,7 +64,75 @@ defmodule Architect.Builds do
       status: "building"
     })
     |> Repo.insert()
+  end
 
-    # TODO: put tasks from construction plan into ETS
+  defp task_complete(task) do
+    stage =
+      Ecto.assoc(task, :stage)
+      |> Repo.one()
+      |> Repo.preload(:tasks)
+
+    task_statuses =
+      Enum.map(stage.tasks, fn task ->
+        task.status
+      end)
+
+    stage_complete = Enum.all?(task_statuses, fn x -> x == "failed" or x == "succeeded" end)
+
+    case stage_complete do
+      true ->
+        stage_complete(stage, task_statuses)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp stage_complete(stage, task_statuses) do
+    stage_succeeded = Enum.all?(task_statuses, fn x -> x == "succeeded" end)
+    state = if stage_succeeded, do: "succeeded", else: "failed"
+
+    Stage.update_changeset(stage, %{status: state})
+    |> Repo.update()
+
+    build =
+      Ecto.assoc(stage, :build)
+      |> Repo.one()
+      |> Repo.preload(:stages)
+
+    cond do
+      length(build.stages) <= stage.index + 1 ->
+        build_complete(build, state)
+
+      true ->
+        next_stage =
+          build.stages
+          |> Enum.at(stage.index + 1)
+
+        Enum.each(next_stage.tasks, fn task ->
+          Task.update_changeset(task, %{status: "ready"})
+          |> Repo.update()
+        end)
+    end
+  end
+
+  defp build_complete(build, state) do
+    Build.update_changeset(build, %{status: state})
+    |> Repo.update()
+  end
+
+  def update_task(id, status) do
+    {:ok, task} =
+      Repo.get!(Task, id)
+      |> Task.update_changeset(%{status: status})
+      |> Repo.update()
+
+    case status do
+      status when status in ["failed", "succeeded"] ->
+        task_complete(task)
+
+      _ ->
+        :ok
+    end
   end
 end

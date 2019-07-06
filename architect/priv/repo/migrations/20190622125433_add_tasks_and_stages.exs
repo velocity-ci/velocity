@@ -7,6 +7,7 @@ defmodule Architect.Repo.Migrations.AddTasks do
       add(:build_id, references(:builds, type: :uuid))
 
       add(:status, :string)
+      add(:index, :integer)
       add(:created_at, :utc_datetime)
       add(:updated_at, :utc_datetime)
       add(:started_at, :utc_datetime)

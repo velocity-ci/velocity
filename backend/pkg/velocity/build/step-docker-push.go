@@ -34,7 +34,7 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 		return err
 	}
 	defer writer.Close()
-	writer.SetStatus(StateRunning)
+	writer.SetStatus(StateBuilding)
 	fmt.Fprintf(writer, "\r")
 
 	for _, t := range dP.Tags {

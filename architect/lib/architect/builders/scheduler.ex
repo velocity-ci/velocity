@@ -72,10 +72,9 @@ defmodule Architect.Builders.Scheduler do
           |> Architect.Repo.preload(:project)
 
         send(metas.socket, {build, task})
+        changeset = Architect.Builds.Task.update_changeset(task, %{status: "building"})
+        {:ok, _t} = Architect.Repo.update(changeset)
       end
-
-      changeset = Architect.Builds.Task.update_changeset(task, %{status: "building"})
-      {:ok, _t} = Architect.Repo.update(changeset)
     end)
   end
 

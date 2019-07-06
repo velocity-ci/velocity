@@ -22,16 +22,16 @@ type Step interface {
 
 // Step state constants
 const (
-	StateWaiting = "waiting"
-	StateRunning = "running"
-	StateSuccess = "success"
-	StateFailed  = "failed"
+	StateWaiting  = "waiting"
+	StateBuilding = "building"
+	StateSuccess  = "succeeded"
+	StateFailed   = "failed"
 )
 
 //
 // Event constants
 // for Task_* we can add a modifier to specify *which* task e.g. TASK_COMPLETE-<task_name>
-// for Step_* we can add a modifier to specify *which* step (in the currently running task) e.g. STEP_COMPLETE-<step_name>
+// for Step_* we can add a modifier to specify *which* step (in the currently building task) e.g. STEP_COMPLETE-<step_name>
 const (
 	EventBuildStart    = "BUILD_START"
 	EventTaskStart     = "TASK_START"
