@@ -10,9 +10,6 @@ defmodule Architect.Repo.Migrations.AddBuilds do
       add(:task_name, :string)
       add(:parameters, :map)
 
-      # Construction Plan and Final State
-      add(:plan, :map)
-
       add(:status, :string)
       add(:created_at, :utc_datetime)
       add(:updated_at, :utc_datetime)

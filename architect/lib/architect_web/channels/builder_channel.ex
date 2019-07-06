@@ -71,7 +71,7 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Starts a task on a builder.
   """
-  def handle_info({b = %Architect.Builds.Build{}, t = %{}}, socket) do
+  def handle_info({b = %Architect.Builds.Build{}, t = %Architect.Builds.Task{}}, socket) do
     push(socket, "#{@event_prefix}job-do-task", %{
       id: b.id,
       project: %{
@@ -83,7 +83,7 @@ defmodule ArchitectWeb.BuilderChannel do
         %{
           # entry: ""
         },
-      task: t,
+      task: t.plan,
       branch: b.branch_name,
       commit: b.commit_sha,
       parameters: b.parameters

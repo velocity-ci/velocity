@@ -5,12 +5,12 @@ defmodule Architect.Builds.Task do
 
   use Ecto.Schema
   import Ecto.Changeset
-  alias Architect.Builds.Build
+  alias Architect.Builds.Stage
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "tasks" do
-    belongs_to(:build, Build)
+    belongs_to(:stage, Stage)
 
     field(:plan, :map)
 
@@ -22,12 +22,22 @@ defmodule Architect.Builds.Task do
   end
 
   @doc false
-  def changeset(%__MODULE__{} = task, attrs) do
+  def create_changeset(%__MODULE__{} = task, attrs) do
     task
     |> cast(attrs, [
-      :plan
+      :plan,
+      :status
     ])
-    |> assoc_constraint(:build)
+    |> assoc_constraint(:stage)
     |> validate_required([:plan])
+  end
+
+  @doc false
+  def update_changeset(%__MODULE__{} = build, attrs) do
+    build
+    |> cast(attrs, [
+      :plan,
+      :status
+    ])
   end
 end

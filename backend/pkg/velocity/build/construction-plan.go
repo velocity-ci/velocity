@@ -10,6 +10,8 @@ import (
 
 // Stage represents a set of Tasks that can run in parallel, therefore Tasks is a map[TaskID]Task.
 type Stage struct {
+	ID     string `json:"id"`
+	Index  uint16 `json:"index"`
 	Status string `json:"status"`
 	// k: Task.ID
 	Tasks map[string]*Task `json:"tasks"`
@@ -47,6 +49,9 @@ func NewConstructionPlan(
 		ID: uuid.NewV4().String(),
 		Stages: []*Stage{
 			{
+				ID:     uuid.NewV4().String(),
+				Index:  0,
+				Status: StateWaiting,
 				Tasks: map[string]*Task{
 					task.ID: task,
 				},

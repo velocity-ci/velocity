@@ -22,6 +22,7 @@ type Task struct {
 	Docker       TaskDocker       `json:"docker"`
 	Steps        []Step           `json:"steps"`
 
+	Status      string     `json:"status"`
 	StartedAt   *time.Time `json:"startedAt"`
 	UpdatedAt   *time.Time `json:"updatedAt"`
 	CompletedAt *time.Time `json:"completedAt"`
@@ -72,6 +73,12 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 				}
 			}
 		}
+	}
+
+	// Deserialize ID
+	err = json.Unmarshal(*objMap["status"], &t.Status)
+	if err != nil {
+		return err
 	}
 
 	// Deserialize StartedAt
@@ -180,6 +187,7 @@ func NewTask(
 		ProjectRoot: projectRoot,
 		Steps:       steps,
 		parameters:  map[string]*Parameter{},
+		Status:      StateWaiting,
 	}
 }
 

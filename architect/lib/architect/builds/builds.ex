@@ -7,6 +7,7 @@ defmodule Architect.Builds do
   alias Architect.Repo
 
   alias Architect.Builds.Build
+  alias Architect.Builds.Task
 
   @doc """
   Returns the list of builds.
@@ -20,26 +21,22 @@ defmodule Architect.Builds do
   end
 
   @doc """
-  Returns the list of waiting builds.
+  Returns the list of ready tasks.
   """
-  def list_waiting_builds do
+  def list_ready_tasks do
     Repo.all(
-      from b in Build,
-        where: b.status == "waiting",
-        join: p in assoc(b, :project),
-        preload: [project: p]
+      from t in Task,
+        where: t.status == "ready"
     )
   end
 
   @doc """
-  Returns the list of running builds.
+  Returns the list of building tasks.
   """
-  def list_running_builds do
+  def list_building_tasks do
     Repo.all(
-      from b in Build,
-        where: b.status == "running",
-        join: p in assoc(b, :project),
-        preload: [project: p]
+      from t in Task,
+        where: t.status == "building"
     )
   end
 
@@ -55,14 +52,14 @@ defmodule Architect.Builds do
   """
   def create_build(user, project, branch_name, commit_sha, task_name, parameters \\ %{}) do
     %Build{}
-    |> Build.changeset(%{
+    |> Build.create_changeset(%{
       project_id: project.id,
       branch_name: branch_name,
       commit_sha: commit_sha,
       task_name: task_name,
       parameters: parameters,
       created_by_id: user.id,
-      status: "waiting"
+      status: "building"
     })
     |> Repo.insert()
 

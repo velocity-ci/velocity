@@ -28,6 +28,8 @@ If you wish to use your host elixir/otp.
 Dev internal:
 
 ```
+iex -S mix phx.server
+
 {:ok, u} = Architect.Accounts.create_user(%{username: "admin", password: "admin"})
 {:ok, {p, e}} = Architect.Projects.create_project(u, "https://github.com/velocity-ci/velocity.git")
 
