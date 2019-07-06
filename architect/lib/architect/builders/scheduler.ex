@@ -62,7 +62,6 @@ defmodule Architect.Builders.Scheduler do
       Logger.debug("scheduling task: #{task.id}")
 
       if metas.status == :ready do
-        # IO.inspect(task)
         stage =
           Ecto.assoc(task, :stage)
           |> Architect.Repo.one()
@@ -75,8 +74,8 @@ defmodule Architect.Builders.Scheduler do
         send(metas.socket, {build, task})
       end
 
-      # changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
-      # {:ok, _b} = Architect.Repo.update(changeset)
+      changeset = Architect.Builds.Task.update_changeset(task, %{status: "building"})
+      {:ok, _t} = Architect.Repo.update(changeset)
     end)
   end
 
@@ -89,25 +88,6 @@ defmodule Architect.Builders.Scheduler do
       task
       |> schedule_task()
     end)
-
-    # Logger.debug("checking for waiting builds")
-    # put TaskIDs from waiting builds into ETS
-    # Logger.debug("checking for waiting tasks")
-    # builds = Architect.Builds.list_waiting_builds()
-    # TODO: Get waiting tasks from ETS
-    # tasks = Architect.Builds.ETSStore.get_pending_tasks()
-    # Enum.each(tasks, fn t ->
-    #   Logger.debug("attempting to schedule task:#{t.id}")
-    #   builders = Presence.list()
-    #   Enum.each(builders, fn {id, %{metas: [metas]}} ->
-    #     Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
-    #     # TODO: if builder is ready
-    #     # send(metas.socket, b)
-    #     # changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
-    #     # {:ok, _b} = Architect.Repo.update(changeset)
-
-    #   end)
-    # end)
 
     Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
     {:noreply, state}
