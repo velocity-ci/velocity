@@ -50,8 +50,9 @@ A build-time _Blueprint_ w/ any further configuration/plugins from the root `.ve
 
 1. `waiting`: not ready for building as it is waiting for previous tasks (in stages) to finish.
 2. `ready`: ready for building, thus can be scheduled to builders.
-3. `building`: building in progress on a builder. Returns to `ready` state if interrupted.
-4. `succeeded`/`failed` final completed state.
+3. `scheduled`: sent to a builder.
+4. `building`: building in progress on a builder. Returns to `ready` state if interrupted.
+5. `succeeded`/`failed` final completed state.
 
 ### Step
 
