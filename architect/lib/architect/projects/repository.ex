@@ -128,7 +128,6 @@ defmodule Architect.Projects.Repository do
         Logger.error("Failed verifying #{address} in #{repo_dir}. #{err}: #{out}")
         {:noreply, %__MODULE__{state | verified: false}}
 
-
       :error ->
         Logger.error("Failed verifying #{address} in #{repo_dir}.")
         {:noreply, %__MODULE__{state | verified: false}}
@@ -246,13 +245,12 @@ defmodule Architect.Projects.Repository do
         _from,
         %__MODULE{dir: dir, vcli: vcli} = state
       ) do
-
     default_branch = Branch.default(dir)
+
     %Porcelain.Result{err: nil, out: _, status: 0} =
       Porcelain.exec("git", ["checkout", default_branch.name], dir: dir)
 
-    project_config =
-      VCLI.project_config(dir, vcli)
+    project_config = VCLI.project_config(dir, vcli)
 
     {:reply, project_config, state}
   end
@@ -263,15 +261,13 @@ defmodule Architect.Projects.Repository do
         _from,
         %__MODULE{dir: dir, vcli: vcli} = state
       ) do
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["checkout", commit], dir: dir)
 
-      %Porcelain.Result{err: nil, out: _, status: 0} =
-        Porcelain.exec("git", ["checkout", commit], dir: dir)
+    %Porcelain.Result{err: nil, out: _, status: 0} =
+      Porcelain.exec("git", ["clean", "-fd"], dir: dir)
 
-      %Porcelain.Result{err: nil, out: _, status: 0} =
-        Porcelain.exec("git", ["clean", "-fd"], dir: dir)
-
-    task_plan =
-      VCLI.build_task(dir, vcli, task_name)
+    task_plan = VCLI.build_task(dir, vcli, task_name)
 
     {:reply, task_plan, state}
   end

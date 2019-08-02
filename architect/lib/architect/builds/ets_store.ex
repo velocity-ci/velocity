@@ -12,11 +12,14 @@ defmodule Architect.Builds.ETSStore do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def put_stream_line(stream_id, line_no, payload), do: GenServer.call(__MODULE__, {:put_stream_line, stream_id, line_no, payload})
+  def put_stream_line(stream_id, line_no, payload),
+    do: GenServer.call(__MODULE__, {:put_stream_line, stream_id, line_no, payload})
 
-  def put_step_update(step_id, payload), do: GenServer.call(__MODULE__, {:put_step_update, step_id, payload})
+  def put_step_update(step_id, payload),
+    do: GenServer.call(__MODULE__, {:put_step_update, step_id, payload})
 
-  def put_task_update(task_id, payload), do: GenServer.call(__MODULE__, {:put_task_update, task_id, payload})
+  def put_task_update(task_id, payload),
+    do: GenServer.call(__MODULE__, {:put_task_update, task_id, payload})
 
   #
   # Server
@@ -51,5 +54,4 @@ defmodule Architect.Builds.ETSStore do
 
     {:reply, res, state}
   end
-
 end

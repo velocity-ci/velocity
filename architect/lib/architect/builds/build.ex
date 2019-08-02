@@ -54,7 +54,7 @@ defmodule Architect.Builds.Build do
       :task_name,
       :parameters,
       :created_by_id,
-      :status,
+      :status
     ])
     |> assoc_constraint(:project)
     |> assoc_constraint(:created_by)
@@ -63,18 +63,19 @@ defmodule Architect.Builds.Build do
   end
 
   def set_plan(
-    %Changeset{
-      valid?: true,
-      changes: %{
-        task_name: task_name,
-        commit_sha: commit_sha,
-        project_id: project_id,
-      }
-    } = changeset
-  ) do
+        %Changeset{
+          valid?: true,
+          changes: %{
+            task_name: task_name,
+            commit_sha: commit_sha,
+            project_id: project_id
+          }
+        } = changeset
+      ) do
     project = Architect.Projects.get_project!(project_id)
     plan = Architect.Projects.plan_task(project, commit_sha, task_name)
     IO.inspect(plan)
+
     changeset
     |> put_change(:plan, plan)
   end
@@ -93,7 +94,6 @@ defmodule Architect.Builds.Step do
 
     embeds_one(:streams, {:map, Architect.Builds.Stream})
   end
-
 end
 
 defmodule Architect.Builds.Stream do
@@ -109,5 +109,4 @@ defmodule Architect.Builds.Stream do
     # Can do plugins for schemes like ets://, file://, s3://, dynamodb://, mongodb:// etc.
     field(:source, :string)
   end
-
 end

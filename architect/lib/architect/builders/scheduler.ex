@@ -37,6 +37,7 @@ defmodule Architect.Builders.Scheduler do
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
     builds = Architect.Builds.list_running_builds()
+
     Enum.each(builds, fn b ->
       changeset = Architect.Builds.Build.changeset(b, %{status: "waiting"})
       {:ok, _b} = Architect.Repo.update(changeset)
@@ -59,15 +60,16 @@ defmodule Architect.Builders.Scheduler do
   def handle_info(:poll_builds, state) do
     Logger.debug("checking for waiting builds")
     builds = Architect.Builds.list_waiting_builds()
+
     Enum.each(builds, fn b ->
       Logger.debug("attempting to schedule build:#{b.id}")
       builders = Presence.list()
+
       Enum.each(builders, fn {id, %{metas: [metas]}} ->
         Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
         send(metas.socket, b)
         changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
         {:ok, _b} = Architect.Repo.update(changeset)
-
       end)
     end)
 

@@ -1,4 +1,4 @@
-port module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession, update, view)
+\port module Page.Home exposing (Model, Msg, init, subscriptions, toContext, toSession, update, view)
 
 import Api exposing (Cred)
 import Array exposing (Array)

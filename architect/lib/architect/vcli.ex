@@ -11,7 +11,8 @@ defmodule Architect.VCLI do
 
   def project_config(dir, opts), do: cmd(dir, opts, ["info", "--machine-readable"])
 
-  def build_task(dir, opts, task_name), do: cmd(dir, opts, ["run", task_name, "--plan-only", "--machine-readable"])
+  def build_task(dir, opts, task_name),
+    do: cmd(dir, opts, ["run", task_name, "--plan-only", "--machine-readable"])
 
   defp cmd(dir, %{bin: bin, timeout: timeout, log_errors: log_errors}, cmd) when is_list(cmd) do
     try do

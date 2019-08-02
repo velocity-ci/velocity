@@ -22,7 +22,7 @@ defmodule Architect.Builders do
 
   def init(:ok) do
     children = [
-#      Scheduler,
+      #      Scheduler,
       StageScheduler,
       Presence
     ]
