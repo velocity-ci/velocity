@@ -59,7 +59,8 @@ type Socket struct {
 	interlock bool
 }
 
-func (s Socket) IsConnected() bool {
+func (s *Socket) IsConnected() bool {
+
 	return s.connected
 }
 
@@ -183,7 +184,7 @@ func (s *Socket) handleMessage(m *PhoenixMessage) {
 
 func recoverWSReadJSON(message []byte) {
 	if r := recover(); r != nil {
-		logging.GetLogger().Warn("recieved websocket message", zap.ByteString("message", message))
+		logging.GetLogger().Warn("received websocket message", zap.ByteString("message", message))
 		fmt.Println(r)
 	}
 }

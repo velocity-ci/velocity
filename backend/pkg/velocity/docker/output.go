@@ -8,22 +8,10 @@ import (
 	"strings"
 )
 
-const (
-	ANSISuccess = "\x1b[1m\x1b[49m\x1b[32m"
-	ANSIWarn    = "\x1b[1m\x1b[49m\x1b[33m"
-	ANSIError   = "\x1b[1m\x1b[49m\x1b[31m"
-	ANSIInfo    = "\x1b[1m\x1b[49m\x1b[34m"
-)
-
-func ColorFmt(ansiColor, format string) string {
-	return fmt.Sprintf("%s%s\x1b[0m", ansiColor, format)
-}
-
 func HandleOutput(body io.ReadCloser, censored []string, writer io.Writer) {
 	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
-
 		o := ""
 		if strings.Contains(string(allBytes), "status") {
 			o = handlePullPushOutput(allBytes)
@@ -47,7 +35,11 @@ func handleLogOutput(b []byte) string {
 	if len(b) <= 8 {
 		return ""
 	}
-	return string(b[8:])
+	line := string(b[8:])
+	if !strings.Contains(line, "\r") {
+		return fmt.Sprintf("%s\n", line)
+	}
+	return line
 }
 
 var imageIDProgress = map[string]string{}
@@ -76,8 +68,9 @@ func handlePullPushOutput(b []byte) string {
 	}
 	if strings.Contains(o.Status, "Downloaded newer image") ||
 		strings.Contains(o.Status, "Pulling from") ||
+		strings.Contains(o.Status, "Image is up to date") ||
 		strings.Contains(o.Status, "Pull complete") {
-		return s
+		return fmt.Sprintf("%s\n", s)
 	}
 
 	return fmt.Sprintf("%s\r", s)

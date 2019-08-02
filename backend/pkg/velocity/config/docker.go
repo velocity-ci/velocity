@@ -1,10 +1,10 @@
 package config
 
-type TaskDocker struct {
-	Registries []TaskDockerRegistry `json:"registries"`
+type BlueprintDocker struct {
+	Registries []BlueprintDockerRegistry `json:"registries"`
 }
 
-type TaskDockerRegistry struct {
+type BlueprintDockerRegistry struct {
 	Address   string            `json:"address"`
 	Use       string            `json:"use"`
 	Arguments map[string]string `json:"arguments"`

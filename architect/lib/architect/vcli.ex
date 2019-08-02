@@ -11,6 +11,30 @@ defmodule Architect.VCLI do
 
   def project_config(dir, opts), do: cmd(dir, opts, ["info", "--machine-readable"])
 
+  def plan_blueprint(dir, opts, branch_name, blueprint_name) do
+    cmd(dir, opts, [
+      "run",
+      "blueprint",
+      "--plan-only",
+      "--machine-readable",
+      "--branch",
+      branch_name,
+      blueprint_name
+    ])
+  end
+
+  def plan_pipeline(dir, opts, branch_name, pipeline_name) do
+    cmd(dir, opts, [
+      "run",
+      "pipeline",
+      "--plan-only",
+      "--machine-readable",
+      "--branch",
+      branch_name,
+      pipeline_name
+    ])
+  end
+
   def build_task(dir, opts, task_name),
     do: cmd(dir, opts, ["run", task_name, "--plan-only", "--machine-readable"])
 

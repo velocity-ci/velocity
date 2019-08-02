@@ -10,12 +10,6 @@ defmodule Architect.Repo.Migrations.AddBuilds do
       add(:task_name, :string)
       add(:parameters, :map)
 
-      # Task Plan
-      add(:plan, :map)
-
-      # Final state (array of steps w/ streams and stream output sources)
-      add(:steps, {:array, :map})
-
       add(:status, :string)
       add(:created_at, :utc_datetime)
       add(:updated_at, :utc_datetime)

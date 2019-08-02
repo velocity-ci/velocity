@@ -7,15 +7,19 @@ import (
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 )
 
-type Step interface {
-}
+type Step interface{}
 
 type BaseStep struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
 }
 
-type StepSetup struct {
+type StepSetup struct{}
+
+type StepBlueprint struct {
+	BaseStep
+	Name         string `json:"name"`
+	IgnoreErrors string `json:"ignoreErrors"`
 }
 
 type StepDockerRun struct {
@@ -80,9 +84,6 @@ func unmarshalStep(rawMessage []byte) (Step, error) {
 				Type: "push",
 			},
 		}
-		// case "plugin":
-		// 	s = NewPlugin()
-		// 	break
 	}
 
 	if s == nil {

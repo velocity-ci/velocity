@@ -14,6 +14,8 @@ defmodule Architect.Builders do
 
   def track(socket), do: Presence.track(socket)
 
+  def update_status(socket, status), do: Presence.update_status(socket, status)
+
   def list(), do: Presence.list()
 
   def history(), do: Scheduler.history()

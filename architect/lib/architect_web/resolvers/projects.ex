@@ -34,12 +34,12 @@ defmodule ArchitectWeb.Resolvers.Projects do
     {:ok, Projects.list_branches_for_commit(project, sha)}
   end
 
-  def list_tasks_for_commit(%Commit{sha: sha}, _args, %{context: %{project: project}}) do
-    {:ok, Projects.list_tasks(project, {:sha, sha})}
+  def list_blueprints_for_commit(%Commit{sha: sha}, _args, %{context: %{project: project}}) do
+    {:ok, Projects.list_blueprints(project, {:sha, sha})}
   end
 
-  def list_tasks_for_branch(%Branch{name: branch}, _args, %{context: %{project: project}}) do
-    {:ok, Projects.list_tasks(project, {:branch, branch})}
+  def list_blueprints_for_branch(%Branch{name: branch}, _args, %{context: %{project: project}}) do
+    {:ok, Projects.list_blueprints(project, {:branch, branch})}
   end
 
   def list_branches_for_project(pagination_args, %{context: %{project: project}}) do

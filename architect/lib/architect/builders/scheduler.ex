@@ -1,6 +1,6 @@
 defmodule Architect.Builders.Scheduler do
   @moduledoc """
-  This manages and schedules Builds on Builders. Builder state is held in memory. We should put this onto ERTS/Mnesia.
+  This manages and schedules Tasks on Builders. Builder state is held in memory. We should put this onto ETS/Mnesia.
   """
   alias Architect.Builders.Presence
   alias Phoenix.PubSub
@@ -32,7 +32,6 @@ defmodule Architect.Builders.Scheduler do
   #
   # Server
   #
-  @impl
   def init(state) do
     Logger.info("Running #{Atom.to_string(__MODULE__)}")
 
@@ -40,8 +39,12 @@ defmodule Architect.Builders.Scheduler do
 
     Enum.each(builds, fn b ->
       changeset = Architect.Builds.Build.changeset(b, %{status: "waiting"})
+    tasks = Architect.Builds.list_building_tasks()
+
+    Enum.each(tasks, fn t ->
+      changeset = Architect.Builds.Task.update_changeset(t, %{status: "ready"})
       {:ok, _b} = Architect.Repo.update(changeset)
-      Logger.info("Reset build:#{b.id} to 'waiting'")
+      Logger.info("Reset task:#{t.id} to 'ready'")
     end)
 
     PubSub.subscribe(Architect.PubSub, Presence.topic())
@@ -51,33 +54,47 @@ defmodule Architect.Builders.Scheduler do
     {:ok, state}
   end
 
-  @impl
   def handle_call(:history, _from, state) do
     {:reply, state.history, state}
   end
 
-  @impl
-  def handle_info(:poll_builds, state) do
-    Logger.debug("checking for waiting builds")
-    builds = Architect.Builds.list_waiting_builds()
-
-    Enum.each(builds, fn b ->
-      Logger.debug("attempting to schedule build:#{b.id}")
+  defp schedule_task(task) do
       builders = Presence.list()
 
       Enum.each(builders, fn {id, %{metas: [metas]}} ->
         Logger.debug("builder #{id} (#{inspect(metas.socket)}) is #{metas.status}")
-        send(metas.socket, b)
-        changeset = Architect.Builds.Build.changeset(b, %{status: "running"})
-        {:ok, _b} = Architect.Repo.update(changeset)
-      end)
+      Logger.debug("scheduling task: #{task.id}")
+
+      if metas.status == :ready do
+        stage =
+          Ecto.assoc(task, :stage)
+          |> Architect.Repo.one()
+
+        build =
+          Ecto.assoc(stage, :build)
+          |> Architect.Repo.one()
+          |> Architect.Repo.preload(:project)
+
+        send(metas.socket, {build, task})
+        changeset = Architect.Builds.Task.update_changeset(task, %{status: "building"})
+        {:ok, _t} = Architect.Repo.update(changeset)end
+    end)
+  end
+
+  def handle_info(:poll_builds, state) do
+    Logger.debug("checking for ready tasks")
+    tasks = Architect.Builds.list_ready_tasks()
+    Logger.debug("found #{length(tasks)} tasks")
+
+    Enum.each(tasks, fn task ->
+      task
+      |> schedule_task()
     end)
 
     Process.send_after(Architect.Builders.Scheduler, :poll_builds, @poll_timeout)
     {:noreply, state}
   end
 
-  @impl
   def handle_info(
         %Socket.Broadcast{event: "presence_diff"} = broadcast,
         %__MODULE__{history: history} = state

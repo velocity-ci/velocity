@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTaskConfigUnmarshal(t *testing.T) {
-	taskConfigYaml := `
+func TestBlueprintConfigUnmarshal(t *testing.T) {
+	blueprintConfigYaml := `
 ---
 description: "Hello Velocity"
 
@@ -28,14 +28,14 @@ docker:
         username: registry_user
         password: registry_password
 `
-	taskConfig := newTask()
+	blueprintConfig := newBlueprint()
 
-	err := yaml.Unmarshal([]byte(taskConfigYaml), &taskConfig)
+	err := yaml.Unmarshal([]byte(blueprintConfigYaml), &blueprintConfig)
 	assert.Nil(t, err)
 
-	expectedTaskConfig := newTask()
-	expectedTaskConfig.Description = "Hello Velocity"
-	expectedTaskConfig.Parameters = []Parameter{
+	expectedBlueprintConfig := newBlueprint()
+	expectedBlueprintConfig.Description = "Hello Velocity"
+	expectedBlueprintConfig.Parameters = []Parameter{
 		&ParameterDerived{
 			BaseParameter: BaseParameter{Type: "derived"},
 			Use:           "https://velocityci.io/parameter-test",
@@ -52,9 +52,9 @@ docker:
 			Secret:        true,
 		},
 	}
-	expectedTaskConfig.Docker = TaskDocker{
-		Registries: []TaskDockerRegistry{
-			TaskDockerRegistry{
+	expectedBlueprintConfig.Docker = BlueprintDocker{
+		Registries: []BlueprintDockerRegistry{
+			{
 				Address: "",
 				Use:     "https://velocityci.io/registry-test",
 				Arguments: map[string]string{
@@ -65,5 +65,5 @@ docker:
 		},
 	}
 
-	assert.Equal(t, expectedTaskConfig, taskConfig)
+	assert.Equal(t, expectedBlueprintConfig, blueprintConfig)
 }

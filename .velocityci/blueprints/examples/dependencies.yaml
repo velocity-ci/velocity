@@ -1,0 +1,37 @@
+
+---
+description: "Test Backend"
+steps:
+  - type: blueprint
+    names:
+    - backend/install
+
+---
+description: "Test Velocity"
+
+steps:
+  - type: blueprint
+    names: 
+      - backend/test
+      - web/test
+
+---
+description: "Publish Backend"
+
+steps:
+  - type: blueprint
+    names: [backend/build]
+
+  - type: push
+    tags: []
+  
+
+
+---
+description: "Publish Velocity"
+
+steps:
+  - type: blueprint
+    names:
+    - backend/publish
+    - web/publish

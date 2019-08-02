@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/docker/docker/api/types"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 
 	"github.com/docker/docker/client"
 )
@@ -28,7 +29,7 @@ func PushImage(
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(writer, ColorFmt(ANSIInfo, "-> pushed: %s"), tag)
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSIInfo, "-> pushed: %s", "\n"), tag)
 
 	return nil
 }

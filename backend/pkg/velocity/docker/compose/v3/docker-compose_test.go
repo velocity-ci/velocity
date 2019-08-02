@@ -54,7 +54,7 @@ services:
 	expectedDockerComposeConf := v3.DockerComposeYaml{
 		Version: "3",
 		Services: map[string]v3.DockerComposeService{
-			"a": v3.DockerComposeService{
+			"a": {
 				Image:   "busybox",
 				Command: v3.DockerComposeServiceCommand{"ping", "-c", "3", "c"},
 				Volumes: []string{"./:/app"},
@@ -66,11 +66,11 @@ services:
 					"float": "1.234",
 				},
 			},
-			"b": v3.DockerComposeService{
+			"b": {
 				Image:   "alpine",
 				Command: v3.DockerComposeServiceCommand{"/bin/sh", "-c", "sleep 10s"},
 				Networks: map[string]v3.DockerComposeServiceNetwork{
-					"default": v3.DockerComposeServiceNetwork{
+					"default": {
 						Aliases: []string{"c"},
 					},
 				},
@@ -78,13 +78,13 @@ services:
 					"HELLO": "WORLD",
 				},
 			},
-			"c": v3.DockerComposeService{
+			"c": {
 				Build: v3.DockerComposeServiceBuild{
 					Context:    ".",
 					Dockerfile: "Dockerfile",
 				},
 			},
-			"d": v3.DockerComposeService{
+			"d": {
 				Build: v3.DockerComposeServiceBuild{
 					Context:    "app",
 					Dockerfile: "app.Dockerfile",

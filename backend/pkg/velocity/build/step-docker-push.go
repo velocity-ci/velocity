@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
+
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
@@ -23,7 +26,13 @@ func NewStepDockerPush(c *config.StepDockerPush) *StepDockerPush {
 }
 
 func (dP StepDockerPush) GetDetails() string {
-	return fmt.Sprintf("tags: %s", dP.Tags)
+	type details struct {
+		Tags []string `json:"tags"`
+	}
+	y, _ := yaml.Marshal(&details{
+		Tags: dP.Tags,
+	})
+	return string(y)
 }
 
 func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
@@ -32,8 +41,8 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 		return err
 	}
 	defer writer.Close()
-	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dP.Description)
+	writer.SetStatus(StateBuilding)
+	fmt.Fprintf(writer, "\r")
 
 	for _, t := range dP.Tags {
 		err := docker.PushImage(
@@ -45,13 +54,13 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 		if err != nil {
 			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> push failed: %s"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> push failed: %s", "\n"), err)
 			return err
 		}
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success"))
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success", "\n"))
 	return nil
 
 }

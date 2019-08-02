@@ -19,9 +19,9 @@ func (pR ParameterResolver) Resolve(paramName string) (string, error) {
 
 	for text == "" {
 		if len(fromEnv) > 0 {
-			fmt.Printf("\nEnter value for %s (%s): ", paramName, fromEnv)
+			fmt.Fprintf(os.Stdout, "\nEnter value for %s (%s): ", paramName, fromEnv)
 		} else {
-			fmt.Printf("\nEnter value for %s: ", paramName)
+			fmt.Fprintf(os.Stdout, "\nEnter value for %s: ", paramName)
 		}
 		text, _ = reader.ReadString('\n')
 		if text == "\n" {
@@ -29,5 +29,6 @@ func (pR ParameterResolver) Resolve(paramName string) (string, error) {
 		}
 	}
 
+	fmt.Fprintf(os.Stdout, "\n")
 	return strings.TrimSpace(text), nil
 }

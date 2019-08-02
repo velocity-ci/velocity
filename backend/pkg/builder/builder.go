@@ -40,6 +40,7 @@ func (b *Builder) Stop() error {
 	return nil
 }
 func (b *Builder) Start() {
+	logging.GetLogger().Info("starting builder")
 	b.baseArchitectAddress = getArchitectAddress()
 	b.secret = getBuilderSecret()
 	b.http = &http.Client{
@@ -77,7 +78,7 @@ func (b *Builder) connect() {
 					Payload: map[string]interface{}{
 						"status": "error",
 						"errors": []map[string]string{
-							map[string]string{
+							{
 								"message": err.Error(),
 							},
 						},

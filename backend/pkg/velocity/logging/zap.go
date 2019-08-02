@@ -13,11 +13,16 @@ var once sync.Once
 
 func GetLogger() *zap.Logger {
 	once.Do(func() {
+		var config zap.Config
 		if strings.ToLower(os.Getenv("DEBUG")) == "true" {
-			logger, _ = zap.NewDevelopment()
+			config = zap.NewDevelopmentConfig()
 		} else {
-			logger, _ = zap.NewProduction()
+			config = zap.NewProductionConfig()
 		}
+		// config.OutputPaths = []string{
+		// 	// "vcli.log",
+		// }
+		logger, _ = config.Build()
 	})
 	return logger
 }

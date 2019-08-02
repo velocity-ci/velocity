@@ -1,0 +1,9 @@
+description: "Tests the Backend source"
+
+steps:
+  - type: run
+    description: Run tests
+    image: golang:1.12
+    mountPoint: /app
+    workingDir: backend
+    command: scripts/test-unit.sh

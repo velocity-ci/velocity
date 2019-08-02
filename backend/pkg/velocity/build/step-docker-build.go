@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
+
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 )
@@ -26,7 +29,17 @@ func NewStepDockerBuild(c *config.StepDockerBuild) *StepDockerBuild {
 }
 
 func (dB StepDockerBuild) GetDetails() string {
-	return fmt.Sprintf("dockerfile: %s, context: %s, tags: %s", dB.Dockerfile, dB.Context, dB.Tags)
+	type details struct {
+		Dockerfile string   `json:"dockerfile"`
+		Context    string   `json:"context"`
+		Tags       []string `json:"tags"`
+	}
+	y, _ := yaml.Marshal(&details{
+		Dockerfile: dB.Dockerfile,
+		Context:    dB.Context,
+		Tags:       dB.Tags,
+	})
+	return string(y)
 }
 
 func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
@@ -35,8 +48,8 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 		return err
 	}
 	defer writer.Close()
-	writer.SetStatus(StateRunning)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> %s"), dB.Description)
+	writer.SetStatus(StateBuilding)
+	fmt.Fprintf(writer, "\r")
 
 	authConfigs := GetAuthConfigsMap(t.Docker.Registries)
 
@@ -53,13 +66,13 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	if err != nil {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s"), err)
+		fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> failed: %s", "\n"), err)
 
 		return err
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, docker.ColorFmt(docker.ANSISuccess, "-> success"))
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success", "\n"))
 
 	return nil
 }

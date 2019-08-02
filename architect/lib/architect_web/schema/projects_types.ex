@@ -34,8 +34,8 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
       resolve(&Projects.list_commits/3)
     end
 
-    field :tasks, non_null(list_of(non_null(:task))) do
-      resolve(&Projects.list_tasks_for_branch/3)
+    field :blueprints, non_null(list_of(non_null(:blueprint))) do
+      resolve(&Projects.list_blueprints_for_branch/3)
     end
   end
 
@@ -49,8 +49,8 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
       resolve(&Projects.list_branches_for_commit/3)
     end
 
-    field :tasks, non_null(list_of(non_null(:task))) do
-      resolve(&Projects.list_tasks_for_commit/3)
+    field :blueprints, non_null(list_of(non_null(:blueprint))) do
+      resolve(&Projects.list_blueprints_for_commit/3)
     end
   end
 
@@ -60,7 +60,7 @@ defmodule ArchitectWeb.Schema.ProjectsTypes do
     field(:name, non_null(:string))
   end
 
-  node object(:task) do
+  node object(:blueprint) do
     field(:name, non_null(:string))
     field(:description, :string)
   end

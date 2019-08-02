@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
+
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 
@@ -38,7 +40,13 @@ func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *Step
 }
 
 func (dC StepDockerCompose) GetDetails() string {
-	return fmt.Sprintf("composeFile: %s", dC.ComposeFilePath)
+	type details struct {
+		ComposeFilePath string `json:"composeFile"`
+	}
+	y, _ := yaml.Marshal(&details{
+		ComposeFilePath: dC.ComposeFilePath,
+	})
+	return string(y)
 }
 
 func (dC *StepDockerCompose) Validate(params map[string]Parameter) error {
@@ -113,7 +121,7 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 
 	for _, serviceName := range serviceOrder {
 		writer := writers[serviceName]
-		writer.SetStatus(StateRunning)
+		writer.SetStatus(StateBuilding)
 		s := contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig
@@ -175,13 +183,13 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 	if !success {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateFailed)
-			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSIError, "-> %s error"), serviceName)
+			fmt.Fprintf(writers[serviceName], output.ColorFmt(output.ANSIError, "-> %s error", "\n"), serviceName)
 
 		}
 	} else {
 		for _, serviceName := range serviceOrder {
 			writers[serviceName].SetStatus(StateSuccess)
-			fmt.Fprintf(writers[serviceName], docker.ColorFmt(docker.ANSISuccess, "-> %s success"), serviceName)
+			fmt.Fprintf(writers[serviceName], output.ColorFmt(output.ANSISuccess, "-> %s success", "\n"), serviceName)
 
 		}
 	}

@@ -5,21 +5,24 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
+
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 )
 
 type Task struct {
 	ID         string `json:"id"`
 	parameters map[string]*Parameter
 
-	Config config.Task `json:"config"`
-	Docker TaskDocker  `json:"docker"`
-	Steps  []Step      `json:"steps"`
+	Blueprint    config.Blueprint `json:"blueprint"`
+	IgnoreErrors bool             `json:"ignoreErrors"`
+	Docker       TaskDocker       `json:"docker"`
+	Steps        []Step           `json:"steps"`
 
+	Status      string     `json:"status"`
 	StartedAt   *time.Time `json:"startedAt"`
 	UpdatedAt   *time.Time `json:"updatedAt"`
 	CompletedAt *time.Time `json:"completedAt"`
@@ -36,8 +39,8 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	// Deserialize Config
-	err = json.Unmarshal(*objMap["config"], &t.Config)
+	// Deserialize Blueprint
+	err = json.Unmarshal(*objMap["blueprint"], &t.Blueprint)
 	if err != nil {
 		return err
 	}
@@ -72,6 +75,12 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		}
 	}
 
+	// Deserialize ID
+	err = json.Unmarshal(*objMap["status"], &t.Status)
+	if err != nil {
+		return err
+	}
+
 	// Deserialize StartedAt
 	if objMap["startedAt"] != nil {
 		err = json.Unmarshal(*objMap["startedAt"], t.StartedAt)
@@ -102,42 +111,52 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	// Deserialize IgnoreErrors
+	err = json.Unmarshal(*objMap["ignoreErrors"], &t.IgnoreErrors)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (t *Task) Execute(emitter Emitter) error {
 	taskWriter := emitter.GetTaskWriter(t)
 	defer taskWriter.Close()
-	for _, step := range t.Steps {
-		err := t.executeStep(emitter, step)
-		if err != nil {
+	taskWriter.SetStatus(StateBuilding)
+	fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSIInfo, "-> running task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
+	totalSteps := len(t.Steps)
+	for i, step := range t.Steps {
+		err := t.executeStep(i+1, totalSteps, emitter, step)
+		if err != nil { // TODO: add support for ignoring errors from specific steps in Blueprint
+			fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSIError, "-> error in task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
 			taskWriter.SetStatus(StateFailed)
-			fmt.Fprintf(taskWriter, docker.ColorFmt(docker.ANSIError, "-> error in task %s"), t.ID)
 			return err
 		}
 	}
 	taskWriter.SetStatus(StateSuccess)
-	fmt.Fprintf(taskWriter, docker.ColorFmt(docker.ANSISuccess, "-> successfully completed task %s"), t.ID)
+	fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSISuccess, "-> successfully completed task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
 	return nil
 }
 
-func (t *Task) executeStep(emitter Emitter, step Step) error {
+func (t *Task) executeStep(i, totalSteps int, emitter Emitter, step Step) error {
 	stepWriter := emitter.GetStepWriter(step)
 	defer stepWriter.Close()
+	fmt.Fprintf(stepWriter, output.ColorFmt(output.ANSIInfo, "-> running step %d/%d: %s %s (%s)", "\n"), i, totalSteps, step.GetType(), step.GetDescription(), step.GetID())
 	step.SetParams(t.parameters)
 	err := step.Execute(emitter, t)
 	if err != nil {
 		stepWriter.SetStatus(StateFailed)
-		fmt.Fprintf(stepWriter, docker.ColorFmt(docker.ANSIError, "-> error in step %s"), step.GetID())
+		fmt.Fprintf(stepWriter, output.ColorFmt(output.ANSIError, "-> error in step %s", "\n"), step.GetID())
 		return err
 	}
 	stepWriter.SetStatus(StateSuccess)
-	fmt.Fprintf(stepWriter, docker.ColorFmt(docker.ANSISuccess, "-> successfully completed step %s"), step.GetID())
+	fmt.Fprintf(stepWriter, output.ColorFmt(output.ANSISuccess, "-> successfully completed step %d/%d %s %s (%s)", "\n"), i, totalSteps, step.GetType(), step.GetDescription(), step.GetID())
 	return nil
 }
 
 func NewTask(
-	c *config.Task,
+	c *config.Blueprint,
 	paramResolver BackupResolver,
 	repository *git.Repository,
 	branch string,
@@ -165,10 +184,11 @@ func NewTask(
 
 	return &Task{
 		ID:          uuid.NewV4().String(),
-		Config:      *c,
+		Blueprint:   *c,
 		ProjectRoot: projectRoot,
 		Steps:       steps,
 		parameters:  map[string]*Parameter{},
+		Status:      StateWaiting,
 	}
 }
 

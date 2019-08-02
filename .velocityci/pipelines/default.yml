@@ -1,0 +1,17 @@
+---
+stages:
+  - name: test
+    blueprints:
+      - backend/test
+      # - architect/test
+      # - web/test
+  - name: publish
+    blueprints:
+      # - backend/builder/publish
+      - backend/cli/publish
+      # - web/publish
+      # - architect/publish
+  - name: deploy
+    blueprints: []
+#   - architect/deploy
+#   - web/deploy

@@ -26,6 +26,7 @@ defmodule ArchitectWeb.BuilderChannel do
   def handle_in("#{@event_prefix}builder-ready", payload, socket) do
     # IO.inspect(Architect.Builds.list_builds())
     {:ok, builder_pid} = Architect.Builders.Builder.start_link(pid: self())
+    #{:ok, _} = Builders.update_status(socket, :ready)
 
     {:reply, :ok, assign(socket, :builder_pid, builder_pid)}
   end
@@ -33,7 +34,7 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Handle build update-build events.
   """
-  def handle_in("#{@event_prefix}build-stream:new-loglines", payload, socket) do
+  def handle_in("#{@event_prefix}task-stream:new-loglines", payload, socket) do
     Enum.each(payload["lines"], fn l ->
       Architect.Builds.ETSStore.put_stream_line(
         payload["id"],
@@ -48,7 +49,7 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Handle build update-step events.
   """
-  def handle_in("#{@event_prefix}build-step:update", payload, socket) do
+  def handle_in("#{@event_prefix}task-step:update", payload, socket) do
     Architect.Builds.ETSStore.put_step_update(
       payload["id"],
       payload
@@ -60,6 +61,12 @@ defmodule ArchitectWeb.BuilderChannel do
   @doc """
   Handle build update-stream events.
   """
+  def handle_in("#{@event_prefix}task-task:update", payload, socket) do
+    Architect.Builds.update_task(
+      payload["id"],
+      payload["state"]
+    )
+
   def handle_in(
         "#{@event_prefix}build-task:update",
         payload,
@@ -85,10 +92,10 @@ defmodule ArchitectWeb.BuilderChannel do
   end
 
   @doc """
-  Starts a build job for a builder.
+  Starts a task on a builder.
   """
-  def handle_info(b = %Architect.Builds.Build{}, socket) do
-    push(socket, "#{@event_prefix}job-do-build", %{
+  def handle_info({b = %Architect.Builds.Build{}, t = %Architect.Builds.Task{}}, socket) do
+    push(socket, "#{@event_prefix}job-do-task", %{
       id: b.id,
       project: %{
         name: b.project.name,
@@ -101,10 +108,17 @@ defmodule ArchitectWeb.BuilderChannel do
         },
       # output from vcli plan
       buildTask: b.plan,
+      knownHost:
+        %{
+          # entry: ""
+        },
+      task: t.plan,
       branch: b.branch_name,
       commit: b.commit_sha,
       parameters: b.parameters
     })
+
+    {:ok, _} = Builders.update_status(socket, :busy)
 
     {:noreply, socket}
   end

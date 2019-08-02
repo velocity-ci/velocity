@@ -4,17 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"time"
 
-	"go.uber.org/zap"
-
-	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/pkg/exec"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 )
 
 func getSecrets(params map[string]*Parameter) (r []string) {
@@ -36,10 +30,10 @@ func resolveConfigParameter(
 	// resolve parameter value at build time
 	switch x := p.(type) {
 	case *config.ParameterBasic:
-		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", x.Name)))
+		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s\n", x.Name)))
 		return resolveConfigParameterBasic(x, bR)
 	case *config.ParameterDerived:
-		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s", x.Use)))
+		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s\n", x.Use)))
 		return resolveConfigParameterDerived(x, bR, projectRoot, writer)
 	default:
 		return parameters, fmt.Errorf("type: %T: %v", x, p)
@@ -47,13 +41,12 @@ func resolveConfigParameter(
 }
 
 func resolveConfigParameterBasic(p *config.ParameterBasic, backupResolver BackupResolver) (parameters []*Parameter, err error) {
-	v := p.Default
 	val, err := backupResolver.Resolve(p.Name)
 	if err != nil {
 		return nil, err
 	}
-	v = val
-	return []*Parameter{&Parameter{
+	v := val
+	return []*Parameter{{
 		Name:     p.Name,
 		Value:    v,
 		IsSecret: p.Secret,
@@ -121,47 +114,6 @@ type Parameter struct {
 
 type BackupResolver interface {
 	Resolve(paramName string) (string, error)
-}
-
-func getBinary(projectRoot, u string, writer io.Writer) (binaryLocation string, _ error) {
-
-	parsedURL, err := url.Parse(u)
-	if err != nil {
-		return "", err
-	}
-
-	binaryLocation = fmt.Sprintf("%s/.velocityci/plugins/%s", projectRoot, slug.Make(parsedURL.Path))
-
-	if _, err := os.Stat(binaryLocation); os.IsNotExist(err) {
-		logging.GetLogger().Debug("downloading binary", zap.String("from", u), zap.String("to", binaryLocation))
-		writer.Write([]byte(fmt.Sprintf("Downloading binary: %s", parsedURL.String())))
-		outFile, err := os.Create(binaryLocation)
-		if err != nil {
-			return "", err
-		}
-		defer outFile.Close()
-		resp, err := http.Get(u)
-		if err != nil {
-			return "", err
-		}
-		defer resp.Body.Close()
-
-		size, err := io.Copy(outFile, resp.Body)
-		if err != nil {
-			return "", err
-		}
-		writer.Write([]byte(fmt.Sprintf(
-			"Downloaded binary: %s to %s. %d bytes",
-			parsedURL.String(),
-			binaryLocation,
-			size,
-		)))
-
-		logging.GetLogger().Debug("downloaded binary", zap.String("from", u), zap.String("to", binaryLocation), zap.Int64("bytes", size))
-		outFile.Chmod(os.ModePerm)
-	}
-
-	return binaryLocation, nil
 }
 
 func getExportedParameterName(pMapping map[string]string, exportedParam string) string {

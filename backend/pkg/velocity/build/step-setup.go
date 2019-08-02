@@ -5,13 +5,16 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"text/tabwriter"
 	"time"
 
 	"github.com/gosimple/slug"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 	"go.uber.org/zap"
 )
 
@@ -60,13 +63,23 @@ func NewStepSetup(
 }
 
 func (s Setup) GetDetails() string {
-	return ""
+	return "n/a"
 }
 
 func makeVelocityDirs(projectRoot string) error {
 	os.MkdirAll(filepath.Join(projectRoot, ".velocityci/plugins"), os.ModePerm)
 
 	return nil
+}
+
+func sortedParameterKeys(params map[string]Parameter) []string {
+	keys := make([]string, 0, len(params))
+	for key := range params {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	return keys
 }
 
 func (s *Setup) Execute(emitter Emitter, t *Task) error {
@@ -78,7 +91,8 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		return err
 	}
 	defer writer.Close()
-	writer.SetStatus(StateRunning)
+	writer.SetStatus(StateBuilding)
+	fmt.Fprintf(writer, "\r")
 
 	// Clone repository if necessary
 	if s.repository != nil {
@@ -92,14 +106,14 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		if err != nil {
 			logging.GetLogger().Error("could not clone repository", zap.Error(err))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> Could not clone repository: %s", "\n"), err)
 			return err
 		}
 		err = repo.Checkout(s.commitHash)
 		if err != nil {
 			logging.GetLogger().Error("could not checkout", zap.Error(err), zap.String("commit", s.commitHash))
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> failed: %s"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not checkout ref: %s", "\n"), err)
 			return err
 		}
 		os.Chdir(repo.Directory)
@@ -116,23 +130,26 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	if err != nil {
 		return err
 	}
-	for k, v := range basicParams {
+	tabWriter := tabwriter.NewWriter(writer, 0, 0, 2, ' ', 0)
+	for _, k := range sortedParameterKeys(basicParams) {
+		v := basicParams[k]
 		t.parameters[k] = &v
-		writer.Write([]byte(fmt.Sprintf("Set %s: %s", k, v.Value)))
+		fmt.Fprintf(tabWriter, "Set %s\t%s\n", k, v.Value)
 	}
-	for _, configParam := range t.Config.Parameters {
+	tabWriter.Flush()
+	for _, configParam := range t.Blueprint.Parameters {
 		resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
 		if err != nil {
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> could not resolve parameter: %s"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not resolve parameter: %s", "\n"), err)
 			return fmt.Errorf("could not resolve %v", err)
 		}
 		for _, param := range resolvedParams {
 			t.parameters[param.Name] = param
 			if param.IsSecret {
-				fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> set %s: ***"), param.Name)
+				fmt.Fprintf(writer, "Set %s: ***\n", param.Name)
 			} else {
-				fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> set %s: %v"), param.Name, param.Value)
+				fmt.Fprintf(writer, "Set %s: %v\n", param.Name, param.Value)
 			}
 		}
 	}
@@ -143,18 +160,18 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		r, err := dockerLogin(registry, writer, t)
 		if err != nil || r.Address == "" {
 			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIError, "-> could not login to Docker registry: %s"), err)
+			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not login to Docker registry: %s", "\n"), err)
 
 			return err
 		}
 		authedRegistries = append(authedRegistries, r)
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIInfo, "-> authenticated with Docker registry: %s"), r.Address)
+		fmt.Fprintf(writer, output.ColorFmt(output.ANSIInfo, "Authenticated with Docker registry: %s", "\n"), r.Address)
 	}
 
 	t.Docker.Registries = authedRegistries
 
 	writer.SetStatus(StateSuccess)
-	writer.Write([]byte("Setup success."))
+	writer.Write([]byte("Setup success.\n"))
 
 	return nil
 }
@@ -173,54 +190,77 @@ func GetGlobalParams(writer io.Writer, projectRoot, branch string) (map[string]P
 	repo := &git.RawRepository{Directory: projectRoot}
 
 	if repo.IsDirty() {
-		fmt.Fprintf(writer, docker.ColorFmt(docker.ANSIWarn, "-> Project files are dirty. Build repeatability is not guaranteed."))
+		fmt.Fprintf(writer, output.ColorFmt(output.ANSIWarn, "Project files are dirty. Build repeatability is not guaranteed.", "\n"))
 	}
 
-	rawCommit, _ := repo.GetCurrentCommitInfo()
+	rawCommit, err := repo.GetCurrentCommitInfo()
+	if err != nil {
+		return params, err
+	}
+	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		return params, err
+	}
 
 	buildTimestamp := time.Now().UTC()
-	params["GIT_BRANCH"] = Parameter{
+	params["git.branch"] = Parameter{
 		Value:    branch,
 		IsSecret: false,
 	}
-	params["GIT_COMMIT_LONG_SHA"] = Parameter{
+	params["git.commit.sha.long"] = Parameter{
 		Value:    rawCommit.SHA,
 		IsSecret: false,
 	}
-	params["GIT_COMMIT_SHORT_SHA"] = Parameter{
+	params["git.commit.sha.short"] = Parameter{
 		Value:    rawCommit.SHA[:7],
 		IsSecret: false,
 	}
-	params["GIT_DESCRIBE"] = Parameter{
+	params["git.describe"] = Parameter{
 		Value:    repo.GetDescribe(),
 		IsSecret: false,
 	}
-	params["GIT_DESCRIBE_ALL"] = Parameter{
+	params["git.describe.all"] = Parameter{
 		Value:    repo.GetDescribeAll(),
 		IsSecret: false,
 	}
-	params["GIT_COMMIT_AUTHOR"] = Parameter{
+	params["git.commit.author"] = Parameter{
 		Value:    rawCommit.AuthorEmail,
 		IsSecret: false,
 	}
-	params["GIT_COMMIT_MESSAGE"] = Parameter{
+	params["git.commit.message"] = Parameter{
 		Value:    rawCommit.Message,
 		IsSecret: false,
 	}
-	params["GIT_COMMIT_TIMESTAMP_RFC3339"] = Parameter{
+	params["git.commit.rfc3339"] = Parameter{
 		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
 		IsSecret: false,
 	}
-	params["GIT_COMMIT_TIMESTAMP_RFC822"] = Parameter{
+	params["git.commit.rfc822"] = Parameter{
 		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
 		IsSecret: false,
 	}
-	params["BUILD_TIMESTAMP_RFC3339"] = Parameter{
+	params["git.commit.rfc3339.clean"] = Parameter{
+		Value:    reg.ReplaceAllString(rawCommit.AuthorDate.UTC().Format(time.RFC3339), ""),
+		IsSecret: false,
+	}
+	params["git.commit.rfc822.clean"] = Parameter{
+		Value:    reg.ReplaceAllString(rawCommit.AuthorDate.UTC().Format(time.RFC822), ""),
+		IsSecret: false,
+	}
+	params["build.rfc3339"] = Parameter{
 		Value:    buildTimestamp.Format(time.RFC3339),
 		IsSecret: false,
 	}
-	params["BUILD_TIMESTAMP_RFC822"] = Parameter{
+	params["build.rfc3339.clean"] = Parameter{
+		Value:    reg.ReplaceAllString(buildTimestamp.Format(time.RFC3339), ""),
+		IsSecret: false,
+	}
+	params["build.rfc822"] = Parameter{
 		Value:    buildTimestamp.Format(time.RFC822),
+		IsSecret: false,
+	}
+	params["build.rfc822.clean"] = Parameter{
+		Value:    reg.ReplaceAllString(buildTimestamp.Format(time.RFC822), ""),
 		IsSecret: false,
 	}
 

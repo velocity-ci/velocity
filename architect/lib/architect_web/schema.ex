@@ -6,12 +6,13 @@ defmodule ArchitectWeb.Schema do
 
   alias ArchitectWeb.{Schema, Mutations, Queries, Subscriptions}
   alias Architect.Projects
-  alias Architect.Projects.{Project, Task}
-  alias Architect.Events
+  alias Architect.Projects.{Project, Blueprint}
+  # alias Architect.Events
   alias Architect.Events.Event
   alias Git.{Commit, Branch}
-  alias ArchitectWeb.{Resolvers, Middleware}
-  alias Ecto.Changeset
+  alias ArchitectWeb.Resolvers
+  # alias ArchitectWeb.Middleware
+  # alias Ecto.Changeset
 
   # Custom
   import_types(Absinthe.Type.Custom)
@@ -52,8 +53,8 @@ defmodule ArchitectWeb.Schema do
       %Commit{}, _ ->
         :commit
 
-      %Task{}, _ ->
-        :task
+      %Blueprint{}, _ ->
+        :blueprint
 
       %Event{}, _ ->
         :event
