@@ -51,9 +51,7 @@ var listCmd = &cobra.Command{
 func listText(blueprints []*config.Blueprint, pipelines []*config.Pipeline) error {
 	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, "~~~~~~~~~~~~~~", "\n"))
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, "~ Blueprints ~", "\n"))
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, "~~~~~~~~~~~~~~", "\n"))
+	printHeader("Blueprints")
 	if len(blueprints) > 0 {
 		for _, blueprint := range blueprints {
 			fmt.Fprintf(tabWriter, " %s %s\t%s\n",
@@ -67,9 +65,7 @@ func listText(blueprints []*config.Blueprint, pipelines []*config.Pipeline) erro
 		fmt.Fprintln(os.Stdout, "  none found")
 	}
 
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, "~~~~~~~~~~~~~", "\n"))
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, "~ Pipelines ~", "\n"))
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, "~~~~~~~~~~~~~", "\n"))
+	printHeader("Pipelines")
 	if len(pipelines) > 0 {
 		for _, pipeline := range pipelines {
 			fmt.Fprintf(tabWriter, " %s %s\t%s\n",

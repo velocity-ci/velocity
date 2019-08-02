@@ -40,7 +40,13 @@ func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *Step
 }
 
 func (dC StepDockerCompose) GetDetails() string {
-	return fmt.Sprintf("composeFile: %s", dC.ComposeFilePath)
+	type details struct {
+		ComposeFilePath string `json:"composeFile"`
+	}
+	y, _ := yaml.Marshal(&details{
+		ComposeFilePath: dC.ComposeFilePath,
+	})
+	return string(y)
 }
 
 func (dC *StepDockerCompose) Validate(params map[string]Parameter) error {

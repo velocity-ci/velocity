@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
@@ -25,7 +26,13 @@ func NewStepDockerPush(c *config.StepDockerPush) *StepDockerPush {
 }
 
 func (dP StepDockerPush) GetDetails() string {
-	return fmt.Sprintf("tags: %s", dP.Tags)
+	type details struct {
+		Tags []string `json:"tags"`
+	}
+	y, _ := yaml.Marshal(&details{
+		Tags: dP.Tags,
+	})
+	return string(y)
 }
 
 func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {

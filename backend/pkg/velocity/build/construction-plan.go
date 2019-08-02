@@ -20,11 +20,12 @@ type Stage struct {
 // ConstructionPlan represents a collection of Stages to be executed in order.
 type ConstructionPlan struct {
 	ID     string   `json:"id"`
+	Name   string   `json:"name"`
 	Stages []*Stage `json:"stages"`
 	// Plugins []*Plugin `json:"plugins"`
 }
 
-func NewConstructionPlan(
+func NewConstructionPlanFromBlueprint(
 	targetBlueprintName string,
 	blueprints []*config.Blueprint,
 	paramResolver BackupResolver,
@@ -46,11 +47,12 @@ func NewConstructionPlan(
 		projectRoot,
 	)
 	return &ConstructionPlan{
-		ID: uuid.NewV4().String(),
+		ID:   uuid.NewV4().String(),
+		Name: fmt.Sprintf("Blueprint: %s", targetBlueprintName),
 		Stages: []*Stage{
 			{
 				ID:     uuid.NewV4().String(),
-				Index:  0,
+				Index:  1,
 				Status: StateWaiting,
 				Tasks: map[string]*Task{
 					task.ID: task,
@@ -58,6 +60,55 @@ func NewConstructionPlan(
 			},
 		},
 	}, nil
+}
+
+func NewConstructionPlanFromPipeline(
+	targetPipelineName string,
+	pipelines []*config.Pipeline,
+	blueprints []*config.Blueprint,
+	paramResolver BackupResolver,
+	repository *git.Repository,
+	branch string,
+	commitSha string,
+	projectRoot string,
+) (*ConstructionPlan, error) {
+	targetPipeline, err := getRequestedPipelineByName(targetPipelineName, pipelines)
+	if err != nil {
+		return nil, err
+	}
+
+	cP := &ConstructionPlan{
+		ID:     uuid.NewV4().String(),
+		Name:   fmt.Sprintf("Pipeline: %s", targetPipelineName),
+		Stages: []*Stage{},
+	}
+
+	for i, stage := range targetPipeline.Stages {
+		newStage := &Stage{
+			ID:     uuid.NewV4().String(),
+			Index:  uint16(i + 1),
+			Status: StateWaiting,
+			Tasks:  map[string]*Task{},
+		}
+		for _, blueprintName := range stage.Blueprints {
+			blueprint, err := getRequestedBlueprintByName(blueprintName, blueprints)
+			if err != nil {
+				return nil, err
+			}
+			newTask := NewTask(
+				blueprint,
+				paramResolver,
+				repository,
+				branch,
+				commitSha,
+				projectRoot,
+			)
+			newStage.Tasks[newTask.ID] = newTask
+		}
+		cP.Stages = append(cP.Stages, newStage)
+	}
+
+	return cP, nil
 }
 
 func (p *ConstructionPlan) Execute(emitter Emitter) error {
@@ -84,12 +135,22 @@ func (p *ConstructionPlan) Execute(emitter Emitter) error {
 	return nil
 }
 
-func getRequestedBlueprintByName(taskName string, tasks []*config.Blueprint) (*config.Blueprint, error) {
-	for _, t := range tasks {
-		if t.Name == taskName {
-			return t, nil
+func getRequestedBlueprintByName(blueprintName string, blueprints []*config.Blueprint) (*config.Blueprint, error) {
+	for _, b := range blueprints {
+		if b.Name == blueprintName {
+			return b, nil
 		}
 	}
 
-	return nil, fmt.Errorf("could not find %s", taskName)
+	return nil, fmt.Errorf("could not find %s", blueprintName)
+}
+
+func getRequestedPipelineByName(pipelineName string, pipelines []*config.Pipeline) (*config.Pipeline, error) {
+	for _, p := range pipelines {
+		if p.Name == pipelineName {
+			return p, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find %s", pipelineName)
 }

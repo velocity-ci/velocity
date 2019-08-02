@@ -13,10 +13,10 @@ import (
 )
 
 func init() {
-	runCmd.AddCommand(runBlueprintCmd)
+	runCmd.AddCommand(runConstructionPlanCmd)
 }
 
-var runBlueprintCmd = &cobra.Command{
+var runConstructionPlanCmd = &cobra.Command{
 	Use:     "blueprint",
 	Aliases: []string{"b"},
 	Short:   "runs a given blueprint",
@@ -43,7 +43,7 @@ var runBlueprintCmd = &cobra.Command{
 			}
 		}
 
-		constructionPlan, err := build.NewConstructionPlan(
+		constructionPlan, err := build.NewConstructionPlanFromBlueprint(
 			args[0],
 			blueprints,
 			&vcli.ParameterResolver{},
@@ -58,16 +58,16 @@ var runBlueprintCmd = &cobra.Command{
 
 		switch {
 		case runPlanOnly && machineReadable:
-			return runBlueprintPlanOnlyAndMachineReadable(constructionPlan)
+			return runConstructionPlanPlanOnlyAndMachineReadable(constructionPlan)
 		case runPlanOnly:
-			return nil
+			return runConstructionPlanPlanOnly(constructionPlan)
 		default:
-			return runBlueprintText(constructionPlan)
+			return runConstructionPlanText(constructionPlan)
 		}
 	},
 }
 
-func runBlueprintText(plan *build.ConstructionPlan) error {
+func runConstructionPlanText(plan *build.ConstructionPlan) error {
 	emitter := vcli.NewEmitter()
 	err := plan.Execute(emitter)
 	if err != nil {
@@ -76,7 +76,7 @@ func runBlueprintText(plan *build.ConstructionPlan) error {
 	return nil
 }
 
-func runBlueprintPlanOnlyAndMachineReadable(plan *build.ConstructionPlan) error {
+func runConstructionPlanPlanOnlyAndMachineReadable(plan *build.ConstructionPlan) error {
 	jsonBytes, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
 		return err

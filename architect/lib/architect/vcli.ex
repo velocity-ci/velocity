@@ -23,8 +23,17 @@ defmodule Architect.VCLI do
     ])
   end
 
-  def plan_pipeline(dir, opts, pipeline_name),
-    do: cmd(dir, opts, ["run", "pipeline", "--plan-only", "--machine-readable", pipeline_name])
+  def plan_pipeline(dir, opts, branch_name, pipeline_name) do
+    cmd(dir, opts, [
+      "run",
+      "pipeline",
+      "--plan-only",
+      "--machine-readable",
+      "--branch",
+      branch_name,
+      pipeline_name
+    ])
+  end
 
   defp cmd(dir, %{bin: bin, timeout: timeout, log_errors: log_errors}, cmd) when is_list(cmd) do
     try do

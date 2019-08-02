@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/ghodss/yaml"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
@@ -29,6 +30,12 @@ type StepDockerRun struct {
 }
 
 func NewStepDockerRun(c *config.StepDockerRun) *StepDockerRun {
+	if c.MountPoint == "" {
+		c.MountPoint = "/velocity_ci"
+	}
+	if c.Environment == nil {
+		c.Environment = map[string]string{}
+	}
 	return &StepDockerRun{
 		BaseStep:       newBaseStep("run", []string{"run"}),
 		Image:          c.Image,
@@ -41,7 +48,23 @@ func NewStepDockerRun(c *config.StepDockerRun) *StepDockerRun {
 }
 
 func (dR StepDockerRun) GetDetails() string {
-	return fmt.Sprintf("image: %s command: %s", dR.Image, dR.Command)
+	type details struct {
+		Image          string            `json:"image"`
+		Command        string            `json:"command"`
+		Environment    map[string]string `json:"environment"`
+		WorkingDir     string            `json:"workingDir"`
+		MountPoint     string            `json:"mountPoint"`
+		IgnoreExitCode bool              `json:"ignoreExitCode"`
+	}
+	y, _ := yaml.Marshal(&details{
+		Image:          dR.Image,
+		Command:        strings.Join(dR.Command, " "),
+		Environment:    dR.Environment,
+		WorkingDir:     dR.WorkingDir,
+		MountPoint:     dR.MountPoint,
+		IgnoreExitCode: dR.IgnoreExitCode,
+	})
+	return string(y)
 }
 
 func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
@@ -53,9 +76,6 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 	writer.SetStatus(StateBuilding)
 	fmt.Fprintf(writer, "\r")
 
-	if dR.MountPoint == "" {
-		dR.MountPoint = "/velocity_ci"
-	}
 	env := []string{}
 	for k, v := range dR.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))

@@ -3,18 +3,50 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ghodss/yaml"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"go.uber.org/zap"
 )
+
+type Stage struct {
+	Name       string   `json:"name"`
+	Blueprints []string `json:"blueprints"`
+}
+
+func (s *Stage) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := objMap["name"]; ok {
+		err = json.Unmarshal(*objMap["name"], &s.Name)
+		if err != nil {
+			return err
+		}
+	}
+
+	if _, ok := objMap["blueprints"]; ok {
+		err = json.Unmarshal(*objMap["blueprints"], &s.Blueprints)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 type Pipeline struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+
+	Stages []*Stage `json:"stages"`
 
 	ParseErrors      []string `json:"parseErrors"`
 	ValidationErrors []string `json:"validationErrors"`
@@ -22,8 +54,11 @@ type Pipeline struct {
 
 func newPipeline() *Pipeline {
 	return &Pipeline{
-		Name:        "",
-		Description: "",
+		Name:             "",
+		Description:      "",
+		Stages:           []*Stage{},
+		ParseErrors:      []string{},
+		ValidationErrors: []string{},
 	}
 }
 
@@ -53,6 +88,26 @@ func (t *Pipeline) UnmarshalJSON(b []byte) error {
 	// Default Pipeline
 	if t.Name == "default" {
 		t.Description = "The default pipeline"
+	}
+
+	// Deserialize Stages
+	if val, _ := objMap["stages"]; val != nil {
+		var rawStages []*json.RawMessage
+		err = json.Unmarshal(*val, &rawStages)
+		t = handlePipelineUnmarshalError(t, err)
+		if err == nil {
+			for i, rawMessage := range rawStages {
+				s := &Stage{}
+				err = json.Unmarshal(*rawMessage, s)
+				t = handlePipelineUnmarshalError(t, err)
+				if err == nil {
+					if s.Name == "" {
+						s.Name = fmt.Sprintf("stage %d", i)
+					}
+					t.Stages = append(t.Stages, s)
+				}
+			}
+		}
 	}
 
 	return nil

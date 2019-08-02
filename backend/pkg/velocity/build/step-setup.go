@@ -63,7 +63,7 @@ func NewStepSetup(
 }
 
 func (s Setup) GetDetails() string {
-	return ""
+	return "n/a"
 }
 
 func makeVelocityDirs(projectRoot string) error {
