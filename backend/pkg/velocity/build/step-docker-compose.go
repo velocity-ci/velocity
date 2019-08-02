@@ -197,6 +197,10 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 	return nil
 }
 
+func (dC *StepDockerCompose) GracefulStop() error {
+	return nil
+}
+
 func (dC *StepDockerCompose) generateContainerAndHostConfig(
 	s v3.DockerComposeService,
 	serviceName,

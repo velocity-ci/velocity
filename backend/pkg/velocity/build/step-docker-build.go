@@ -77,6 +77,10 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 	return nil
 }
 
+func (dB *StepDockerBuild) GracefulStop() error {
+	return nil
+}
+
 func (dB *StepDockerBuild) Validate(params map[string]Parameter) error {
 	return nil
 }

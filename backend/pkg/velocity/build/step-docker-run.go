@@ -27,6 +27,8 @@ type StepDockerRun struct {
 	WorkingDir     string            `json:"workingDir"`
 	MountPoint     string            `json:"mountPoint"`
 	IgnoreExitCode bool              `json:"ignoreExitCode"`
+
+	serviceRunner *docker.ServiceRunner
 }
 
 func NewStepDockerRun(c *config.StepDockerRun) *StepDockerRun {
@@ -113,7 +115,7 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 		logging.GetLogger().Error("could not create docker network", zap.Error(err))
 	}
 
-	sR := docker.NewServiceRunner(
+	dR.serviceRunner = docker.NewServiceRunner(
 		cli,
 		ctx,
 		writer,
@@ -128,20 +130,20 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 		networkResp.ID,
 	)
 
-	sR.PullOrBuild(GetAuthConfigsMap(t.Docker.Registries), GetAddressAuthTokensMap(t.Docker.Registries))
-	sR.Create()
+	dR.serviceRunner.PullOrBuild(GetAuthConfigsMap(t.Docker.Registries), GetAddressAuthTokensMap(t.Docker.Registries))
+	dR.serviceRunner.Create()
 	stopServicesChannel := make(chan string, 32)
 	wg.Add(1)
-	go sR.Run(stopServicesChannel)
+	go dR.serviceRunner.Run(stopServicesChannel)
 	_ = <-stopServicesChannel
-	sR.Stop()
+	dR.serviceRunner.Stop()
 	wg.Wait()
 	err = cli.NetworkRemove(ctx, networkResp.ID)
 	if err != nil {
 		logging.GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
 	}
 
-	exitCode := sR.ExitCode
+	exitCode := dR.serviceRunner.ExitCode
 
 	if err != nil {
 		return err
@@ -157,6 +159,13 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 	writer.SetStatus(StateSuccess)
 	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success (exited: %d)", "\n"), exitCode)
 
+	return nil
+}
+
+func (dR *StepDockerRun) GracefulStop() error {
+	if dR.serviceRunner != nil {
+		dR.serviceRunner.Stop()
+	}
 	return nil
 }
 

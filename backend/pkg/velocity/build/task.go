@@ -139,6 +139,16 @@ func (t *Task) Execute(emitter Emitter) error {
 	return nil
 }
 
+func (t *Task) GracefulStop() error {
+	for _, step := range t.Steps {
+		err := step.GracefulStop()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *Task) executeStep(i, totalSteps int, emitter Emitter, step Step) error {
 	stepWriter := emitter.GetStepWriter(step)
 	defer stepWriter.Close()

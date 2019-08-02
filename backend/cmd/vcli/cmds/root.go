@@ -1,7 +1,13 @@
 package cmds
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/spf13/cobra"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
@@ -11,6 +17,11 @@ var BuildVersion = "dev"
 var (
 	noColor         bool
 	machineReadable bool
+)
+
+var (
+	gracefulStop = make(chan os.Signal)
+	action       build.Stoppable
 )
 
 func init() {
@@ -30,6 +41,16 @@ var rootCmd = &cobra.Command{
 		if noColor {
 			output.ColorDisable()
 		}
+		signal.Notify(gracefulStop, syscall.SIGTERM)
+		signal.Notify(gracefulStop, syscall.SIGINT)
+		go func() {
+			sig := <-gracefulStop
+			fmt.Printf("\ncaught signal: %+v\n", sig)
+			// fmt.Println("Wait for 2 second to finish processing")
+			// time.Sleep(2 * time.Second)
+			action.GracefulStop()
+			// os.Exit(0)
+		}()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()

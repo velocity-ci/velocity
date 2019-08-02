@@ -65,6 +65,10 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 
 }
 
+func (dP *StepDockerPush) GracefulStop() error {
+	return nil
+}
+
 func (dP StepDockerPush) Validate(params map[string]Parameter) error {
 	return nil
 }

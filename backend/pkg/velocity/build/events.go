@@ -1,5 +1,9 @@
 package build
 
+type Stoppable interface {
+	GracefulStop() error
+}
+
 func eventBuildStart(plan *ConstructionPlan) {
 
 }

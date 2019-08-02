@@ -11,6 +11,7 @@ import (
 type Step interface {
 	GetID() string
 	Execute(emitter Emitter, t *Task) error
+	GracefulStop() error
 	GetType() string
 	GetDescription() string
 	GetDetails() string

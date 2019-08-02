@@ -69,6 +69,7 @@ var runConstructionPlanCmd = &cobra.Command{
 
 func runConstructionPlanText(plan *build.ConstructionPlan) error {
 	emitter := vcli.NewEmitter()
+	action = plan
 	err := plan.Execute(emitter)
 	if err != nil {
 		return err

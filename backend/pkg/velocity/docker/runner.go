@@ -46,7 +46,7 @@ func NewServiceRunner(
 		hostConfig:      hostConfig,
 		networkConfig:   networkConfig,
 		networkID:       networkID,
-		removing:        false,
+		stopped:         false,
 	}
 }
 
@@ -65,7 +65,7 @@ type ServiceRunner struct {
 	networkID   string
 	containerID string
 	ExitCode    int
-	removing    bool
+	stopped     bool
 
 	wg      *sync.WaitGroup
 	secrets []string
@@ -224,28 +224,28 @@ func (sR *ServiceRunner) Run(stop chan string) { // rename to start
 }
 
 func (sR *ServiceRunner) Stop() {
-	defer sR.wg.Done()
+	if !sR.stopped {
+		sR.stopped = true
+		defer sR.wg.Done()
 
-	stopTimeout, _ := time.ParseDuration("30s")
-	err := sR.dockerCli.ContainerStop(
-		sR.context,
-		sR.containerID,
-		&stopTimeout,
-	)
-	if err != nil {
-		logging.GetLogger().Error("could not stop container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
-	}
+		stopTimeout, _ := time.ParseDuration("3s")
+		err := sR.dockerCli.ContainerStop(
+			sR.context,
+			sR.containerID,
+			&stopTimeout,
+		)
+		if err != nil {
+			logging.GetLogger().Error("could not stop container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
+		}
 
-	container, err := sR.dockerCli.ContainerInspect(sR.context, sR.containerID)
-	if err != nil {
-		logging.GetLogger().Error("could not inspect container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
-	}
+		container, err := sR.dockerCli.ContainerInspect(sR.context, sR.containerID)
+		if err != nil {
+			logging.GetLogger().Error("could not inspect container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
+		}
 
-	sR.ExitCode = container.State.ExitCode
-	fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIInfo, "-> %s container exited: %d", "\n"), GetContainerName(sR.name), sR.ExitCode)
+		sR.ExitCode = container.State.ExitCode
+		fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIInfo, "-> %s container exited: %d", "\n"), GetContainerName(sR.name), sR.ExitCode)
 
-	if !sR.removing {
-		sR.removing = true
 		err = sR.dockerCli.ContainerRemove(
 			sR.context,
 			sR.containerID,
