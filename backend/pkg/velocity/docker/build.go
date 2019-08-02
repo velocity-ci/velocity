@@ -22,7 +22,11 @@ func BuildContainer(
 	writer io.Writer,
 	authConfigs map[string]types.AuthConfig,
 ) error {
-	logging.GetLogger().Debug("building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
+	logging.GetLogger().Debug("building image",
+		zap.String("Dockerfile", dockerfile),
+		zap.String("build context", buildContext),
+		zap.Strings("tags", tags),
+	)
 
 	excludes, err := readDockerignore(buildContext)
 	if err != nil {
@@ -32,7 +36,6 @@ func BuildContainer(
 	buildCtx, err := archive.TarWithOptions(buildContext, &archive.TarOptions{
 		ExcludePatterns: excludes,
 	})
-
 	if err != nil {
 		return err
 	}

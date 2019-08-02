@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora"
-	"go.uber.org/zap"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 )
 
 var streamColors = [...]uint8{
@@ -284,7 +282,7 @@ type StdOutWriter struct {
 }
 
 func (w *StdOutWriter) Write(p []byte) (n int, err error) {
-	logging.GetLogger().Debug("write", zap.String("line", string(p)))
+	// logging.GetLogger().Debug("write", zap.String("line", string(p)))
 	for _, char := range string(p) {
 		if char == '\r' {
 			fmt.Fprintf(os.Stdout, string(char))

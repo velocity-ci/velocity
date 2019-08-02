@@ -29,6 +29,7 @@ func HandleOutput(body io.ReadCloser, censored []string, writer io.Writer) {
 			writer.Write([]byte(o))
 		}
 	}
+	body.Close()
 }
 
 func handleLogOutput(b []byte) string {

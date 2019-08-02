@@ -199,7 +199,20 @@ func NewTask(
 		Steps:       steps,
 		parameters:  map[string]*Parameter{},
 		Status:      StateWaiting,
+		Docker:      taskDockerFromBlueprintDocker(c.Docker),
 	}
+}
+
+func taskDockerFromBlueprintDocker(blueprint config.BlueprintDocker) TaskDocker {
+	taskDocker := TaskDocker{Registries: []DockerRegistry{}}
+	for _, dR := range blueprint.Registries {
+		taskDocker.Registries = append(taskDocker.Registries, DockerRegistry{
+			Address:   dR.Address,
+			Use:       dR.Use,
+			Arguments: dR.Arguments,
+		})
+	}
+	return taskDocker
 }
 
 func (t *Task) UpdateSetup(
