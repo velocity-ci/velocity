@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"go.uber.org/zap"
 )
 
 func HandleOutput(body io.ReadCloser, censored []string, writer io.Writer) {
 	scanner := bufio.NewScanner(body)
+
 	for scanner.Scan() {
 		allBytes := scanner.Bytes()
 		o := ""
@@ -78,10 +82,11 @@ func handlePullPushOutput(b []byte) string {
 }
 
 func handleBuildOutput(b []byte) string {
+	logging.GetLogger().Debug("output", zap.ByteString("msg", b))
 	type buildOutput struct {
 		Stream string `json:"stream"`
 	}
 	var o buildOutput
 	json.Unmarshal(b, &o)
-	return strings.TrimSpace(o.Stream)
+	return o.Stream
 }

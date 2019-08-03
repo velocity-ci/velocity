@@ -1,10 +1,12 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 
@@ -17,6 +19,8 @@ type StepDockerBuild struct {
 	Dockerfile string   `json:"dockerfile"`
 	Context    string   `json:"context"`
 	Tags       []string `json:"tags"`
+
+	builder *docker.ImageBuilder
 }
 
 func NewStepDockerBuild(c *config.StepDockerBuild) *StepDockerBuild {
@@ -55,12 +59,15 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	buildContext := filepath.Join(t.ProjectRoot, dB.Context)
 
-	err = docker.BuildContainer(
+	cli, _ := client.NewEnvClient()
+	ctx := context.Background()
+
+	dB.builder = docker.NewImageBuilder(cli, ctx, writer, getSecrets(t.parameters))
+
+	err = dB.builder.Build(
 		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
-		getSecrets(t.parameters),
-		writer,
 		authConfigs,
 	)
 
@@ -78,6 +85,7 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 }
 
 func (dB *StepDockerBuild) GracefulStop() error {
+	dB.builder.GracefulStop()
 	return nil
 }
 

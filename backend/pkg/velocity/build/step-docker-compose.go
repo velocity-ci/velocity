@@ -28,6 +28,9 @@ type StepDockerCompose struct {
 	BaseStep
 	ComposeFilePath string `json:"composeFile"`
 	// Contents    v3.DockerComposeYaml `json:"contents"`
+
+	// execution
+	services []*docker.ServiceRunner
 }
 
 func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *StepDockerCompose {
@@ -36,6 +39,7 @@ func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *Step
 	return &StepDockerCompose{
 		BaseStep:        newBaseStep("compose", streams),
 		ComposeFilePath: c.ComposeFile,
+		services:        []*docker.ServiceRunner{},
 	}
 }
 
@@ -96,7 +100,6 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 
 	serviceOrder := v3.GetServiceOrder(contents.Services, []string{})
 
-	services := []*docker.ServiceRunner{}
 	var wg sync.WaitGroup
 	cli, _ := client.NewEnvClient()
 	ctx := context.Background()
@@ -143,27 +146,27 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 			networkResp.ID,
 		)
 
-		services = append(services, sR)
+		dC.services = append(dC.services, sR)
 	}
 
 	// Pull/Build images
-	for _, serviceRunner := range services {
+	for _, serviceRunner := range dC.services {
 		serviceRunner.PullOrBuild(GetAuthConfigsMap(t.Docker.Registries), GetAddressAuthTokensMap(t.Docker.Registries))
 	}
 
 	// Create services
-	for _, serviceRunner := range services {
+	for _, serviceRunner := range dC.services {
 		serviceRunner.Create()
 	}
 	stopServicesChannel := make(chan string, 32)
 	// Start services
-	for _, serviceRunner := range services {
+	for _, serviceRunner := range dC.services {
 		wg.Add(1)
 		go serviceRunner.Run(stopServicesChannel)
 	}
 
 	_ = <-stopServicesChannel
-	for _, s := range services {
+	for _, s := range dC.services {
 		s.Stop()
 	}
 	wg.Wait()
@@ -172,7 +175,7 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 		logging.GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
 	}
 	success := true
-	for _, serviceRunner := range services {
+	for _, serviceRunner := range dC.services {
 		if serviceRunner.ExitCode != 0 {
 			success = false
 
@@ -198,6 +201,9 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 }
 
 func (dC *StepDockerCompose) GracefulStop() error {
+	for _, serviceRunner := range dC.services {
+		serviceRunner.Stop()
+	}
 	return nil
 }
 

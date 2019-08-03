@@ -110,12 +110,11 @@ func getAuthToken(image string, addressAuthTokens map[string]string) string {
 func (sR *ServiceRunner) PullOrBuild(authConfigs map[string]types.AuthConfig, addressAuthToken map[string]string) {
 	if sR.build != nil && (sR.build.Dockerfile != "" || sR.build.Context != "") {
 		// authConfigs := getAuthConfigsMap(dockerRegistries)
-		err := BuildContainer(
+		builder := NewImageBuilder(sR.dockerCli, sR.context, sR.writer, sR.secrets)
+		err := builder.Build(
 			sR.build.Context,
 			sR.build.Dockerfile,
 			[]string{GetImageName(sR.name)},
-			sR.secrets,
-			sR.writer,
 			authConfigs,
 		)
 		if err != nil {

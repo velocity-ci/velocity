@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,12 +15,35 @@ import (
 	"go.uber.org/zap"
 )
 
-func BuildContainer(
+func NewImageBuilder(
+	cli *client.Client,
+	ctx context.Context,
+	writer io.Writer,
+	secrets []string,
+) *ImageBuilder {
+	return &ImageBuilder{
+		dockerCli: cli,
+		context:   ctx,
+		writer:    writer,
+		secrets:   secrets,
+		stopped:   false,
+	}
+}
+
+type ImageBuilder struct {
+	dockerCli *client.Client
+	context   context.Context
+	writer    io.Writer
+	stopped   bool
+	secrets   []string
+
+	buildResp types.ImageBuildResponse
+}
+
+func (iB *ImageBuilder) Build(
 	buildContext string,
 	dockerfile string,
 	tags []string,
-	secrets []string,
-	writer io.Writer,
 	authConfigs map[string]types.AuthConfig,
 ) error {
 	logging.GetLogger().Debug("building image",
@@ -40,13 +64,7 @@ func BuildContainer(
 		return err
 	}
 
-	cli, err := client.NewEnvClient()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-
-	buildResp, err := cli.ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
+	iB.buildResp, err = iB.dockerCli.ImageBuild(iB.context, buildCtx, types.ImageBuildOptions{
 		AuthConfigs: authConfigs,
 		PullParent:  true,
 		Remove:      true,
@@ -57,11 +75,20 @@ func BuildContainer(
 		return err
 	}
 
-	defer buildResp.Body.Close()
-	HandleOutput(buildResp.Body, secrets, writer)
-
+	defer iB.buildResp.Body.Close()
+	HandleOutput(iB.buildResp.Body, iB.secrets, iB.writer)
+	if iB.stopped {
+		return fmt.Errorf("image build interrupted")
+	}
+	iB.stopped = true
 	logging.GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 	return nil
+}
+func (iB *ImageBuilder) GracefulStop() {
+	if !iB.stopped {
+		iB.buildResp.Body.Close()
+		iB.stopped = true
+	}
 }
 
 // From: https://github.com/docker/cli/blob/c202b4b98704876b0476a8fda073c5ffa14ff76d/cli/command/image/build/dockerignore.go
