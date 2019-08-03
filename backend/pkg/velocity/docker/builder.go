@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 	"go.uber.org/zap"
 )
 
@@ -81,9 +82,11 @@ func (iB *ImageBuilder) Build(
 		return fmt.Errorf("image build interrupted")
 	}
 	iB.stopped = true
+	fmt.Fprintf(iB.writer, output.ColorFmt(output.ANSIInfo, "-> built: %s", "\n"), tags)
 	logging.GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 	return nil
 }
+
 func (iB *ImageBuilder) GracefulStop() {
 	if !iB.stopped {
 		iB.buildResp.Body.Close()
