@@ -9,36 +9,23 @@ import (
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 	"go.uber.org/zap"
-
-	"github.com/docker/docker/client"
 )
 
-func NewImagePusher(
-	cli *client.Client,
-	ctx context.Context,
-	writer io.Writer,
-	secrets []string,
-) *ImagePusher {
+func NewImagePusher() *ImagePusher {
 	return &ImagePusher{
-		dockerCli: cli,
-		context:   ctx,
-		writer:    writer,
-		secrets:   secrets,
-		stopped:   false,
+		running: false,
 	}
 }
 
 type ImagePusher struct {
-	dockerCli *client.Client
-	context   context.Context
-	writer    io.Writer
-	stopped   bool
-	secrets   []string
+	running bool
 
 	response io.ReadCloser
 }
 
 func (iP *ImagePusher) Push(
+	writer io.Writer,
+	secrets []string,
 	tag string,
 	addressAuthTokens map[string]string,
 ) error {
@@ -48,28 +35,28 @@ func (iP *ImagePusher) Push(
 		zap.String("tag", tag),
 		zap.String("registry auth", authToken),
 	)
-	reader, err := iP.dockerCli.ImagePush(iP.context, tag, types.ImagePushOptions{
+	reader, err := dockerClient.ImagePush(context.Background(), tag, types.ImagePushOptions{
 		All:          true,
 		RegistryAuth: authToken,
 	})
 	if err != nil {
 		return err
 	}
-	HandleOutput(reader, iP.secrets, iP.writer)
-	if iP.stopped {
+	HandleOutput(reader, secrets, writer)
+	if !iP.running {
 		return fmt.Errorf("image push interrupted")
 	}
-	iP.stopped = true
-	fmt.Fprintf(iP.writer, output.ColorFmt(output.ANSIInfo, "-> pushed: %s", "\n"), tag)
+	iP.GracefulStop()
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSIInfo, "-> pushed: %s", "\n"), tag)
 	logging.GetLogger().Debug("finished pushing image", zap.String("tag", tag))
 
 	return nil
 }
 
 func (iP *ImagePusher) GracefulStop() {
-	if !iP.stopped {
+	if iP.running {
 		iP.response.Close()
-		iP.stopped = true
+		iP.running = false
 	}
 }
 
@@ -79,15 +66,13 @@ func PushImage(
 	addressAuthTokens map[string]string,
 	secrets []string,
 ) error {
-	cli, _ := client.NewEnvClient()
-	ctx := context.Background()
 	// Determine correct authToken
 	authToken := getAuthToken(tag, addressAuthTokens)
 	logging.GetLogger().Debug("pushing image",
 		zap.String("tag", tag),
 		zap.String("registry auth", authToken),
 	)
-	reader, err := cli.ImagePush(ctx, tag, types.ImagePushOptions{
+	reader, err := dockerClient.ImagePush(context.Background(), tag, types.ImagePushOptions{
 		All:          true,
 		RegistryAuth: authToken,
 	})

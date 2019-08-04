@@ -65,7 +65,7 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 
 }
 
-func (dP *StepDockerPush) GracefulStop() error {
+func (dP *StepDockerPush) Stop() error {
 	return nil
 }
 

@@ -176,7 +176,7 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	return nil
 }
 
-func (s *Setup) GracefulStop() error {
+func (s *Setup) Stop() error {
 	return nil
 }
 

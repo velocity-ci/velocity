@@ -48,7 +48,7 @@ var rootCmd = &cobra.Command{
 			fmt.Printf("\ncaught signal: %+v\n", sig)
 			// fmt.Println("Wait for 2 second to finish processing")
 			// time.Sleep(2 * time.Second)
-			action.GracefulStop()
+			action.Stop()
 			// os.Exit(0)
 		}()
 	},

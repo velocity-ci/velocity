@@ -1,27 +1,18 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"sync"
-
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 
-	"github.com/docker/docker/api/types/network"
 	"github.com/ghodss/yaml"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
-	"go.uber.org/zap"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 )
 
 type StepDockerCompose struct {
@@ -29,8 +20,7 @@ type StepDockerCompose struct {
 	ComposeFilePath string `json:"composeFile"`
 	// Contents    v3.DockerComposeYaml `json:"contents"`
 
-	// execution
-	services []*docker.ServiceRunner
+	containerManager *docker.ContainerManager
 }
 
 func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *StepDockerCompose {
@@ -39,7 +29,6 @@ func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *Step
 	return &StepDockerCompose{
 		BaseStep:        newBaseStep("compose", streams),
 		ComposeFilePath: c.ComposeFile,
-		services:        []*docker.ServiceRunner{},
 	}
 }
 
@@ -91,25 +80,12 @@ func getComposeFileStreams(path string) ([]string, error) {
 }
 
 func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
-
-	// err := dC.parseDockerComposeFile(t.ProjectRoot)
 	contents, err := parseComposeFile(filepath.Join(t.ProjectRoot, dC.ComposeFilePath))
 	if err != nil {
 		return err
 	}
 
 	serviceOrder := v3.GetServiceOrder(contents.Services, []string{})
-
-	var wg sync.WaitGroup
-	cli, _ := client.NewEnvClient()
-	ctx := context.Background()
-
-	networkResp, err := cli.NetworkCreate(ctx, fmt.Sprintf("vci-%s", dC.ID), types.NetworkCreate{
-		Labels: map[string]string{"owner": "velocity-ci"},
-	})
-	if err != nil {
-		logging.GetLogger().Error("could not create docker network", zap.String("err", err.Error()))
-	}
 
 	writers := map[string]StreamWriter{}
 	// Create writers
@@ -122,87 +98,47 @@ func (dC *StepDockerCompose) Execute(emitter Emitter, t *Task) error {
 		defer writers[serviceName].Close()
 	}
 
+	dC.containerManager = docker.NewContainerManager(
+		dC.ID,
+		GetAuthConfigsMap(t.Docker.Registries),
+		GetAddressAuthTokensMap(t.Docker.Registries),
+	)
+
 	for _, serviceName := range serviceOrder {
 		writer := writers[serviceName]
 		writer.SetStatus(StateBuilding)
 		s := contents.Services[serviceName]
 
 		// generate containerConfig + hostConfig
-		containerConfig, hostConfig, networkConfig := dC.generateContainerAndHostConfig(s, serviceName, networkResp.ID, t.ProjectRoot)
+		containerConfig, hostConfig := dC.generateContainerAndHostConfig(
+			s,
+			serviceName, t.ProjectRoot)
 
-		// Create service runners
-		sR := docker.NewServiceRunner(
-			cli,
-			ctx,
+		dC.containerManager.AddContainer(docker.NewContainer(
 			writer,
-			&wg,
-			getSecrets(t.parameters),
 			fmt.Sprintf("%s-%s", dC.ID, serviceName),
 			s.Image,
 			&s.Build,
 			containerConfig,
 			hostConfig,
-			networkConfig,
-			networkResp.ID,
-		)
-
-		dC.services = append(dC.services, sR)
+			getServiceAliases(s.Networks["default"].Aliases, serviceName),
+		))
 	}
 
-	// Pull/Build images
-	for _, serviceRunner := range dC.services {
-		serviceRunner.PullOrBuild(GetAuthConfigsMap(t.Docker.Registries), GetAddressAuthTokensMap(t.Docker.Registries))
+	if err := dC.containerManager.Execute(getSecrets(t.parameters)); err != nil {
+		return err
 	}
 
-	// Create services
-	for _, serviceRunner := range dC.services {
-		serviceRunner.Create()
-	}
-	stopServicesChannel := make(chan string, 32)
-	// Start services
-	for _, serviceRunner := range dC.services {
-		wg.Add(1)
-		go serviceRunner.Run(stopServicesChannel)
-	}
-
-	_ = <-stopServicesChannel
-	for _, s := range dC.services {
-		s.Stop()
-	}
-	wg.Wait()
-	err = cli.NetworkRemove(ctx, networkResp.ID)
-	if err != nil {
-		logging.GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
-	}
-	success := true
-	for _, serviceRunner := range dC.services {
-		if serviceRunner.ExitCode != 0 {
-			success = false
-
-			break
-		}
-	}
-
-	if !success {
-		for _, serviceName := range serviceOrder {
-			writers[serviceName].SetStatus(StateFailed)
-			fmt.Fprintf(writers[serviceName], output.ColorFmt(output.ANSIError, "-> %s error", "\n"), serviceName)
-
-		}
-	} else {
-		for _, serviceName := range serviceOrder {
-			writers[serviceName].SetStatus(StateSuccess)
-			fmt.Fprintf(writers[serviceName], output.ColorFmt(output.ANSISuccess, "-> %s success", "\n"), serviceName)
-
-		}
+	if !dC.containerManager.IsSuccessful() {
+		return fmt.Errorf("non-zero exit code")
 	}
 
 	return nil
 }
 
-func (dC *StepDockerCompose) GracefulStop() error {
-	for _, serviceRunner := range dC.services {
-		serviceRunner.Stop()
+func (dC *StepDockerCompose) Stop() error {
+	if dC.containerManager != nil {
+		dC.containerManager.Stop()
 	}
 	return nil
 }
@@ -210,9 +146,8 @@ func (dC *StepDockerCompose) GracefulStop() error {
 func (dC *StepDockerCompose) generateContainerAndHostConfig(
 	s v3.DockerComposeService,
 	serviceName,
-	networkID,
 	projectRoot string,
-) (*container.Config, *container.HostConfig, *network.NetworkingConfig) {
+) (*container.Config, *container.HostConfig) {
 	env := []string{}
 	for k, v := range s.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -265,15 +200,7 @@ func (dC *StepDockerCompose) generateContainerAndHostConfig(
 		Links: links,
 	}
 
-	networkConfig := &network.NetworkingConfig{
-		EndpointsConfig: map[string]*network.EndpointSettings{
-			networkID: {
-				Aliases: getServiceAliases(s.Networks["default"].Aliases, serviceName),
-			},
-		},
-	}
-
-	return containerConfig, hostConfig, networkConfig
+	return containerConfig, hostConfig
 }
 
 func getServiceAliases(aliases []string, serviceName string) []string {

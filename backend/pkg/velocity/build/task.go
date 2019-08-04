@@ -129,8 +129,8 @@ func (t *Task) Execute(emitter Emitter) error {
 	for i, step := range t.Steps {
 		err := t.executeStep(i+1, totalSteps, emitter, step)
 		if err != nil { // TODO: add support for ignoring errors from specific steps in Blueprint
-			fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSIError, "-> error in task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
 			taskWriter.SetStatus(StateFailed)
+			fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSIError, "-> error in task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
 			return err
 		}
 	}
@@ -139,9 +139,9 @@ func (t *Task) Execute(emitter Emitter) error {
 	return nil
 }
 
-func (t *Task) GracefulStop() error {
+func (t *Task) Stop() error {
 	for _, step := range t.Steps {
-		err := step.GracefulStop()
+		err := step.Stop()
 		if err != nil {
 			return err
 		}

@@ -1,12 +1,10 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 
@@ -59,12 +57,11 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	buildContext := filepath.Join(t.ProjectRoot, dB.Context)
 
-	cli, _ := client.NewEnvClient()
-	ctx := context.Background()
-
-	dB.builder = docker.NewImageBuilder(cli, ctx, writer, getSecrets(t.parameters))
+	dB.builder = docker.NewImageBuilder()
 
 	err = dB.builder.Build(
+		writer,
+		getSecrets(t.parameters),
 		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
@@ -84,8 +81,8 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 	return nil
 }
 
-func (dB *StepDockerBuild) GracefulStop() error {
-	dB.builder.GracefulStop()
+func (dB *StepDockerBuild) Stop() error {
+	dB.builder.Stop()
 	return nil
 }
 

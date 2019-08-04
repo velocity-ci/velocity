@@ -6,42 +6,35 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/builder/dockerignore"
-	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 	"go.uber.org/zap"
 )
 
-func NewImageBuilder(
-	cli *client.Client,
-	ctx context.Context,
-	writer io.Writer,
-	secrets []string,
-) *ImageBuilder {
+func NewImageBuilder() *ImageBuilder {
 	return &ImageBuilder{
-		dockerCli: cli,
-		context:   ctx,
-		writer:    writer,
-		secrets:   secrets,
-		stopped:   false,
+		running: false,
 	}
 }
 
 type ImageBuilder struct {
-	dockerCli *client.Client
-	context   context.Context
-	writer    io.Writer
-	stopped   bool
-	secrets   []string
+	running bool
 
 	buildResp types.ImageBuildResponse
 }
 
+func (iB *ImageBuilder) IsRunning() bool {
+	return iB.running
+}
+
 func (iB *ImageBuilder) Build(
+	writer io.Writer,
+	secrets []string,
 	buildContext string,
 	dockerfile string,
 	tags []string,
@@ -65,7 +58,7 @@ func (iB *ImageBuilder) Build(
 		return err
 	}
 
-	iB.buildResp, err = iB.dockerCli.ImageBuild(iB.context, buildCtx, types.ImageBuildOptions{
+	iB.buildResp, err = dockerClient.ImageBuild(context.Background(), buildCtx, types.ImageBuildOptions{
 		AuthConfigs: authConfigs,
 		PullParent:  true,
 		Remove:      true,
@@ -75,23 +68,24 @@ func (iB *ImageBuilder) Build(
 	if err != nil {
 		return err
 	}
-
+	iB.running = true
 	defer iB.buildResp.Body.Close()
-	HandleOutput(iB.buildResp.Body, iB.secrets, iB.writer)
-	if iB.stopped {
+	HandleOutput(iB.buildResp.Body, secrets, writer)
+	if !iB.running {
 		return fmt.Errorf("image build interrupted")
 	}
-	iB.stopped = true
-	fmt.Fprintf(iB.writer, output.ColorFmt(output.ANSIInfo, "-> built: %s", "\n"), tags)
+	iB.Stop()
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSIInfo, "-> built: %s", "\n"), strings.Join(tags, ", "))
 	logging.GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
 	return nil
 }
 
-func (iB *ImageBuilder) GracefulStop() {
-	if !iB.stopped {
+func (iB *ImageBuilder) Stop() error {
+	if iB.running {
 		iB.buildResp.Body.Close()
-		iB.stopped = true
+		iB.running = false
 	}
+	return nil
 }
 
 // From: https://github.com/docker/cli/blob/c202b4b98704876b0476a8fda073c5ffa14ff76d/cli/command/image/build/dockerignore.go

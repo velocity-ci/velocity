@@ -135,10 +135,10 @@ func (p *ConstructionPlan) Execute(emitter Emitter) error {
 	return nil
 }
 
-func (p *ConstructionPlan) GracefulStop() error {
+func (p *ConstructionPlan) Stop() error {
 	for _, stage := range p.Stages {
 		for _, task := range stage.Tasks {
-			err := task.GracefulStop()
+			err := task.Stop()
 			if err != nil {
 				return err
 			}
