@@ -1,6 +1,7 @@
-package main
+package cmds
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -26,6 +27,12 @@ var completionCmd = &cobra.Command{
 			return err
 		}
 
-		return rootCmd.GenZshCompletionFile(filepath.Join(homeDir, "/.velocityci/completion.zsh"))
+		err = rootCmd.GenZshCompletionFile(filepath.Join(homeDir, "/.velocityci/completion.zsh"))
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stdout, "Bash completion script: source %s\n", filepath.Join(homeDir, "/.velocityci/completion.bash"))
+		fmt.Fprintf(os.Stdout, "ZSH completion script: source %s\n", filepath.Join(homeDir, "/.velocityci/completion.zsh"))
+		return nil
 	},
 }

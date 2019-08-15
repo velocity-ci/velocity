@@ -1,9 +1,12 @@
-package main
+package cmds
 
 import (
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
+
+// BuildVersion represents the current build tag of this CLI. It is set at compile-time with ldflags
+var BuildVersion = "dev"
 
 var (
 	noColor         bool
@@ -13,6 +16,10 @@ var (
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.PersistentFlags().BoolVar(&machineReadable, "machine-readable", false, "Output in machine readable format (JSON)")
+}
+
+func Execute() error {
+	return rootCmd.Execute()
 }
 
 var rootCmd = &cobra.Command{

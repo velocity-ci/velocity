@@ -3,17 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/velocity-ci/velocity/backend/cmd/vcli/cmds"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
-
-
 )
 
-// BuildVersion represents the current build tag of this CLI. It is set at compile-time with ldflags
-var BuildVersion = "dev"
-
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stdout, output.ColorFmt(output.ANSIError, "%s","\n"), err)
+	if err := cmds.Execute(); err != nil {
+		fmt.Fprintf(os.Stdout, output.ColorFmt(output.ANSIError, "%s", "\n"), err)
 		os.Exit(1)
 	}
 }
