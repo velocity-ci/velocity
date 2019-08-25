@@ -82,7 +82,9 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 }
 
 func (dB *StepDockerBuild) Stop() error {
-	dB.builder.Stop()
+	if dB.builder != nil {
+		dB.builder.Stop()
+	}
 	return nil
 }
 

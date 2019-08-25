@@ -16,22 +16,26 @@ import (
 	"go.uber.org/zap"
 )
 
+// NewImageBuilder returns a new Docker image builder
 func NewImageBuilder() *ImageBuilder {
 	return &ImageBuilder{
 		running: false,
 	}
 }
 
+// ImageBuilder represents a stoppable Docker image builder
 type ImageBuilder struct {
 	running bool
 
 	buildResp types.ImageBuildResponse
 }
 
+// IsRunning returns whether or not the builder is running
 func (iB *ImageBuilder) IsRunning() bool {
 	return iB.running
 }
 
+// Build builds a Docker image with the given parameters
 func (iB *ImageBuilder) Build(
 	writer io.Writer,
 	secrets []string,
@@ -80,8 +84,9 @@ func (iB *ImageBuilder) Build(
 	return nil
 }
 
+// Stop interrupts the build process
 func (iB *ImageBuilder) Stop() error {
-	if iB.running {
+	if iB.IsRunning() {
 		iB.buildResp.Body.Close()
 		iB.running = false
 	}

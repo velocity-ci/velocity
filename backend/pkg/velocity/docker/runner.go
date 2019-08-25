@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
@@ -22,6 +21,7 @@ import (
 const owner = "velocity-ci"
 const ownerPrefix = "vci"
 
+// ContainerManager manages a set of containers
 type ContainerManager struct {
 	wg        sync.WaitGroup
 	mutex     sync.Mutex
@@ -36,6 +36,7 @@ type ContainerManager struct {
 	firstStoppedSvc string
 }
 
+// NewContainerManager returns a new container manager
 func NewContainerManager(
 	id string,
 	registryAuthConfigs map[string]types.AuthConfig,
@@ -50,6 +51,7 @@ func NewContainerManager(
 	}
 }
 
+// AddContainer adds a container for the container manager to manager
 func (cM *ContainerManager) AddContainer(container *Container) error {
 	cM.containers = append(cM.containers, container)
 	return nil
@@ -68,6 +70,7 @@ func (cM *ContainerManager) doContainers(f func(c *Container) error) error {
 	return nil
 }
 
+// Execute runs the containers
 func (cM *ContainerManager) Execute(secrets []string) error {
 	defer cM.Stop()
 	cM.running = true
@@ -133,12 +136,14 @@ func (cM *ContainerManager) Execute(secrets []string) error {
 	return nil
 }
 
+// IsRunning returns whether or not the containers are running
 func (cM *ContainerManager) IsRunning() bool {
 	cM.mutex.Lock()
 	defer cM.mutex.Unlock()
 	return cM.running
 }
 
+// IsSuccessful returns whether or not the first stopped service exited successfully
 func (cM *ContainerManager) IsSuccessful() bool {
 	cM.mutex.Lock()
 	defer cM.mutex.Unlock()
@@ -150,6 +155,7 @@ func (cM *ContainerManager) IsSuccessful() bool {
 	return false
 }
 
+// IsAllSuccessful returns whether or not all of the services exited successfully
 func (cM *ContainerManager) IsAllSuccessful() bool {
 	cM.mutex.Lock()
 	defer cM.mutex.Unlock()
@@ -161,6 +167,7 @@ func (cM *ContainerManager) IsAllSuccessful() bool {
 	return true
 }
 
+// Stop interrupts running containers
 func (cM *ContainerManager) Stop() error {
 	if cM.IsRunning() {
 		cM.mutex.Lock()
@@ -180,6 +187,7 @@ func (cM *ContainerManager) Stop() error {
 	return nil
 }
 
+// Container represents a runnable container
 type Container struct {
 	writer io.Writer
 
@@ -199,6 +207,7 @@ type Container struct {
 	mutex       sync.Mutex
 }
 
+// NewContainer returns a new runnable container with the given parameters
 func NewContainer(
 	writer io.Writer,
 	name string,
@@ -220,6 +229,7 @@ func NewContainer(
 	}
 }
 
+// ConfigureNetwork updates the container's endpoint in the network to match its aliases
 func (c *Container) ConfigureNetwork(networkID string) error {
 	c.networkConfig = &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
@@ -231,6 +241,7 @@ func (c *Container) ConfigureNetwork(networkID string) error {
 	return nil
 }
 
+// Get will ensure that the container exists inside Docker by building or pulling it
 func (c *Container) Get(secrets []string, authConfigs map[string]types.AuthConfig, authTokens map[string]string) error {
 	if c.build != nil && (c.build.Dockerfile != "" || c.build.Context != "") {
 		return c.Build(secrets, authConfigs, authTokens)
@@ -238,6 +249,7 @@ func (c *Container) Get(secrets []string, authConfigs map[string]types.AuthConfi
 	return c.Pull(secrets, authConfigs, authTokens)
 }
 
+// Build builds the container
 func (c *Container) Build(
 	secrets []string,
 	authConfigs map[string]types.AuthConfig,
@@ -261,6 +273,7 @@ func (c *Container) Build(
 	return nil
 }
 
+// Pull pulls the container
 func (c *Container) Pull(
 	secrets []string,
 	authConfigs map[string]types.AuthConfig,
@@ -289,6 +302,7 @@ func (c *Container) Pull(
 	return nil
 }
 
+// Create creates the container in Docker
 func (c *Container) Create() error {
 	fmt.Fprintf(c.writer, output.ColorFmt(output.ANSIInfo, "-> %s created", "\n"), GetContainerName(c.name))
 
@@ -309,6 +323,7 @@ func (c *Container) Create() error {
 	return nil
 }
 
+// Run runs the created container in Docker
 func (c *Container) Run(wg *sync.WaitGroup, secrets []string, firstStoppedSvcCh chan string) error {
 	defer func() { firstStoppedSvcCh <- c.name }()
 	defer wg.Done()
@@ -348,6 +363,7 @@ func (c *Container) Run(wg *sync.WaitGroup, secrets []string, firstStoppedSvcCh 
 	return nil
 }
 
+// Stop stops the container with 1s of grace
 func (c *Container) Stop() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -404,8 +420,7 @@ func (c *Container) Stop() error {
 	return nil
 }
 
-// TODO: clean up
-
+// GetContainerName returns the vci normalised container name
 func GetContainerName(serviceName string) string {
 	return fmt.Sprintf(
 		"vci-%s",
@@ -413,6 +428,7 @@ func GetContainerName(serviceName string) string {
 	)
 }
 
+// GetImageName returns the vci normalised image name
 func GetImageName(serviceName string) string {
 	return fmt.Sprintf(
 		"vci-%s",
@@ -472,20 +488,4 @@ func resolvePullImage(image string) string {
 	}
 
 	return fmt.Sprintf("docker.io/library/%s", image)
-}
-
-func findImageLocally(imageName string, cli *client.Client, ctx context.Context) error {
-	images, err := cli.ImageList(ctx, types.ImageListOptions{})
-	if err != nil {
-		logging.GetLogger().Error("could not find image", zap.String("err", err.Error()))
-		return err
-	}
-	for _, i := range images {
-		for _, t := range i.RepoTags {
-			if t == imageName {
-				return nil
-			}
-		}
-	}
-	return fmt.Errorf("could not find image: %s", imageName)
 }

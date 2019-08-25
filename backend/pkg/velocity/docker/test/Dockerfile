@@ -1,3 +1,3 @@
-FROM busybox
+FROM busybox:latest
 
 RUN ls
