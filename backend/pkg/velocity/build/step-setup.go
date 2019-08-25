@@ -176,6 +176,10 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 	return nil
 }
 
+func (s *Setup) Stop() error {
+	return nil
+}
+
 func (s *Setup) SetParams(params map[string]*Parameter) error {
 	return nil
 }

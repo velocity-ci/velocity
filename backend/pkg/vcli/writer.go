@@ -1,16 +1,15 @@
 package vcli
 
 import (
-	"fmt"
+	"bufio"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/logrusorgru/aurora"
-	"go.uber.org/zap"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 )
 
 var streamColors = [...]uint8{
@@ -247,69 +246,81 @@ var streamColors = [...]uint8{
 	230, // cornsilk_1
 }
 
+// Emitter represents an emitter
 type Emitter struct {
 	StepNumber uint64
 }
 
+// NewEmitter returns a new emitter
 func NewEmitter() *Emitter {
 	rand.Seed(time.Now().Unix())
 
 	return &Emitter{}
 }
 
+// GetStreamWriter returns a new writer for a stream
 func (e *Emitter) GetStreamWriter(stream *build.Stream) build.StreamWriter {
 	randColorCode := streamColors[rand.Intn(len(streamColors))]
-	return &StdOutWriter{
-		prefix: aurora.Sprintf(aurora.Index(randColorCode, "[%s]  "), stream.Name),
-	}
+	return NewStdOutWriter(aurora.Sprintf(aurora.Index(randColorCode, "[%s]  "), stream.Name))
 }
 
+// GetStepWriter returns a new writer for a step
 func (e *Emitter) GetStepWriter(step build.Step) build.StepWriter {
-	return &StdOutWriter{
-		prefix: "",
-	}
+	return NewStdOutWriter("")
 }
 
+// GetTaskWriter returns a new writer for a task
 func (e *Emitter) GetTaskWriter(task *build.Task) build.TaskWriter {
-	return &StdOutWriter{
-		prefix: "",
-	}
+	return NewStdOutWriter("")
 }
 
+// StdOutWriter represents a writer that prints to Stdout
 type StdOutWriter struct {
+	uuid        []byte
+	buffer      *bufio.Writer
 	prefix      string
 	status      string
 	ansiColour  string
 	currentLine string
 }
 
+// NewStdOutWriter returns a new StdOutWriter
+func NewStdOutWriter(prefix string) *StdOutWriter {
+	return &StdOutWriter{
+		uuid:   uuid.NewV4().Bytes(),
+		prefix: prefix,
+		buffer: bufio.NewWriter(os.Stdout),
+	}
+}
+
+// Write writes to Stdout
 func (w *StdOutWriter) Write(p []byte) (n int, err error) {
-	logging.GetLogger().Debug("write", zap.String("line", string(p)))
+	// logging.GetLogger().Debug("write", zap.String("line", string(p)))
 	for _, char := range string(p) {
 		if char == '\r' {
-			fmt.Fprintf(os.Stdout, string(char))
-			w.currentLine = ""
-			continue
+			w.buffer.WriteRune(char)
+			w.buffer.Flush()
+			w.buffer.WriteString(w.prefix)
+			// w.buffer.Reset(os.Stdout)
+			// w.buffer.WriteString(w.prefix)
 		} else if char == '\n' {
-			fmt.Fprintf(os.Stdout, string(char))
-			w.currentLine = ""
-			continue
-		} else if w.currentLine == "" {
-			fmt.Fprintf(os.Stdout, w.prefix)
-			w.currentLine = w.prefix
+			w.buffer.WriteRune(char)
+			w.buffer.Flush()
+			w.buffer.WriteString(w.prefix)
+		} else {
+			w.buffer.WriteRune(char)
 		}
-		fmt.Fprintf(os.Stdout, string(char))
-		w.currentLine = fmt.Sprintf("%s%s", w.currentLine, string(char))
-
 	}
 
 	return len(p), nil
 }
 
+// SetStatus sets the status of the writer
 func (w *StdOutWriter) SetStatus(s string) {
 	w.status = s
 }
 
+// Close closes the writer
 func (w *StdOutWriter) Close() {
 	return
 }

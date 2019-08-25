@@ -7,9 +7,10 @@ import (
 	"strings"
 )
 
-type ParameterResolver struct {
-}
+// ParameterResolver implements the Resolver interface
+type ParameterResolver struct{}
 
+// Resolve resolves parameters from Stdin
 func (pR ParameterResolver) Resolve(paramName string) (string, error) {
 
 	var text string

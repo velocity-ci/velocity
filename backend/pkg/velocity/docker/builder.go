@@ -2,27 +2,53 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/builder/dockerignore"
-	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 	"go.uber.org/zap"
 )
 
-func BuildContainer(
+// NewImageBuilder returns a new Docker image builder
+func NewImageBuilder() *ImageBuilder {
+	return &ImageBuilder{
+		running: false,
+	}
+}
+
+// ImageBuilder represents a stoppable Docker image builder
+type ImageBuilder struct {
+	running bool
+
+	buildResp types.ImageBuildResponse
+}
+
+// IsRunning returns whether or not the builder is running
+func (iB *ImageBuilder) IsRunning() bool {
+	return iB.running
+}
+
+// Build builds a Docker image with the given parameters
+func (iB *ImageBuilder) Build(
+	writer io.Writer,
+	secrets []string,
 	buildContext string,
 	dockerfile string,
 	tags []string,
-	secrets []string,
-	writer io.Writer,
 	authConfigs map[string]types.AuthConfig,
 ) error {
-	logging.GetLogger().Debug("building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
+	logging.GetLogger().Debug("building image",
+		zap.String("Dockerfile", dockerfile),
+		zap.String("build context", buildContext),
+		zap.Strings("tags", tags),
+	)
 
 	excludes, err := readDockerignore(buildContext)
 	if err != nil {
@@ -32,18 +58,11 @@ func BuildContainer(
 	buildCtx, err := archive.TarWithOptions(buildContext, &archive.TarOptions{
 		ExcludePatterns: excludes,
 	})
-
 	if err != nil {
 		return err
 	}
 
-	cli, err := client.NewEnvClient()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-
-	buildResp, err := cli.ImageBuild(ctx, buildCtx, types.ImageBuildOptions{
+	iB.buildResp, err = dockerClient.ImageBuild(context.Background(), buildCtx, types.ImageBuildOptions{
 		AuthConfigs: authConfigs,
 		PullParent:  true,
 		Remove:      true,
@@ -53,11 +72,24 @@ func BuildContainer(
 	if err != nil {
 		return err
 	}
-
-	defer buildResp.Body.Close()
-	HandleOutput(buildResp.Body, secrets, writer)
-
+	iB.running = true
+	defer iB.buildResp.Body.Close()
+	HandleOutput(iB.buildResp.Body, secrets, writer)
+	if !iB.running {
+		return fmt.Errorf("image build interrupted")
+	}
+	iB.Stop()
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSIInfo, "-> built: %s", "\n"), strings.Join(tags, ", "))
 	logging.GetLogger().Debug("finished building image", zap.String("Dockerfile", dockerfile), zap.String("build context", buildContext))
+	return nil
+}
+
+// Stop interrupts the build process
+func (iB *ImageBuilder) Stop() error {
+	if iB.IsRunning() {
+		iB.buildResp.Body.Close()
+		iB.running = false
+	}
 	return nil
 }
 

@@ -13,15 +13,15 @@ docker:
         username: ${docker_hub_username}
         password: ${docker_hub_password}
 
-steps: 
+steps:
   - type: build
     description: Build release image
     dockerfile: build/docker/builder/Dockerfile
     context: ./backend
     tags:
-      - civelocity/builder:${GIT_DESCRIBE}
+      - civelocity/builder:${git.describe}
       - civelocity/builder:latest
   - type: push
     tags:
-      - civelocity/builder:${GIT_DESCRIBE}
+      - civelocity/builder:${git.describe}
       - civelocity/builder:latest

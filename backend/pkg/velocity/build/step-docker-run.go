@@ -1,21 +1,14 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 
-	"go.uber.org/zap"
-
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
@@ -27,6 +20,8 @@ type StepDockerRun struct {
 	WorkingDir     string            `json:"workingDir"`
 	MountPoint     string            `json:"mountPoint"`
 	IgnoreExitCode bool              `json:"ignoreExitCode"`
+
+	containerManager *docker.ContainerManager
 }
 
 func NewStepDockerRun(c *config.StepDockerRun) *StepDockerRun {
@@ -102,61 +97,43 @@ func (dR *StepDockerRun) Execute(emitter Emitter, t *Task) error {
 		},
 	}
 
-	var wg sync.WaitGroup
-	cli, _ := client.NewEnvClient()
-	ctx := context.Background()
+	dR.containerManager = docker.NewContainerManager(
+		dR.ID,
+		GetAuthConfigsMap(t.Docker.Registries),
+		GetAddressAuthTokensMap(t.Docker.Registries),
+	)
 
-	networkResp, err := cli.NetworkCreate(ctx, fmt.Sprintf("vci-%s", dR.ID), types.NetworkCreate{
-		Labels: map[string]string{"owner": "velocity-ci"},
-	})
-	if err != nil {
-		logging.GetLogger().Error("could not create docker network", zap.Error(err))
-	}
-
-	sR := docker.NewServiceRunner(
-		cli,
-		ctx,
+	dR.containerManager.AddContainer(docker.NewContainer(
 		writer,
-		&wg,
-		getSecrets(t.parameters),
 		fmt.Sprintf("%s-%s", dR.ID, "run"),
 		dR.Image,
 		nil,
 		config,
 		hostConfig,
 		nil,
-		networkResp.ID,
-	)
+	))
 
-	sR.PullOrBuild(GetAuthConfigsMap(t.Docker.Registries), GetAddressAuthTokensMap(t.Docker.Registries))
-	sR.Create()
-	stopServicesChannel := make(chan string, 32)
-	wg.Add(1)
-	go sR.Run(stopServicesChannel)
-	_ = <-stopServicesChannel
-	sR.Stop()
-	wg.Wait()
-	err = cli.NetworkRemove(ctx, networkResp.ID)
-	if err != nil {
-		logging.GetLogger().Error("could not remove docker network", zap.String("networkID", networkResp.ID), zap.Error(err))
-	}
-
-	exitCode := sR.ExitCode
-
-	if err != nil {
+	if err := dR.containerManager.Execute(getSecrets(t.parameters)); err != nil {
 		return err
 	}
 
-	if exitCode != 0 && !dR.IgnoreExitCode {
+	if !dR.containerManager.IsSuccessful() && !dR.IgnoreExitCode {
 		writer.SetStatus(StateFailed)
-		fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> error (exited: %d)", "\n"), exitCode)
+		fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "-> error: non-zero exit code", "\n"))
 
-		return fmt.Errorf("Non-zero exit code: %d", exitCode)
+		return fmt.Errorf("non-zero exit code")
 	}
 
 	writer.SetStatus(StateSuccess)
-	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success (exited: %d)", "\n"), exitCode)
+	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success", "\n"))
 
+	return nil
+}
+
+func (dR *StepDockerRun) Stop() error {
+	if dR.containerManager != nil {
+		dR.containerManager.Stop()
+	}
 	return nil
 }
 

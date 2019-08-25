@@ -17,6 +17,8 @@ type StepDockerBuild struct {
 	Dockerfile string   `json:"dockerfile"`
 	Context    string   `json:"context"`
 	Tags       []string `json:"tags"`
+
+	builder *docker.ImageBuilder
 }
 
 func NewStepDockerBuild(c *config.StepDockerBuild) *StepDockerBuild {
@@ -55,12 +57,14 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 
 	buildContext := filepath.Join(t.ProjectRoot, dB.Context)
 
-	err = docker.BuildContainer(
+	dB.builder = docker.NewImageBuilder()
+
+	err = dB.builder.Build(
+		writer,
+		getSecrets(t.parameters),
 		buildContext,
 		dB.Dockerfile,
 		dB.Tags,
-		getSecrets(t.parameters),
-		writer,
 		authConfigs,
 	)
 
@@ -74,6 +78,13 @@ func (dB *StepDockerBuild) Execute(emitter Emitter, t *Task) error {
 	writer.SetStatus(StateSuccess)
 	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success", "\n"))
 
+	return nil
+}
+
+func (dB *StepDockerBuild) Stop() error {
+	if dB.builder != nil {
+		dB.builder.Stop()
+	}
 	return nil
 }
 

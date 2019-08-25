@@ -116,6 +116,7 @@ func GetAuthConfigsMap(dockerRegistries []DockerRegistry) map[string]types.AuthC
 }
 
 func GetAddressAuthTokensMap(dockerRegistries []DockerRegistry) (r map[string]string) {
+	r = map[string]string{}
 	for _, dR := range dockerRegistries {
 		r[dR.Address] = dR.AuthorizationToken
 	}

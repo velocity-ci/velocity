@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
@@ -19,58 +18,409 @@ import (
 	"golang.org/x/net/http/httpproxy"
 )
 
-func NewServiceRunner(
-	cli *client.Client,
-	ctx context.Context,
+const owner = "velocity-ci"
+const ownerPrefix = "vci"
+
+// ContainerManager manages a set of containers
+type ContainerManager struct {
+	wg        sync.WaitGroup
+	mutex     sync.Mutex
+	networkID string
+
+	id          string
+	authConfigs map[string]types.AuthConfig
+	authTokens  map[string]string
+
+	containers      []*Container
+	running         bool
+	firstStoppedSvc string
+}
+
+// NewContainerManager returns a new container manager
+func NewContainerManager(
+	id string,
+	registryAuthConfigs map[string]types.AuthConfig,
+	registryAuthTokens map[string]string,
+) *ContainerManager {
+	return &ContainerManager{
+		id:          id,
+		containers:  []*Container{},
+		authConfigs: registryAuthConfigs,
+		authTokens:  registryAuthTokens,
+		running:     false,
+	}
+}
+
+// AddContainer adds a container for the container manager to manager
+func (cM *ContainerManager) AddContainer(container *Container) error {
+	cM.containers = append(cM.containers, container)
+	return nil
+}
+
+func (cM *ContainerManager) doContainers(f func(c *Container) error) error {
+	if cM.IsRunning() {
+		cM.mutex.Lock()
+		defer cM.mutex.Unlock()
+		for _, c := range cM.containers {
+			if err := f(c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// Execute runs the containers
+func (cM *ContainerManager) Execute(secrets []string) error {
+	defer cM.Stop()
+	cM.running = true
+
+	if cM.IsRunning() {
+		cM.mutex.Lock()
+		networkResp, err := dockerClient.NetworkCreate(
+			context.Background(),
+			fmt.Sprintf("%s-%s", ownerPrefix, cM.id),
+			types.NetworkCreate{
+				Labels: map[string]string{"owner": owner},
+			})
+		if err != nil {
+			logging.GetLogger().Error("could not create docker network", zap.Error(err))
+			return err
+		}
+
+		cM.networkID = networkResp.ID
+		cM.mutex.Unlock()
+	}
+
+	err := cM.doContainers(func(c *Container) error {
+		return c.Get(secrets, cM.authConfigs, cM.authTokens)
+	})
+	if err != nil {
+		return err
+	}
+
+	err = cM.doContainers(func(c *Container) error {
+		return c.ConfigureNetwork(cM.networkID)
+	})
+	if err != nil {
+		return err
+	}
+
+	err = cM.doContainers(func(c *Container) error {
+		return c.Create()
+	})
+	if err != nil {
+		return err
+	}
+
+	if cM.IsRunning() {
+		cM.mutex.Lock()
+		firstStoppedSvcCh := make(chan string, 1)
+		// Start services
+		for _, container := range cM.containers {
+			cM.wg.Add(1)
+			go container.Run(&cM.wg, secrets, firstStoppedSvcCh)
+		}
+		cM.mutex.Unlock()
+		cM.firstStoppedSvc = <-firstStoppedSvcCh
+	}
+
+	if !cM.IsRunning() {
+		return fmt.Errorf("containers interrupted")
+	}
+
+	if err := cM.Stop(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// IsRunning returns whether or not the containers are running
+func (cM *ContainerManager) IsRunning() bool {
+	cM.mutex.Lock()
+	defer cM.mutex.Unlock()
+	return cM.running
+}
+
+// IsSuccessful returns whether or not the first stopped service exited successfully
+func (cM *ContainerManager) IsSuccessful() bool {
+	cM.mutex.Lock()
+	defer cM.mutex.Unlock()
+	for _, c := range cM.containers {
+		if c.name == cM.firstStoppedSvc {
+			return c.exitCode == 0
+		}
+	}
+	return false
+}
+
+// IsAllSuccessful returns whether or not all of the services exited successfully
+func (cM *ContainerManager) IsAllSuccessful() bool {
+	cM.mutex.Lock()
+	defer cM.mutex.Unlock()
+	for _, c := range cM.containers {
+		if c.exitCode != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// Stop interrupts running containers
+func (cM *ContainerManager) Stop() error {
+	if cM.IsRunning() {
+		cM.mutex.Lock()
+		defer cM.mutex.Unlock()
+		cM.running = false
+		for _, container := range cM.containers {
+			if err := container.Stop(); err != nil {
+				return err
+			}
+		}
+		cM.wg.Wait()
+		if err := dockerClient.NetworkRemove(context.Background(), cM.networkID); err != nil {
+			logging.GetLogger().Error("could not remove docker network", zap.String("networkID", cM.networkID), zap.Error(err))
+			return err
+		}
+	}
+	return nil
+}
+
+// Container represents a runnable container
+type Container struct {
+	writer io.Writer
+
+	name  string
+	image string
+	build *v3.DockerComposeServiceBuild
+
+	containerConfig *container.Config
+	hostConfig      *container.HostConfig
+	networkConfig   *network.NetworkingConfig
+	networkAliases  []string
+
+	containerID string
+	networkID   string
+	running     bool
+	exitCode    int
+	mutex       sync.Mutex
+}
+
+// NewContainer returns a new runnable container with the given parameters
+func NewContainer(
 	writer io.Writer,
-	wg *sync.WaitGroup,
-	secrets []string,
 	name string,
 	image string,
 	build *v3.DockerComposeServiceBuild,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
-	networkConfig *network.NetworkingConfig,
-	networkID string,
-) *ServiceRunner {
-	return &ServiceRunner{
-		dockerCli:       cli,
-		context:         ctx,
+	networkAliases []string,
+) *Container {
+	return &Container{
 		writer:          writer,
-		wg:              wg,
-		secrets:         secrets,
 		name:            name,
 		image:           image,
 		build:           build,
 		containerConfig: containerConfig,
 		hostConfig:      hostConfig,
-		networkConfig:   networkConfig,
-		networkID:       networkID,
-		removing:        false,
+		networkAliases:  networkAliases,
+		running:         false,
 	}
 }
 
-type ServiceRunner struct {
-	dockerCli *client.Client
-	context   context.Context
-	writer    io.Writer
-
-	name            string
-	image           string
-	build           *v3.DockerComposeServiceBuild
-	containerConfig *container.Config
-	hostConfig      *container.HostConfig
-	networkConfig   *network.NetworkingConfig
-
-	networkID   string
-	containerID string
-	ExitCode    int
-	removing    bool
-
-	wg      *sync.WaitGroup
-	secrets []string
+// ConfigureNetwork updates the container's endpoint in the network to match its aliases
+func (c *Container) ConfigureNetwork(networkID string) error {
+	c.networkConfig = &network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
+			networkID: {
+				Aliases: c.networkAliases,
+			},
+		},
+	}
+	return nil
 }
 
+// Get will ensure that the container exists inside Docker by building or pulling it
+func (c *Container) Get(secrets []string, authConfigs map[string]types.AuthConfig, authTokens map[string]string) error {
+	if c.build != nil && (c.build.Dockerfile != "" || c.build.Context != "") {
+		return c.Build(secrets, authConfigs, authTokens)
+	}
+	return c.Pull(secrets, authConfigs, authTokens)
+}
+
+// Build builds the container
+func (c *Container) Build(
+	secrets []string,
+	authConfigs map[string]types.AuthConfig,
+	addressAuthToken map[string]string,
+) error {
+	builder := NewImageBuilder()
+	err := builder.Build(
+		c.writer,
+		secrets,
+		c.build.Context,
+		c.build.Dockerfile,
+		[]string{GetImageName(c.name)},
+		authConfigs,
+	)
+	if err != nil {
+		logging.GetLogger().Error("could not build image", zap.String("err", err.Error()))
+		return err
+	}
+	c.image = GetImageName(c.name)
+	c.containerConfig.Image = GetImageName(c.name)
+	return nil
+}
+
+// Pull pulls the container
+func (c *Container) Pull(
+	secrets []string,
+	authConfigs map[string]types.AuthConfig,
+	addressAuthToken map[string]string,
+) error {
+	// check if image exists locally before pulling
+	c.image = resolvePullImage(c.image)
+	c.containerConfig.Image = resolvePullImage(c.image)
+	authToken := getAuthToken(c.image, addressAuthToken)
+	pullResp, err := dockerClient.ImagePull(
+		context.Background(),
+		c.image,
+		types.ImagePullOptions{
+			RegistryAuth: authToken,
+		},
+	)
+	if err != nil {
+		logging.GetLogger().Error("could not pull image", zap.String("image", c.image), zap.String("err", err.Error()))
+		fmt.Fprintf(c.writer, output.ColorFmt(output.ANSIError, "-> could not pull image: %s", "\n"), err.Error())
+		return err
+	}
+	defer pullResp.Close()
+	HandleOutput(pullResp, secrets, c.writer)
+
+	fmt.Fprintf(c.writer, output.ColorFmt(output.ANSIInfo, "-> pulled image: %s", "\n"), c.image)
+	return nil
+}
+
+// Create creates the container in Docker
+func (c *Container) Create() error {
+	fmt.Fprintf(c.writer, output.ColorFmt(output.ANSIInfo, "-> %s created", "\n"), GetContainerName(c.name))
+
+	c.containerConfig.Env = respectProxyEnv(c.containerConfig.Env)
+
+	createResp, err := dockerClient.ContainerCreate(
+		context.Background(),
+		c.containerConfig,
+		c.hostConfig,
+		c.networkConfig,
+		GetContainerName(c.name),
+	)
+	if err != nil {
+		logging.GetLogger().Error("could not create container", zap.String("err", err.Error()))
+		return err
+	}
+	c.containerID = createResp.ID
+	return nil
+}
+
+// Run runs the created container in Docker
+func (c *Container) Run(wg *sync.WaitGroup, secrets []string, firstStoppedSvcCh chan string) error {
+	defer func() { firstStoppedSvcCh <- c.name }()
+	defer wg.Done()
+	c.mutex.Lock()
+	c.running = true
+	fmt.Fprintf(c.writer, output.ColorFmt(output.ANSIInfo, "-> %s running", "\n"), GetContainerName(c.name))
+	err := dockerClient.ContainerStart(
+		context.Background(),
+		c.containerID,
+		types.ContainerStartOptions{},
+	)
+	if err != nil {
+		logging.GetLogger().Error(
+			"could not start container",
+			zap.String("err", err.Error()),
+			zap.String("containerID", c.containerID),
+		)
+		return err
+	}
+	logsResp, err := dockerClient.ContainerLogs(
+		context.Background(),
+		c.containerID,
+		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true},
+	)
+	if err != nil {
+		logging.GetLogger().Error(
+			"could not get container logs",
+			zap.String("err", err.Error()),
+			zap.String("containerID", c.containerID),
+		)
+		return err
+	}
+	defer logsResp.Close()
+	c.mutex.Unlock()
+	HandleOutput(logsResp, secrets, c.writer)
+
+	return nil
+}
+
+// Stop stops the container with 1s of grace
+func (c *Container) Stop() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if c.running {
+		c.running = false
+		stopTimeout, _ := time.ParseDuration("1s")
+		err := dockerClient.ContainerStop(
+			context.Background(),
+			c.containerID,
+			&stopTimeout,
+		)
+		if err != nil {
+			logging.GetLogger().Error(
+				"could not stop container",
+				zap.String("err", err.Error()),
+				zap.String("containerID", c.containerID),
+			)
+			return err
+		}
+
+		container, err := dockerClient.ContainerInspect(context.Background(), c.containerID)
+		if err != nil {
+			logging.GetLogger().Error(
+				"could not inspect container",
+				zap.String("err", err.Error()),
+				zap.String("containerID", c.containerID),
+			)
+			return err
+		}
+
+		c.exitCode = container.State.ExitCode
+		fmt.Fprintf(c.writer,
+			output.ColorFmt(output.ANSIInfo, "-> %s container exited: %d", "\n"),
+			GetContainerName(c.name),
+			c.exitCode,
+		)
+
+		err = dockerClient.ContainerRemove(
+			context.Background(),
+			c.containerID,
+			types.ContainerRemoveOptions{RemoveVolumes: true},
+		)
+		if err != nil {
+			logging.GetLogger().Error(
+				"could not remove container",
+				zap.String("err", err.Error()),
+				zap.String("containerID", c.containerID),
+			)
+			return err
+		}
+		fmt.Fprintf(c.writer, output.ColorFmt(output.ANSIInfo, "-> %s removed", "\n"), GetContainerName(c.name))
+
+	}
+	return nil
+}
+
+// GetContainerName returns the vci normalised container name
 func GetContainerName(serviceName string) string {
 	return fmt.Sprintf(
 		"vci-%s",
@@ -78,6 +428,7 @@ func GetContainerName(serviceName string) string {
 	)
 }
 
+// GetImageName returns the vci normalised image name
 func GetImageName(serviceName string) string {
 	return fmt.Sprintf(
 		"vci-%s",
@@ -107,62 +458,6 @@ func getAuthToken(image string, addressAuthTokens map[string]string) string {
 	return ""
 }
 
-func (sR *ServiceRunner) PullOrBuild(authConfigs map[string]types.AuthConfig, addressAuthToken map[string]string) {
-	if sR.build != nil && (sR.build.Dockerfile != "" || sR.build.Context != "") {
-		// authConfigs := getAuthConfigsMap(dockerRegistries)
-		err := BuildContainer(
-			sR.build.Context,
-			sR.build.Dockerfile,
-			[]string{GetImageName(sR.name)},
-			sR.secrets,
-			sR.writer,
-			authConfigs,
-		)
-		if err != nil {
-			logging.GetLogger().Error("could not build image", zap.String("err", err.Error()))
-		}
-		sR.image = GetImageName(sR.name)
-		sR.containerConfig.Image = GetImageName(sR.name)
-	} else {
-		// check if image exists locally before pulling
-		sR.image = resolvePullImage(sR.image)
-		sR.containerConfig.Image = resolvePullImage(sR.image)
-		authToken := getAuthToken(sR.image, addressAuthToken)
-		pullResp, err := sR.dockerCli.ImagePull(
-			sR.context,
-			sR.image,
-			types.ImagePullOptions{
-				RegistryAuth: authToken,
-			},
-		)
-		if err != nil {
-			logging.GetLogger().Error("could not pull image", zap.String("image", sR.image), zap.String("err", err.Error()))
-			fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIError, "-> could not pull image: %s", "\n"), err.Error())
-			return
-		}
-		defer pullResp.Close()
-		HandleOutput(pullResp, sR.secrets, sR.writer)
-
-		fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIInfo, "-> pulled image: %s", "\n"), sR.image)
-	}
-}
-
-func findImageLocally(imageName string, cli *client.Client, ctx context.Context) error {
-	images, err := cli.ImageList(ctx, types.ImageListOptions{})
-	if err != nil {
-		logging.GetLogger().Error("could not find image", zap.String("err", err.Error()))
-		return err
-	}
-	for _, i := range images {
-		for _, t := range i.RepoTags {
-			if t == imageName {
-				return nil
-			}
-		}
-	}
-	return fmt.Errorf("could not find image: %s", imageName)
-}
-
 func respectProxyEnv(env []string) []string {
 	config := httpproxy.FromEnvironment()
 	if len(config.HTTPProxy) > 1 {
@@ -179,84 +474,6 @@ func respectProxyEnv(env []string) []string {
 	}
 
 	return env
-}
-
-func (sR *ServiceRunner) Create() {
-	fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIInfo, "-> %s created", "\n"), GetContainerName(sR.name))
-
-	sR.containerConfig.Env = respectProxyEnv(sR.containerConfig.Env)
-
-	createResp, err := sR.dockerCli.ContainerCreate(
-		sR.context,
-		sR.containerConfig,
-		sR.hostConfig,
-		sR.networkConfig,
-		GetContainerName(sR.name),
-	)
-	if err != nil {
-		logging.GetLogger().Error("could not create container", zap.String("err", err.Error()))
-	}
-	sR.containerID = createResp.ID
-}
-
-func (sR *ServiceRunner) Run(stop chan string) { // rename to start
-	fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIInfo, "-> %s running", "\n"), GetContainerName(sR.name))
-	err := sR.dockerCli.ContainerStart(
-		sR.context,
-		sR.containerID,
-		types.ContainerStartOptions{},
-	)
-	if err != nil {
-		logging.GetLogger().Error("could not start container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
-	}
-	logsResp, err := sR.dockerCli.ContainerLogs(
-		sR.context,
-		sR.containerID,
-		types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true},
-	)
-	if err != nil {
-		logging.GetLogger().Error("could not get container logs", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
-	}
-	defer logsResp.Close()
-	HandleOutput(logsResp, sR.secrets, sR.writer)
-
-	stop <- sR.name
-}
-
-func (sR *ServiceRunner) Stop() {
-	defer sR.wg.Done()
-
-	stopTimeout, _ := time.ParseDuration("30s")
-	err := sR.dockerCli.ContainerStop(
-		sR.context,
-		sR.containerID,
-		&stopTimeout,
-	)
-	if err != nil {
-		logging.GetLogger().Error("could not stop container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
-	}
-
-	container, err := sR.dockerCli.ContainerInspect(sR.context, sR.containerID)
-	if err != nil {
-		logging.GetLogger().Error("could not inspect container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
-	}
-
-	sR.ExitCode = container.State.ExitCode
-	fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIInfo, "-> %s container exited: %d", "\n"), GetContainerName(sR.name), sR.ExitCode)
-
-	if !sR.removing {
-		sR.removing = true
-		err = sR.dockerCli.ContainerRemove(
-			sR.context,
-			sR.containerID,
-			types.ContainerRemoveOptions{RemoveVolumes: true},
-		)
-		if err != nil {
-			logging.GetLogger().Error("could not remove container", zap.String("err", err.Error()), zap.String("containerID", sR.containerID))
-		}
-		fmt.Fprintf(sR.writer, output.ColorFmt(output.ANSIInfo, "-> %s removed", "\n"), GetContainerName(sR.name))
-
-	}
 }
 
 func resolvePullImage(image string) string {

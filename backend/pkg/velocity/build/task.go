@@ -129,13 +129,23 @@ func (t *Task) Execute(emitter Emitter) error {
 	for i, step := range t.Steps {
 		err := t.executeStep(i+1, totalSteps, emitter, step)
 		if err != nil { // TODO: add support for ignoring errors from specific steps in Blueprint
-			fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSIError, "-> error in task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
 			taskWriter.SetStatus(StateFailed)
+			fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSIError, "-> error in task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
 			return err
 		}
 	}
 	taskWriter.SetStatus(StateSuccess)
 	fmt.Fprintf(taskWriter, output.ColorFmt(output.ANSISuccess, "-> successfully completed task %s (%s)", "\n"), t.Blueprint.Name, t.ID)
+	return nil
+}
+
+func (t *Task) Stop() error {
+	for _, step := range t.Steps {
+		err := step.Stop()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -189,7 +199,20 @@ func NewTask(
 		Steps:       steps,
 		parameters:  map[string]*Parameter{},
 		Status:      StateWaiting,
+		Docker:      taskDockerFromBlueprintDocker(c.Docker),
 	}
+}
+
+func taskDockerFromBlueprintDocker(blueprint config.BlueprintDocker) TaskDocker {
+	taskDocker := TaskDocker{Registries: []DockerRegistry{}}
+	for _, dR := range blueprint.Registries {
+		taskDocker.Registries = append(taskDocker.Registries, DockerRegistry{
+			Address:   dR.Address,
+			Use:       dR.Use,
+			Arguments: dR.Arguments,
+		})
+	}
+	return taskDocker
 }
 
 func (t *Task) UpdateSetup(

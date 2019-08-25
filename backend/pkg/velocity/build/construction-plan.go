@@ -135,6 +135,19 @@ func (p *ConstructionPlan) Execute(emitter Emitter) error {
 	return nil
 }
 
+func (p *ConstructionPlan) Stop() error {
+	for _, stage := range p.Stages {
+		for _, task := range stage.Tasks {
+			err := task.Stop()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func getRequestedBlueprintByName(blueprintName string, blueprints []*config.Blueprint) (*config.Blueprint, error) {
 	for _, b := range blueprints {
 		if b.Name == blueprintName {

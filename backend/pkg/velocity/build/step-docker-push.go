@@ -16,6 +16,8 @@ import (
 type StepDockerPush struct {
 	BaseStep
 	Tags []string `json:"tags"`
+
+	pusher *docker.ImagePusher
 }
 
 func NewStepDockerPush(c *config.StepDockerPush) *StepDockerPush {
@@ -44,12 +46,14 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 	writer.SetStatus(StateBuilding)
 	fmt.Fprintf(writer, "\r")
 
+	dP.pusher = docker.NewImagePusher()
+
 	for _, t := range dP.Tags {
-		err := docker.PushImage(
+		err := dP.pusher.Push(
 			writer,
+			getSecrets(tsk.parameters),
 			t,
 			GetAddressAuthTokensMap(tsk.Docker.Registries),
-			getSecrets(tsk.parameters),
 		)
 		if err != nil {
 			logging.GetLogger().Error("could not push docker image", zap.String("image", t), zap.Error(err))
@@ -63,6 +67,13 @@ func (dP *StepDockerPush) Execute(emitter Emitter, tsk *Task) error {
 	fmt.Fprintf(writer, output.ColorFmt(output.ANSISuccess, "-> success", "\n"))
 	return nil
 
+}
+
+func (dP *StepDockerPush) Stop() error {
+	if dP.pusher != nil {
+		dP.pusher.Stop()
+	}
+	return nil
 }
 
 func (dP StepDockerPush) Validate(params map[string]Parameter) error {
