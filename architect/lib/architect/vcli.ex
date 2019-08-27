@@ -37,23 +37,17 @@ defmodule Architect.VCLI do
 
   defp cmd(dir, %{bin: bin, timeout: timeout, log_errors: log_errors}, cmd) when is_list(cmd) do
     try do
-      %Porcelain.Result{err: nil, out: out, status: 0} =
+      {out, 0} =
         Task.async(fn ->
-          Porcelain.exec(bin, cmd, dir: dir)
+          System.cmd(bin, cmd, cd: dir)
         end)
         |> Task.await(timeout)
 
       Poison.decode!(out)
     catch
       :exit, _ ->
-        log("VCLI timeout", :error, log_errors)
+        Logger.error("vcli errored: #{log_errors}")
         {:error, :timeout}
     end
   end
-
-  @doc false
-  defp log(output, :debug, true), do: Logger.debug(output)
-  defp log(output, :warn, true), do: Logger.warn(output)
-  defp log(output, :error, true), do: Logger.error(output)
-  defp log(_, _, _), do: nil
 end

@@ -90,37 +90,29 @@ defmodule Git.Commit do
   end
 
   def list_for_ref(dir, ref) do
-    %Porcelain.Result{err: nil, out: _, status: 0} =
-      Porcelain.exec("git", ["checkout", "--force", ref], dir: dir)
-
-    %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["log", "--format=#{format()}"], dir: dir)
+    {_out, 0} = System.cmd("git", ["checkout", "--force", ref], cd: dir)
+    {out, 0} = System.cmd("git", ["log", "--format=#{format()}"], cd: dir)
 
     parse(out)
   end
 
   def get_by_sha(dir, sha) do
-    %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["show", "-s", "--format=#{format()}", sha], dir: dir)
+    {out, 0} = System.cmd("git", ["show", "-s", "--format=#{format()}", sha], cd: dir)
 
     out
     |> parse_show
   end
 
   def count_for_branch(dir, branch) do
-    %Porcelain.Result{err: nil, out: _, status: 0} =
-      Porcelain.exec("git", ["checkout", "--force", branch], dir: dir)
-
-    %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["rev-list", "--count", branch], dir: dir)
+    {_out, 0} = System.cmd("git", ["checkout", "--force", branch], cd: dir)
+    {out, 0} = System.cmd("git", ["rev-list", "--count", branch], cd: dir)
 
     out
     |> parse_count()
   end
 
   def count(dir) do
-    %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["rev-list", "--count", "--all"], dir: dir)
+    {out, 0} = System.cmd("git", ["rev-list", "--count", "--all"], cd: dir)
 
     out
     |> parse_count()

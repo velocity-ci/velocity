@@ -67,24 +67,21 @@ defmodule Git.Branch do
   end
 
   def list(dir) do
-    %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["branch", "--remote"], dir: dir)
+    {out, 0} = System.cmd("git", ["branch", "--remote"], cd: dir)
 
     out
     |> parse()
   end
 
   def list_for_commit_sha(dir, sha) do
-    %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["branch", "--remote", "--contains=#{sha}"], dir: dir)
+    {out, 0} = System.cmd("git", ["branch", "--remote", "--contains=#{sha}"], cd: dir)
 
     out
     |> parse()
   end
 
   def default(dir) do
-    %Porcelain.Result{err: nil, out: out, status: 0} =
-      Porcelain.exec("git", ["remote", "show", "origin"], dir: dir)
+    {out, 0} = System.cmd("git", ["remote", "show", "origin"], cd: dir)
 
     out
     |> parse_remote()

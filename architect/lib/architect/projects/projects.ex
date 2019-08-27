@@ -5,7 +5,8 @@ defmodule Architect.Projects do
 
   import Ecto.Query, warn: false
   alias Architect.Repo
-  alias Architect.Projects.{Repository, Project, Starter}
+  alias Architect.Projects.{Project, Starter}
+  alias Git.Repository
   alias Architect.Events
 
   alias Architect.Accounts.User
@@ -68,9 +69,14 @@ defmodule Architect.Projects do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_project(%User{} = u, address) when is_binary(address) do
+  def create_project(%User{} = u, address, private_key \\ nil) when is_binary(address) do
     Repo.transaction(fn ->
-      changeset = Project.changeset(%Project{}, %{address: address, created_by_id: u.id})
+      changeset =
+        Project.changeset(%Project{}, %{
+          address: address,
+          private_key: private_key,
+          created_by_id: u.id
+        })
 
       case Repo.insert(changeset) do
         {:ok, p} ->
@@ -256,7 +262,7 @@ end
 defmodule Architect.Projects.Starter do
   use Task
   require Logger
-  alias Architect.Projects.Repository
+  alias Git.Repository
 
   def start_link(opts) do
     Task.start_link(__MODULE__, :run, [opts])
@@ -264,14 +270,13 @@ defmodule Architect.Projects.Starter do
 
   def run(%{projects: projects, supervisor: _supervisor, registry: _registry}) do
     for project <- projects do
-      repository_name =
-        {:via, Registry, {Architect.Projects.Registry, "#{project.address}-#{project.name}"}}
+      process_name = {:via, Registry, {Architect.Projects.Registry, project.slug}}
 
       {:ok, _pid} =
         DynamicSupervisor.start_child(
           # supervisor,
           Architect.Projects.Supervisor,
-          {Repository, {project.address, project.private_key, repository_name}}
+          {Repository, {process_name, project.address, project.private_key}}
         )
     end
   end
