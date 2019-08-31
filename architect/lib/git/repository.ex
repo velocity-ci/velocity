@@ -243,17 +243,16 @@ defmodule Git.Repository do
   @impl true
   def handle_call({:exec, index, [cmd | args]}, _from, %__MODULE__{local_path: dir} = state) do
     checkout(index, dir)
-    IO.inspect(System.cmd("ls", ["-la"], cd: dir))
     res = System.cmd(cmd, args, cd: dir)
     {:reply, res, state}
   end
 
   defp clean(dir) do
-    {_out, 0} = System.cmd("git", ["clean", "-fd"], cd: dir)
+    {_out, 0} = System.cmd("git", ["clean", "-fd"], cd: dir, stderr_to_stdout: true)
   end
 
   defp checkout(index, dir) do
     clean(dir)
-    {_out, 0} = System.cmd("git", ["checkout", "--force", index], cd: dir)
+    {_out, 0} = System.cmd("git", ["checkout", "--force", index], cd: dir, stderr_to_stdout: true)
   end
 end

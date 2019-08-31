@@ -204,7 +204,6 @@ defmodule Architect.Projects do
     {:ok, cwd} = File.cwd()
 
     default_branch = call_repository(project, {:default_branch, []})
-    IO.inspect(default_branch)
 
     {out, 0} =
       call_repository(
@@ -246,7 +245,7 @@ defmodule Architect.Projects do
   @doc ~S"""
   Get the construction plan for a Pipeline on a commit sha
   """
-  def plan_blueprint(%Project{} = project, branch_name, commit, pipeline_name) do
+  def plan_pipeline(%Project{} = project, branch_name, commit, pipeline_name) do
     {:ok, cwd} = File.cwd()
 
     {out, 0} =
