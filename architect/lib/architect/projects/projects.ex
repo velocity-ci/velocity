@@ -184,21 +184,92 @@ defmodule Architect.Projects do
       [%Architect.Projects.Blueprint{}, ...]
 
   """
-  def list_blueprints(%Project{} = project, selector),
-    do: call_repository(project, {:list_blueprints, [selector]})
+  def list_blueprints(%Project{} = project, selector) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec, [selector, ["#{cwd}/vcli", "list", "--machine-readable"]]}
+      )
+
+    Poison.decode!(out)
+  end
 
   @doc ~S"""
   Project Configuration
 
   """
-  def project_configuration(%Project{} = project),
-    do: call_repository(project, {:project_configuration, []})
+  def project_configuration(%Project{} = project) do
+    {:ok, cwd} = File.cwd()
+
+    default_branch = call_repository(project, {:default_branch, []})
+    IO.inspect(default_branch)
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec, [default_branch.name, ["#{cwd}/vcli", "info", "--machine-readable"]]}
+      )
+
+    Poison.decode!(out)
+  end
 
   @doc ~S"""
   Get the construction plan for a Blueprint on a commit sha
   """
-  def plan_blueprint(%Project{} = project, branch_name, commit, blueprint_name),
-    do: call_repository(project, {:plan_blueprint, [branch_name, commit, blueprint_name]}, false)
+  def plan_blueprint(%Project{} = project, branch_name, commit, blueprint_name) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec,
+         [
+           branch_name,
+           [
+             "#{cwd}/vcli",
+             "run",
+             "blueprint",
+             "--plan-only",
+             "--machine-readable",
+             "--branch",
+             branch_name,
+             blueprint_name
+           ]
+         ]}
+      )
+
+    Poison.decode!(out)
+  end
+
+  @doc ~S"""
+  Get the construction plan for a Pipeline on a commit sha
+  """
+  def plan_blueprint(%Project{} = project, branch_name, commit, pipeline_name) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec,
+         [
+           branch_name,
+           [
+             "#{cwd}/vcli",
+             "run",
+             "pipeline",
+             "--plan-only",
+             "--machine-readable",
+             "--branch",
+             branch_name,
+             pipeline_name
+           ]
+         ]}
+      )
+
+    Poison.decode!(out)
+  end
 
   ### Server
 
@@ -221,40 +292,21 @@ defmodule Architect.Projects do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  @doc false
   defp call_repository(project, callback, cache \\ true, attempt \\ 1)
 
   defp call_repository(_, _, _, attempt) when attempt > 2, do: {:error, "Failed"}
 
-  defp call_repository(
-         %Project{address: address, name: name} = project,
-         {fun, args},
-         cache,
-         attempt
-       ) do
-    case Registry.lookup(@registry, "#{address}-#{name}") do
-      [{repository, _}] ->
-        try do
-          Architect.ETSCache.get(Repository, cache, fun, [repository | args])
-        catch
-          kind, reason ->
-            Logger.warn(
-              "Failed to call repository #{address} #{name}: #{inspect(fun)} #{inspect(args)} (#{
-                inspect(kind)
-              }-#{inspect(reason)}), #{inspect(attempt)}..."
-            )
-
-            Process.sleep(1_000)
-
-            call_repository(project, {fun, args}, attempt + 1, cache)
-        end
+  defp call_repository(project, {f, args}, cache, attempt) do
+    case Registry.lookup(@registry, project.slug) do
+      [{repo, _}] ->
+        apply(Repository, f, [repo | args])
 
       [] ->
-        Logger.warn(
-          "Failed to call builder #{address} #{name} on #{inspect(@registry)}; does not exist"
-        )
+        Logger.error("Repository #{project.slug} does not exist")
+        call_repository(project, {f, args}, cache, attempt + 1)
 
-        call_repository(project, {fun, args}, attempt + 1, cache)
+      x ->
+        IO.inspect(x)
     end
   end
 end
@@ -263,6 +315,7 @@ defmodule Architect.Projects.Starter do
   use Task
   require Logger
   alias Git.Repository
+  alias Architect.Projects.Project
 
   def start_link(opts) do
     Task.start_link(__MODULE__, :run, [opts])
@@ -271,12 +324,13 @@ defmodule Architect.Projects.Starter do
   def run(%{projects: projects, supervisor: _supervisor, registry: _registry}) do
     for project <- projects do
       process_name = {:via, Registry, {Architect.Projects.Registry, project.slug}}
+      known_hosts = Project.known_hosts(project.address)
 
       {:ok, _pid} =
         DynamicSupervisor.start_child(
           # supervisor,
           Architect.Projects.Supervisor,
-          {Repository, {process_name, project.address, project.private_key}}
+          {Repository, {process_name, project.address, project.private_key, known_hosts}}
         )
     end
   end

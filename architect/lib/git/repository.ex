@@ -136,6 +136,11 @@ defmodule Git.Repository do
   """
   def default_branch(repository), do: GenServer.call(repository, :default_branch)
 
+  @doc ~S"""
+  Execute shell at index
+  """
+  def exec(repository, selector, sh), do: GenServer.call(repository, {:exec, selector, sh})
+
   #
   # Server
   #
@@ -218,5 +223,37 @@ defmodule Git.Repository do
     count = Commit.count(dir)
 
     {:reply, count, state}
+  end
+
+  @impl true
+  def handle_info({:checkout, index}, %__MODULE__{local_path: dir} = state) do
+    clean(dir)
+    checkout(index, dir)
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(:clean, %__MODULE__{local_path: dir} = state) do
+    clean(dir)
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_call({:exec, index, [cmd | args]}, _from, %__MODULE__{local_path: dir} = state) do
+    checkout(index, dir)
+    IO.inspect(System.cmd("ls", ["-la"], cd: dir))
+    res = System.cmd(cmd, args, cd: dir)
+    {:reply, res, state}
+  end
+
+  defp clean(dir) do
+    {_out, 0} = System.cmd("git", ["clean", "-fd"], cd: dir)
+  end
+
+  defp checkout(index, dir) do
+    clean(dir)
+    {_out, 0} = System.cmd("git", ["checkout", "--force", index], cd: dir)
   end
 end
