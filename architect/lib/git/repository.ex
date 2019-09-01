@@ -139,7 +139,7 @@ defmodule Git.Repository do
   @doc ~S"""
   Execute shell at index
   """
-  def exec(repository, selector, sh), do: GenServer.call(repository, {:exec, selector, sh})
+  def exec(repository, index, sh), do: GenServer.call(repository, {:exec, index, sh})
 
   #
   # Server

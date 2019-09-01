@@ -27,8 +27,8 @@ defmodule Architect.Projects.Repository do
   @doc ~S"""
   Get the blueprints for a commit or branch
   """
-  def list_blueprints(repository, selector) do
-    GenServer.call(repository, {:list_blueprints, selector})
+  def list_blueprints(repository, index) do
+    GenServer.call(repository, {:list_blueprints, index})
   end
 
   @doc ~S"""

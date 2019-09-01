@@ -184,13 +184,13 @@ defmodule Architect.Projects do
       [%Architect.Projects.Blueprint{}, ...]
 
   """
-  def list_blueprints(%Project{} = project, selector) do
+  def list_blueprints(%Project{} = project, index) do
     {:ok, cwd} = File.cwd()
 
     {out, 0} =
       call_repository(
         project,
-        {:exec, [selector, ["#{cwd}/vcli", "list", "blueprints", "--machine-readable"]]}
+        {:exec, [index, ["#{cwd}/vcli", "list", "blueprints", "--machine-readable"]]}
       )
 
     Poison.decode!(out)
@@ -205,13 +205,13 @@ defmodule Architect.Projects do
       [%Architect.Projects.Pipeline{}, ...]
 
   """
-  def list_pipelines(%Project{} = project, selector) do
+  def list_pipelines(%Project{} = project, index) do
     {:ok, cwd} = File.cwd()
 
     {out, 0} =
       call_repository(
         project,
-        {:exec, [selector, ["#{cwd}/vcli", "list", "pipelines", "--machine-readable"]]}
+        {:exec, [index, ["#{cwd}/vcli", "list", "pipelines", "--machine-readable"]]}
       )
 
     Poison.decode!(out)
