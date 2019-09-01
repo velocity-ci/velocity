@@ -1,7 +1,15 @@
 package cmds
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"text/tabwriter"
+
+	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
 func init() {
@@ -26,9 +34,37 @@ var listBlueprintsCmd = &cobra.Command{
 
 		switch {
 		case machineReadable:
-			return listMachine(blueprints, pipelines)
+			return listBlueprintsMachine(blueprints)
 		default:
-			return listText(blueprints, pipelines)
+			return listBlueprintsText(blueprints)
 		}
 	},
+}
+
+func listBlueprintsText(blueprints []*config.Blueprint) error {
+	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	printHeader("Blueprints")
+	if len(blueprints) > 0 {
+		for _, blueprint := range blueprints {
+			fmt.Fprintf(tabWriter, " %s %s\t%s\n",
+				output.ColorFmt(aurora.CyanFg, "->", " "),
+				blueprint.Name,
+				aurora.Colorize(blueprint.Description, aurora.ItalicFm|aurora.Gray(20, "").Color()),
+			)
+		}
+		tabWriter.Flush()
+	} else {
+		fmt.Fprintln(os.Stdout, "  none found")
+	}
+	return nil
+}
+
+func listBlueprintsMachine(blueprints []*config.Blueprint) error {
+	jsonBytes, err := json.MarshalIndent(blueprints, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stdout, "%s\n", jsonBytes)
+	return nil
 }

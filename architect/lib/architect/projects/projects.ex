@@ -176,7 +176,7 @@ defmodule Architect.Projects do
     do: call_repository(project, {:commit_count, [branch]})
 
   @doc ~S"""
-  List Blueprint
+  List Blueprints
 
   ## Examples
 
@@ -190,7 +190,28 @@ defmodule Architect.Projects do
     {out, 0} =
       call_repository(
         project,
-        {:exec, [selector, ["#{cwd}/vcli", "list", "--machine-readable"]]}
+        {:exec, [selector, ["#{cwd}/vcli", "list", "blueprints", "--machine-readable"]]}
+      )
+
+    Poison.decode!(out)
+  end
+
+  @doc ~S"""
+  List Pipelines
+
+  ## Examples
+
+      iex> list_pipelines(project, {:sha, "925fbc450c8bdb7665ec3af3129ce715927433fe"})
+      [%Architect.Projects.Pipeline{}, ...]
+
+  """
+  def list_pipelines(%Project{} = project, selector) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec, [selector, ["#{cwd}/vcli", "list", "pipelines", "--machine-readable"]]}
       )
 
     Poison.decode!(out)
