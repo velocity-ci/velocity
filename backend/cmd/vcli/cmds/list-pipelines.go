@@ -17,7 +17,7 @@ func init() {
 }
 
 var listPipelinesCmd = &cobra.Command{
-	Use:     "pipeline",
+	Use:     "pipelines",
 	Aliases: []string{"p"},
 	Short:   "lists pipelines",
 	Long:    `lists pipelines`,

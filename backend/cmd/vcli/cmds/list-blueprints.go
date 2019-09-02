@@ -17,7 +17,7 @@ func init() {
 }
 
 var listBlueprintsCmd = &cobra.Command{
-	Use:     "blueprint",
+	Use:     "blueprints",
 	Aliases: []string{"b"},
 	Short:   "lists blueprints",
 	Long:    `lists blueprints`,
