@@ -8,6 +8,7 @@ defmodule Architect.Projects.Project do
   alias Ecto.Changeset
   alias Git.Repository
   alias Architect.Accounts.User
+  alias Architect.KnownHosts
 
   alias __MODULE__.NameSlug
 
@@ -79,7 +80,7 @@ defmodule Architect.Projects.Project do
   def known_hosts("git" <> _ = address) do
     [_, name] = String.split(address, "@")
     [host, _path] = String.split(name, ":")
-    kh = Architect.KnownHosts.get_known_host_by_host!(host)
+    kh = KnownHosts.get_known_host_by_host!(host)
 
     case kh.verified do
       true -> kh.entry

@@ -324,9 +324,6 @@ defmodule Architect.Projects do
       [] ->
         Logger.error("Repository #{project.slug} does not exist")
         call_repository(project, {f, args}, cache, attempt + 1)
-
-      x ->
-        IO.inspect(x)
     end
   end
 end

@@ -170,14 +170,14 @@ defmodule Git.Repository do
 
   @impl true
   def handle_call(:list_branches, _from, %__MODULE__{local_path: dir} = state) do
-    branches = Git.Branch.list(dir)
+    branches = Branch.list(dir)
 
     {:reply, branches, state}
   end
 
   def handle_call({:get_branch, branch}, _from, %__MODULE__{local_path: dir} = state) do
     branch =
-      Git.Branch.list(dir)
+      Branch.list(dir)
       |> Enum.find(fn %Git.Branch{name: b} -> b == branch end)
 
     {:reply, branch, state}
@@ -185,7 +185,7 @@ defmodule Git.Repository do
 
   @impl true
   def handle_call({:list_branches_for_commit, sha}, _from, %__MODULE__{local_path: dir} = state) do
-    branches = Git.Branch.list_for_commit_sha(dir, sha)
+    branches = Branch.list_for_commit_sha(dir, sha)
 
     {:reply, branches, state}
   end
