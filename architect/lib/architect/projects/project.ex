@@ -6,8 +6,9 @@ defmodule Architect.Projects.Project do
   use Ecto.Schema
   import Ecto.Changeset
   alias Ecto.Changeset
-  alias Architect.Projects.Repository
+  alias Git.Repository
   alias Architect.Accounts.User
+  alias Architect.KnownHosts
 
   alias __MODULE__.NameSlug
 
@@ -38,14 +39,11 @@ defmodule Architect.Projects.Project do
     |> verify()
   end
 
-  @doc ~S"""
-  If address has changed, update the name of the project
-  """
-  def update_default_name(%Changeset{changes: %{address: address}} = changeset) do
+  defp update_default_name(%Changeset{changes: %{address: address}} = changeset) do
     put_change(changeset, :name, default_name(address))
   end
 
-  def update_default_name(changeset), do: changeset
+  defp update_default_name(changeset), do: changeset
 
   @doc ~S"""
   Generate a name for the project based on its repository address
@@ -75,6 +73,21 @@ defmodule Architect.Projects.Project do
     "#{path} @ #{host}"
   end
 
+  def known_hosts("http" <> _ = address) do
+    nil
+  end
+
+  def known_hosts("git" <> _ = address) do
+    [_, name] = String.split(address, "@")
+    [host, _path] = String.split(name, ":")
+    kh = KnownHosts.get_known_host_by_host!(host)
+
+    case kh.verified do
+      true -> kh.entry
+      _ -> nil
+    end
+  end
+
   @doc """
   Start the project repository, if it fails we add an error to the changeset and terminate the process.
 
@@ -83,19 +96,20 @@ defmodule Architect.Projects.Project do
   def verify(
         %Changeset{
           valid?: true,
-          changes: %{address: address, name: name}
+          changes: %{address: address, created_by_id: created_by_id, slug: slug}
         } = changeset
       ) do
     require Logger
 
     private_key = Changeset.get_field(changeset, :private_key)
+    known_hosts = known_hosts(address)
 
-    repository_name = {:via, Registry, {Architect.Projects.Registry, "#{address}-#{name}"}}
+    process_name = {:via, Registry, {Architect.Projects.Registry, slug}}
 
     repository_result =
       DynamicSupervisor.start_child(
         Architect.Projects.Supervisor,
-        {Repository, {address, private_key, repository_name}}
+        {Repository, {process_name, address, private_key, known_hosts}}
       )
 
     case repository_result do

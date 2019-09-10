@@ -43,8 +43,10 @@ config :architect, Architect.Users.Guardian,
 # configured to run both http and https servers on
 # different ports.
 
-# Do not include metadata nor timestamps in development logs
-config :logger, :console, format: "[$level] $message\n"
+# Do not include timestamps in development logs
+config :logger, :console,
+  format: "[$level] $message {$metadata}\n",
+  metadata: :all
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
@@ -61,3 +63,9 @@ config :architect, Architect.Repo,
   hostname: System.get_env("DB_HOSTNAME") || "localhost",
   port: String.to_integer(System.get_env("DB_PORT") || "5432"),
   pool_size: 10
+
+# Commanded EventStore config
+config :commanded, event_store_adapter: Commanded.EventStore.Adapters.InMemory
+
+config :commanded, Commanded.EventStore.Adapters.InMemory,
+  serializer: Commanded.Serialization.JsonSerializer

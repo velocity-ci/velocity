@@ -5,7 +5,8 @@ defmodule Architect.Projects do
 
   import Ecto.Query, warn: false
   alias Architect.Repo
-  alias Architect.Projects.{Repository, Project, Starter}
+  alias Architect.Projects.{Project, Starter}
+  alias Git.Repository
   alias Architect.Events
 
   alias Architect.Accounts.User
@@ -68,9 +69,14 @@ defmodule Architect.Projects do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_project(%User{} = u, address) when is_binary(address) do
+  def create_project(%User{} = u, address, private_key \\ nil) when is_binary(address) do
     Repo.transaction(fn ->
-      changeset = Project.changeset(%Project{}, %{address: address, created_by_id: u.id})
+      changeset =
+        Project.changeset(%Project{}, %{
+          address: address,
+          private_key: private_key,
+          created_by_id: u.id
+        })
 
       case Repo.insert(changeset) do
         {:ok, p} ->
@@ -170,7 +176,7 @@ defmodule Architect.Projects do
     do: call_repository(project, {:commit_count, [branch]})
 
   @doc ~S"""
-  List Blueprint
+  List Blueprints
 
   ## Examples
 
@@ -178,21 +184,112 @@ defmodule Architect.Projects do
       [%Architect.Projects.Blueprint{}, ...]
 
   """
-  def list_blueprints(%Project{} = project, selector),
-    do: call_repository(project, {:list_blueprints, [selector]})
+  def list_blueprints(%Project{} = project, index) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec, [index, ["#{cwd}/vcli", "list", "blueprints", "--machine-readable"]]}
+      )
+
+    Poison.decode!(out)
+  end
+
+  @doc ~S"""
+  List Pipelines
+
+  ## Examples
+
+      iex> list_pipelines(project, {:sha, "925fbc450c8bdb7665ec3af3129ce715927433fe"})
+      [%Architect.Projects.Pipeline{}, ...]
+
+  """
+  def list_pipelines(%Project{} = project, index) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec, [index, ["#{cwd}/vcli", "list", "pipelines", "--machine-readable"]]}
+      )
+
+    Poison.decode!(out)
+  end
 
   @doc ~S"""
   Project Configuration
 
   """
-  def project_configuration(%Project{} = project),
-    do: call_repository(project, {:project_configuration, []})
+  def project_configuration(%Project{} = project) do
+    {:ok, cwd} = File.cwd()
+
+    default_branch = call_repository(project, {:default_branch, []})
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec, [default_branch.name, ["#{cwd}/vcli", "info", "--machine-readable"]]}
+      )
+
+    Poison.decode!(out)
+  end
 
   @doc ~S"""
   Get the construction plan for a Blueprint on a commit sha
   """
-  def plan_blueprint(%Project{} = project, branch_name, commit, blueprint_name),
-    do: call_repository(project, {:plan_blueprint, [branch_name, commit, blueprint_name]}, false)
+  def plan_blueprint(%Project{} = project, branch_name, commit, blueprint_name) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec,
+         [
+           branch_name,
+           [
+             "#{cwd}/vcli",
+             "run",
+             "blueprint",
+             "--plan-only",
+             "--machine-readable",
+             "--branch",
+             branch_name,
+             blueprint_name
+           ]
+         ]}
+      )
+
+    Poison.decode!(out)
+  end
+
+  @doc ~S"""
+  Get the construction plan for a Pipeline on a commit sha
+  """
+  def plan_pipeline(%Project{} = project, branch_name, commit, pipeline_name) do
+    {:ok, cwd} = File.cwd()
+
+    {out, 0} =
+      call_repository(
+        project,
+        {:exec,
+         [
+           branch_name,
+           [
+             "#{cwd}/vcli",
+             "run",
+             "pipeline",
+             "--plan-only",
+             "--machine-readable",
+             "--branch",
+             branch_name,
+             pipeline_name
+           ]
+         ]}
+      )
+
+    Poison.decode!(out)
+  end
 
   ### Server
 
@@ -215,40 +312,18 @@ defmodule Architect.Projects do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  @doc false
   defp call_repository(project, callback, cache \\ true, attempt \\ 1)
 
   defp call_repository(_, _, _, attempt) when attempt > 2, do: {:error, "Failed"}
 
-  defp call_repository(
-         %Project{address: address, name: name} = project,
-         {fun, args},
-         cache,
-         attempt
-       ) do
-    case Registry.lookup(@registry, "#{address}-#{name}") do
-      [{repository, _}] ->
-        try do
-          Architect.ETSCache.get(Repository, cache, fun, [repository | args])
-        catch
-          kind, reason ->
-            Logger.warn(
-              "Failed to call repository #{address} #{name}: #{inspect(fun)} #{inspect(args)} (#{
-                inspect(kind)
-              }-#{inspect(reason)}), #{inspect(attempt)}..."
-            )
-
-            Process.sleep(1_000)
-
-            call_repository(project, {fun, args}, attempt + 1, cache)
-        end
+  defp call_repository(project, {f, args}, cache, attempt) do
+    case Registry.lookup(@registry, project.slug) do
+      [{repo, _}] ->
+        apply(Repository, f, [repo | args])
 
       [] ->
-        Logger.warn(
-          "Failed to call builder #{address} #{name} on #{inspect(@registry)}; does not exist"
-        )
-
-        call_repository(project, {fun, args}, attempt + 1, cache)
+        Logger.error("Repository #{project.slug} does not exist")
+        call_repository(project, {f, args}, cache, attempt + 1)
     end
   end
 end
@@ -256,7 +331,8 @@ end
 defmodule Architect.Projects.Starter do
   use Task
   require Logger
-  alias Architect.Projects.Repository
+  alias Git.Repository
+  alias Architect.Projects.Project
 
   def start_link(opts) do
     Task.start_link(__MODULE__, :run, [opts])
@@ -264,14 +340,14 @@ defmodule Architect.Projects.Starter do
 
   def run(%{projects: projects, supervisor: _supervisor, registry: _registry}) do
     for project <- projects do
-      repository_name =
-        {:via, Registry, {Architect.Projects.Registry, "#{project.address}-#{project.name}"}}
+      process_name = {:via, Registry, {Architect.Projects.Registry, project.slug}}
+      known_hosts = Project.known_hosts(project.address)
 
       {:ok, _pid} =
         DynamicSupervisor.start_child(
           # supervisor,
           Architect.Projects.Supervisor,
-          {Repository, {project.address, project.private_key, repository_name}}
+          {Repository, {process_name, project.address, project.private_key, known_hosts}}
         )
     end
   end

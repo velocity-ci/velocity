@@ -30,7 +30,7 @@ defmodule ArchitectWeb.BuilderChannel do
   end
 
   @doc """
-  Handle build update-build events.
+  Handle build update-stream events.
   """
   def handle_in("#{@event_prefix}task-stream:new-loglines", payload, socket) do
     Enum.each(payload["lines"], fn l ->
@@ -57,7 +57,7 @@ defmodule ArchitectWeb.BuilderChannel do
   end
 
   @doc """
-  Handle build update-stream events.
+  Handle build update-task events.
   """
   def handle_in("#{@event_prefix}task-task:update", payload, socket) do
     Architect.Builds.update_task(

@@ -30,7 +30,7 @@ defmodule Architect.MixProject do
   def application do
     [
       mod: {Architect.Application, []},
-      extra_applications: [:logger, :runtime_tools, :porcelain]
+      extra_applications: [:logger, :runtime_tools]
     ]
   end
 
@@ -63,7 +63,7 @@ defmodule Architect.MixProject do
       {:absinthe_phoenix, "~> 1.4.0"},
       {:absinthe_ecto, "~> 0.1.3"},
       {:absinthe_relay, "~> 1.4"},
-      {:commanded, "~> 0.17"},
+      {:commanded, "~> 0.19"},
       {:poison, "~> 3.1 or ~> 4.0"},
       {:kronky, "~> 0.5.0"},
       {:dataloader, "~> 1.0.1"},
@@ -72,7 +72,6 @@ defmodule Architect.MixProject do
       {:cors_plug, "~> 2.0"},
       {:ecto_autoslug_field, "~> 1.0"},
       {:mix_test_watch, "~> 0.9", only: :dev, runtime: false},
-      {:porcelain, "~> 2.0"},
       {:temp, "~> 0.4"},
       {:ecto_enum, "~> 1.2"}
     ]

@@ -9,7 +9,6 @@ defmodule Architect.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      # Start the Ecto repository
       Architect.Repo,
       supervisor(Architect.Projects, []),
       ArchitectWeb.Endpoint,

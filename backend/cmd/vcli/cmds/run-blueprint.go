@@ -13,10 +13,10 @@ import (
 )
 
 func init() {
-	runCmd.AddCommand(runConstructionPlanCmd)
+	runCmd.AddCommand(runBlueprintCmd)
 }
 
-var runConstructionPlanCmd = &cobra.Command{
+var runBlueprintCmd = &cobra.Command{
 	Use:     "blueprint",
 	Aliases: []string{"b"},
 	Short:   "runs a given blueprint",
