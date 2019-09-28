@@ -40,4 +40,17 @@ defmodule Architect.Builds.Task do
       :status
     ])
   end
+
+  @doc false
+  def get_persisted_stream_plan(%__MODULE__{} = task) do
+    completed_steps =
+      Enum.map(task.plan["steps"], fn step ->
+        Enum.map(step["outputStreams"], fn stream ->
+          log = Architect.Builds.ETSStore.get_stream_lines(stream["id"])
+          Map.put(stream, "log", log)
+        end)
+      end)
+
+    Map.put(task.plan, "steps", completed_steps)
+  end
 end

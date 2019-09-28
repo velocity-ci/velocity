@@ -67,6 +67,14 @@ defmodule Architect.Builds do
   end
 
   defp task_complete(task) do
+    # Fill in plan logs TODO: async this
+    plan_logs = Task.get_persisted_stream_plan(task)
+
+    {:ok, _} =
+      Task.update_changeset(task, %{plan: plan_logs})
+      |> Repo.update()
+
+    # Update stage
     stage =
       Ecto.assoc(task, :stage)
       |> Repo.one()

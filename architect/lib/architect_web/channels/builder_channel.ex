@@ -77,7 +77,7 @@ defmodule ArchitectWeb.BuilderChannel do
       project: %{
         name: b.project.name,
         address: b.project.address,
-        privateKey: ""
+        privateKey: b.project.private_key
       },
       knownHost:
         %{
