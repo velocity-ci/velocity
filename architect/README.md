@@ -9,7 +9,7 @@ docker-compose up
 or
 
 ```
-scripts/get-v-ssh-keyscan.sh # TODO: use normal ssh-keyscan bin
+scripts/get-v-ssh-keyscan.sh
 scripts/get-vcli.sh
 docker-compose up -d db
 mix ecto.drop
@@ -51,7 +51,7 @@ kh = Architect.KnownHosts.get_known_host_by_host!("github.com")
 Architect.KnownHosts.verify_known_host(u, kh)
 
 # create a build
-Architect.Builds.create_build(u, p, "master", "23d4e47ee635727a4fb65fea6e1cf1749861c079", "examples/hello-velocity")
+Architect.Builds.create_build(u, p, "master", "dd8674f722cb963d775de1710f593c12daea0e6a", "examples/hello-velocity")
 ```
 
 ## Tests

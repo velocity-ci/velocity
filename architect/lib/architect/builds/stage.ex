@@ -54,7 +54,7 @@ defmodule Architect.Builds.Stage do
        ) do
     tasks =
       Enum.map(tasks_json, fn {id, task} ->
-        if i == 0 do
+        if i == 1 do
           %Task{id: id}
           |> Task.create_changeset(%{plan: task, status: "ready"})
         else
