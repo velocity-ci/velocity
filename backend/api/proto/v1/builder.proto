@@ -1,0 +1,43 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/v1/task.proto";
+
+service BuilderService {
+  // builder register on start
+  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+  // Where idle builders go. This is used for heartbeats, and receiving tasks
+  rpc BreakRoom(stream Heartbeat) returns (stream BreakResponse) {}
+  rpc PushLogs(LogsRequest) returns (LogsResponse) {}
+}
+
+message RegisterRequest {
+
+}
+
+message RegisterResponse {
+  string token = 1;
+}
+
+message Heartbeat { google.protobuf.Timestamp timestamp = 1; }
+
+message BreakResponse {
+  enum Type {
+    HEARTBEAT = 0;
+    TASK = 1;
+  }
+  Type type = 1;
+  google.protobuf.Timestamp timestamp = 2;
+
+  oneof data {
+    bool heartbeat = 100;
+    velocity.v1.Task task = 101;
+  }
+}
+
+message LogsRequest {}
+message LogsResponse {}

@@ -1,0 +1,17 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+
+import "api/proto/v1/blueprint.proto";
+import "api/proto/v1/step.proto";
+
+message Task {
+  string id = 1;
+  map<string, string> parameters = 2;
+  velocity.v1.Blueprint blueprint = 3;
+  repeated velocity.v1.Step steps = 4;
+  string status = 5;
+}
+

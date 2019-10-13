@@ -1,0 +1,11 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+
+
+message Blueprint {
+  string name = 1;
+  string description = 2;
+}

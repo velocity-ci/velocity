@@ -1,0 +1,46 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+
+
+message Step {
+
+    string description = 1;
+
+    oneof impl {
+        Setup setup = 100;
+        DockerRun docker_run = 101;
+        DockerBuild docker_build = 102;
+        DockerCompose docker_compose = 103;
+        DockerPush docker_push = 104;
+    }
+}
+
+message Setup {
+
+}
+
+message DockerRun {
+    string image = 1;
+    string command = 2;
+    string environment = 3;
+    string working_dir = 4;
+    string mount_point = 5;
+    string ignore_exit_code = 6;
+}
+
+message DockerBuild {
+    string dockerfile = 1;
+    string context = 2;
+    repeated string tags = 3;
+}
+
+message DockerCompose {
+    string compose_file = 1;
+}
+
+message DockerPush {
+    repeated string tags = 1;
+}
