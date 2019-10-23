@@ -44,7 +44,7 @@ var rootCmd = &cobra.Command{
 		go func() {
 			sig := <-gracefulStop
 			fmt.Printf("\ncaught signal: %+v\n", sig)
-			// action.Stop()
+			close(gracefulStop)
 		}()
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,7 +54,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		return builder.BreakRoom(address, token)
+		return builder.BreakRoom(address, token, gracefulStop)
 	},
 	Version: BuildVersion,
 }

@@ -4,8 +4,8 @@ package velocity.v1;
 option go_package = "v1";
 
 
-import "api/proto/v1/blueprint.proto";
-import "api/proto/v1/step.proto";
+import "blueprint.proto";
+import "step.proto";
 
 message Task {
   string id = 1;

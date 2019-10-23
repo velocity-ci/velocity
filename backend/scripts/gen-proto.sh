@@ -1,6 +1,14 @@
 #!/bin/sh -e
 
-srcDir="${PWD}/api/proto/v1"
-goDir="${PWD}/pkg/velocity/genproto"
+srcDefs="${PWD}/api/proto/v1"
+destGo="${PWD}/pkg/velocity/genproto/v1"
 
-protoc -I="${PWD}" --go_out="plugins=grpc:${goDir}" ${srcDir}/*.proto
+mkdir -p "${destGo}"
+uid=$(id -u)
+gid=$(id -g)
+docker run --rm \
+    -v "${srcDefs}:/defs" \
+    -v "${destGo}:/tmp/protogen" \
+    --user "${uid}:${git}" \
+    namely/protoc-all \
+    -d /defs -l go -o /tmp/protogen

@@ -5,7 +5,7 @@ option go_package = "v1";
 
 
 import "google/protobuf/timestamp.proto";
-import "api/proto/v1/task.proto";
+import "task.proto";
 
 service BuilderService {
   // builder register on start

@@ -16,7 +16,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
-	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/api/proto/v1"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"google.golang.org/grpc"
 )

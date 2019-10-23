@@ -9,7 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
-	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/api/proto/v1"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 )
 
 type BuilderServer struct{}
