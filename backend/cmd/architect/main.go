@@ -2,8 +2,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/velocity-ci/velocity/backend/pkg/grpc/architect"
 
@@ -23,6 +27,11 @@ import (
 
 func main() {
 	flag.Parse()
+
+	stop := make(chan os.Signal)
+	signal.Notify(stop, syscall.SIGTERM)
+	signal.Notify(stop, syscall.SIGINT)
+
 	lis, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -46,6 +55,14 @@ func main() {
 		)),
 	)
 	v1.RegisterBuilderServiceServer(grpcServer, architect.NewBuilderServer())
+	go func() {
+		sig := <-stop
+		fmt.Printf("\ncaught signal: %+v\n", sig)
+		// fmt.Println("Wait for 2 second to finish processing")
+		// time.Sleep(2 * time.Second)
+		// os.Exit(0)
+		grpcServer.Stop()
+	}()
 	// TODO: determine whether to use TLS
 	grpcServer.Serve(lis)
 }

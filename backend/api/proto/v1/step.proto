@@ -3,44 +3,55 @@ package velocity.v1;
 
 option go_package = "v1";
 
-
+import "google/protobuf/timestamp.proto";
+import "repository.proto";
 
 message Step {
 
-    string description = 1;
+  string id = 1;
+  string description = 2;
+  repeated Stream streams = 3;
 
-    oneof impl {
-        Setup setup = 100;
-        DockerRun docker_run = 101;
-        DockerBuild docker_build = 102;
-        DockerCompose docker_compose = 103;
-        DockerPush docker_push = 104;
-    }
+  string status = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+
+  oneof impl {
+    Setup setup = 100;
+    DockerRun docker_run = 101;
+    DockerBuild docker_build = 102;
+    DockerCompose docker_compose = 103;
+    DockerPush docker_push = 104;
+  }
+}
+
+message Stream {
+  string id = 1;
+  string name = 2;
+  string status = 3;
 }
 
 message Setup {
-
+  velocity.v1.Repository repository = 1;
+  string branch = 2;
+  string commit_hash = 3;
 }
 
 message DockerRun {
-    string image = 1;
-    string command = 2;
-    string environment = 3;
-    string working_dir = 4;
-    string mount_point = 5;
-    string ignore_exit_code = 6;
+  string image = 1;
+  string command = 2;
+  string environment = 3;
+  string working_dir = 4;
+  string mount_point = 5;
+  string ignore_exit_code = 6;
 }
 
 message DockerBuild {
-    string dockerfile = 1;
-    string context = 2;
-    repeated string tags = 3;
+  string dockerfile = 1;
+  string context = 2;
+  repeated string tags = 3;
 }
 
-message DockerCompose {
-    string compose_file = 1;
-}
+message DockerCompose { string compose_file = 1; }
 
-message DockerPush {
-    repeated string tags = 1;
-}
+message DockerPush { repeated string tags = 1; }

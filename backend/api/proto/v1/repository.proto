@@ -1,0 +1,35 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+message Head {
+  // projects/<project_id>/heads/<head_id>
+  string id = 1; // composite key (project_id+head_name)
+}
+
+message Commit {
+  // projects/<project_id>/commits/<commit_id>
+  string id = 1; // composite key (project_id+commit_hash)
+}
+
+message Repository {
+  string address = 1;
+  SSHConfig ssh_config = 2;
+}
+
+message SSHConfig {
+  string private_key = 1;
+  string host_key = 2; // known_host
+}
+
+service RepositoryService {
+  // rpc GetHead projects/<p_id>/heads/<head_id>
+  // rpc GetHeadCommit projects/<p_id>/heads/<head_id>/commits/<commit_id>
+  // rpc GetCommit projects/<p_id>/commits/<commit_id>
+  // rpc GetCommitHead projects/<p_id>/commits/<commit_id>/heads/<head_id>
+  // rpc ListHeads projects/<p_id>/heads
+  // rpc ListHeadCommits projects/<p_id>/heads/<head_id>/commits
+  // rpc ListCommits projects/<p_id>/commits
+  // rpc ListCommitHeads projects/<p_id>/commits/<commit_id>/heads
+}

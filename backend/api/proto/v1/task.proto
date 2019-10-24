@@ -3,15 +3,34 @@ package velocity.v1;
 
 option go_package = "v1";
 
-
-import "blueprint.proto";
 import "step.proto";
+import "google/protobuf/timestamp.proto";
 
 message Task {
   string id = 1;
-  map<string, string> parameters = 2;
-  velocity.v1.Blueprint blueprint = 3;
-  repeated velocity.v1.Step steps = 4;
-  string status = 5;
+  map<string, Parameter> parameters = 2;
+  string blueprint = 3;
+  bool ignore_errors = 4;
+  repeated velocity.v1.Step steps = 5;
+  string status = 6;
+
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
 }
 
+message Parameter {
+  string name = 1;
+  string value = 2;
+  bool is_secret = 3;
+}
+
+message TaskDocker {
+  repeated DockerRegistry registries = 1;
+}
+
+message DockerRegistry {
+  string address = 1;
+  string use = 2;
+  map<string, string> arguments = 3;
+  string authorization_token = 4;
+}

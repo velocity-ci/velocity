@@ -9,7 +9,7 @@ import "task.proto";
 
 service BuilderService {
   // builder register on start
-  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+  rpc Register(RegisterRequest) returns (Registration) {}
   // Where idle builders go. This is used for heartbeats, and receiving tasks
   rpc BreakRoom(stream Heartbeat) returns (stream BreakResponse) {}
   rpc PushLogs(LogsRequest) returns (LogsResponse) {}
@@ -19,7 +19,7 @@ message RegisterRequest {
 
 }
 
-message RegisterResponse {
+message Registration {
   string token = 1;
 }
 

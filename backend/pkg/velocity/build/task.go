@@ -17,7 +17,7 @@ type Task struct {
 	ID         string `json:"id"`
 	parameters map[string]*Parameter
 
-	Blueprint    config.Blueprint `json:"blueprint"`
+	Blueprint    config.Blueprint `json:"blueprint"` // replace with blueprint-name?
 	IgnoreErrors bool             `json:"ignoreErrors"`
 	Docker       TaskDocker       `json:"docker"`
 	Steps        []Step           `json:"steps"`

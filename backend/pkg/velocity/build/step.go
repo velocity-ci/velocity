@@ -49,10 +49,9 @@ const (
 )
 
 type Stream struct {
-	ID     string  `json:"id"`
-	Name   string  `json:"name"`
-	Status string  `json:"status"`
-	Source *string `json:"source"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 type BaseStep struct {

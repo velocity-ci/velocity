@@ -1,0 +1,56 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+// import "google/protobuf/timestamp.proto";
+
+// TODO(vj): Check out google api gen(see grafeas for example)
+// TODO(vj): hash composite keys
+
+service VelocityService {
+  // rpc CreateProject(CreateProjectRequest) returns (Project) {}
+  // rpc GetProject(GetBuildRequest) returns (Project) {}
+  // rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {}
+
+  // rpc ListHeadBuilds projects/<p_id>/heads/<head_id>/builds
+  // rpc ListHeadBlueprints -> ListCommitBlueprints(for commit at HEAD of head)
+  // projects/<p_id>/heads/<head_id>/blueprints rpc ListCommitBuilds
+  // projects/<p_id>/commits/<commit_id>/builds rpc ListCommitBlueprints
+  // projects/<p_id>/commits/<commit_id>/blueprints
+
+  // rpc CreateBuild(CreateBuildRequest) returns (Build) {}
+  // rpc GetBuild(GetBuildRequest) returns (Build) {}
+  // rpc ListBuilds(ListBuildsRequest) returns (ListBuildsResponse) {}
+}
+
+message Project {
+  // projects/<project_id>
+  string id = 1;
+}
+
+message Blueprint {
+  // projects/<project_id>/blueprints/<blueprint_id>
+  string id =
+      1; // composite key (project_id+commit_hash(commit_id)+blueprint_name)
+
+  // projects/<project_id>/commits/<commit_id>
+  string commit_id = 2;
+}
+
+message CreateBuildRequest {
+  string project_id = 1; // projects/<project_id>
+  string head_id = 2; // projects/<project_id>/heads/<head_id> (can be blank if
+                      // building a commit with no head)
+  string commit_sha = 3;     // projects/<project_id>/commits/<commit_id>
+  string blueprint_name = 4; // projects/<project_id>/blueprint/<blueprint_id>
+  map<string, string> parameters = 5;
+}
+
+message Build {
+  // projects/<project_id>/builds/<build_id>
+  string id = 1;
+
+  // projects/<project_id>/blueprints/<blueprint_id>
+  string blueprint_id = 4; // can get commit and head via this
+}

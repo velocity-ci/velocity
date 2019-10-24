@@ -21,7 +21,7 @@ var (
 )
 
 var (
-	gracefulStop = make(chan os.Signal)
+	stop = make(chan os.Signal)
 )
 
 func init() {
@@ -39,12 +39,12 @@ var rootCmd = &cobra.Command{
 			output.ColorDisable()
 		}
 		builder.Insecure = insecure
-		signal.Notify(gracefulStop, syscall.SIGTERM)
-		signal.Notify(gracefulStop, syscall.SIGINT)
+		signal.Notify(stop, syscall.SIGTERM)
+		signal.Notify(stop, syscall.SIGINT)
 		go func() {
-			sig := <-gracefulStop
+			sig := <-stop
 			fmt.Printf("\ncaught signal: %+v\n", sig)
-			close(gracefulStop)
+			close(stop)
 		}()
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,7 +54,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		return builder.BreakRoom(address, token, gracefulStop)
+		return builder.BreakRoom(address, token, stop)
 	},
 	Version: BuildVersion,
 }
