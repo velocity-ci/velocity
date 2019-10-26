@@ -7,7 +7,10 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -23,8 +26,9 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Head struct {
-	// projects/<project_id>/heads/<head_id>
+	// HEAD_ID=head_name
 	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId            string   `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -62,9 +66,17 @@ func (m *Head) GetId() string {
 	return ""
 }
 
+func (m *Head) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
+	}
+	return ""
+}
+
 type Commit struct {
-	// projects/<project_id>/commits/<commit_id>
+	// COMMIT_ID=commit_sha
 	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId            string   `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -98,6 +110,13 @@ var xxx_messageInfo_Commit proto.InternalMessageInfo
 func (m *Commit) GetId() string {
 	if m != nil {
 		return m.Id
+	}
+	return ""
+}
+
+func (m *Commit) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
 	}
 	return ""
 }
@@ -196,31 +215,407 @@ func (m *SSHConfig) GetHostKey() string {
 	return ""
 }
 
+type GetHeadRequest struct {
+	// The id of the project in the form of
+	// `[PROJECT_ID]`.
+	ProjectId string `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// The id of the project in the form of
+	// `[HEAD_ID]`.
+	HeadId               string   `protobuf:"bytes,2,opt,name=head_id,json=headId,proto3" json:"head_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetHeadRequest) Reset()         { *m = GetHeadRequest{} }
+func (m *GetHeadRequest) String() string { return proto.CompactTextString(m) }
+func (*GetHeadRequest) ProtoMessage()    {}
+func (*GetHeadRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_10d86afa5a89ec9d, []int{4}
+}
+
+func (m *GetHeadRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetHeadRequest.Unmarshal(m, b)
+}
+func (m *GetHeadRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetHeadRequest.Marshal(b, m, deterministic)
+}
+func (m *GetHeadRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetHeadRequest.Merge(m, src)
+}
+func (m *GetHeadRequest) XXX_Size() int {
+	return xxx_messageInfo_GetHeadRequest.Size(m)
+}
+func (m *GetHeadRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetHeadRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetHeadRequest proto.InternalMessageInfo
+
+func (m *GetHeadRequest) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
+	}
+	return ""
+}
+
+func (m *GetHeadRequest) GetHeadId() string {
+	if m != nil {
+		return m.HeadId
+	}
+	return ""
+}
+
+type GetCommitRequest struct {
+	// The id of the project in the form of
+	// `[PROJECT_ID]`.
+	ProjectId string `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// The id of the commit in the form of
+	// `[COMMIT_ID]`.
+	CommitId             string   `protobuf:"bytes,2,opt,name=commit_id,json=commitId,proto3" json:"commit_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetCommitRequest) Reset()         { *m = GetCommitRequest{} }
+func (m *GetCommitRequest) String() string { return proto.CompactTextString(m) }
+func (*GetCommitRequest) ProtoMessage()    {}
+func (*GetCommitRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_10d86afa5a89ec9d, []int{5}
+}
+
+func (m *GetCommitRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetCommitRequest.Unmarshal(m, b)
+}
+func (m *GetCommitRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetCommitRequest.Marshal(b, m, deterministic)
+}
+func (m *GetCommitRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetCommitRequest.Merge(m, src)
+}
+func (m *GetCommitRequest) XXX_Size() int {
+	return xxx_messageInfo_GetCommitRequest.Size(m)
+}
+func (m *GetCommitRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetCommitRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetCommitRequest proto.InternalMessageInfo
+
+func (m *GetCommitRequest) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
+	}
+	return ""
+}
+
+func (m *GetCommitRequest) GetCommitId() string {
+	if m != nil {
+		return m.CommitId
+	}
+	return ""
+}
+
+type RepoPageQuery struct {
+	Limit                int32    `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Skip                 int32    `protobuf:"varint,2,opt,name=skip,proto3" json:"skip,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RepoPageQuery) Reset()         { *m = RepoPageQuery{} }
+func (m *RepoPageQuery) String() string { return proto.CompactTextString(m) }
+func (*RepoPageQuery) ProtoMessage()    {}
+func (*RepoPageQuery) Descriptor() ([]byte, []int) {
+	return fileDescriptor_10d86afa5a89ec9d, []int{6}
+}
+
+func (m *RepoPageQuery) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RepoPageQuery.Unmarshal(m, b)
+}
+func (m *RepoPageQuery) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RepoPageQuery.Marshal(b, m, deterministic)
+}
+func (m *RepoPageQuery) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RepoPageQuery.Merge(m, src)
+}
+func (m *RepoPageQuery) XXX_Size() int {
+	return xxx_messageInfo_RepoPageQuery.Size(m)
+}
+func (m *RepoPageQuery) XXX_DiscardUnknown() {
+	xxx_messageInfo_RepoPageQuery.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RepoPageQuery proto.InternalMessageInfo
+
+func (m *RepoPageQuery) GetLimit() int32 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+func (m *RepoPageQuery) GetSkip() int32 {
+	if m != nil {
+		return m.Skip
+	}
+	return 0
+}
+
+type ListHeadsRequest struct {
+	// The id of the project in the form of
+	// `[PROJECT_ID]`.
+	ProjectId string `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// The ids of the commits in the form of
+	// `[COMMIT_ID]`.
+	CommitIds            []string       `protobuf:"bytes,2,rep,name=commit_ids,json=commitIds,proto3" json:"commit_ids,omitempty"`
+	PageQuery            *RepoPageQuery `protobuf:"bytes,99,opt,name=page_query,json=pageQuery,proto3" json:"page_query,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
+}
+
+func (m *ListHeadsRequest) Reset()         { *m = ListHeadsRequest{} }
+func (m *ListHeadsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListHeadsRequest) ProtoMessage()    {}
+func (*ListHeadsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_10d86afa5a89ec9d, []int{7}
+}
+
+func (m *ListHeadsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListHeadsRequest.Unmarshal(m, b)
+}
+func (m *ListHeadsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListHeadsRequest.Marshal(b, m, deterministic)
+}
+func (m *ListHeadsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListHeadsRequest.Merge(m, src)
+}
+func (m *ListHeadsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListHeadsRequest.Size(m)
+}
+func (m *ListHeadsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListHeadsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListHeadsRequest proto.InternalMessageInfo
+
+func (m *ListHeadsRequest) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
+	}
+	return ""
+}
+
+func (m *ListHeadsRequest) GetCommitIds() []string {
+	if m != nil {
+		return m.CommitIds
+	}
+	return nil
+}
+
+func (m *ListHeadsRequest) GetPageQuery() *RepoPageQuery {
+	if m != nil {
+		return m.PageQuery
+	}
+	return nil
+}
+
+type ListHeadsResponse struct {
+	Heads                []*Head  `protobuf:"bytes,1,rep,name=heads,proto3" json:"heads,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListHeadsResponse) Reset()         { *m = ListHeadsResponse{} }
+func (m *ListHeadsResponse) String() string { return proto.CompactTextString(m) }
+func (*ListHeadsResponse) ProtoMessage()    {}
+func (*ListHeadsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_10d86afa5a89ec9d, []int{8}
+}
+
+func (m *ListHeadsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListHeadsResponse.Unmarshal(m, b)
+}
+func (m *ListHeadsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListHeadsResponse.Marshal(b, m, deterministic)
+}
+func (m *ListHeadsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListHeadsResponse.Merge(m, src)
+}
+func (m *ListHeadsResponse) XXX_Size() int {
+	return xxx_messageInfo_ListHeadsResponse.Size(m)
+}
+func (m *ListHeadsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListHeadsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListHeadsResponse proto.InternalMessageInfo
+
+func (m *ListHeadsResponse) GetHeads() []*Head {
+	if m != nil {
+		return m.Heads
+	}
+	return nil
+}
+
+type ListCommitsRequest struct {
+	// The id of the project in the form of
+	// `[PROJECT_ID]`.
+	ProjectId string `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// The ids of the heads in the form of
+	// `[HEAD_ID]`.
+	HeadIds              []string       `protobuf:"bytes,2,rep,name=head_ids,json=headIds,proto3" json:"head_ids,omitempty"`
+	PageQuery            *RepoPageQuery `protobuf:"bytes,99,opt,name=page_query,json=pageQuery,proto3" json:"page_query,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
+}
+
+func (m *ListCommitsRequest) Reset()         { *m = ListCommitsRequest{} }
+func (m *ListCommitsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListCommitsRequest) ProtoMessage()    {}
+func (*ListCommitsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_10d86afa5a89ec9d, []int{9}
+}
+
+func (m *ListCommitsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListCommitsRequest.Unmarshal(m, b)
+}
+func (m *ListCommitsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListCommitsRequest.Marshal(b, m, deterministic)
+}
+func (m *ListCommitsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListCommitsRequest.Merge(m, src)
+}
+func (m *ListCommitsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListCommitsRequest.Size(m)
+}
+func (m *ListCommitsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListCommitsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListCommitsRequest proto.InternalMessageInfo
+
+func (m *ListCommitsRequest) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
+	}
+	return ""
+}
+
+func (m *ListCommitsRequest) GetHeadIds() []string {
+	if m != nil {
+		return m.HeadIds
+	}
+	return nil
+}
+
+func (m *ListCommitsRequest) GetPageQuery() *RepoPageQuery {
+	if m != nil {
+		return m.PageQuery
+	}
+	return nil
+}
+
+type ListCommitsResponse struct {
+	Commits              []*Commit `protobuf:"bytes,1,rep,name=commits,proto3" json:"commits,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
+}
+
+func (m *ListCommitsResponse) Reset()         { *m = ListCommitsResponse{} }
+func (m *ListCommitsResponse) String() string { return proto.CompactTextString(m) }
+func (*ListCommitsResponse) ProtoMessage()    {}
+func (*ListCommitsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_10d86afa5a89ec9d, []int{10}
+}
+
+func (m *ListCommitsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListCommitsResponse.Unmarshal(m, b)
+}
+func (m *ListCommitsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListCommitsResponse.Marshal(b, m, deterministic)
+}
+func (m *ListCommitsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListCommitsResponse.Merge(m, src)
+}
+func (m *ListCommitsResponse) XXX_Size() int {
+	return xxx_messageInfo_ListCommitsResponse.Size(m)
+}
+func (m *ListCommitsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListCommitsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListCommitsResponse proto.InternalMessageInfo
+
+func (m *ListCommitsResponse) GetCommits() []*Commit {
+	if m != nil {
+		return m.Commits
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Head)(nil), "velocity.v1.Head")
 	proto.RegisterType((*Commit)(nil), "velocity.v1.Commit")
 	proto.RegisterType((*Repository)(nil), "velocity.v1.Repository")
 	proto.RegisterType((*SSHConfig)(nil), "velocity.v1.SSHConfig")
+	proto.RegisterType((*GetHeadRequest)(nil), "velocity.v1.GetHeadRequest")
+	proto.RegisterType((*GetCommitRequest)(nil), "velocity.v1.GetCommitRequest")
+	proto.RegisterType((*RepoPageQuery)(nil), "velocity.v1.RepoPageQuery")
+	proto.RegisterType((*ListHeadsRequest)(nil), "velocity.v1.ListHeadsRequest")
+	proto.RegisterType((*ListHeadsResponse)(nil), "velocity.v1.ListHeadsResponse")
+	proto.RegisterType((*ListCommitsRequest)(nil), "velocity.v1.ListCommitsRequest")
+	proto.RegisterType((*ListCommitsResponse)(nil), "velocity.v1.ListCommitsResponse")
 }
 
 func init() { proto.RegisterFile("repository.proto", fileDescriptor_10d86afa5a89ec9d) }
 
 var fileDescriptor_10d86afa5a89ec9d = []byte{
-	// 219 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x90, 0xc1, 0x4a, 0xc3, 0x40,
-	0x10, 0x86, 0xc9, 0x52, 0xaa, 0x99, 0x80, 0xe8, 0x0a, 0x65, 0x3d, 0x59, 0x72, 0xea, 0x69, 0xa1,
-	0x15, 0x5f, 0xc0, 0x1e, 0x2c, 0xf4, 0x96, 0xdc, 0x04, 0x29, 0x31, 0x3b, 0x9a, 0x41, 0xeb, 0x84,
-	0x9d, 0x65, 0x61, 0xdf, 0x5e, 0x4c, 0x63, 0x14, 0xbc, 0xed, 0xff, 0x7f, 0xcb, 0x7c, 0xc3, 0xc0,
-	0xa5, 0xc7, 0x9e, 0x85, 0x02, 0xfb, 0x64, 0x7b, 0xcf, 0x81, 0x75, 0x11, 0xf1, 0x83, 0x5b, 0x0a,
-	0xc9, 0xc6, 0x75, 0xb9, 0x80, 0xd9, 0x0e, 0x1b, 0xa7, 0x2f, 0x40, 0x91, 0x33, 0xd9, 0x32, 0x5b,
-	0xe5, 0x95, 0x22, 0x57, 0x1a, 0x98, 0x6f, 0xf9, 0x78, 0xa4, 0xf0, 0x8f, 0x3c, 0x03, 0x54, 0xd3,
-	0x48, 0x6d, 0xe0, 0xac, 0x71, 0xce, 0xa3, 0xc8, 0xf8, 0xe5, 0x27, 0xea, 0x7b, 0x00, 0x91, 0xee,
-	0xd0, 0xf2, 0xe7, 0x2b, 0xbd, 0x19, 0xb5, 0xcc, 0x56, 0xc5, 0x66, 0x61, 0xff, 0xb8, 0x6d, 0x5d,
-	0xef, 0xb6, 0x03, 0xad, 0x72, 0x91, 0xee, 0xf4, 0x2c, 0x1f, 0x21, 0x9f, 0x7a, 0x7d, 0x0b, 0x45,
-	0xef, 0x29, 0x36, 0x01, 0x0f, 0xef, 0x98, 0x46, 0x03, 0x8c, 0xd5, 0x1e, 0x93, 0xbe, 0x81, 0xf3,
-	0x8e, 0x25, 0x0c, 0x54, 0x9d, 0xfc, 0xdf, 0x79, 0x8f, 0x69, 0x73, 0x0d, 0x57, 0xbf, 0x7b, 0xd6,
-	0xe8, 0x23, 0xb5, 0xf8, 0x30, 0x7b, 0x52, 0x71, 0xfd, 0x32, 0x1f, 0x0e, 0x71, 0xf7, 0x15, 0x00,
-	0x00, 0xff, 0xff, 0xda, 0x05, 0xf4, 0x4f, 0x1c, 0x01, 0x00, 0x00,
+	// 604 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0x4f, 0x8b, 0xd3, 0x40,
+	0x14, 0xa7, 0xd9, 0xed, 0x66, 0xf3, 0x8a, 0x4b, 0x3b, 0x2b, 0x5a, 0x53, 0x6b, 0xeb, 0x88, 0xec,
+	0xb2, 0x60, 0x43, 0x2b, 0x8b, 0x2c, 0xe8, 0xc5, 0x15, 0xda, 0xb2, 0x22, 0x9a, 0xde, 0x04, 0xa9,
+	0x31, 0x19, 0xdb, 0x71, 0xdb, 0x4c, 0x36, 0x33, 0x1b, 0x09, 0xd2, 0x8b, 0x37, 0xf1, 0xe8, 0xa7,
+	0xf2, 0xec, 0x57, 0xf0, 0x83, 0x48, 0x66, 0x92, 0xb6, 0xe9, 0x76, 0xa5, 0xe2, 0x6d, 0xe6, 0xbd,
+	0x79, 0xef, 0xf7, 0xe7, 0xbd, 0x04, 0xca, 0x21, 0x09, 0x18, 0xa7, 0x82, 0x85, 0x71, 0x2b, 0x08,
+	0x99, 0x60, 0xa8, 0x14, 0x91, 0x09, 0x73, 0xa9, 0x88, 0x5b, 0x51, 0xdb, 0xbc, 0x3b, 0x62, 0x6c,
+	0x34, 0x21, 0x96, 0x13, 0x50, 0xcb, 0xf1, 0x7d, 0x26, 0x1c, 0x41, 0x99, 0xcf, 0xd5, 0x53, 0x7c,
+	0x0c, 0xdb, 0x3d, 0xe2, 0x78, 0x68, 0x0f, 0x34, 0xea, 0x55, 0x0b, 0xcd, 0xc2, 0xa1, 0x61, 0x6b,
+	0xd4, 0x43, 0x75, 0x80, 0x20, 0x64, 0x9f, 0x88, 0x2b, 0x86, 0xd4, 0xab, 0x6a, 0x32, 0x6e, 0xa4,
+	0x91, 0xbe, 0x87, 0x9f, 0xc0, 0xce, 0x29, 0x9b, 0x4e, 0xa9, 0xf8, 0xd7, 0xc2, 0x77, 0x00, 0xf6,
+	0x9c, 0x2e, 0xaa, 0x82, 0xee, 0x78, 0x5e, 0x48, 0x38, 0x4f, 0x3b, 0x64, 0x57, 0x74, 0x0c, 0xc0,
+	0xf9, 0x78, 0xe8, 0x32, 0xff, 0x23, 0x1d, 0xc9, 0x36, 0xa5, 0xce, 0xad, 0xd6, 0x92, 0xae, 0xd6,
+	0x60, 0xd0, 0x3b, 0x95, 0x59, 0xdb, 0xe0, 0x7c, 0xac, 0x8e, 0xb8, 0x0b, 0xc6, 0x3c, 0x8e, 0x1a,
+	0x50, 0x0a, 0x42, 0x1a, 0x39, 0x82, 0x0c, 0xcf, 0x49, 0x9c, 0x22, 0x40, 0x1a, 0x3a, 0x23, 0x31,
+	0xba, 0x03, 0xbb, 0x63, 0xc6, 0x85, 0xcc, 0x2a, 0xa6, 0x7a, 0x72, 0x3f, 0x23, 0x31, 0xee, 0xc1,
+	0x5e, 0x97, 0x88, 0xc4, 0x1a, 0x9b, 0x5c, 0x5c, 0x12, 0x2e, 0x56, 0x84, 0x15, 0x56, 0x84, 0xa1,
+	0xdb, 0xa0, 0x8f, 0x89, 0xe3, 0x2d, 0x44, 0xef, 0x24, 0xd7, 0xbe, 0x87, 0x5f, 0x41, 0xb9, 0x4b,
+	0x84, 0x72, 0x6b, 0xc3, 0x5e, 0x35, 0x30, 0x5c, 0xf9, 0x7e, 0xd1, 0x6d, 0x57, 0x05, 0xfa, 0x1e,
+	0x3e, 0x81, 0x1b, 0x89, 0x83, 0xaf, 0x9d, 0x11, 0x79, 0x73, 0x49, 0xc2, 0x18, 0xdd, 0x84, 0xe2,
+	0x84, 0x4e, 0xa9, 0x90, 0x7d, 0x8a, 0xb6, 0xba, 0x20, 0x04, 0xdb, 0xfc, 0x9c, 0x06, 0xb2, 0xbc,
+	0x68, 0xcb, 0x33, 0xfe, 0x5e, 0x80, 0xf2, 0x4b, 0xca, 0xa5, 0x2c, 0xbe, 0x21, 0x97, 0x3a, 0xc0,
+	0x9c, 0x0b, 0xaf, 0x6a, 0xcd, 0xad, 0x24, 0x9d, 0x91, 0xe1, 0xe8, 0x04, 0x20, 0x70, 0x46, 0x64,
+	0x78, 0x91, 0x50, 0xa9, 0xba, 0x72, 0x4e, 0x66, 0x6e, 0x4e, 0x39, 0xb2, 0xb6, 0x11, 0x64, 0x47,
+	0xfc, 0x14, 0x2a, 0x4b, 0x64, 0x78, 0xc0, 0x7c, 0x4e, 0xd0, 0x01, 0x14, 0x13, 0xdf, 0x92, 0x7d,
+	0xd8, 0x3a, 0x2c, 0x75, 0x2a, 0xb9, 0x56, 0x72, 0x1c, 0x2a, 0x8f, 0xbf, 0x15, 0x00, 0x25, 0xe5,
+	0xca, 0xd8, 0x4d, 0xd5, 0x24, 0x13, 0x57, 0x53, 0xca, 0xb4, 0xe8, 0x6a, 0x4c, 0xff, 0xa5, 0xe4,
+	0x05, 0xec, 0xe7, 0xa8, 0xa4, 0x5a, 0x1e, 0x81, 0xae, 0x8c, 0xca, 0xd4, 0xec, 0xe7, 0xda, 0xa5,
+	0x2b, 0x91, 0xbd, 0xe9, 0xfc, 0xdc, 0x82, 0xca, 0xe2, 0xdb, 0x18, 0x90, 0x30, 0xa2, 0x2e, 0x41,
+	0xef, 0x41, 0x4f, 0x17, 0x11, 0xd5, 0x72, 0xe5, 0xf9, 0xf5, 0x34, 0xaf, 0x3a, 0x85, 0x1f, 0x7e,
+	0xfd, 0xf5, 0xfb, 0x87, 0xd6, 0x40, 0x75, 0x2b, 0x6a, 0x5b, 0x5f, 0x7c, 0x67, 0x4a, 0x9e, 0xa5,
+	0x4e, 0x70, 0xeb, 0xc8, 0x92, 0x36, 0x5a, 0x47, 0x33, 0x34, 0x06, 0x63, 0xbe, 0xa0, 0xa8, 0xbe,
+	0x8a, 0x91, 0x5b, 0x5c, 0x73, 0x9d, 0x02, 0x7c, 0x20, 0x71, 0xee, 0xa3, 0xc6, 0x5a, 0x9c, 0x54,
+	0x5e, 0x82, 0xc4, 0xc0, 0x98, 0x4f, 0x7c, 0x05, 0x69, 0x75, 0x2d, 0xcd, 0x7b, 0xd7, 0xa5, 0x95,
+	0xb9, 0xf8, 0x81, 0x04, 0xad, 0xa3, 0xda, 0x3a, 0xd0, 0x99, 0x52, 0x87, 0x3e, 0x43, 0x69, 0x69,
+	0x30, 0xa8, 0x71, 0xa5, 0x67, 0x7e, 0x7b, 0xcc, 0xe6, 0xf5, 0x0f, 0x52, 0xd8, 0xbf, 0x7a, 0x3a,
+	0xcb, 0xc4, 0x3e, 0xdf, 0x7e, 0xab, 0x45, 0xed, 0x0f, 0x3b, 0xf2, 0x1f, 0xfb, 0xf8, 0x4f, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0xf1, 0xe6, 0x7e, 0xf6, 0xa2, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -235,6 +630,10 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type RepositoryServiceClient interface {
+	GetHead(ctx context.Context, in *GetHeadRequest, opts ...grpc.CallOption) (*Head, error)
+	GetCommit(ctx context.Context, in *GetCommitRequest, opts ...grpc.CallOption) (*Commit, error)
+	ListHeads(ctx context.Context, in *ListHeadsRequest, opts ...grpc.CallOption) (*ListHeadsResponse, error)
+	ListCommits(ctx context.Context, in *ListCommitsRequest, opts ...grpc.CallOption) (*ListCommitsResponse, error)
 }
 
 type repositoryServiceClient struct {
@@ -245,22 +644,164 @@ func NewRepositoryServiceClient(cc *grpc.ClientConn) RepositoryServiceClient {
 	return &repositoryServiceClient{cc}
 }
 
+func (c *repositoryServiceClient) GetHead(ctx context.Context, in *GetHeadRequest, opts ...grpc.CallOption) (*Head, error) {
+	out := new(Head)
+	err := c.cc.Invoke(ctx, "/velocity.v1.RepositoryService/GetHead", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *repositoryServiceClient) GetCommit(ctx context.Context, in *GetCommitRequest, opts ...grpc.CallOption) (*Commit, error) {
+	out := new(Commit)
+	err := c.cc.Invoke(ctx, "/velocity.v1.RepositoryService/GetCommit", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *repositoryServiceClient) ListHeads(ctx context.Context, in *ListHeadsRequest, opts ...grpc.CallOption) (*ListHeadsResponse, error) {
+	out := new(ListHeadsResponse)
+	err := c.cc.Invoke(ctx, "/velocity.v1.RepositoryService/ListHeads", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *repositoryServiceClient) ListCommits(ctx context.Context, in *ListCommitsRequest, opts ...grpc.CallOption) (*ListCommitsResponse, error) {
+	out := new(ListCommitsResponse)
+	err := c.cc.Invoke(ctx, "/velocity.v1.RepositoryService/ListCommits", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RepositoryServiceServer is the server API for RepositoryService service.
 type RepositoryServiceServer interface {
+	GetHead(context.Context, *GetHeadRequest) (*Head, error)
+	GetCommit(context.Context, *GetCommitRequest) (*Commit, error)
+	ListHeads(context.Context, *ListHeadsRequest) (*ListHeadsResponse, error)
+	ListCommits(context.Context, *ListCommitsRequest) (*ListCommitsResponse, error)
 }
 
 // UnimplementedRepositoryServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedRepositoryServiceServer struct {
 }
 
+func (*UnimplementedRepositoryServiceServer) GetHead(ctx context.Context, req *GetHeadRequest) (*Head, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHead not implemented")
+}
+func (*UnimplementedRepositoryServiceServer) GetCommit(ctx context.Context, req *GetCommitRequest) (*Commit, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCommit not implemented")
+}
+func (*UnimplementedRepositoryServiceServer) ListHeads(ctx context.Context, req *ListHeadsRequest) (*ListHeadsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListHeads not implemented")
+}
+func (*UnimplementedRepositoryServiceServer) ListCommits(ctx context.Context, req *ListCommitsRequest) (*ListCommitsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListCommits not implemented")
+}
+
 func RegisterRepositoryServiceServer(s *grpc.Server, srv RepositoryServiceServer) {
 	s.RegisterService(&_RepositoryService_serviceDesc, srv)
+}
+
+func _RepositoryService_GetHead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHeadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RepositoryServiceServer).GetHead(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/velocity.v1.RepositoryService/GetHead",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RepositoryServiceServer).GetHead(ctx, req.(*GetHeadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RepositoryService_GetCommit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCommitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RepositoryServiceServer).GetCommit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/velocity.v1.RepositoryService/GetCommit",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RepositoryServiceServer).GetCommit(ctx, req.(*GetCommitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RepositoryService_ListHeads_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHeadsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RepositoryServiceServer).ListHeads(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/velocity.v1.RepositoryService/ListHeads",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RepositoryServiceServer).ListHeads(ctx, req.(*ListHeadsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RepositoryService_ListCommits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCommitsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RepositoryServiceServer).ListCommits(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/velocity.v1.RepositoryService/ListCommits",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RepositoryServiceServer).ListCommits(ctx, req.(*ListCommitsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _RepositoryService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "velocity.v1.RepositoryService",
 	HandlerType: (*RepositoryServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "repository.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetHead",
+			Handler:    _RepositoryService_GetHead_Handler,
+		},
+		{
+			MethodName: "GetCommit",
+			Handler:    _RepositoryService_GetCommit_Handler,
+		},
+		{
+			MethodName: "ListHeads",
+			Handler:    _RepositoryService_ListHeads_Handler,
+		},
+		{
+			MethodName: "ListCommits",
+			Handler:    _RepositoryService_ListCommits_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "repository.proto",
 }

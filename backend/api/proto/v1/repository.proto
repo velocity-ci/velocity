@@ -3,14 +3,19 @@ package velocity.v1;
 
 option go_package = "v1";
 
+import "google/api/annotations.proto";
+
+
 message Head {
-  // projects/<project_id>/heads/<head_id>
-  string id = 1; // composite key (project_id+head_name)
+  // HEAD_ID=head_name
+  string id = 1;
+  string project_id = 2;
 }
 
 message Commit {
-  // projects/<project_id>/commits/<commit_id>
-  string id = 1; // composite key (project_id+commit_hash)
+  // COMMIT_ID=commit_sha
+  string id = 1;
+  string project_id = 2;
 }
 
 message Repository {
@@ -24,12 +29,83 @@ message SSHConfig {
 }
 
 service RepositoryService {
-  // rpc GetHead projects/<p_id>/heads/<head_id>
-  // rpc GetHeadCommit projects/<p_id>/heads/<head_id>/commits/<commit_id>
-  // rpc GetCommit projects/<p_id>/commits/<commit_id>
-  // rpc GetCommitHead projects/<p_id>/commits/<commit_id>/heads/<head_id>
-  // rpc ListHeads projects/<p_id>/heads
-  // rpc ListHeadCommits projects/<p_id>/heads/<head_id>/commits
-  // rpc ListCommits projects/<p_id>/commits
-  // rpc ListCommitHeads projects/<p_id>/commits/<commit_id>/heads
+  rpc GetHead(GetHeadRequest) returns (Head) {
+    option (google.api.http) = {
+      get: "/v1/{name=projects/*/heads/*}"
+    };
+  }
+
+  rpc GetCommit(GetCommitRequest) returns (Commit) {
+    option (google.api.http) = {
+      get: "/v1/{name=projects/*/commits/*}"
+    };
+  }
+
+  rpc ListHeads(ListHeadsRequest) returns (ListHeadsResponse) {
+    option (google.api.http) = {
+      get: "/v1/{name=projects/*}/heads"
+    };
+  }
+
+  rpc ListCommits(ListCommitsRequest) returns (ListCommitsResponse) {
+    option (google.api.http) = {
+      get: "/v1/{name=projects/*}/commits"
+    };
+  }
+
+}
+
+message GetHeadRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+  // The id of the project in the form of
+  // `[HEAD_ID]`.
+  string head_id = 2;
+}
+
+message GetCommitRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+  // The id of the commit in the form of
+  // `[COMMIT_ID]`.
+  string commit_id = 2;
+}
+
+message RepoPageQuery {
+  int32 limit = 1;
+  int32 skip = 2;
+}
+
+message ListHeadsRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+
+  // The ids of the commits in the form of
+  // `[COMMIT_ID]`.
+  repeated string commit_ids = 2;
+
+  RepoPageQuery page_query = 99;
+}
+
+message ListHeadsResponse {
+  repeated Head heads = 1;
+}
+
+message ListCommitsRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+
+  // The ids of the heads in the form of
+  // `[HEAD_ID]`.
+  repeated string head_ids = 2;
+
+  RepoPageQuery page_query = 99;
+}
+
+message ListCommitsResponse {
+  repeated Commit commits = 1;
 }
