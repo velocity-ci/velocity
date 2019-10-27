@@ -1,0 +1,50 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+import "api.proto";
+import "repository.proto";
+import "step.proto";
+import "google/api/annotations.proto";
+
+message Blueprint {
+  // BLUEPRINT_ID = commit_sha+blueprint_name
+  string id = 1;
+
+  string project_id = 2;
+
+  string commit_id = 3;
+  string name = 4;
+  repeated Step steps = 5;
+}
+
+service BlueprintService {
+  rpc GetBlueprint(GetBlueprintRequest) returns (Blueprint) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*/blueprints/*}"
+    };
+  }
+
+  rpc ListBlueprints(ListBlueprintsRequest) returns (ListBlueprintsResponse) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*}/blueprints"
+    };
+  }
+}
+
+message GetBlueprintRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+  // The id of the blueprint in the form of
+  // `[BLUEPRINT_ID]`.
+  string blueprint_id = 2;
+}
+
+message ListBlueprintsRequest {
+  velocity.v1.RepoQuery repo_query = 1;
+  velocity.v1.PageQuery page_query = 99;
+}
+
+message ListBlueprintsResponse { repeated Blueprint blueprints = 1; }

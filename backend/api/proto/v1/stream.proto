@@ -1,0 +1,17 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+import "google/protobuf/timestamp.proto";
+
+message Stream {
+  string id = 1;
+  string action_id = 2;
+
+  string name = 3;
+
+  string status = 20;
+  google.protobuf.Timestamp started_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+}

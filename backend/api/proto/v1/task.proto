@@ -3,7 +3,7 @@ package velocity.v1;
 
 option go_package = "v1";
 
-import "step.proto";
+import "action.proto";
 import "google/protobuf/timestamp.proto";
 
 message Task {
@@ -11,7 +11,7 @@ message Task {
   map<string, Parameter> parameters = 2;
   string blueprint = 3;
   bool ignore_errors = 4;
-  repeated velocity.v1.Step steps = 5;
+  repeated velocity.v1.Action actions = 5;
   string status = 6;
 
   google.protobuf.Timestamp started_at = 7;

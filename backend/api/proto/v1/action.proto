@@ -1,0 +1,36 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+import "repository.proto";
+import "step.proto";
+import "stream.proto";
+import "google/protobuf/timestamp.proto";
+
+message Action {
+  string id = 1;
+  string task_id = 2;
+
+  Setup setup = 3;
+
+  velocity.v1.Step step = 4;
+
+  repeated velocity.v1.Stream streams = 5;
+
+  enum Status {
+    WAITING = 0;
+    BUILDING = 1;
+    SUCCEEDED = 2;
+    FAILED = 3;
+  }
+  Status status = 20;
+  google.protobuf.Timestamp started_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+}
+
+message Setup {
+  velocity.v1.Repository repository = 1;
+  string branch = 2;
+  string commit_hash = 3;
+}

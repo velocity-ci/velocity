@@ -1,0 +1,102 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+import "api.proto";
+import "repository.proto";
+import "task.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+service BuildService {
+  rpc CreateBuild(CreateBuildRequest) returns (Build) {
+    option (google.api.http) = {
+      post : "/v1/{name=projects/*}/builds"
+      body : "build"
+    };
+  }
+
+  rpc GetBuild(GetBuildRequest) returns (Build) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*/builds/*}"
+    };
+  }
+
+  rpc ListBuilds(ListBuildsRequest) returns (ListBuildsResponse) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*}/builds"
+    };
+  }
+}
+
+message Build {
+  string id = 1;
+  string project_id = 2;
+  string head_id = 3;
+  string commit_id = 4;
+
+  string name = 5;
+
+  repeated Stanza stanzas = 6;
+
+  enum Status {
+    WAITING = 0;
+    BUILDING = 1;
+    SUCCEEDED = 2;
+    FAILED = 3;
+  }
+  Status status = 20;
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+}
+
+message Stanza {
+  string id = 1;
+  string build_id = 2;
+
+  map<string, velocity.v1.Task> tasks = 3;
+
+  enum Status {
+    WAITING = 0;
+    BUILDING = 1;
+    SUCCEEDED = 2;
+    FAILED = 3;
+  }
+  Status status = 20;
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+}
+
+message CreateBuildRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+  // The id of the head in the form of
+  // `[HEAD_ID]`. Can be blank if building a commit with no head.
+  string head_id = 2;
+  // The id of the blueprint/pipeline in the form of
+  // `[BLUEPRINT/PIPELINE_ID]`.
+  string target_id = 3;
+  map<string, string> parameters = 4;
+}
+
+message GetBuildRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+  // The id of the build in the form of
+  // `[BUILD_ID]`.
+  string build_id = 2;
+}
+
+message TargetQuery { repeated string ids = 1; }
+
+message ListBuildsRequest {
+  velocity.v1.RepoQuery repo_query = 1;
+  velocity.v1.TargetQuery target_query = 2;
+
+  velocity.v1.PageQuery page_query = 99;
+}
+
+message ListBuildsResponse { repeated Build builds = 1; }

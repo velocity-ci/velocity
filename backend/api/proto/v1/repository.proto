@@ -3,8 +3,8 @@ package velocity.v1;
 
 option go_package = "v1";
 
+import "api.proto";
 import "google/api/annotations.proto";
-
 
 message Head {
   // HEAD_ID=head_name
@@ -31,28 +31,27 @@ message SSHConfig {
 service RepositoryService {
   rpc GetHead(GetHeadRequest) returns (Head) {
     option (google.api.http) = {
-      get: "/v1/{name=projects/*/heads/*}"
+      get : "/v1/{name=projects/*/heads/*}"
     };
   }
 
   rpc GetCommit(GetCommitRequest) returns (Commit) {
     option (google.api.http) = {
-      get: "/v1/{name=projects/*/commits/*}"
+      get : "/v1/{name=projects/*/commits/*}"
     };
   }
 
   rpc ListHeads(ListHeadsRequest) returns (ListHeadsResponse) {
     option (google.api.http) = {
-      get: "/v1/{name=projects/*}/heads"
+      get : "/v1/{name=projects/*}/heads"
     };
   }
 
   rpc ListCommits(ListCommitsRequest) returns (ListCommitsResponse) {
     option (google.api.http) = {
-      get: "/v1/{name=projects/*}/commits"
+      get : "/v1/{name=projects/*}/commits"
     };
   }
-
 }
 
 message GetHeadRequest {
@@ -73,9 +72,13 @@ message GetCommitRequest {
   string commit_id = 2;
 }
 
-message RepoPageQuery {
-  int32 limit = 1;
-  int32 skip = 2;
+message RepoQuery {
+  enum Type {
+    HEAD = 0;
+    COMMIT = 1;
+  }
+  Type type = 1;
+  repeated string ids = 2;
 }
 
 message ListHeadsRequest {
@@ -87,12 +90,10 @@ message ListHeadsRequest {
   // `[COMMIT_ID]`.
   repeated string commit_ids = 2;
 
-  RepoPageQuery page_query = 99;
+  velocity.v1.PageQuery page_query = 99;
 }
 
-message ListHeadsResponse {
-  repeated Head heads = 1;
-}
+message ListHeadsResponse { repeated Head heads = 1; }
 
 message ListCommitsRequest {
   // The id of the project in the form of
@@ -103,9 +104,7 @@ message ListCommitsRequest {
   // `[HEAD_ID]`.
   repeated string head_ids = 2;
 
-  RepoPageQuery page_query = 99;
+  velocity.v1.PageQuery page_query = 99;
 }
 
-message ListCommitsResponse {
-  repeated Commit commits = 1;
-}
+message ListCommitsResponse { repeated Commit commits = 1; }

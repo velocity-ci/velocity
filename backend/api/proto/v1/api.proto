@@ -1,0 +1,9 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+message PageQuery {
+  int32 limit = 1;
+  int32 skip = 2;
+}

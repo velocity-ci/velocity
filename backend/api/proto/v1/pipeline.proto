@@ -1,0 +1,58 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+import "api.proto";
+import "blueprint.proto";
+import "repository.proto";
+import "google/api/annotations.proto";
+
+message Pipeline {
+  // PIPELINE_ID = commit_sha+pipeline_name
+  string id = 1;
+
+  string project_id = 2;
+
+  string commit_id = 3;
+  string name = 4;
+
+  repeated Stage stages = 5;
+}
+
+message Stage {
+  string name = 1;
+  repeated velocity.v1.Blueprint blueprints = 2;
+}
+
+service PipelineService {
+  rpc GetPipeline(GetPipelineRequest) returns (Pipeline) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*/pipelines/*}"
+    };
+  }
+
+  rpc ListPipelines(ListPipelinesRequest) returns (ListPipelinesResponse) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*}/pipelines"
+    };
+  }
+}
+
+message PipelineQuery { repeated string ids = 1; }
+
+message GetPipelineRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+  // The id of the Pipeline in the form of
+  // `[PIPELINE_ID]`.
+  string Pipeline_id = 2;
+}
+
+message ListPipelinesRequest {
+  velocity.v1.RepoQuery repo_query = 1;
+  velocity.v1.PageQuery page_query = 99;
+}
+
+message ListPipelinesResponse { repeated Pipeline Pipelines = 1; }

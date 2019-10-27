@@ -4,8 +4,13 @@
 package v1
 
 import (
+	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
+	_ "google.golang.org/genproto/googleapis/api/annotations"
+	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -21,8 +26,12 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Blueprint struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description          string   `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// BLUEPRINT_ID = commit_sha+blueprint_name
+	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId            string   `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	CommitId             string   `protobuf:"bytes,3,opt,name=commit_id,json=commitId,proto3" json:"commit_id,omitempty"`
+	Name                 string   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Steps                []*Step  `protobuf:"bytes,5,rep,name=steps,proto3" json:"steps,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -53,6 +62,27 @@ func (m *Blueprint) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Blueprint proto.InternalMessageInfo
 
+func (m *Blueprint) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *Blueprint) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
+	}
+	return ""
+}
+
+func (m *Blueprint) GetCommitId() string {
+	if m != nil {
+		return m.CommitId
+	}
+	return ""
+}
+
 func (m *Blueprint) GetName() string {
 	if m != nil {
 		return m.Name
@@ -60,26 +90,302 @@ func (m *Blueprint) GetName() string {
 	return ""
 }
 
-func (m *Blueprint) GetDescription() string {
+func (m *Blueprint) GetSteps() []*Step {
 	if m != nil {
-		return m.Description
+		return m.Steps
+	}
+	return nil
+}
+
+type GetBlueprintRequest struct {
+	// The id of the project in the form of
+	// `[PROJECT_ID]`.
+	ProjectId string `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// The id of the blueprint in the form of
+	// `[BLUEPRINT_ID]`.
+	BlueprintId          string   `protobuf:"bytes,2,opt,name=blueprint_id,json=blueprintId,proto3" json:"blueprint_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetBlueprintRequest) Reset()         { *m = GetBlueprintRequest{} }
+func (m *GetBlueprintRequest) String() string { return proto.CompactTextString(m) }
+func (*GetBlueprintRequest) ProtoMessage()    {}
+func (*GetBlueprintRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d334b799e628a382, []int{1}
+}
+
+func (m *GetBlueprintRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetBlueprintRequest.Unmarshal(m, b)
+}
+func (m *GetBlueprintRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetBlueprintRequest.Marshal(b, m, deterministic)
+}
+func (m *GetBlueprintRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetBlueprintRequest.Merge(m, src)
+}
+func (m *GetBlueprintRequest) XXX_Size() int {
+	return xxx_messageInfo_GetBlueprintRequest.Size(m)
+}
+func (m *GetBlueprintRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetBlueprintRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetBlueprintRequest proto.InternalMessageInfo
+
+func (m *GetBlueprintRequest) GetProjectId() string {
+	if m != nil {
+		return m.ProjectId
 	}
 	return ""
 }
 
+func (m *GetBlueprintRequest) GetBlueprintId() string {
+	if m != nil {
+		return m.BlueprintId
+	}
+	return ""
+}
+
+type ListBlueprintsRequest struct {
+	RepoQuery            *RepoQuery `protobuf:"bytes,1,opt,name=repo_query,json=repoQuery,proto3" json:"repo_query,omitempty"`
+	PageQuery            *PageQuery `protobuf:"bytes,99,opt,name=page_query,json=pageQuery,proto3" json:"page_query,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
+}
+
+func (m *ListBlueprintsRequest) Reset()         { *m = ListBlueprintsRequest{} }
+func (m *ListBlueprintsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListBlueprintsRequest) ProtoMessage()    {}
+func (*ListBlueprintsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d334b799e628a382, []int{2}
+}
+
+func (m *ListBlueprintsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListBlueprintsRequest.Unmarshal(m, b)
+}
+func (m *ListBlueprintsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListBlueprintsRequest.Marshal(b, m, deterministic)
+}
+func (m *ListBlueprintsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListBlueprintsRequest.Merge(m, src)
+}
+func (m *ListBlueprintsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListBlueprintsRequest.Size(m)
+}
+func (m *ListBlueprintsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListBlueprintsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListBlueprintsRequest proto.InternalMessageInfo
+
+func (m *ListBlueprintsRequest) GetRepoQuery() *RepoQuery {
+	if m != nil {
+		return m.RepoQuery
+	}
+	return nil
+}
+
+func (m *ListBlueprintsRequest) GetPageQuery() *PageQuery {
+	if m != nil {
+		return m.PageQuery
+	}
+	return nil
+}
+
+type ListBlueprintsResponse struct {
+	Blueprints           []*Blueprint `protobuf:"bytes,1,rep,name=blueprints,proto3" json:"blueprints,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
+}
+
+func (m *ListBlueprintsResponse) Reset()         { *m = ListBlueprintsResponse{} }
+func (m *ListBlueprintsResponse) String() string { return proto.CompactTextString(m) }
+func (*ListBlueprintsResponse) ProtoMessage()    {}
+func (*ListBlueprintsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d334b799e628a382, []int{3}
+}
+
+func (m *ListBlueprintsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListBlueprintsResponse.Unmarshal(m, b)
+}
+func (m *ListBlueprintsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListBlueprintsResponse.Marshal(b, m, deterministic)
+}
+func (m *ListBlueprintsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListBlueprintsResponse.Merge(m, src)
+}
+func (m *ListBlueprintsResponse) XXX_Size() int {
+	return xxx_messageInfo_ListBlueprintsResponse.Size(m)
+}
+func (m *ListBlueprintsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListBlueprintsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListBlueprintsResponse proto.InternalMessageInfo
+
+func (m *ListBlueprintsResponse) GetBlueprints() []*Blueprint {
+	if m != nil {
+		return m.Blueprints
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Blueprint)(nil), "velocity.v1.Blueprint")
+	proto.RegisterType((*GetBlueprintRequest)(nil), "velocity.v1.GetBlueprintRequest")
+	proto.RegisterType((*ListBlueprintsRequest)(nil), "velocity.v1.ListBlueprintsRequest")
+	proto.RegisterType((*ListBlueprintsResponse)(nil), "velocity.v1.ListBlueprintsResponse")
 }
 
 func init() { proto.RegisterFile("blueprint.proto", fileDescriptor_d334b799e628a382) }
 
 var fileDescriptor_d334b799e628a382 = []byte{
-	// 110 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4f, 0xca, 0x29, 0x4d,
-	0x2d, 0x28, 0xca, 0xcc, 0x2b, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2e, 0x4b, 0xcd,
-	0xc9, 0x4f, 0xce, 0x2c, 0xa9, 0xd4, 0x2b, 0x33, 0x54, 0x72, 0xe4, 0xe2, 0x74, 0x82, 0xc9, 0x0b,
-	0x09, 0x71, 0xb1, 0xe4, 0x25, 0xe6, 0xa6, 0x4a, 0x30, 0x2a, 0x30, 0x6a, 0x70, 0x06, 0x81, 0xd9,
-	0x42, 0x0a, 0x5c, 0xdc, 0x29, 0xa9, 0xc5, 0xc9, 0x45, 0x99, 0x05, 0x25, 0x99, 0xf9, 0x79, 0x12,
-	0x4c, 0x60, 0x29, 0x64, 0x21, 0x27, 0x96, 0x28, 0xa6, 0x32, 0xc3, 0x24, 0x36, 0xb0, 0xe1, 0xc6,
-	0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0xae, 0x4a, 0x11, 0xe2, 0x6f, 0x00, 0x00, 0x00,
+	// 426 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x92, 0x4f, 0x6b, 0xd4, 0x40,
+	0x18, 0xc6, 0x49, 0xba, 0x15, 0xf3, 0x6e, 0xa9, 0x75, 0xc4, 0x12, 0xa2, 0x42, 0x1c, 0x05, 0x97,
+	0x3d, 0x24, 0xec, 0x8a, 0xde, 0xbc, 0xf4, 0x22, 0x0b, 0x1e, 0x6a, 0x7a, 0x10, 0xbc, 0x94, 0x34,
+	0x79, 0x09, 0x23, 0xbb, 0x99, 0xe9, 0xcc, 0x6c, 0x60, 0x91, 0xbd, 0x28, 0x5e, 0xbd, 0xe8, 0x37,
+	0xf3, 0x2b, 0xf8, 0x41, 0x24, 0x93, 0xff, 0x4b, 0xec, 0xed, 0xe5, 0x79, 0xf2, 0x3e, 0xf3, 0x9b,
+	0x67, 0x02, 0x0f, 0x6e, 0xd6, 0x5b, 0x14, 0x92, 0xe5, 0x3a, 0x10, 0x92, 0x6b, 0x4e, 0xa6, 0x05,
+	0xae, 0x79, 0xc2, 0xf4, 0x2e, 0x28, 0x16, 0x9e, 0x13, 0x0b, 0x56, 0xe9, 0xde, 0x99, 0x44, 0xc1,
+	0x15, 0xd3, 0x5c, 0xee, 0x6a, 0x05, 0x94, 0x46, 0x51, 0xcf, 0x4f, 0x33, 0xce, 0xb3, 0x35, 0x86,
+	0xb1, 0x60, 0x61, 0x9c, 0xe7, 0x5c, 0xc7, 0x9a, 0xf1, 0x5c, 0x55, 0x2e, 0xfd, 0x6d, 0x81, 0x73,
+	0xd1, 0x9c, 0x43, 0x4e, 0xc1, 0x66, 0xa9, 0x6b, 0xf9, 0xd6, 0xcc, 0x89, 0x6c, 0x96, 0x92, 0x67,
+	0x00, 0x42, 0xf2, 0x2f, 0x98, 0xe8, 0x6b, 0x96, 0xba, 0xb6, 0xd1, 0x9d, 0x5a, 0x59, 0xa5, 0xe4,
+	0x09, 0x38, 0x09, 0xdf, 0x6c, 0x98, 0x71, 0x8f, 0x8c, 0x7b, 0xbf, 0x12, 0x56, 0x29, 0x21, 0x30,
+	0xc9, 0xe3, 0x0d, 0xba, 0x13, 0xa3, 0x9b, 0x99, 0xbc, 0x82, 0xe3, 0x92, 0x4c, 0xb9, 0xc7, 0xfe,
+	0xd1, 0x6c, 0xba, 0x7c, 0x18, 0xf4, 0x6e, 0x14, 0x5c, 0x69, 0x14, 0x51, 0xe5, 0xd3, 0x4f, 0xf0,
+	0xe8, 0x3d, 0xea, 0x16, 0x2c, 0xc2, 0xdb, 0x2d, 0x2a, 0x7d, 0xc0, 0x63, 0x1d, 0xf2, 0x3c, 0x87,
+	0x93, 0xb6, 0xb3, 0x0e, 0x78, 0xda, 0x6a, 0xab, 0x94, 0xfe, 0xb0, 0xe0, 0xf1, 0x07, 0xa6, 0xba,
+	0x68, 0xd5, 0x64, 0xbf, 0x01, 0x28, 0x7b, 0xbc, 0xbe, 0xdd, 0xa2, 0xdc, 0x99, 0xec, 0xe9, 0xf2,
+	0x7c, 0x00, 0x18, 0xa1, 0xe0, 0x1f, 0x4b, 0x37, 0x72, 0x64, 0x33, 0x96, 0x6b, 0x22, 0xce, 0xb0,
+	0x5e, 0x4b, 0x46, 0xd6, 0x2e, 0xe3, 0x0c, 0xeb, 0x35, 0xd1, 0x8c, 0xf4, 0x12, 0xce, 0x0f, 0x31,
+	0x94, 0xe0, 0xb9, 0x42, 0xf2, 0x16, 0xa0, 0x05, 0x56, 0xae, 0x65, 0x8a, 0x1a, 0x06, 0x76, 0xb5,
+	0xf4, 0xbe, 0x5c, 0xfe, 0xb4, 0xe1, 0xac, 0x75, 0xae, 0x50, 0x16, 0x2c, 0x41, 0xa2, 0xe1, 0xa4,
+	0xdf, 0x23, 0xf1, 0x07, 0x41, 0x23, 0x15, 0x7b, 0xff, 0x39, 0x8a, 0xce, 0xbf, 0xfd, 0xf9, 0xfb,
+	0xcb, 0x7e, 0x49, 0x68, 0x58, 0x2c, 0xc2, 0xaf, 0xe5, 0x6b, 0xbe, 0xab, 0x8b, 0x57, 0xe1, 0x3c,
+	0xec, 0x38, 0xc2, 0xf9, 0x9e, 0x7c, 0xb7, 0xe0, 0x74, 0x78, 0x3b, 0x42, 0x07, 0xb1, 0xa3, 0x2f,
+	0xe0, 0xbd, 0xb8, 0xf3, 0x9b, 0xaa, 0x1e, 0x3a, 0x33, 0x1c, 0x94, 0xf8, 0x63, 0x1c, 0xfb, 0x1e,
+	0xc8, 0xc5, 0xe4, 0xb3, 0x5d, 0x2c, 0x6e, 0xee, 0x99, 0xff, 0xfc, 0xf5, 0xbf, 0x00, 0x00, 0x00,
+	0xff, 0xff, 0x23, 0x28, 0xda, 0x28, 0x4e, 0x03, 0x00, 0x00,
+}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion4
+
+// BlueprintServiceClient is the client API for BlueprintService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type BlueprintServiceClient interface {
+	GetBlueprint(ctx context.Context, in *GetBlueprintRequest, opts ...grpc.CallOption) (*Blueprint, error)
+	ListBlueprints(ctx context.Context, in *ListBlueprintsRequest, opts ...grpc.CallOption) (*ListBlueprintsResponse, error)
+}
+
+type blueprintServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewBlueprintServiceClient(cc *grpc.ClientConn) BlueprintServiceClient {
+	return &blueprintServiceClient{cc}
+}
+
+func (c *blueprintServiceClient) GetBlueprint(ctx context.Context, in *GetBlueprintRequest, opts ...grpc.CallOption) (*Blueprint, error) {
+	out := new(Blueprint)
+	err := c.cc.Invoke(ctx, "/velocity.v1.BlueprintService/GetBlueprint", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blueprintServiceClient) ListBlueprints(ctx context.Context, in *ListBlueprintsRequest, opts ...grpc.CallOption) (*ListBlueprintsResponse, error) {
+	out := new(ListBlueprintsResponse)
+	err := c.cc.Invoke(ctx, "/velocity.v1.BlueprintService/ListBlueprints", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// BlueprintServiceServer is the server API for BlueprintService service.
+type BlueprintServiceServer interface {
+	GetBlueprint(context.Context, *GetBlueprintRequest) (*Blueprint, error)
+	ListBlueprints(context.Context, *ListBlueprintsRequest) (*ListBlueprintsResponse, error)
+}
+
+// UnimplementedBlueprintServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedBlueprintServiceServer struct {
+}
+
+func (*UnimplementedBlueprintServiceServer) GetBlueprint(ctx context.Context, req *GetBlueprintRequest) (*Blueprint, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBlueprint not implemented")
+}
+func (*UnimplementedBlueprintServiceServer) ListBlueprints(ctx context.Context, req *ListBlueprintsRequest) (*ListBlueprintsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListBlueprints not implemented")
+}
+
+func RegisterBlueprintServiceServer(s *grpc.Server, srv BlueprintServiceServer) {
+	s.RegisterService(&_BlueprintService_serviceDesc, srv)
+}
+
+func _BlueprintService_GetBlueprint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBlueprintRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlueprintServiceServer).GetBlueprint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/velocity.v1.BlueprintService/GetBlueprint",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlueprintServiceServer).GetBlueprint(ctx, req.(*GetBlueprintRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BlueprintService_ListBlueprints_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBlueprintsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlueprintServiceServer).ListBlueprints(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/velocity.v1.BlueprintService/ListBlueprints",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlueprintServiceServer).ListBlueprints(ctx, req.(*ListBlueprintsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _BlueprintService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "velocity.v1.BlueprintService",
+	HandlerType: (*BlueprintServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetBlueprint",
+			Handler:    _BlueprintService_GetBlueprint_Handler,
+		},
+		{
+			MethodName: "ListBlueprints",
+			Handler:    _BlueprintService_ListBlueprints_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "blueprint.proto",
 }

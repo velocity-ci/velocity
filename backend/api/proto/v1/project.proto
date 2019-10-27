@@ -1,0 +1,62 @@
+syntax = "proto3";
+package velocity.v1;
+
+option go_package = "v1";
+
+import "api.proto";
+import "repository.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+message Project {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+service ProjectService {
+  rpc CreateProject(CreateProjectRequest) returns (Project) {
+    option (google.api.http) = {
+      post : "/v1/projects"
+      body : "project"
+    };
+  }
+
+  rpc GetProject(GetProjectRequest) returns (Project) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*}"
+    };
+  }
+
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
+    option (google.api.http) = {
+      get : "/v1/projects"
+    };
+  }
+}
+
+message CreateProjectRequest {
+  string name = 1;
+  velocity.v1.Repository repository = 2;
+}
+
+message GetProjectRequest {
+  // The id of the project in the form of
+  // `[PROJECT_ID]`.
+  string project_id = 1;
+}
+
+message ListProjectsRequest {
+  repeated string ids = 1;
+  repeated string names = 2;
+  // repeated string hosts = 3;
+  // repeated string addresses = 4;
+  // created_at;
+
+  velocity.v1.PageQuery page_query = 99;
+}
+
+message ListProjectsResponse { repeated Project projects = 1; }

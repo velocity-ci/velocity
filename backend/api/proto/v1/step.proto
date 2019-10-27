@@ -3,38 +3,15 @@ package velocity.v1;
 
 option go_package = "v1";
 
-import "google/protobuf/timestamp.proto";
-import "repository.proto";
-
 message Step {
-
-  string id = 1;
-  string description = 2;
-  repeated Stream streams = 3;
-
-  string status = 4;
-  google.protobuf.Timestamp started_at = 5;
-  google.protobuf.Timestamp updated_at = 6;
+  string description = 1;
 
   oneof impl {
-    Setup setup = 100;
     DockerRun docker_run = 101;
     DockerBuild docker_build = 102;
     DockerCompose docker_compose = 103;
     DockerPush docker_push = 104;
   }
-}
-
-message Stream {
-  string id = 1;
-  string name = 2;
-  string status = 3;
-}
-
-message Setup {
-  velocity.v1.Repository repository = 1;
-  string branch = 2;
-  string commit_hash = 3;
 }
 
 message DockerRun {
