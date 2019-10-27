@@ -6,10 +6,9 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/velocity-ci/velocity/backend/pkg/vcli"
-
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
+	"github.com/velocity-ci/velocity/backend/pkg/vcli"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
@@ -92,16 +91,4 @@ func runConstructionPlanPlanOnly(plan *build.ConstructionPlan) error {
 		}
 	}
 	return nil
-}
-
-func printHeader(header string) {
-	header = fmt.Sprintf("~ %s ~", header)
-	border := ""
-	for i := 0; i < len(header); i++ {
-		border += "~"
-	}
-
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, border, "\n"))
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, header, "\n"))
-	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, border, "\n"))
 }

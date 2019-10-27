@@ -1,10 +1,10 @@
 package config
 
-type BlueprintDocker struct {
-	Registries []BlueprintDockerRegistry `json:"registries"`
+type blueprintDocker struct {
+	Registries []blueprintDockerRegistry `json:"registries"`
 }
 
-type BlueprintDockerRegistry struct {
+type blueprintDockerRegistry struct {
 	Address   string            `json:"address"`
 	Use       string            `json:"use"`
 	Arguments map[string]string `json:"arguments"`

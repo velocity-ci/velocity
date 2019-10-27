@@ -5,7 +5,7 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 )
 
 // Stage represents a set of Tasks that can run in parallel, therefore Tasks is a map[TaskID]Task.
@@ -27,7 +27,7 @@ type ConstructionPlan struct {
 
 func NewConstructionPlanFromBlueprint(
 	targetBlueprintName string,
-	blueprints []*config.Blueprint,
+	blueprints []*v1.Blueprint,
 	paramResolver BackupResolver,
 	repository *git.Repository,
 	branch string,
@@ -64,8 +64,8 @@ func NewConstructionPlanFromBlueprint(
 
 func NewConstructionPlanFromPipeline(
 	targetPipelineName string,
-	pipelines []*config.Pipeline,
-	blueprints []*config.Blueprint,
+	pipelines []*v1.Pipeline,
+	blueprints []*v1.Blueprint,
 	paramResolver BackupResolver,
 	repository *git.Repository,
 	branch string,
@@ -90,11 +90,11 @@ func NewConstructionPlanFromPipeline(
 			Status: StateWaiting,
 			Tasks:  map[string]*Task{},
 		}
-		for _, blueprintName := range stage.Blueprints {
-			blueprint, err := getRequestedBlueprintByName(blueprintName, blueprints)
-			if err != nil {
-				return nil, err
-			}
+		for _, blueprint := range stage.Blueprints {
+			// blueprint, err := getRequestedBlueprintByName(blueprintName, blueprints)
+			// if err != nil {
+			// 	return nil, err
+			// }
 			newTask := NewTask(
 				blueprint,
 				paramResolver,
@@ -148,7 +148,7 @@ func (p *ConstructionPlan) Stop() error {
 	return nil
 }
 
-func getRequestedBlueprintByName(blueprintName string, blueprints []*config.Blueprint) (*config.Blueprint, error) {
+func getRequestedBlueprintByName(blueprintName string, blueprints []*v1.Blueprint) (*v1.Blueprint, error) {
 	for _, b := range blueprints {
 		if b.Name == blueprintName {
 			return b, nil
@@ -158,7 +158,7 @@ func getRequestedBlueprintByName(blueprintName string, blueprints []*config.Blue
 	return nil, fmt.Errorf("could not find %s", blueprintName)
 }
 
-func getRequestedPipelineByName(pipelineName string, pipelines []*config.Pipeline) (*config.Pipeline, error) {
+func getRequestedPipelineByName(pipelineName string, pipelines []*v1.Pipeline) (*v1.Pipeline, error) {
 	for _, p := range pipelines {
 		if p.Name == pipelineName {
 			return p, nil

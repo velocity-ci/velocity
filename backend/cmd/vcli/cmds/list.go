@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 )
 
 func init() {
@@ -45,7 +46,7 @@ var listCmd = &cobra.Command{
 	},
 }
 
-func listText(blueprints []*config.Blueprint, pipelines []*config.Pipeline) error {
+func listText(blueprints []*v1.Blueprint, pipelines []*v1.Pipeline) error {
 
 	if err := listBlueprintsText(blueprints); err != nil {
 		return err
@@ -60,7 +61,7 @@ func listText(blueprints []*config.Blueprint, pipelines []*config.Pipeline) erro
 	return nil
 }
 
-func listMachine(blueprints []*config.Blueprint, pipelines []*config.Pipeline) error {
+func listMachine(blueprints []*v1.Blueprint, pipelines []*v1.Pipeline) error {
 	jsonBytes, err := json.MarshalIndent(
 		map[string]interface{}{
 			"blueprints": blueprints,

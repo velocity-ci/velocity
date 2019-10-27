@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
 func init() {
@@ -46,23 +45,23 @@ func infoMachine(root *config.Root) error {
 }
 
 func infoText(root *config.Root) error {
-	fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", output.Italic("Parameters"))
-	if len(root.Parameters) > 0 {
-		// for _, parameter := range root.Parameters {
-		// 	fmt.Fprintf(os.Stdout, "  %s\t%s\n", parameter.Type)
-		// }
-	} else {
-		fmt.Fprintln(os.Stdout, "  none found")
-	}
+	// fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", output.Italic("Parameters"))
+	// if len(root.Parameters) > 0 {
+	// 	// for _, parameter := range root.Parameters {
+	// 	// 	fmt.Fprintf(os.Stdout, "  %s\t%s\n", parameter.Type)
+	// 	// }
+	// } else {
+	// 	fmt.Fprintln(os.Stdout, "  none found")
+	// }
 
-	fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", output.Italic("Plugins"))
-	if len(root.Plugins) > 0 {
-		for _, plugin := range root.Plugins {
-			fmt.Fprintf(os.Stdout, "  %s\t%s\n", plugin.Use, plugin.Events)
-		}
-	} else {
-		fmt.Fprintln(os.Stdout, "  none found")
-	}
+	// fmt.Fprintf(os.Stdout, "\n~~ %s ~~\n", output.Italic("Plugins"))
+	// if len(root.Plugins) > 0 {
+	// 	for _, plugin := range root.Plugins {
+	// 		fmt.Fprintf(os.Stdout, "  %s\t%s\n", plugin.Use, plugin.Events)
+	// 	}
+	// } else {
+	// 	fmt.Fprintln(os.Stdout, "  none found")
+	// }
 
 	fmt.Fprintln(os.Stdout, "")
 

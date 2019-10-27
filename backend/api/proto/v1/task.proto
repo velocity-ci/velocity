@@ -4,11 +4,12 @@ package velocity.v1;
 option go_package = "v1";
 
 import "action.proto";
+import "blueprint.proto";
 import "google/protobuf/timestamp.proto";
 
 message Task {
   string id = 1;
-  map<string, Parameter> parameters = 2;
+  map<string, TaskParameter> parameters = 2;
   string blueprint = 3;
   bool ignore_errors = 4;
   repeated velocity.v1.Action actions = 5;
@@ -18,19 +19,15 @@ message Task {
   google.protobuf.Timestamp updated_at = 8;
 }
 
-message Parameter {
+message TaskParameter {
   string name = 1;
   string value = 2;
-  bool is_secret = 3;
+  bool secret = 3;
 }
 
-message TaskDocker {
-  repeated DockerRegistry registries = 1;
-}
+message TaskDocker { repeated TaskDockerRegistry registries = 1; }
 
-message DockerRegistry {
-  string address = 1;
-  string use = 2;
-  map<string, string> arguments = 3;
-  string authorization_token = 4;
+message TaskDockerRegistry {
+  velocity.v1.DockerRegistry registry = 1;
+  string authorization_token = 2;
 }

@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/git"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"go.uber.org/zap"
 )
@@ -42,7 +44,7 @@ func (s *Stage) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type Pipeline struct {
+type pipeline struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 
@@ -52,8 +54,8 @@ type Pipeline struct {
 	ValidationErrors []string `json:"validationErrors"`
 }
 
-func newPipeline() *Pipeline {
-	return &Pipeline{
+func newPipeline() *pipeline {
+	return &pipeline{
 		Name:             "",
 		Description:      "",
 		Stages:           []*Stage{},
@@ -62,7 +64,7 @@ func newPipeline() *Pipeline {
 	}
 }
 
-func handlePipelineUnmarshalError(t *Pipeline, err error) *Pipeline {
+func handlePipelineUnmarshalError(t *pipeline, err error) *pipeline {
 	if err != nil {
 		t.ParseErrors = append(t.ParseErrors, err.Error())
 	}
@@ -70,7 +72,7 @@ func handlePipelineUnmarshalError(t *Pipeline, err error) *Pipeline {
 	return t
 }
 
-func (t *Pipeline) UnmarshalJSON(b []byte) error {
+func (t *pipeline) UnmarshalJSON(b []byte) error {
 	// We don't return any errors from this function so we can show more helpful parse errors
 	var objMap map[string]*json.RawMessage
 	// We'll store the error (if any) so we can return it if necessary
@@ -85,7 +87,7 @@ func (t *Pipeline) UnmarshalJSON(b []byte) error {
 		t = handlePipelineUnmarshalError(t, err)
 	}
 
-	// Default Pipeline
+	// Default pipeline
 	if t.Name == "default" {
 		t.Description = "The default pipeline"
 	}
@@ -126,8 +128,8 @@ func findPipelinesDirectory(root *Root) (string, error) {
 	return "", fmt.Errorf("could not find pipelines in: %s", pipelinesPath)
 }
 
-func GetPipelinesFromRoot(root *Root) ([]*Pipeline, error) {
-	pipelines := []*Pipeline{}
+func GetPipelinesFromRoot(root *Root) ([]*v1.Pipeline, error) {
+	pipelines := []*v1.Pipeline{}
 
 	pipelinesPath, err := findPipelinesDirectory(root)
 	if err != nil {
@@ -142,20 +144,30 @@ func GetPipelinesFromRoot(root *Root) ([]*Pipeline, error) {
 			if err != nil {
 				return err
 			}
-			t := newPipeline()
+			cP := newPipeline()
 			relativePath, err := filepath.Rel(pipelinesPath, path)
 			if err != nil {
 				return err
 			}
-			t.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
-			err = yaml.Unmarshal(pipelineYml, &t)
+			cP.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
+			err = yaml.Unmarshal(pipelineYml, &cP)
 			if err != nil {
 				return err
 			}
-			pipelines = append(pipelines, t)
+			pipelines = append(pipelines, parsePipeline(cP, root.Repository.CurrentCommitInfo))
 		}
 		return nil
 	})
 
 	return pipelines, err
+}
+
+func parsePipeline(cP *pipeline, cm *git.RawCommit) *v1.Pipeline {
+	return &v1.Pipeline{
+		Id:          fmt.Sprintf("%s+%s", cm.SHA, cP.Name),
+		ProjectId:   "",
+		Name:        cP.Name,
+		CommitId:    cm.SHA,
+		Description: cP.Description,
+	}
 }

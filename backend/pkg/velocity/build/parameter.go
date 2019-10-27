@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/velocity-ci/velocity/backend/pkg/exec"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 )
 
 func getSecrets(params map[string]*Parameter) (r []string) {
@@ -22,52 +22,52 @@ func getSecrets(params map[string]*Parameter) (r []string) {
 }
 
 func resolveConfigParameter(
-	p config.Parameter,
+	p v1.Parameter,
 	bR BackupResolver,
 	projectRoot string,
 	writer io.Writer,
 ) (parameters []*Parameter, err error) {
 	// resolve parameter value at build time
-	switch x := p.(type) {
-	case *config.ParameterBasic:
-		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s\n", x.Name)))
-		return resolveConfigParameterBasic(x, bR)
-	case *config.ParameterDerived:
-		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s\n", x.Use)))
-		return resolveConfigParameterDerived(x, bR, projectRoot, writer)
+	switch x := p.GetImpl().(type) {
+	case *v1.Parameter_BasicParameter:
+		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s\n", x.BasicParameter.GetName())))
+		return resolveConfigParameterBasic(&p, bR)
+	case *v1.Parameter_DerivedParameter:
+		writer.Write([]byte(fmt.Sprintf("-> resolving parameter %s\n", x.DerivedParameter.GetUse())))
+		return resolveConfigParameterDerived(&p, bR, projectRoot, writer)
 	default:
 		return parameters, fmt.Errorf("type: %T: %v", x, p)
 	}
 }
 
-func resolveConfigParameterBasic(p *config.ParameterBasic, backupResolver BackupResolver) (parameters []*Parameter, err error) {
-	val, err := backupResolver.Resolve(p.Name)
+func resolveConfigParameterBasic(p *v1.Parameter, backupResolver BackupResolver) (parameters []*Parameter, err error) {
+	val, err := backupResolver.Resolve(p.GetBasicParameter().GetName())
 	if err != nil {
 		return nil, err
 	}
 	v := val
 	return []*Parameter{{
-		Name:     p.Name,
+		Name:     p.GetBasicParameter().GetName(),
 		Value:    v,
-		IsSecret: p.Secret,
+		IsSecret: p.GetSecret(),
 	}}, err
 }
 
 func resolveConfigParameterDerived(
-	p *config.ParameterDerived,
+	p *v1.Parameter,
 	backupResolver BackupResolver,
 	projectRoot string,
 	writer io.Writer,
 ) (parameters []*Parameter, err error) {
 	// Download binary from use:
-	bin, err := getBinary(projectRoot, p.Use, writer)
+	bin, err := getBinary(projectRoot, p.GetDerivedParameter().GetUse(), writer)
 	if err != nil {
 		return parameters, err
 	}
 	cmd := []string{bin}
 
 	// Process arguments
-	for k, v := range p.Arguments {
+	for k, v := range p.GetDerivedParameter().GetArguments() {
 		cmd = append(cmd, fmt.Sprintf("-%s=%s", k, v))
 	}
 
@@ -94,7 +94,7 @@ func resolveConfigParameterDerived(
 	} else if dOutput.State == "success" {
 		for paramName, val := range dOutput.Exports {
 			parameters = append(parameters, &Parameter{
-				Name:     getExportedParameterName(p.Exports, paramName),
+				Name:     getExportedParameterName(p.GetDerivedParameter().GetExports(), paramName),
 				Value:    val,
 				IsSecret: dOutput.Secret,
 			})

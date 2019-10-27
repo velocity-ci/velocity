@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 )
 
@@ -21,12 +21,12 @@ type StepDockerBuild struct {
 	builder *docker.ImageBuilder
 }
 
-func NewStepDockerBuild(c *config.StepDockerBuild) *StepDockerBuild {
+func NewStepDockerBuild(c *v1.Step_DockerBuild) *StepDockerBuild {
 	return &StepDockerBuild{
 		BaseStep:   newBaseStep("build", []string{"build"}),
-		Dockerfile: c.Dockerfile,
-		Context:    c.Context,
-		Tags:       c.Tags,
+		Dockerfile: c.DockerBuild.GetDockerfile(),
+		Context:    c.DockerBuild.GetContext(),
+		Tags:       c.DockerBuild.GetTags(),
 	}
 }
 

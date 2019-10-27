@@ -16,8 +16,9 @@ message Pipeline {
 
   string commit_id = 3;
   string name = 4;
+  string description = 5;
 
-  repeated Stage stages = 5;
+  repeated Stage stages = 6;
 }
 
 message Stage {

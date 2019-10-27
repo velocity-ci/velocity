@@ -9,6 +9,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
@@ -41,7 +42,7 @@ var listPipelinesCmd = &cobra.Command{
 	},
 }
 
-func listPipelinesText(pipelines []*config.Pipeline) error {
+func listPipelinesText(pipelines []*v1.Pipeline) error {
 	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	printHeader("Pipelines")
@@ -50,7 +51,7 @@ func listPipelinesText(pipelines []*config.Pipeline) error {
 			fmt.Fprintf(tabWriter, " %s %s\t%s\n",
 				output.ColorFmt(aurora.CyanFg, "->", " "),
 				pipeline.Name,
-				aurora.Colorize(pipeline.Description, aurora.ItalicFm|aurora.Gray(20, "").Color()),
+				aurora.Colorize(pipeline.GetDescription(), aurora.ItalicFm|aurora.Gray(20, "").Color()),
 			)
 		}
 		tabWriter.Flush()
@@ -60,7 +61,7 @@ func listPipelinesText(pipelines []*config.Pipeline) error {
 	return nil
 }
 
-func listPipelinesMachine(pipelines []*config.Pipeline) error {
+func listPipelinesMachine(pipelines []*v1.Pipeline) error {
 	jsonBytes, err := json.MarshalIndent(pipelines, "", "  ")
 	if err != nil {
 		return err

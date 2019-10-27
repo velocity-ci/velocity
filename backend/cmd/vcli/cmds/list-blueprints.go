@@ -9,6 +9,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
@@ -41,7 +42,7 @@ var listBlueprintsCmd = &cobra.Command{
 	},
 }
 
-func listBlueprintsText(blueprints []*config.Blueprint) error {
+func listBlueprintsText(blueprints []*v1.Blueprint) error {
 	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	printHeader("Blueprints")
@@ -60,7 +61,7 @@ func listBlueprintsText(blueprints []*config.Blueprint) error {
 	return nil
 }
 
-func listBlueprintsMachine(blueprints []*config.Blueprint) error {
+func listBlueprintsMachine(blueprints []*v1.Blueprint) error {
 	jsonBytes, err := json.MarshalIndent(blueprints, "", "  ")
 	if err != nil {
 		return err

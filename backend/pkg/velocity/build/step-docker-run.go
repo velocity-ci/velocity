@@ -7,8 +7,8 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/ghodss/yaml"
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
 
@@ -24,21 +24,21 @@ type StepDockerRun struct {
 	containerManager *docker.ContainerManager
 }
 
-func NewStepDockerRun(c *config.StepDockerRun) *StepDockerRun {
-	if c.MountPoint == "" {
-		c.MountPoint = "/velocity_ci"
+func NewStepDockerRun(c *v1.Step_DockerRun) *StepDockerRun {
+	if c.DockerRun.GetMountPoint() == "" {
+		c.DockerRun.MountPoint = "/velocity_ci"
 	}
-	if c.Environment == nil {
-		c.Environment = map[string]string{}
+	if c.DockerRun.Environment == nil {
+		c.DockerRun.Environment = map[string]string{}
 	}
 	return &StepDockerRun{
 		BaseStep:       newBaseStep("run", []string{"run"}),
-		Image:          c.Image,
-		Command:        c.Command,
-		Environment:    c.Environment,
-		WorkingDir:     c.WorkingDir,
-		MountPoint:     c.MountPoint,
-		IgnoreExitCode: c.IgnoreExitCode,
+		Image:          c.DockerRun.GetImage(),
+		Command:        c.DockerRun.GetCommand(),
+		Environment:    c.DockerRun.GetEnvironment(),
+		WorkingDir:     c.DockerRun.GetWorkingDir(),
+		MountPoint:     c.DockerRun.GetMountPoint(),
+		IgnoreExitCode: c.DockerRun.GetIgnoreExitCode(),
 	}
 }
 

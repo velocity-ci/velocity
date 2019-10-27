@@ -2,39 +2,38 @@ package config
 
 import "encoding/json"
 
-type Parameter interface {
-}
+type parameter interface{}
 
-type BaseParameter struct {
+type baseParameter struct {
 	Type string `json:"type"`
 }
 
-func NewParameterBasic() *ParameterBasic {
-	return &ParameterBasic{
-		BaseParameter: BaseParameter{
+func NewParameterBasic() *parameterBasic {
+	return &parameterBasic{
+		baseParameter: baseParameter{
 			Type: "basic",
 		},
 	}
 }
 
-type ParameterBasic struct {
-	BaseParameter
+type parameterBasic struct {
+	baseParameter
 	Name         string   `json:"name"`
 	Default      string   `json:"default"`
 	OtherOptions []string `json:"otherOptions"`
 	Secret       bool     `json:"secret"`
 }
 
-func NewParameterDerived() *ParameterDerived {
-	return &ParameterDerived{
-		BaseParameter: BaseParameter{
+func NewParameterDerived() *parameterDerived {
+	return &parameterDerived{
+		baseParameter: baseParameter{
 			Type: "derived",
 		},
 	}
 }
 
-type ParameterDerived struct {
-	BaseParameter
+type parameterDerived struct {
+	baseParameter
 	Use       string            `json:"use"`
 	Secret    bool              `json:"secret"`
 	Arguments map[string]string `json:"arguments"`
@@ -42,7 +41,7 @@ type ParameterDerived struct {
 	Timeout   uint64            `json:"timeout"`
 }
 
-func unmarshalParameter(b []byte) (p Parameter, err error) {
+func unmarshalParameter(b []byte) (p parameter, err error) {
 	var m map[string]interface{}
 	err = json.Unmarshal(b, &m)
 	if err != nil {

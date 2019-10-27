@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"go.uber.org/zap"
@@ -20,10 +20,10 @@ type StepDockerPush struct {
 	pusher *docker.ImagePusher
 }
 
-func NewStepDockerPush(c *config.StepDockerPush) *StepDockerPush {
+func NewStepDockerPush(c *v1.Step_DockerPush) *StepDockerPush {
 	return &StepDockerPush{
 		BaseStep: newBaseStep("push", []string{"push"}),
-		Tags:     c.Tags,
+		Tags:     c.DockerPush.GetTags(),
 	}
 }
 

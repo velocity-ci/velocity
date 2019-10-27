@@ -9,37 +9,38 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/git"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"go.uber.org/zap"
 )
 
-// Blueprint represents a configuration level Task
-type Blueprint struct {
+type blueprint struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
-	Docker      BlueprintDocker `json:"docker"`
-	Parameters  []Parameter     `json:"parameters"`
-	Steps       []Step          `json:"steps"`
+	Docker      blueprintDocker `json:"docker"`
+	Parameters  []parameter     `json:"parameters"`
+	Steps       []step          `json:"steps"`
 
 	ParseErrors      []string `json:"parseErrors"`
 	ValidationErrors []string `json:"validationErrors"`
 }
 
-func newBlueprint() *Blueprint {
-	return &Blueprint{
+func newBlueprint() *blueprint {
+	return &blueprint{
 		Name:        "",
 		Description: "",
-		Docker: BlueprintDocker{
-			Registries: []BlueprintDockerRegistry{},
+		Docker: blueprintDocker{
+			Registries: []blueprintDockerRegistry{},
 		},
-		Parameters:       []Parameter{},
-		Steps:            []Step{},
+		Parameters:       []parameter{},
+		Steps:            []step{},
 		ParseErrors:      []string{},
 		ValidationErrors: []string{},
 	}
 }
 
-func handleBlueprintUnmarshalError(t *Blueprint, err error) *Blueprint {
+func handleBlueprintUnmarshalError(t *blueprint, err error) *blueprint {
 	if err != nil {
 		t.ParseErrors = append(t.ParseErrors, err.Error())
 	}
@@ -48,7 +49,7 @@ func handleBlueprintUnmarshalError(t *Blueprint, err error) *Blueprint {
 }
 
 // UnmarshalJSON provides custom JSON decoding
-func (t *Blueprint) UnmarshalJSON(b []byte) error {
+func (t *blueprint) UnmarshalJSON(b []byte) error {
 	// We don't return any errors from this function so we can show more helpful parse errors
 	var objMap map[string]*json.RawMessage
 	// We'll store the error (if any) so we can return it if necessary
@@ -122,8 +123,8 @@ func findBlueprintsDirectory(root *Root) (string, error) {
 }
 
 // GetBlueprintsFromRoot returns the blueprints found from a given root directory
-func GetBlueprintsFromRoot(root *Root) ([]*Blueprint, error) {
-	blueprints := []*Blueprint{}
+func GetBlueprintsFromRoot(root *Root) ([]*v1.Blueprint, error) {
+	blueprints := []*v1.Blueprint{}
 
 	blueprintsPath, err := findBlueprintsDirectory(root)
 	if err != nil {
@@ -138,20 +139,43 @@ func GetBlueprintsFromRoot(root *Root) ([]*Blueprint, error) {
 			if err != nil {
 				return err
 			}
-			t := newBlueprint()
+			cB := newBlueprint()
 			relativePath, err := filepath.Rel(blueprintsPath, path)
 			if err != nil {
 				return err
 			}
-			t.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
-			err = yaml.Unmarshal(blueprintYml, &t)
+			err = yaml.Unmarshal(blueprintYml, &cB)
 			if err != nil {
 				return err
 			}
-			blueprints = append(blueprints, t)
+			cB.Name = strings.TrimSuffix(relativePath, filepath.Ext(relativePath))
+			b, err := parseBlueprint(cB, root.Repository.CurrentCommitInfo)
+			if err != nil {
+				return err
+			}
+			blueprints = append(blueprints, b)
 		}
 		return nil
 	})
 
 	return blueprints, err
+}
+
+func parseBlueprint(cB *blueprint, cm *git.RawCommit) (*v1.Blueprint, error) {
+	steps := []*v1.Step{}
+	for _, cS := range cB.Steps {
+		s, err := parseStep(cS)
+		if err != nil {
+			return nil, err
+		}
+		steps = append(steps, s)
+	}
+	return &v1.Blueprint{
+		Id:          fmt.Sprintf("%s+%s", cm.SHA, cB.Name),
+		ProjectId:   "",
+		Name:        cB.Name,
+		CommitId:    cm.SHA,
+		Description: cB.Description,
+		Steps:       steps,
+	}, nil
 }

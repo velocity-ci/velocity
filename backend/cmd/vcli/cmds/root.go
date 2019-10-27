@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
@@ -56,4 +57,16 @@ var rootCmd = &cobra.Command{
 		cmd.Help()
 	},
 	Version: BuildVersion,
+}
+
+func printHeader(header string) {
+	header = fmt.Sprintf("~ %s ~", header)
+	border := ""
+	for i := 0; i < len(header); i++ {
+		border += "~"
+	}
+
+	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, border, "\n"))
+	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, header, "\n"))
+	fmt.Fprintf(os.Stdout, output.ColorFmt(aurora.MagentaFg, border, "\n"))
 }

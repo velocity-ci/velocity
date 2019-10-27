@@ -52,7 +52,14 @@ func (r *RawRepository) GetCurrentCommitInfo() (*RawCommit, error) {
 
 	// GetLogger().Debug("git rev-parse HEAD", zap.Strings("stdout", s.Stdout), zap.Strings("stderr", s.Stderr))
 
-	return r.GetCommitInfo(strings.TrimSpace(s.Stdout[0]))
+	cCI, err := r.GetCommitInfo(strings.TrimSpace(s.Stdout[0]))
+	if err != nil {
+		return nil, err
+	}
+
+	r.CurrentCommitInfo = cCI
+
+	return r.CurrentCommitInfo, nil
 }
 
 func (r *RawRepository) GetTotalCommits() uint64 {

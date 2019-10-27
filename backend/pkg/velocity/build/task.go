@@ -5,22 +5,23 @@ import (
 	"fmt"
 	"time"
 
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
+	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
+	"go.uber.org/zap"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/velocity-ci/velocity/backend/pkg/git"
-
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 )
 
 type Task struct {
 	ID         string `json:"id"`
 	parameters map[string]*Parameter
 
-	Blueprint    config.Blueprint `json:"blueprint"` // replace with blueprint-name?
-	IgnoreErrors bool             `json:"ignoreErrors"`
-	Docker       TaskDocker       `json:"docker"`
-	Steps        []Step           `json:"steps"`
+	Blueprint    v1.Blueprint `json:"blueprint"` // replace with blueprint-name?
+	IgnoreErrors bool         `json:"ignoreErrors"`
+	Docker       TaskDocker   `json:"docker"`
+	Steps        []Step       `json:"steps"`
 
 	Status      string     `json:"status"`
 	StartedAt   *time.Time `json:"startedAt"`
@@ -166,7 +167,7 @@ func (t *Task) executeStep(i, totalSteps int, emitter Emitter, step Step) error 
 }
 
 func NewTask(
-	c *config.Blueprint,
+	c *v1.Blueprint,
 	paramResolver BackupResolver,
 	repository *git.Repository,
 	branch string,
@@ -177,18 +178,20 @@ func NewTask(
 		NewStepSetup(paramResolver, repository, branch, commitSha),
 	}
 	for _, configStep := range c.Steps {
-		switch x := configStep.(type) {
-		case *config.StepDockerRun:
+		switch x := configStep.GetImpl().(type) {
+		case *v1.Step_DockerRun:
 			steps = append(steps, NewStepDockerRun(x))
 			break
-		case *config.StepDockerBuild:
+		case *v1.Step_DockerBuild:
 			steps = append(steps, NewStepDockerBuild(x))
 			break
-		case *config.StepDockerCompose:
+		case *v1.Step_DockerCompose:
 			steps = append(steps, NewStepDockerCompose(x, projectRoot))
 			break
-		case *config.StepDockerPush:
+		case *v1.Step_DockerPush:
 			steps = append(steps, NewStepDockerPush(x))
+		default:
+			logging.GetLogger().Error("could not determine step", zap.Reflect("step impl", configStep.GetImpl()))
 		}
 	}
 
@@ -199,11 +202,11 @@ func NewTask(
 		Steps:       steps,
 		parameters:  map[string]*Parameter{},
 		Status:      StateWaiting,
-		Docker:      taskDockerFromBlueprintDocker(c.Docker),
+		// Docker:      taskDockerFromBlueprintDocker(c.Docker),
 	}
 }
 
-func taskDockerFromBlueprintDocker(blueprint config.BlueprintDocker) TaskDocker {
+func taskDockerFromBlueprintDocker(blueprint v1.Docker) TaskDocker {
 	taskDocker := TaskDocker{Registries: []DockerRegistry{}}
 	for _, dR := range blueprint.Registries {
 		taskDocker.Registries = append(taskDocker.Registries, DockerRegistry{

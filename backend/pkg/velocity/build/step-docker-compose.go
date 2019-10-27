@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/velocity-ci/velocity/backend/pkg/velocity/config"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/docker"
+	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 
 	"github.com/ghodss/yaml"
 	v3 "github.com/velocity-ci/velocity/backend/pkg/velocity/docker/compose/v3"
@@ -23,12 +23,14 @@ type StepDockerCompose struct {
 	containerManager *docker.ContainerManager
 }
 
-func NewStepDockerCompose(c *config.StepDockerCompose, projectRoot string) *StepDockerCompose {
-	streams, _ := getComposeFileStreams(filepath.Join(projectRoot, c.ComposeFile))
+func NewStepDockerCompose(c *v1.Step_DockerCompose, projectRoot string) *StepDockerCompose {
+	streams, _ := getComposeFileStreams(
+		filepath.Join(projectRoot, c.DockerCompose.GetComposeFile()),
+	)
 
 	return &StepDockerCompose{
 		BaseStep:        newBaseStep("compose", streams),
-		ComposeFilePath: c.ComposeFile,
+		ComposeFilePath: c.DockerCompose.GetComposeFile(),
 	}
 }
 

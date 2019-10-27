@@ -16,11 +16,11 @@ message Step {
 
 message DockerRun {
   string image = 1;
-  string command = 2;
-  string environment = 3;
+  repeated string command = 2;
+  map<string, string> environment = 3;
   string working_dir = 4;
   string mount_point = 5;
-  string ignore_exit_code = 6;
+  bool ignore_exit_code = 6;
 }
 
 message DockerBuild {

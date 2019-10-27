@@ -13,6 +13,7 @@ import (
 )
 
 func Run(shCmd []string, directory string, env []string, writer io.Writer) cmd.Status {
+	defer Time(time.Now(), strings.Join(shCmd, " "))
 	opts := cmd.Options{Buffered: false, Streaming: true}
 	c := cmd.NewCmdOptions(opts, shCmd[0], shCmd[1:]...)
 	c.Env = respectProxyEnv(env)

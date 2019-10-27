@@ -13,10 +13,42 @@ message Blueprint {
   string id = 1;
 
   string project_id = 2;
-
   string commit_id = 3;
+
   string name = 4;
-  repeated Step steps = 5;
+  string description = 5;
+  repeated Parameter parameters = 6;
+  repeated velocity.v1.Step steps = 7;
+
+  Docker docker = 8;
+}
+
+message Parameter {
+  bool secret = 1;
+  oneof impl {
+    BasicParameter basic_parameter = 11;
+    DerivedParameter derived_parameter = 12;
+  }
+}
+
+message BasicParameter {
+  string name = 1;
+  string default = 2;
+  repeated string choices = 3;
+}
+
+message DerivedParameter {
+  string use = 1;
+  map<string, string> arguments = 2;
+  map<string, string> exports = 3;
+}
+
+message Docker { repeated DockerRegistry registries = 1; }
+
+message DockerRegistry {
+  string address = 1;
+  string use = 2;
+  map<string, string> arguments = 3;
 }
 
 service BlueprintService {

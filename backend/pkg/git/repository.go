@@ -25,9 +25,19 @@ type Repository struct {
 }
 
 type RawRepository struct {
-	Repository *Repository
-	Directory  string
+	Repository        *Repository
+	CurrentCommitInfo *RawCommit
+	Directory         string
 	sync.RWMutex
+}
+
+func NewRawRepository(r *Repository, path string) *RawRepository {
+	rr := &RawRepository{
+		Repository: r,
+		Directory:  path,
+	}
+	rr.GetCurrentCommitInfo()
+	return rr
 }
 
 type CloneOptions struct {
@@ -166,7 +176,7 @@ func Clone(
 
 	logging.GetLogger().Info("fetched repository", zap.String("address", r.Address), zap.String("dir", dir))
 
-	return &RawRepository{Directory: dir, Repository: r}, nil
+	return NewRawRepository(r, dir), nil
 }
 
 func (r *RawRepository) Clean() error {
@@ -191,6 +201,10 @@ func (r *RawRepository) Checkout(ref string) error {
 	s := exec.Run(shCmd, r.Directory, []string{}, nil)
 
 	if err := exec.GetStatusError(s); err != nil {
+		return err
+	}
+
+	if _, err := r.GetCurrentCommitInfo(); err != nil {
 		return err
 	}
 

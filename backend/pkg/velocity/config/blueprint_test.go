@@ -35,35 +35,35 @@ docker:
 
 	expectedBlueprintConfig := newBlueprint()
 	expectedBlueprintConfig.Description = "Hello Velocity"
-	expectedBlueprintConfig.Parameters = []Parameter{
-		&ParameterDerived{
-			BaseParameter: BaseParameter{Type: "derived"},
-			Use:           "https://velocityci.io/parameter-test",
-			Arguments: map[string]string{
-				"name": "/velocityci/foo",
-			},
-			Exports: map[string]string{
-				"value": "bar",
-			},
-		},
-		&ParameterBasic{
-			BaseParameter: BaseParameter{Type: "basic"},
-			Name:          "your_name",
-			Secret:        true,
-		},
-	}
-	expectedBlueprintConfig.Docker = BlueprintDocker{
-		Registries: []BlueprintDockerRegistry{
-			{
-				Address: "",
-				Use:     "https://velocityci.io/registry-test",
-				Arguments: map[string]string{
-					"username": "registry_user",
-					"password": "registry_password",
-				},
-			},
-		},
-	}
+	// expectedBlueprintConfig.Parameters = []Parameter{
+	// 	&ParameterDerived{
+	// 		BaseParameter: BaseParameter{Type: "derived"},
+	// 		Use:           "https://velocityci.io/parameter-test",
+	// 		Arguments: map[string]string{
+	// 			"name": "/velocityci/foo",
+	// 		},
+	// 		Exports: map[string]string{
+	// 			"value": "bar",
+	// 		},
+	// 	},
+	// 	&ParameterBasic{
+	// 		BaseParameter: BaseParameter{Type: "basic"},
+	// 		Name:          "your_name",
+	// 		Secret:        true,
+	// 	},
+	// }
+	// expectedBlueprintConfig.Docker = BlueprintDocker{
+	// 	Registries: []BlueprintDockerRegistry{
+	// 		{
+	// 			Address: "",
+	// 			Use:     "https://velocityci.io/registry-test",
+	// 			Arguments: map[string]string{
+	// 				"username": "registry_user",
+	// 				"password": "registry_password",
+	// 			},
+	// 		},
+	// 	},
+	// }
 
 	assert.Equal(t, expectedBlueprintConfig, blueprintConfig)
 }

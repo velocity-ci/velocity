@@ -137,22 +137,22 @@ func (s *Setup) Execute(emitter Emitter, t *Task) error {
 		fmt.Fprintf(tabWriter, "Set %s\t%s\n", k, v.Value)
 	}
 	tabWriter.Flush()
-	for _, configParam := range t.Blueprint.Parameters {
-		resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
-		if err != nil {
-			writer.SetStatus(StateFailed)
-			fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not resolve parameter: %s", "\n"), err)
-			return fmt.Errorf("could not resolve %v", err)
-		}
-		for _, param := range resolvedParams {
-			t.parameters[param.Name] = param
-			if param.IsSecret {
-				fmt.Fprintf(writer, "Set %s: ***\n", param.Name)
-			} else {
-				fmt.Fprintf(writer, "Set %s: %v\n", param.Name, param.Value)
-			}
-		}
-	}
+	// for _, configParam := range t.Blueprint.Parameters {
+	// 	resolvedParams, err := resolveConfigParameter(configParam, s.backupResolver, t.ProjectRoot, writer)
+	// 	if err != nil {
+	// 		writer.SetStatus(StateFailed)
+	// 		fmt.Fprintf(writer, output.ColorFmt(output.ANSIError, "Could not resolve parameter: %s", "\n"), err)
+	// 		return fmt.Errorf("could not resolve %v", err)
+	// 	}
+	// 	for _, param := range resolvedParams {
+	// 		t.parameters[param.Name] = param
+	// 		if param.IsSecret {
+	// 			fmt.Fprintf(writer, "Set %s: ***\n", param.Name)
+	// 		} else {
+	// 			fmt.Fprintf(writer, "Set %s: %v\n", param.Name, param.Value)
+	// 		}
+	// 	}
+	// }
 
 	// Login to docker registries
 	authedRegistries := []DockerRegistry{}
@@ -191,32 +191,32 @@ func (s Setup) Validate(params map[string]Parameter) error {
 func GetGlobalParams(writer io.Writer, projectRoot, branch string) (map[string]Parameter, error) {
 	params := map[string]Parameter{}
 
-	repo := &git.RawRepository{Directory: projectRoot}
+	repo := git.NewRawRepository(nil, projectRoot)
 
 	if repo.IsDirty() {
 		fmt.Fprintf(writer, output.ColorFmt(output.ANSIWarn, "Project files are dirty. Build repeatability is not guaranteed.", "\n"))
 	}
 
-	rawCommit, err := repo.GetCurrentCommitInfo()
-	if err != nil {
-		return params, err
-	}
+	// rawCommit, err := repo.GetCurrentCommitInfo()
+	// if err != nil {
+	// 	return params, err
+	// }
 	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
 	if err != nil {
 		return params, err
 	}
 
 	buildTimestamp := time.Now().UTC()
-	params["git.branch"] = Parameter{
+	params["git.head"] = Parameter{
 		Value:    branch,
 		IsSecret: false,
 	}
 	params["git.commit.sha.long"] = Parameter{
-		Value:    rawCommit.SHA,
+		Value:    repo.CurrentCommitInfo.SHA,
 		IsSecret: false,
 	}
 	params["git.commit.sha.short"] = Parameter{
-		Value:    rawCommit.SHA[:7],
+		Value:    repo.CurrentCommitInfo.SHA[:7],
 		IsSecret: false,
 	}
 	params["git.describe"] = Parameter{
@@ -228,27 +228,27 @@ func GetGlobalParams(writer io.Writer, projectRoot, branch string) (map[string]P
 		IsSecret: false,
 	}
 	params["git.commit.author"] = Parameter{
-		Value:    rawCommit.AuthorEmail,
+		Value:    repo.CurrentCommitInfo.AuthorEmail,
 		IsSecret: false,
 	}
 	params["git.commit.message"] = Parameter{
-		Value:    rawCommit.Message,
+		Value:    repo.CurrentCommitInfo.Message,
 		IsSecret: false,
 	}
 	params["git.commit.rfc3339"] = Parameter{
-		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC3339),
+		Value:    repo.CurrentCommitInfo.AuthorDate.UTC().Format(time.RFC3339),
 		IsSecret: false,
 	}
 	params["git.commit.rfc822"] = Parameter{
-		Value:    rawCommit.AuthorDate.UTC().Format(time.RFC822),
+		Value:    repo.CurrentCommitInfo.AuthorDate.UTC().Format(time.RFC822),
 		IsSecret: false,
 	}
 	params["git.commit.rfc3339.clean"] = Parameter{
-		Value:    reg.ReplaceAllString(rawCommit.AuthorDate.UTC().Format(time.RFC3339), ""),
+		Value:    reg.ReplaceAllString(repo.CurrentCommitInfo.AuthorDate.UTC().Format(time.RFC3339), ""),
 		IsSecret: false,
 	}
 	params["git.commit.rfc822.clean"] = Parameter{
-		Value:    reg.ReplaceAllString(rawCommit.AuthorDate.UTC().Format(time.RFC822), ""),
+		Value:    reg.ReplaceAllString(repo.CurrentCommitInfo.AuthorDate.UTC().Format(time.RFC822), ""),
 		IsSecret: false,
 	}
 	params["build.rfc3339"] = Parameter{

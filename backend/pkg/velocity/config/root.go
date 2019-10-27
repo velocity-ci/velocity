@@ -8,17 +8,20 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
+	"github.com/velocity-ci/velocity/backend/pkg/git"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
 	"go.uber.org/zap"
 )
 
 type Root struct {
-	Path    string       `json:"-"`
+	Path       string             `json:"-"`
+	Repository *git.RawRepository `json:"-"`
+
 	Project *RootProject `json:"project"`
 	Git     *RootGit     `json:"git"`
 
-	Parameters []Parameter   `json:"parameters"`
-	Plugins    []*RootPlugin `json:"plugins"`
+	// Parameters []Parameter   `json:"parameters"`
+	// Plugins    []*RootPlugin `json:"plugins"`
 }
 
 type RootProject struct {
@@ -45,8 +48,8 @@ func newRoot() *Root {
 		Git: &RootGit{
 			Submodule: true,
 		},
-		Parameters: []Parameter{},
-		Plugins:    []*RootPlugin{},
+		// Parameters: []Parameter{},
+		// Plugins:    []*RootPlugin{},
 	}
 }
 
@@ -76,30 +79,30 @@ func (r *Root) UnmarshalJSON(b []byte) error {
 	}
 
 	// Deserialize Parameters
-	if val, _ := objMap["parameters"]; val != nil {
-		var rawParameters []*json.RawMessage
-		err = json.Unmarshal(*val, &rawParameters)
-		if err != nil {
-			return err
-		}
-		if err == nil {
-			for _, rawMessage := range rawParameters {
-				param, err := unmarshalParameter(*rawMessage)
-				if err != nil {
-					return err
-				}
-				r.Parameters = append(r.Parameters, param)
-			}
-		}
-	}
+	// if val, _ := objMap["parameters"]; val != nil {
+	// 	var rawParameters []*json.RawMessage
+	// 	err = json.Unmarshal(*val, &rawParameters)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if err == nil {
+	// 		for _, rawMessage := range rawParameters {
+	// 			param, err := unmarshalParameter(*rawMessage)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			r.Parameters = append(r.Parameters, param)
+	// 		}
+	// 	}
+	// }
 
-	// Deserialize Git
-	if _, ok := objMap["plugins"]; ok {
-		err = json.Unmarshal(*objMap["plugins"], &r.Plugins)
-		if err != nil {
-			return err
-		}
-	}
+	// Deserialize Plugins
+	// if _, ok := objMap["plugins"]; ok {
+	// 	err = json.Unmarshal(*objMap["plugins"], &r.Plugins)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
@@ -127,6 +130,7 @@ func GetRootConfig() (*Root, error) {
 	}
 
 	rootConfig.Path = projectRoot
+	rootConfig.Repository = git.NewRawRepository(nil, projectRoot)
 	return rootConfig, nil
 }
 
