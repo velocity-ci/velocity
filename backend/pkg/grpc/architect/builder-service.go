@@ -22,10 +22,10 @@ func NewBuilderServer() *BuilderServer {
 }
 
 // Register registers a new builder, returning a token to authenticate with
-func (s *BuilderServer) Register(context.Context, *v1.RegisterRequest) (*v1.RegisterResponse, error) {
+func (s *BuilderServer) Register(context.Context, *v1.RegisterRequest) (*v1.Registration, error) {
 	id := uuid.NewV4()
 	jwt, _ := auth.NewJWT(time.Hour, id.String())
-	return &v1.RegisterResponse{
+	return &v1.Registration{
 		Token: jwt,
 	}, nil
 }

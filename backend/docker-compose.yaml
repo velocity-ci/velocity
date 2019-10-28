@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  redis:
+    image: redis:5
+    ports: ["6379:6379"]
+  db:
+    image: cockroachdb/cockroach:latest
+    ports: ["26257:26257","8080:8080"]
+    command: "start --insecure"
