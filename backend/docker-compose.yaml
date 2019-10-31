@@ -5,6 +5,11 @@ services:
     image: redis:5
     ports: ["6379:6379"]
   db:
-    image: cockroachdb/cockroach:latest
-    ports: ["26257:26257","8080:8080"]
-    command: "start --insecure"
+    # image: cockroachdb/cockroach:latest
+    image: postgres:latest
+    # ports: ["26257:26257","8080:8080"]
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: velocity
+      POSTGRES_PASSWORD: velocity
+      POSTGRES_DB: velocity

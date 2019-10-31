@@ -20,6 +20,7 @@ import (
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
+	_ "github.com/lib/pq"
 	"github.com/velocity-ci/velocity/backend/pkg/auth"
 	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/logging"
@@ -33,6 +34,7 @@ func main() {
 	signal.Notify(stop, syscall.SIGTERM)
 	signal.Notify(stop, syscall.SIGINT)
 
+	log.Println("starting listener")
 	lis, err := net.Listen("tcp", ":8888")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -56,11 +58,15 @@ func main() {
 		)),
 	)
 
-	db := db.NewDB()
+	log.Println("connecting to database")
+	db, err := db.NewDB()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	v1.RegisterBuilderServiceServer(grpcServer, architect.NewBuilderServer())
-	v1.RegisterProjectServiceServer(grpcServer, architect.NewProjectServer())
-	v1.RegisterRepositoryServiceServer(grpcServer, architect.NewRepositoryServer())
+	v1.RegisterProjectServiceServer(grpcServer, architect.NewProjectServer(db))
+	// v1.RegisterRepositoryServiceServer(grpcServer, architect.NewRepositoryServer())
 	// v1.RegisterBlueprintServiceServer()
 	// v1.RegisterPipelineServiceServer()
 	// v1.RegisterBuildServiceServer()
@@ -74,6 +80,7 @@ func main() {
 		grpcServer.Stop()
 		db.Close()
 	}()
+	log.Println("starting grpc server")
 	// TODO: determine whether to use TLS
 	grpcServer.Serve(lis)
 }

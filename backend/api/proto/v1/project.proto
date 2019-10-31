@@ -11,7 +11,7 @@ import "google/protobuf/timestamp.proto";
 message Project {
   string id = 1;
   string name = 2;
-  string address = 3;
+  velocity.v1.Repository repository = 3;
 
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;
@@ -34,6 +34,30 @@ service ProjectService {
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
     option (google.api.http) = {
       get : "/v1/projects"
+    };
+  }
+
+  rpc GetHead(velocity.v1.GetHeadRequest) returns (velocity.v1.Head) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*/heads/*}"
+    };
+  }
+
+  rpc GetCommit(velocity.v1.GetCommitRequest) returns (velocity.v1.Commit) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*/commits/*}"
+    };
+  }
+
+  rpc ListHeads(velocity.v1.ListHeadsRequest) returns (velocity.v1.ListHeadsResponse) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*}/heads"
+    };
+  }
+
+  rpc ListCommits(velocity.v1.ListCommitsRequest) returns (velocity.v1.ListCommitsResponse) {
+    option (google.api.http) = {
+      get : "/v1/{name=projects/*}/commits"
     };
   }
 }

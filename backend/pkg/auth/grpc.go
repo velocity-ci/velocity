@@ -22,7 +22,7 @@ var (
 
 // GRPCInterceptor intercepts GRPC requests and puts JWT subject into the request context.
 func GRPCInterceptor(ctx context.Context) (context.Context, error) {
-	if m, _ := grpc.Method(ctx); m == "/velocity.v1.BuilderService/Register" {
+	if m, _ := grpc.Method(ctx); allowedMethod(m) {
 		return ctx, nil
 	}
 	bearer, err := grpc_auth.AuthFromMD(ctx, "bearer")
@@ -47,4 +47,16 @@ func GetSubject(ctx context.Context) (string, error) {
 		return sub, nil
 	}
 	return "", fmt.Errorf("bad subject")
+}
+
+func allowedMethod(m string) bool {
+	for _, s := range []string{
+		"/velocity.v1.BuilderService/Register",
+		"/velocity.v1.ProjectService/CreateProject",
+	} {
+		if m == s {
+			return true
+		}
+	}
+	return false
 }
