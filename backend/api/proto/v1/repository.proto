@@ -28,32 +28,6 @@ message SSHConfig {
   string host_key = 2; // known_host
 }
 
-service RepositoryService {
-  rpc GetHead(GetHeadRequest) returns (Head) {
-    option (google.api.http) = {
-      get : "/v1/{name=projects/*/heads/*}"
-    };
-  }
-
-  rpc GetCommit(GetCommitRequest) returns (Commit) {
-    option (google.api.http) = {
-      get : "/v1/{name=projects/*/commits/*}"
-    };
-  }
-
-  rpc ListHeads(ListHeadsRequest) returns (ListHeadsResponse) {
-    option (google.api.http) = {
-      get : "/v1/{name=projects/*}/heads"
-    };
-  }
-
-  rpc ListCommits(ListCommitsRequest) returns (ListCommitsResponse) {
-    option (google.api.http) = {
-      get : "/v1/{name=projects/*}/commits"
-    };
-  }
-}
-
 message GetHeadRequest {
   // The id of the project in the form of
   // `[PROJECT_ID]`.
