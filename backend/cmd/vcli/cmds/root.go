@@ -8,6 +8,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
+	"github.com/velocity-ci/velocity/backend/cmd/vcli/cmds/grpc"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/build"
 	"github.com/velocity-ci/velocity/backend/pkg/velocity/output"
 )
@@ -28,6 +29,7 @@ var (
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.PersistentFlags().BoolVar(&machineReadable, "machine-readable", false, "Output in machine readable format (JSON)")
+	rootCmd.AddCommand(grpc.Cmd)
 }
 
 func Execute() error {

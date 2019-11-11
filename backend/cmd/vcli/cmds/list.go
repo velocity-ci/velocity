@@ -15,12 +15,12 @@ func init() {
 }
 
 var listCmd = &cobra.Command{
-	Use:       "list",
-	Aliases:   []string{"l"},
-	Short:     "Lists blueprints and pipelines",
-	Long:      `Lists all of blueprints and pipelines`,
-	ValidArgs: []string{"blueprints", "pipelines", "b", "p"},
-	Args:      cobra.OnlyValidArgs,
+	Use:     "list",
+	Aliases: []string{"l"},
+	Short:   "Lists blueprints and pipelines",
+	Long:    `Lists all of blueprints and pipelines`,
+	// ValidArgs: []string{"blueprints", "pipelines", "b", "p"},
+	Args: cobra.OnlyValidArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		root, err := config.GetRootConfig()
 		if err != nil {

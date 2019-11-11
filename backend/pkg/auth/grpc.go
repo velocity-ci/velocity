@@ -16,9 +16,10 @@ func (c contextKey) String() string {
 	return string(c)
 }
 
-var (
-	jwtSub = contextKey("jwt.sub")
-)
+var jwtSub = contextKey("jwt.sub")
+
+// NoAuthMethods defines what GRPC methods do not require authentication
+var NoAuthMethods = []string{}
 
 // GRPCInterceptor intercepts GRPC requests and puts JWT subject into the request context.
 func GRPCInterceptor(ctx context.Context) (context.Context, error) {

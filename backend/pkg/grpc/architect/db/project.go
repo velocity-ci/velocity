@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -64,28 +63,95 @@ func toDBProject(p *v1.Project) (*project, error) {
 	}, nil
 }
 
+// CreateProject creates a given project
 func (db *DB) CreateProject(ctx context.Context, p *v1.Project) (*v1.Project, error) {
 	dbP, err := toDBProject(p)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("converted Project to dbProject")
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("started transaction")
-	_, err = tx.Exec(`INSERT INTO
-projects
-(id, name, address, ssh_private_key, ssh_host_key, created_at, updated_at)
+	_, err = tx.NamedExec(`INSERT INTO projects
+	(id, name, address, ssh_private_key, ssh_host_key, created_at, updated_at)
 VALUES
-($1, $2, $3, $4, $5, $6, $7);`,
-		dbP.ID, dbP.Name, dbP.Address, dbP.SSHPrivateKey, dbP.SSHHostKey, dbP.CreatedAt, dbP.UpdatedAt,
+	(:id, :name, :address, :ssh_private_key, :ssh_host_key, :created_at, :updated_at);`,
+		map[string]interface{}{
+			"id":              dbP.ID,
+			"name":            dbP.Name,
+			"address":         dbP.Address,
+			"ssh_private_key": dbP.SSHPrivateKey,
+			"ssh_host_key":    dbP.SSHHostKey,
+			"created_at":      dbP.CreatedAt,
+			"updated_at":      dbP.UpdatedAt,
+		},
 	)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	log.Println("executed insert")
 	return p, tx.Commit()
+}
+
+// UpdateProject updates a given project
+func (db *DB) UpdateProject(ctx context.Context, p *v1.Project) (*v1.Project, error) {
+	dbP, err := toDBProject(p)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.NamedExec(`UPDATE projects
+SET
+	name=:name,
+	address=:address,
+	ssh_private_key=:ssh_private_key,
+	ssh_host_key=:ssh_host_key,
+	updated_at=:updated_at
+WHERE id=:id;`,
+		map[string]interface{}{
+			"id":              dbP.ID,
+			"name":            dbP.Name,
+			"address":         dbP.Address,
+			"ssh_private_key": dbP.SSHPrivateKey,
+			"ssh_host_key":    dbP.SSHHostKey,
+			"updated_at":      dbP.UpdatedAt,
+		},
+	)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return p, tx.Commit()
+}
+
+// GetProjectByUUID returns a project referenced by the given UUID
+func (db *DB) GetProjectByUUID(ctx context.Context, uuid string) (*v1.Project, error) {
+	dbP := project{}
+	if err := db.Get(&dbP, `SELECT * FROM projects WHERE id=$1;`, uuid); err != nil {
+		return nil, err
+	}
+
+	return toProject(&dbP)
+}
+
+// GetProjects returns the projects
+func (db *DB) GetProjects(ctx context.Context) ([]*v1.Project, error) {
+	dbPs := []project{}
+	if err := db.Select(&dbPs, `SELECT * FROM projects;`); err != nil {
+		return nil, err
+	}
+	res := []*v1.Project{}
+	for _, dbP := range dbPs {
+		p, err := toProject(&dbP)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, p)
+	}
+
+	return res, nil
 }
