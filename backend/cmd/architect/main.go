@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/velocity-ci/velocity/backend/pkg/git"
 	"github.com/velocity-ci/velocity/backend/pkg/grpc/architect"
 	"github.com/velocity-ci/velocity/backend/pkg/grpc/architect/db"
 
@@ -40,8 +41,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	repositoryManager := git.NewRepositoryManager()
+
 	v1.RegisterBuilderServiceServer(grpcServer, architect.NewBuilderServer())
-	v1.RegisterProjectServiceServer(grpcServer, architect.NewProjectServer(db))
+	v1.RegisterProjectServiceServer(grpcServer, architect.NewProjectServer(db, repositoryManager))
 	// v1.RegisterBlueprintServiceServer()
 	// v1.RegisterPipelineServiceServer()
 	// v1.RegisterBuildServiceServer()

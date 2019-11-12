@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS projects (
+CREATE TABLE projects (
   id uuid,
   name VARCHAR (256) NOT NULL,
   address VARCHAR(256) NOT NULL,
@@ -7,4 +7,8 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at TIMESTAMP WITH TIME ZONE,
   updated_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY (id)
+);
+
+CREATE TABLE architect (
+
 );

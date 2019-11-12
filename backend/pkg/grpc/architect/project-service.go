@@ -6,17 +6,23 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	uuid "github.com/satori/go.uuid"
+	"github.com/velocity-ci/velocity/backend/pkg/git"
 	"github.com/velocity-ci/velocity/backend/pkg/grpc/architect/db"
 	v1 "github.com/velocity-ci/velocity/backend/pkg/velocity/genproto/v1"
 )
 
 type ProjectServer struct {
-	db *db.DB
+	db                *db.DB
+	repositoryManager *git.RepositoryManager
 }
 
-func NewProjectServer(db *db.DB) *ProjectServer {
+func NewProjectServer(
+	db *db.DB,
+	repositoryManager *git.RepositoryManager,
+) *ProjectServer {
 	return &ProjectServer{
-		db: db,
+		db:                db,
+		repositoryManager: repositoryManager,
 	}
 }
 
@@ -29,7 +35,14 @@ func (s *ProjectServer) CreateProject(ctx context.Context, req *v1.CreateProject
 		UpdatedAt:  ptypes.TimestampNow(),
 	}
 
-	return s.db.CreateProject(ctx, p)
+	p, err := s.db.CreateProject(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	go s.repositoryManager.Add(p.GetRepository().GetAddress(), p.GetRepository().GetSshConfig().GetPrivateKey(), p.GetRepository().GetSshConfig().GetHostKey())
+
+	return p, nil
 }
 
 func (s *ProjectServer) GetProject(ctx context.Context, req *v1.GetProjectRequest) (*v1.Project, error) {
